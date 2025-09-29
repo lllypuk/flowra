@@ -1,0 +1,308 @@
+# New Teams Up Configuration File
+# This is the default configuration for the application
+# Environment-specific values should be overridden via environment variables
+
+# Application settings
+app:
+  name: "new-teams-up"
+  version: "0.1.0"
+  environment: "development"
+  debug: true
+  log_level: "debug"
+
+# Server configuration
+server:
+  host: "localhost"
+  port: 8080
+  read_timeout: "30s"
+  write_timeout: "30s"
+  idle_timeout: "120s"
+  shutdown_timeout: "30s"
+  max_header_bytes: 1048576 # 1MB
+
+# Database configuration
+database:
+  host: "localhost"
+  port: 5432
+  name: "new_teams_up_dev"
+  user: "postgres"
+  password: "postgres123"
+  ssl_mode: "disable"
+  timezone: "UTC"
+
+  # Connection pool settings
+  max_open_connections: 25
+  max_idle_connections: 25
+  connection_max_lifetime: "5m"
+  connection_max_idle_time: "10m"
+
+  # Migration settings
+  migrations_path: "./migrations"
+  auto_migrate: false
+
+# Test database configuration
+test_database:
+  host: "localhost"
+  port: 5433
+  name: "new_teams_up_test"
+  user: "postgres"
+  password: "postgres123"
+  ssl_mode: "disable"
+
+# Redis configuration
+redis:
+  host: "localhost"
+  port: 6379
+  password: ""
+  db: 0
+  max_retries: 3
+  pool_size: 10
+  min_idle_connections: 5
+  dial_timeout: "5s"
+  read_timeout: "3s"
+  write_timeout: "3s"
+  pool_timeout: "4s"
+  idle_check_frequency: "60s"
+  idle_timeout: "5m"
+  max_connection_age: "30m"
+
+# JWT configuration
+jwt:
+  secret: "your-super-secret-jwt-key-change-this-in-production"
+  access_token_expires_in: "15m"
+  refresh_token_expires_in: "7d"
+  issuer: "new-teams-up"
+  audience: "new-teams-up-users"
+  signing_method: "HS256"
+
+# OAuth configuration
+oauth:
+  google:
+    client_id: ""
+    client_secret: ""
+    redirect_url: "http://localhost:8080/auth/google/callback"
+    scopes: ["openid", "profile", "email"]
+
+  github:
+    client_id: ""
+    client_secret: ""
+    redirect_url: "http://localhost:8080/auth/github/callback"
+    scopes: ["user:email", "read:user"]
+
+# Email configuration
+email:
+  smtp:
+    host: "localhost"
+    port: 1025
+    username: ""
+    password: ""
+    from_address: "noreply@newteamsup.com"
+    from_name: "New Teams Up"
+    use_tls: false
+    use_starttls: false
+
+  templates_path: "./templates/email"
+
+# File upload configuration
+upload:
+  max_size: "10MB"
+  allowed_types: ["jpg", "jpeg", "png", "gif", "pdf", "doc", "docx"]
+  upload_path: "./uploads"
+  avatar_max_size: "5MB"
+  serve_static: true
+
+# Storage configuration
+storage:
+  type: "local" # local, s3, minio
+  local:
+    path: "./storage"
+  s3:
+    bucket: ""
+    region: "us-east-1"
+    access_key: ""
+    secret_key: ""
+    endpoint: ""
+    use_ssl: true
+  minio:
+    bucket: "new-teams-up-files"
+    endpoint: "localhost:9000"
+    access_key: "minioadmin"
+    secret_key: "minioadmin123"
+    use_ssl: false
+
+# Message queue configuration
+message_queue:
+  type: "nats" # nats, rabbitmq, kafka
+  nats:
+    url: "nats://localhost:4222"
+    cluster_id: "new-teams-up-cluster"
+    client_id: "new-teams-up-service"
+    max_reconnect: 5
+    reconnect_wait: "2s"
+    jetstream_enabled: true
+
+# Search configuration
+search:
+  type: "elasticsearch" # elasticsearch, postgresql
+  elasticsearch:
+    url: "http://localhost:9200"
+    username: ""
+    password: ""
+    index_prefix: "new_teams_up"
+    max_retries: 3
+    health_check_timeout: "5s"
+
+# Rate limiting configuration
+rate_limiting:
+  enabled: true
+  requests_per_minute: 60
+  burst: 10
+  cleanup_interval: "5m"
+  redis_key_prefix: "rate_limit:"
+
+# CORS configuration
+cors:
+  allowed_origins: ["http://localhost:3000", "http://localhost:3001"]
+  allowed_methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+  allowed_headers: ["Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With"]
+  exposed_headers: ["X-Total-Count", "X-Page", "X-Per-Page"]
+  allow_credentials: true
+  max_age: 86400 # 24 hours
+
+# Security configuration
+security:
+  bcrypt_cost: 12
+  password_min_length: 8
+  password_require_special_chars: true
+  password_require_numbers: true
+  max_login_attempts: 5
+  lockout_duration: "15m"
+
+# Monitoring configuration
+monitoring:
+  enabled: true
+  metrics_path: "/metrics"
+  health_check_path: "/health"
+  readiness_check_path: "/ready"
+  pprof_enabled: false # Enable in development only
+
+# Tracing configuration
+tracing:
+  enabled: false
+  jaeger:
+    endpoint: "http://localhost:14268/api/traces"
+    service_name: "new-teams-up"
+    sampler_type: "const"
+    sampler_param: 1.0
+
+# Logging configuration
+logging:
+  level: "debug" # debug, info, warn, error
+  format: "json" # json, text
+  output: "stdout" # stdout, stderr, file
+  file_path: "./logs/app.log"
+  max_size: 100 # MB
+  max_backups: 3
+  max_age: 28 # days
+  compress: true
+
+  # Structured logging fields
+  add_caller: true
+  add_stack_trace: true
+
+# Feature flags
+features:
+  oauth_enabled: true
+  file_upload_enabled: true
+  notifications_enabled: true
+  matching_algorithm_v2: false
+  advanced_analytics: false
+  real_time_messaging: true
+
+# Notification configuration
+notifications:
+  email:
+    enabled: true
+    queue_size: 1000
+    worker_count: 5
+    retry_count: 3
+    retry_delay: "5s"
+
+  push:
+    enabled: false
+    firebase:
+      project_id: ""
+      private_key: ""
+      client_email: ""
+
+  slack:
+    enabled: false
+    bot_token: ""
+    webhook_url: ""
+
+# API configuration
+api:
+  version: "v1"
+  prefix: "/api"
+  timeout: "30s"
+  max_request_size: "10MB"
+
+  # Pagination defaults
+  default_page_size: 20
+  max_page_size: 100
+
+# Cache configuration
+cache:
+  default_ttl: "5m"
+  user_profile_ttl: "1h"
+  team_data_ttl: "30m"
+  match_results_ttl: "2h"
+  cleanup_interval: "10m"
+
+# Background jobs configuration
+jobs:
+  enabled: true
+  worker_count: 5
+  retry_count: 3
+  retry_delay: "5s"
+  queue_size: 1000
+
+  # Job types
+  email_notifications: true
+  match_calculations: true
+  data_cleanup: true
+  analytics_processing: true
+
+# External services configuration
+external_services:
+  timeout: "10s"
+  retry_count: 3
+  retry_delay: "1s"
+
+  # Circuit breaker configuration
+  circuit_breaker:
+    max_requests: 3
+    interval: "60s"
+    timeout: "30s"
+
+# Development settings
+development:
+  hot_reload: true
+  mock_external_services: false
+  seed_data: true
+  profiling_enabled: false
+
+# Testing configuration
+testing:
+  fixtures_path: "./testdata/fixtures"
+  timeout: "30s"
+  parallel: true
+  coverage_threshold: 80
+
+# Deployment configuration
+deployment:
+  environment: "development"
+  version: "dev"
+  build_time: ""
+  git_commit: ""
+  git_branch: ""
