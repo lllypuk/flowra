@@ -11,7 +11,7 @@
 
 ## Компоненты системы
 
-### 1. API Gateway (Fiber)
+### 1. API Gateway (Echo)
 
 Основной HTTP сервер, обрабатывающий:
 - REST API endpoints
