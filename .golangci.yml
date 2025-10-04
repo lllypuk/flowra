@@ -173,7 +173,7 @@ linters-settings:
   # Goimports does everything that gofmt does and also fixes imports
   goimports:
     # Put imports beginning with prefix after 3rd-party packages.
-    local-prefixes: github.com/your-org/new-teams-up
+    local-prefixes: github.com/lllypuk/teams-up
 
   # Gomnd detects magic numbers
   gomnd:

@@ -1,130 +1,66 @@
-version: "3.8"
+version: '3.8'
 
 services:
-  # Traefik Reverse Proxy
-  traefik:
-    image: traefik:v3.5
-    container_name: new-teams-up-traefik
-    command:
-      - "--api.insecure=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--providers.docker.network=new-teams-up-network"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-      - "--certificatesresolvers.letsencrypt.acme.email=admin@example.com"
-      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
-      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
-      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+  mongodb:
+    image: mongo:7
+    container_name: teams-up-mongodb
     ports:
-      - "80:80"
-      - "443:443"
-      - "8080:8080" # Traefik dashboard
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
     volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
-      - "traefik_letsencrypt:/letsencrypt"
+      - mongodb_data:/data/db
+    networks:
+      - teams-up-network
     healthcheck:
-      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
     restart: unless-stopped
-    networks:
-      - new-teams-up-network
 
-  # Keycloak Identity and Access Management
-  keycloak:
-    image: keycloak/keycloak:26.3.2
-    container_name: new-teams-up-keycloak
-    environment:
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/new_teams_up_dev
-      KC_DB_USERNAME: postgres
-      KC_DB_PASSWORD: postgres123
-      KC_HOSTNAME: keycloak.localhost
-      KC_HOSTNAME_STRICT_HTTPS: false
-      KC_HTTP_ENABLED: true
-      KC_HEALTH_ENABLED: true
-      KC_METRICS_ENABLED: true
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin123
-    command:
-      - start-dev
-    ports:
-      - "8090:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test:
-        ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    restart: unless-stopped
-    networks:
-      - new-teams-up-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.keycloak.rule=Host(`keycloak.localhost`)"
-      - "traefik.http.routers.keycloak.entrypoints=web"
-      - "traefik.http.routers.keycloak.service=keycloak"
-      - "traefik.http.services.keycloak.loadbalancer.server.port=8080"
-
-  # PostgreSQL Database
-  postgres:
-    image: postgres:18-alpine
-    container_name: new-teams-up-postgres
-    environment:
-      POSTGRES_DB: new_teams_up_dev
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres123
-      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=C --lc-ctype=C"
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./scripts/db/init.sql:/docker-entrypoint-initdb.d/init.sql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    networks:
-      - new-teams-up-network
-
-  # Redis Cache
   redis:
-    image: redis:8-alpine
-    container_name: new-teams-up-redis
+    image: redis:7-alpine
+    container_name: teams-up-redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
-      - ./configs/redis/redis.conf:/usr/local/etc/redis/redis.conf
-    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - teams-up-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
     restart: unless-stopped
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    container_name: teams-up-keycloak
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin123
+      KC_DB: dev-file
+    ports:
+      - "8090:8080"
+    command:
+      - start-dev
     networks:
-      - new-teams-up-network
+      - teams-up-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
 
 volumes:
-  postgres_data:
-    driver: local
+  mongodb_data:
   redis_data:
-    driver: local
-  traefik_letsencrypt:
-    driver: local
 
 networks:
-  new-teams-up-network:
+  teams-up-network:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16

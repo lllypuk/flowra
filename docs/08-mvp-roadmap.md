@@ -17,34 +17,40 @@ Roadmap для реализации MVP chat-based task tracker. Разрабо�
 
 ---
 
-## Phase 0: Project Setup
+## Phase 0: Project Setup ✅ **COMPLETED**
 
 **Цель:** Подготовка окружения разработки и базовой структуры проекта.
 
+**Дата завершения:** 2025-10-04
+
 ### Tasks
 
-- [ ] **0.1 Initialize Go module**
-  - `go mod init github.com/yourorg/teams-up`
-  - Добавить базовые зависимости (echo, mongo-driver, redis, uuid)
+- [x] **0.1 Initialize Go module** ✅
+  - `go mod init github.com/lllypuk/teams-up`
+  - Добавить базовые зависимости (echo v4.13.4, mongo-driver v1.17.4, redis v9.14.0, uuid v1.6.0, viper v1.21.0, testify v1.11.1)
 
-- [ ] **0.2 Setup project structure**
+- [x] **0.2 Setup project structure** ✅
   - Создать директории согласно `docs/07-code-structure.md`
   - `internal/domain/`, `internal/application/`, `internal/infrastructure/`, etc.
+  - `.gitignore` и `.gitkeep` файлы
 
-- [ ] **0.3 Configure development environment**
-  - `docker-compose.yml` — MongoDB, Redis, Keycloak
+- [x] **0.3 Configure development environment** ✅
+  - `docker-compose.yml` — MongoDB 7, Redis 7, Keycloak 23
   - `configs/config.yaml` — базовая конфигурация
+  - `configs/config.dev.yaml` и `configs/config.prod.yaml`
   - `Makefile` — команды для разработки
+  - `.env.example`
 
-- [ ] **0.4 Setup linting and formatting**
-  - `.golangci.yml` — правила линтинга
-  - Pre-commit hooks (опционально)
+- [x] **0.4 Setup linting and formatting** ✅
+  - `.golangci.yml` — правила линтинга (обновлен local-prefixes)
+  - Команды форматирования в Makefile
 
-- [ ] **0.5 Initialize testing framework**
+- [x] **0.5 Initialize testing framework** ✅
   - Настроить `testify` для assertions
-  - Создать helpers для integration tests
+  - Создать helpers для integration tests (mongodb.go, redis.go, helpers.go)
+  - Пример теста проходит успешно
 
-**Deliverable:** Пустой проект с правильной структурой, запускаются Docker services.
+**Deliverable:** ✅ Проект с правильной структурой, Docker services настроены, все проверки пройдены.
 
 ---
 

@@ -1,0 +1,9 @@
+log:
+  level: "info"
+  format: "json"
+
+auth:
+  jwt_secret: "${JWT_SECRET}" # из переменной окружения
+
+keycloak:
+  client_secret: "${KEYCLOAK_CLIENT_SECRET}"
