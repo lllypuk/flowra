@@ -33,7 +33,13 @@ func NewNotificationCreated(
 	metadata event.Metadata,
 ) *Created {
 	return &Created{
-		BaseEvent:  event.NewBaseEvent(EventTypeNotificationCreated, notificationID.String(), "Notification", 1, metadata),
+		BaseEvent: event.NewBaseEvent(
+			EventTypeNotificationCreated,
+			notificationID.String(),
+			"Notification",
+			1,
+			metadata,
+		),
 		UserID:     userID,
 		Type:       typ,
 		Title:      title,
@@ -76,7 +82,13 @@ func NewNotificationDeleted(
 	metadata event.Metadata,
 ) *Deleted {
 	return &Deleted{
-		BaseEvent: event.NewBaseEvent(EventTypeNotificationDeleted, notificationID.String(), "Notification", 1, metadata),
-		UserID:    userID,
+		BaseEvent: event.NewBaseEvent(
+			EventTypeNotificationDeleted,
+			notificationID.String(),
+			"Notification",
+			1,
+			metadata,
+		),
+		UserID: userID,
 	}
 }

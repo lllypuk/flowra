@@ -85,7 +85,7 @@ func TestNewNotification(t *testing.T) {
 			"",
 		)
 		require.NoError(t, err)
-		assert.Equal(t, "", notif.ResourceID())
+		assert.Empty(t, notif.ResourceID())
 	})
 }
 
