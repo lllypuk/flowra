@@ -17,8 +17,8 @@ const (
 	EventTypeInviteRevoked    = "workspace.invite.revoked"
 )
 
-// WorkspaceCreated событие создания рабочего пространства
-type WorkspaceCreated struct {
+// Created событие создания рабочего пространства
+type Created struct {
 	event.BaseEvent
 
 	Name            string
@@ -27,8 +27,13 @@ type WorkspaceCreated struct {
 }
 
 // NewWorkspaceCreated создает новое событие WorkspaceCreated
-func NewWorkspaceCreated(workspaceID uuid.UUID, name, keycloakGroupID string, createdBy uuid.UUID, metadata event.Metadata) *WorkspaceCreated {
-	return &WorkspaceCreated{
+func NewWorkspaceCreated(
+	workspaceID uuid.UUID,
+	name, keycloakGroupID string,
+	createdBy uuid.UUID,
+	metadata event.Metadata,
+) *Created {
+	return &Created{
 		BaseEvent:       event.NewBaseEvent(EventTypeWorkspaceCreated, workspaceID.String(), "Workspace", 1, metadata),
 		Name:            name,
 		KeycloakGroupID: keycloakGroupID,
@@ -36,29 +41,29 @@ func NewWorkspaceCreated(workspaceID uuid.UUID, name, keycloakGroupID string, cr
 	}
 }
 
-// WorkspaceUpdated событие обновления рабочего пространства
-type WorkspaceUpdated struct {
+// Updated событие обновления рабочего пространства
+type Updated struct {
 	event.BaseEvent
 
 	Name string
 }
 
 // NewWorkspaceUpdated создает новое событие WorkspaceUpdated
-func NewWorkspaceUpdated(workspaceID uuid.UUID, name string, metadata event.Metadata) *WorkspaceUpdated {
-	return &WorkspaceUpdated{
+func NewWorkspaceUpdated(workspaceID uuid.UUID, name string, metadata event.Metadata) *Updated {
+	return &Updated{
 		BaseEvent: event.NewBaseEvent(EventTypeWorkspaceUpdated, workspaceID.String(), "Workspace", 1, metadata),
 		Name:      name,
 	}
 }
 
-// WorkspaceDeleted событие удаления рабочего пространства
-type WorkspaceDeleted struct {
+// Deleted событие удаления рабочего пространства
+type Deleted struct {
 	event.BaseEvent
 }
 
 // NewWorkspaceDeleted создает новое событие WorkspaceDeleted
-func NewWorkspaceDeleted(workspaceID uuid.UUID, metadata event.Metadata) *WorkspaceDeleted {
-	return &WorkspaceDeleted{
+func NewWorkspaceDeleted(workspaceID uuid.UUID, metadata event.Metadata) *Deleted {
+	return &Deleted{
 		BaseEvent: event.NewBaseEvent(EventTypeWorkspaceDeleted, workspaceID.String(), "Workspace", 1, metadata),
 	}
 }
@@ -75,7 +80,14 @@ type InviteCreated struct {
 }
 
 // NewInviteCreated создает новое событие InviteCreated
-func NewInviteCreated(inviteID, workspaceID uuid.UUID, token string, createdBy uuid.UUID, expiresAt time.Time, maxUses int, metadata event.Metadata) *InviteCreated {
+func NewInviteCreated(
+	inviteID, workspaceID uuid.UUID,
+	token string,
+	createdBy uuid.UUID,
+	expiresAt time.Time,
+	maxUses int,
+	metadata event.Metadata,
+) *InviteCreated {
 	return &InviteCreated{
 		BaseEvent:   event.NewBaseEvent(EventTypeInviteCreated, inviteID.String(), "Invite", 1, metadata),
 		WorkspaceID: workspaceID,
