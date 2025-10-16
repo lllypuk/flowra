@@ -20,5 +20,5 @@ type DomainEvent interface {
 	Version() int
 
 	// Metadata возвращает метаданные события
-	Metadata() EventMetadata
+	Metadata() Metadata
 }

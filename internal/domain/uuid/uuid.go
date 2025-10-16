@@ -1,4 +1,4 @@
-package common
+package uuid
 
 import (
 	"github.com/google/uuid"
@@ -6,6 +6,15 @@ import (
 
 // UUID type alias для UUID
 type UUID string
+
+// MustParseUUID парсит строку в UUID или паникует
+func MustParseUUID(s string) UUID {
+	id, err := ParseUUID(s)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
 
 // NewUUID создает новый UUID
 func NewUUID() UUID {
@@ -29,13 +38,4 @@ func (u UUID) String() string {
 // IsZero проверяет, является ли UUID нулевым
 func (u UUID) IsZero() bool {
 	return u == ""
-}
-
-// MustParseUUID парсит строку в UUID или паникует
-func MustParseUUID(s string) UUID {
-	id, err := ParseUUID(s)
-	if err != nil {
-		panic(err)
-	}
-	return id
 }

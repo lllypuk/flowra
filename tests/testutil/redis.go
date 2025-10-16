@@ -10,8 +10,7 @@ import (
 // SetupTestRedis создает подключение к тестовому Redis
 func SetupTestRedis(t *testing.T) *redis.Client {
 	client := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
-		DB:   15, // используем отдельную БД для тестов
+		Addr: "localhost:6379", // Адрес тестового Redis, заменить при необходимости
 	})
 
 	ctx := context.Background()

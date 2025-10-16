@@ -9,11 +9,11 @@ type BaseEvent struct {
 	aggregateType string
 	occurredAt    time.Time
 	version       int
-	metadata      EventMetadata
+	metadata      Metadata
 }
 
 // NewBaseEvent создает новое базовое событие
-func NewBaseEvent(eventType, aggregateID, aggregateType string, version int, metadata EventMetadata) BaseEvent {
+func NewBaseEvent(eventType, aggregateID, aggregateType string, version int, metadata Metadata) BaseEvent {
 	return BaseEvent{
 		eventType:     eventType,
 		aggregateID:   aggregateID,
@@ -50,6 +50,6 @@ func (e BaseEvent) Version() int {
 }
 
 // Metadata возвращает метаданные события
-func (e BaseEvent) Metadata() EventMetadata {
+func (e BaseEvent) Metadata() Metadata {
 	return e.metadata
 }

@@ -1,4 +1,4 @@
-.PHONY: help dev build test lint docker-up docker-down clean
+.PHONY: help dev build test lint docker-up docker-down docker-logs migrate-up migrate-down clean deps
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -14,27 +14,11 @@ build: ## Build binaries
 test: ## Run tests
 	go test -v -race -coverprofile=coverage.out ./...
 
-test-unit: ## Run unit tests only
-	go test -v -race -short ./internal/...
-
-test-integration: ## Run integration tests
-	go test -v -race -tags=integration ./tests/integration/...
-
-test-e2e: ## Run e2e tests
-	go test -v -tags=e2e ./tests/e2e/...
-
-test-coverage: test ## Generate coverage report
-	go tool cover -html=coverage.out -o coverage.html
-
-lint: ## Run linters
-	golangci-lint run
-
-fmt: ## Format code
-	gofmt -s -w .
-	goimports -w -local github.com/lllypuk/teams-up .
-
-fmt-check: ## Check formatting
-	test -z $(shell gofmt -l .)
+# Линтер
+lint:
+	@echo "Running linter..."
+	@go fmt ./...
+	@golangci-lint run --fix
 
 docker-up: ## Start Docker services
 	docker-compose up -d

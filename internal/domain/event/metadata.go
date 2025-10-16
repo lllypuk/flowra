@@ -2,8 +2,8 @@ package event
 
 import "time"
 
-// EventMetadata содержит метаданные события
-type EventMetadata struct {
+// Metadata содержит метаданные события
+type Metadata struct {
 	UserID        string
 	CorrelationID string
 	CausationID   string
@@ -13,8 +13,8 @@ type EventMetadata struct {
 }
 
 // NewMetadata создает новые метаданные
-func NewMetadata(userID, correlationID, causationID string) EventMetadata {
-	return EventMetadata{
+func NewMetadata(userID, correlationID, causationID string) Metadata {
+	return Metadata{
 		UserID:        userID,
 		CorrelationID: correlationID,
 		CausationID:   causationID,
@@ -23,13 +23,13 @@ func NewMetadata(userID, correlationID, causationID string) EventMetadata {
 }
 
 // WithIPAddress добавляет IP адрес
-func (m EventMetadata) WithIPAddress(ip string) EventMetadata {
+func (m Metadata) WithIPAddress(ip string) Metadata {
 	m.IPAddress = ip
 	return m
 }
 
 // WithUserAgent добавляет User-Agent
-func (m EventMetadata) WithUserAgent(ua string) EventMetadata {
+func (m Metadata) WithUserAgent(ua string) Metadata {
 	m.UserAgent = ua
 	return m
 }

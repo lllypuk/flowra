@@ -1,15 +1,17 @@
-package common
+package uuid_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/lllypuk/teams-up/internal/domain/uuid"
 )
 
 func TestNewUUID(t *testing.T) {
 	// Act
-	id := NewUUID()
+	id := uuid.NewUUID()
 
 	// Assert
 	assert.NotEmpty(t, id)
@@ -19,8 +21,8 @@ func TestNewUUID(t *testing.T) {
 
 func TestNewUUID_Uniqueness(t *testing.T) {
 	// Act
-	id1 := NewUUID()
-	id2 := NewUUID()
+	id1 := uuid.NewUUID()
+	id2 := uuid.NewUUID()
 
 	// Assert
 	assert.NotEqual(t, id1, id2, "Generated UUIDs should be unique")
@@ -31,7 +33,7 @@ func TestParseUUID_ValidUUID(t *testing.T) {
 	validUUID := "550e8400-e29b-41d4-a716-446655440000"
 
 	// Act
-	id, err := ParseUUID(validUUID)
+	id, err := uuid.ParseUUID(validUUID)
 
 	// Assert
 	require.NoError(t, err)
@@ -53,10 +55,10 @@ func TestParseUUID_InvalidUUID(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Act
-			id, err := ParseUUID(tc.input)
+			id, err := uuid.ParseUUID(tc.input)
 
 			// Assert
-			assert.Error(t, err)
+			require.Error(t, err)
 			assert.Empty(t, id)
 			assert.True(t, id.IsZero())
 		})
@@ -69,7 +71,7 @@ func TestMustParseUUID_ValidUUID(t *testing.T) {
 
 	// Act & Assert - should not panic
 	assert.NotPanics(t, func() {
-		id := MustParseUUID(validUUID)
+		id := uuid.MustParseUUID(validUUID)
 		assert.Equal(t, validUUID, id.String())
 	})
 }
@@ -80,14 +82,14 @@ func TestMustParseUUID_InvalidUUID_Panics(t *testing.T) {
 
 	// Act & Assert - should panic
 	assert.Panics(t, func() {
-		MustParseUUID(invalidUUID)
+		uuid.MustParseUUID(invalidUUID)
 	})
 }
 
 func TestUUID_String(t *testing.T) {
 	// Arrange
 	uuidStr := "550e8400-e29b-41d4-a716-446655440000"
-	id := UUID(uuidStr)
+	id := uuid.UUID(uuidStr)
 
 	// Act
 	result := id.String()
@@ -99,12 +101,12 @@ func TestUUID_String(t *testing.T) {
 func TestUUID_IsZero(t *testing.T) {
 	testCases := []struct {
 		name     string
-		uuid     UUID
+		uuid     uuid.UUID
 		expected bool
 	}{
-		{"empty UUID", UUID(""), true},
-		{"non-empty UUID", UUID("550e8400-e29b-41d4-a716-446655440000"), false},
-		{"new UUID", NewUUID(), false},
+		{"empty UUID", uuid.UUID(""), true},
+		{"non-empty UUID", uuid.UUID("550e8400-e29b-41d4-a716-446655440000"), false},
+		{"new UUID", uuid.NewUUID(), false},
 	}
 
 	for _, tc := range testCases {

@@ -1,4 +1,4 @@
-package event
+package event_test
 
 import (
 	"testing"
@@ -6,6 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	eventDomain "github.com/lllypuk/teams-up/internal/domain/event"
 )
 
 func TestNewMetadata(t *testing.T) {
@@ -15,7 +17,7 @@ func TestNewMetadata(t *testing.T) {
 	causationID := "cause-789"
 
 	// Act
-	metadata := NewMetadata(userID, correlationID, causationID)
+	metadata := eventDomain.NewMetadata(userID, correlationID, causationID)
 
 	// Assert
 	assert.Equal(t, userID, metadata.UserID)
@@ -27,7 +29,7 @@ func TestNewMetadata(t *testing.T) {
 
 func TestMetadata_WithIPAddress(t *testing.T) {
 	// Arrange
-	metadata := NewMetadata("user-1", "corr-1", "cause-1")
+	metadata := eventDomain.NewMetadata("user-1", "corr-1", "cause-1")
 	ip := "192.168.1.1"
 
 	// Act
@@ -40,7 +42,7 @@ func TestMetadata_WithIPAddress(t *testing.T) {
 
 func TestMetadata_WithUserAgent(t *testing.T) {
 	// Arrange
-	metadata := NewMetadata("user-1", "corr-1", "cause-1")
+	metadata := eventDomain.NewMetadata("user-1", "corr-1", "cause-1")
 	ua := "Mozilla/5.0"
 
 	// Act
@@ -57,10 +59,10 @@ func TestNewBaseEvent(t *testing.T) {
 	aggregateID := "agg-123"
 	aggregateType := "TestAggregate"
 	version := 1
-	metadata := NewMetadata("user-1", "corr-1", "cause-1")
+	metadata := eventDomain.NewMetadata("user-1", "corr-1", "cause-1")
 
 	// Act
-	event := NewBaseEvent(eventType, aggregateID, aggregateType, version, metadata)
+	event := eventDomain.NewBaseEvent(eventType, aggregateID, aggregateType, version, metadata)
 
 	// Assert
 	assert.Equal(t, eventType, event.EventType())
@@ -74,11 +76,11 @@ func TestNewBaseEvent(t *testing.T) {
 
 func TestBaseEvent_ImplementsDomainEvent(t *testing.T) {
 	// Arrange
-	metadata := NewMetadata("user-1", "corr-1", "cause-1")
-	event := NewBaseEvent("test.event", "agg-1", "Test", 1, metadata)
+	metadata := eventDomain.NewMetadata("user-1", "corr-1", "cause-1")
+	event := eventDomain.NewBaseEvent("test.event", "agg-1", "Test", 1, metadata)
 
 	// Act & Assert - проверка, что BaseEvent реализует интерфейс DomainEvent
-	var _ DomainEvent = event
+	var _ eventDomain.DomainEvent = event
 	require.NotNil(t, event)
 }
 
@@ -88,10 +90,10 @@ func TestBaseEvent_AllGetters(t *testing.T) {
 	aggregateID := "user-999"
 	aggregateType := "User"
 	version := 5
-	metadata := NewMetadata("admin-1", "corr-xyz", "cause-abc")
+	metadata := eventDomain.NewMetadata("admin-1", "corr-xyz", "cause-abc")
 
 	// Act
-	event := NewBaseEvent(eventType, aggregateID, aggregateType, version, metadata)
+	event := eventDomain.NewBaseEvent(eventType, aggregateID, aggregateType, version, metadata)
 
 	// Assert
 	t.Run("EventType", func(t *testing.T) {

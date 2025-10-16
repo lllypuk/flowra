@@ -3,13 +3,13 @@ package user
 import (
 	"context"
 
-	"github.com/lllypuk/teams-up/internal/domain/common"
+	"github.com/lllypuk/teams-up/internal/domain/uuid"
 )
 
 // Repository определяет интерфейс репозитория пользователей
 type Repository interface {
 	// FindByID находит пользователя по ID
-	FindByID(ctx context.Context, id common.UUID) (*User, error)
+	FindByID(ctx context.Context, id uuid.UUID) (*User, error)
 
 	// FindByEmail находит пользователя по email
 	FindByEmail(ctx context.Context, email string) (*User, error)
@@ -21,7 +21,7 @@ type Repository interface {
 	Save(ctx context.Context, user *User) error
 
 	// Delete удаляет пользователя
-	Delete(ctx context.Context, id common.UUID) error
+	Delete(ctx context.Context, id uuid.UUID) error
 
 	// List возвращает список пользователей с пагинацией
 	List(ctx context.Context, offset, limit int) ([]*User, error)

@@ -3,12 +3,13 @@ package user
 import (
 	"time"
 
-	"github.com/lllypuk/teams-up/internal/domain/common"
+	"github.com/lllypuk/teams-up/internal/domain/errs"
+	"github.com/lllypuk/teams-up/internal/domain/uuid"
 )
 
 // User представляет пользователя системы
 type User struct {
-	id            common.UUID
+	id            uuid.UUID
 	username      string
 	email         string
 	displayName   string
@@ -20,14 +21,14 @@ type User struct {
 // NewUser создает нового пользователя
 func NewUser(username, email, displayName string) (*User, error) {
 	if username == "" {
-		return nil, common.ErrInvalidInput
+		return nil, errs.ErrInvalidInput
 	}
 	if email == "" {
-		return nil, common.ErrInvalidInput
+		return nil, errs.ErrInvalidInput
 	}
 
 	return &User{
-		id:          common.NewUUID(),
+		id:          uuid.NewUUID(),
 		username:    username,
 		email:       email,
 		displayName: displayName,
@@ -37,7 +38,12 @@ func NewUser(username, email, displayName string) (*User, error) {
 }
 
 // Reconstruct восстанавливает пользователя из хранилища
-func Reconstruct(id common.UUID, username, email, displayName string, isSystemAdmin bool, createdAt, updatedAt time.Time) *User {
+func Reconstruct(
+	id uuid.UUID,
+	username, email, displayName string,
+	isSystemAdmin bool,
+	createdAt, updatedAt time.Time,
+) *User {
 	return &User{
 		id:            id,
 		username:      username,
@@ -52,7 +58,7 @@ func Reconstruct(id common.UUID, username, email, displayName string, isSystemAd
 // Getters
 
 // ID возвращает ID пользователя
-func (u *User) ID() common.UUID {
+func (u *User) ID() uuid.UUID {
 	return u.id
 }
 
@@ -89,7 +95,7 @@ func (u *User) UpdatedAt() time.Time {
 // UpdateProfile обновляет профиль пользователя
 func (u *User) UpdateProfile(displayName string) error {
 	if displayName == "" {
-		return common.ErrInvalidInput
+		return errs.ErrInvalidInput
 	}
 	u.displayName = displayName
 	u.updatedAt = time.Now()
