@@ -108,7 +108,7 @@ func (s *EntityState) isValidTransition(newStatus Status) bool {
 	}
 
 	// Стандартные переходы вперед
-	transitions := map[Status][]Status{
+	transitions := map[Status][]Status{ //nolint:exhaustive // task.StatusDone, task.StatusCancelled не имеют переходов вперед
 		StatusBacklog:    {StatusToDo, StatusCancelled},
 		StatusToDo:       {StatusInProgress, StatusBacklog, StatusCancelled},
 		StatusInProgress: {StatusInReview, StatusToDo, StatusCancelled},

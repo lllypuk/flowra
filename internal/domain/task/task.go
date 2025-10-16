@@ -7,9 +7,9 @@ import (
 	"github.com/lllypuk/teams-up/internal/domain/uuid"
 )
 
-// TaskEntity представляет типизированную сущность (Task/Bug/Epic)
-// ID TaskEntity всегда равен ID соответствующего Chat
-type TaskEntity struct {
+// Entity представляет типизированную сущность (Task/Bug/Epic)
+// ID Entity всегда равен ID соответствующего Chat
+type Entity struct {
 	id           uuid.UUID
 	chatID       uuid.UUID
 	title        string
@@ -22,7 +22,7 @@ type TaskEntity struct {
 }
 
 // NewTask создает новую задачу
-func NewTask(chatID uuid.UUID, title string, entityType EntityType) (*TaskEntity, error) {
+func NewTask(chatID uuid.UUID, title string, entityType EntityType) (*Entity, error) {
 	if chatID.IsZero() {
 		return nil, errs.ErrInvalidInput
 	}
@@ -35,7 +35,7 @@ func NewTask(chatID uuid.UUID, title string, entityType EntityType) (*TaskEntity
 		return nil, err
 	}
 
-	return &TaskEntity{
+	return &Entity{
 		id:           chatID, // TaskEntity.ID == Chat.ID
 		chatID:       chatID,
 		title:        title,
@@ -49,7 +49,7 @@ func NewTask(chatID uuid.UUID, title string, entityType EntityType) (*TaskEntity
 }
 
 // ChangeStatus изменяет статус задачи
-func (t *TaskEntity) ChangeStatus(newStatus Status) error {
+func (t *Entity) ChangeStatus(newStatus Status) error {
 	err := t.state.ChangeStatus(newStatus)
 	if err != nil {
 		return err
@@ -59,7 +59,7 @@ func (t *TaskEntity) ChangeStatus(newStatus Status) error {
 }
 
 // Assign назначает задачу на пользователя
-func (t *TaskEntity) Assign(userID uuid.UUID) error {
+func (t *Entity) Assign(userID uuid.UUID) error {
 	if userID.IsZero() {
 		return errs.ErrInvalidInput
 	}
@@ -69,13 +69,13 @@ func (t *TaskEntity) Assign(userID uuid.UUID) error {
 }
 
 // Unassign снимает назначение задачи
-func (t *TaskEntity) Unassign() {
+func (t *Entity) Unassign() {
 	t.assignedTo = nil
 	t.updatedAt = time.Now()
 }
 
 // SetPriority устанавливает приоритет задачи
-func (t *TaskEntity) SetPriority(priority Priority) error {
+func (t *Entity) SetPriority(priority Priority) error {
 	err := t.state.SetPriority(priority)
 	if err != nil {
 		return err
@@ -85,7 +85,7 @@ func (t *TaskEntity) SetPriority(priority Priority) error {
 }
 
 // SetDueDate устанавливает срок выполнения
-func (t *TaskEntity) SetDueDate(dueDate time.Time) error {
+func (t *Entity) SetDueDate(dueDate time.Time) error {
 	if dueDate.Before(time.Now()) {
 		return errs.ErrInvalidInput
 	}
@@ -95,13 +95,13 @@ func (t *TaskEntity) SetDueDate(dueDate time.Time) error {
 }
 
 // ClearDueDate очищает срок выполнения
-func (t *TaskEntity) ClearDueDate() {
+func (t *Entity) ClearDueDate() {
 	t.dueDate = nil
 	t.updatedAt = time.Now()
 }
 
 // SetCustomField устанавливает кастомное поле
-func (t *TaskEntity) SetCustomField(key, value string) error {
+func (t *Entity) SetCustomField(key, value string) error {
 	if key == "" {
 		return errs.ErrInvalidInput
 	}
@@ -116,7 +116,7 @@ func (t *TaskEntity) SetCustomField(key, value string) error {
 }
 
 // UpdateTitle обновляет заголовок задачи
-func (t *TaskEntity) UpdateTitle(title string) error {
+func (t *Entity) UpdateTitle(title string) error {
 	if title == "" {
 		return errs.ErrInvalidInput
 	}
@@ -126,7 +126,7 @@ func (t *TaskEntity) UpdateTitle(title string) error {
 }
 
 // IsOverdue проверяет, просрочена ли задача
-func (t *TaskEntity) IsOverdue() bool {
+func (t *Entity) IsOverdue() bool {
 	if t.dueDate == nil {
 		return false
 	}
@@ -139,34 +139,34 @@ func (t *TaskEntity) IsOverdue() bool {
 // Getters
 
 // ID возвращает ID задачи (равен ChatID)
-func (t *TaskEntity) ID() uuid.UUID { return t.id }
+func (t *Entity) ID() uuid.UUID { return t.id }
 
 // ChatID возвращает ID связанного чата
-func (t *TaskEntity) ChatID() uuid.UUID { return t.chatID }
+func (t *Entity) ChatID() uuid.UUID { return t.chatID }
 
 // Title возвращает заголовок задачи
-func (t *TaskEntity) Title() string { return t.title }
+func (t *Entity) Title() string { return t.title }
 
 // State возвращает состояние задачи
-func (t *TaskEntity) State() *EntityState { return t.state }
+func (t *Entity) State() *EntityState { return t.state }
 
 // Type возвращает тип задачи
-func (t *TaskEntity) Type() EntityType { return t.state.Type() }
+func (t *Entity) Type() EntityType { return t.state.Type() }
 
 // Status возвращает статус задачи
-func (t *TaskEntity) Status() Status { return t.state.Status() }
+func (t *Entity) Status() Status { return t.state.Status() }
 
 // Priority возвращает приоритет задачи
-func (t *TaskEntity) Priority() Priority { return t.state.Priority() }
+func (t *Entity) Priority() Priority { return t.state.Priority() }
 
 // AssignedTo возвращает ID назначенного пользователя
-func (t *TaskEntity) AssignedTo() *uuid.UUID { return t.assignedTo }
+func (t *Entity) AssignedTo() *uuid.UUID { return t.assignedTo }
 
 // DueDate возвращает срок выполнения
-func (t *TaskEntity) DueDate() *time.Time { return t.dueDate }
+func (t *Entity) DueDate() *time.Time { return t.dueDate }
 
 // CustomFields возвращает кастомные поля
-func (t *TaskEntity) CustomFields() map[string]string {
+func (t *Entity) CustomFields() map[string]string {
 	// Возвращаем копию чтобы избежать внешних изменений
 	fields := make(map[string]string, len(t.customFields))
 	for k, v := range t.customFields {
@@ -176,7 +176,7 @@ func (t *TaskEntity) CustomFields() map[string]string {
 }
 
 // CreatedAt возвращает время создания
-func (t *TaskEntity) CreatedAt() time.Time { return t.createdAt }
+func (t *Entity) CreatedAt() time.Time { return t.createdAt }
 
 // UpdatedAt возвращает время последнего обновления
-func (t *TaskEntity) UpdatedAt() time.Time { return t.updatedAt }
+func (t *Entity) UpdatedAt() time.Time { return t.updatedAt }

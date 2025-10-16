@@ -9,14 +9,14 @@ import (
 
 // Event types
 const (
-	EventTypeTaskCreated       = "task.created"
-	EventTypeTaskUpdated       = "task.updated"
-	EventTypeTaskDeleted       = "task.deleted"
-	EventTypeStatusChanged     = "task.status_changed"
-	EventTypeAssigneeChanged   = "task.assignee_changed"
-	EventTypePriorityChanged   = "task.priority_changed"
-	EventTypeDueDateChanged    = "task.due_date_changed"
-	EventTypeCustomFieldSet    = "task.custom_field_set"
+	EventTypeTaskCreated     = "task.created"
+	EventTypeTaskUpdated     = "task.updated"
+	EventTypeTaskDeleted     = "task.deleted"
+	EventTypeStatusChanged   = "task.status_changed"
+	EventTypeAssigneeChanged = "task.assignee_changed"
+	EventTypePriorityChanged = "task.priority_changed"
+	EventTypeDueDateChanged  = "task.due_date_changed"
+	EventTypeCustomFieldSet  = "task.custom_field_set"
 )
 
 // Created событие создания задачи
