@@ -12,6 +12,8 @@ const (
 	TypeBug EntityType = "bug"
 	// TypeEpic эпик (большая задача)
 	TypeEpic EntityType = "epic"
+	// TypeDiscussion обсуждение (не типизированная сущность)
+	TypeDiscussion EntityType = "discussion"
 )
 
 // Status представляет статус задачи

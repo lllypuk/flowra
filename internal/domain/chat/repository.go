@@ -23,23 +23,23 @@ type Repository interface {
 // ReadModelRepository определяет интерфейс для read model (проекции)
 type ReadModelRepository interface {
 	// FindByID находит чат по ID (из read model)
-	FindByID(ctx context.Context, chatID uuid.UUID) (*ChatReadModel, error)
+	FindByID(ctx context.Context, chatID uuid.UUID) (*ReadModel, error)
 
 	// FindByWorkspace находит чаты workspace с фильтрами
-	FindByWorkspace(ctx context.Context, workspaceID uuid.UUID, filters ChatFilters) ([]*ChatReadModel, error)
+	FindByWorkspace(ctx context.Context, workspaceID uuid.UUID, filters Filters) ([]*ReadModel, error)
 
 	// FindByParticipant находит чаты пользователя
-	FindByParticipant(ctx context.Context, userID uuid.UUID, offset, limit int) ([]*ChatReadModel, error)
+	FindByParticipant(ctx context.Context, userID uuid.UUID, offset, limit int) ([]*ReadModel, error)
 
 	// Count возвращает общее количество чатов в workspace
 	Count(ctx context.Context, workspaceID uuid.UUID) (int, error)
 }
 
-// ChatReadModel представляет read model для чата (материализованное представление)
-type ChatReadModel struct {
+// ReadModel представляет read model для чата (материализованное представление)
+type ReadModel struct {
 	ID            uuid.UUID
 	WorkspaceID   uuid.UUID
-	Type          ChatType
+	Type          Type
 	IsPublic      bool
 	CreatedBy     uuid.UUID
 	CreatedAt     time.Time
@@ -48,9 +48,9 @@ type ChatReadModel struct {
 	Participants  []Participant
 }
 
-// ChatFilters фильтры для поиска чатов
-type ChatFilters struct {
-	Type     *ChatType
+// Filters фильтры для поиска чатов
+type Filters struct {
+	Type     *Type
 	IsPublic *bool
 	UserID   *uuid.UUID // участник
 	Offset   int

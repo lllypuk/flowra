@@ -9,18 +9,18 @@ import (
 
 // Event types
 const (
-	EventTypeChatCreated      = "chat.created"
-	EventTypeParticipantAdded = "chat.participant_added"
+	EventTypeChatCreated        = "chat.created"
+	EventTypeParticipantAdded   = "chat.participant_added"
 	EventTypeParticipantRemoved = "chat.participant_removed"
-	EventTypeChatTypeChanged  = "chat.type_changed"
+	EventTypeChatTypeChanged    = "chat.type_changed"
 )
 
-// ChatCreated событие создания чата
-type ChatCreated struct {
+// Created событие создания чата
+type Created struct {
 	event.BaseEvent
 
 	WorkspaceID uuid.UUID
-	Type        ChatType
+	Type        Type
 	IsPublic    bool
 	CreatedBy   uuid.UUID
 	CreatedAt   time.Time
@@ -29,13 +29,13 @@ type ChatCreated struct {
 // NewChatCreated создает новое событие ChatCreated
 func NewChatCreated(
 	chatID, workspaceID uuid.UUID,
-	chatType ChatType,
+	chatType Type,
 	isPublic bool,
 	createdBy uuid.UUID,
 	createdAt time.Time,
 	metadata event.Metadata,
-) *ChatCreated {
-	return &ChatCreated{
+) *Created {
+	return &Created{
 		BaseEvent:   event.NewBaseEvent(EventTypeChatCreated, chatID.String(), "Chat", 1, metadata),
 		WorkspaceID: workspaceID,
 		Type:        chatType,
@@ -87,23 +87,23 @@ func NewParticipantRemoved(
 	}
 }
 
-// ChatTypeChanged событие изменения типа чата
-type ChatTypeChanged struct {
+// TypeChanged событие изменения типа чата
+type TypeChanged struct {
 	event.BaseEvent
 
-	OldType ChatType
-	NewType ChatType
+	OldType Type
+	NewType Type
 	Title   string
 }
 
 // NewChatTypeChanged создает новое событие ChatTypeChanged
 func NewChatTypeChanged(
 	chatID uuid.UUID,
-	oldType, newType ChatType,
+	oldType, newType Type,
 	title string,
 	metadata event.Metadata,
-) *ChatTypeChanged {
-	return &ChatTypeChanged{
+) *TypeChanged {
+	return &TypeChanged{
 		BaseEvent: event.NewBaseEvent(EventTypeChatTypeChanged, chatID.String(), "Chat", 1, metadata),
 		OldType:   oldType,
 		NewType:   newType,

@@ -9,25 +9,25 @@ import (
 	"github.com/lllypuk/teams-up/internal/domain/uuid"
 )
 
-// ChatType представляет тип чата
-type ChatType string
+// Type представляет тип чата
+type Type string
 
 const (
 	// TypeDiscussion обычное обсуждение
-	TypeDiscussion ChatType = "discussion"
+	TypeDiscussion Type = "discussion"
 	// TypeTask чат-задача
-	TypeTask ChatType = "task"
+	TypeTask Type = "task"
 	// TypeBug чат-баг
-	TypeBug ChatType = "bug"
+	TypeBug Type = "bug"
 	// TypeEpic чат-эпик
-	TypeEpic ChatType = "epic"
+	TypeEpic Type = "epic"
 )
 
 // Chat представляет чат aggregate root с Event Sourcing
 type Chat struct {
 	id           uuid.UUID
 	workspaceID  uuid.UUID
-	chatType     ChatType
+	chatType     Type
 	isPublic     bool
 	createdBy    uuid.UUID
 	createdAt    time.Time
@@ -41,7 +41,7 @@ type Chat struct {
 // NewChat создает новый чат
 func NewChat(
 	workspaceID uuid.UUID,
-	chatType ChatType,
+	chatType Type,
 	isPublic bool,
 	createdBy uuid.UUID,
 ) (*Chat, error) {
@@ -114,7 +114,7 @@ func (c *Chat) RemoveParticipant(userID uuid.UUID) error {
 }
 
 // ConvertToTask конвертирует Discussion в Task/Bug/Epic
-func (c *Chat) ConvertToTask(newType ChatType, title string) error {
+func (c *Chat) ConvertToTask(newType Type, title string) error {
 	if c.chatType != TypeDiscussion {
 		return errs.ErrInvalidState
 	}
@@ -174,6 +174,8 @@ func (c *Chat) GetTaskEntityType() (task.EntityType, error) {
 		return task.TypeBug, nil
 	case TypeEpic:
 		return task.TypeEpic, nil
+	case TypeDiscussion:
+		return task.TypeDiscussion, nil
 	default:
 		return "", errs.ErrInvalidState
 	}
@@ -184,7 +186,7 @@ func (c *Chat) GetTaskEntityType() (task.EntityType, error) {
 // Apply применяет событие для восстановления состояния
 func (c *Chat) Apply(e event.DomainEvent) error {
 	switch evt := e.(type) {
-	case *ChatCreated:
+	case *Created:
 		c.id = uuid.UUID(evt.AggregateID())
 		c.workspaceID = evt.WorkspaceID
 		c.chatType = evt.Type
@@ -195,7 +197,7 @@ func (c *Chat) Apply(e event.DomainEvent) error {
 	case *ParticipantAdded:
 		c.addParticipantInternal(evt.UserID, evt.Role)
 		c.version = evt.Version()
-	case *ChatTypeChanged:
+	case *TypeChanged:
 		c.chatType = evt.NewType
 		c.version = evt.Version()
 	default:
@@ -224,7 +226,7 @@ func (c *Chat) ID() uuid.UUID { return c.id }
 func (c *Chat) WorkspaceID() uuid.UUID { return c.workspaceID }
 
 // Type возвращает тип чата
-func (c *Chat) Type() ChatType { return c.chatType }
+func (c *Chat) Type() Type { return c.chatType }
 
 // IsPublic возвращает признак публичности
 func (c *Chat) IsPublic() bool { return c.isPublic }
@@ -247,10 +249,10 @@ func (c *Chat) Version() int { return c.version }
 
 // Validation helpers
 
-func isValidChatType(t ChatType) bool {
+func isValidChatType(t Type) bool {
 	return t == TypeDiscussion || t == TypeTask || t == TypeBug || t == TypeEpic
 }
 
-func isValidTaskType(t ChatType) bool {
+func isValidTaskType(t Type) bool {
 	return t == TypeTask || t == TypeBug || t == TypeEpic
 }

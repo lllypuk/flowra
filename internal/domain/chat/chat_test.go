@@ -189,8 +189,9 @@ func TestChat_GetTaskEntityType(t *testing.T) {
 
 	t.Run("discussion has no task type", func(t *testing.T) {
 		c, _ := chat.NewChat(uuid.NewUUID(), chat.TypeDiscussion, true, uuid.NewUUID())
-		_, err := c.GetTaskEntityType()
-		require.ErrorIs(t, err, errs.ErrInvalidState)
+		entityType, err := c.GetTaskEntityType()
+		require.NoError(t, err)
+		assert.Equal(t, task.TypeDiscussion, entityType)
 	})
 }
 
