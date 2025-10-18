@@ -1,4 +1,4 @@
-package tag
+package tag //nolint:testpackage // Чтобы тестировать unexported функции
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 )
 
 func TestIsKnownTag(t *testing.T) {
-	parser := NewTagParser()
+	parser := NewParser()
 
 	// Системные теги должны быть известны
 	assert.True(t, parser.isKnownTag("task"))
@@ -27,7 +27,7 @@ func TestIsKnownTag(t *testing.T) {
 }
 
 func TestGetTagDefinition(t *testing.T) {
-	parser := NewTagParser()
+	parser := NewParser()
 
 	t.Run("known tag", func(t *testing.T) {
 		def, exists := parser.GetTagDefinition("task")
@@ -44,7 +44,7 @@ func TestGetTagDefinition(t *testing.T) {
 }
 
 func TestTagDefinitions(t *testing.T) {
-	parser := NewTagParser()
+	parser := NewParser()
 
 	tests := []struct {
 		name          string
@@ -155,7 +155,7 @@ func TestValueTypeString(t *testing.T) {
 }
 
 func TestAllowedValuesForEnumTags(t *testing.T) {
-	parser := NewTagParser()
+	parser := NewParser()
 
 	t.Run("priority has allowed values", func(t *testing.T) {
 		def, _ := parser.GetTagDefinition("priority")

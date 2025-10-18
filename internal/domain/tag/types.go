@@ -42,8 +42,8 @@ type ParseResult struct {
 	PlainText string
 }
 
-// TagDefinition определяет метаинформацию о теге
-type TagDefinition struct {
+// Definition определяет метаинформацию о теге
+type Definition struct {
 	Name          string
 	RequiresValue bool
 	ValueType     ValueType

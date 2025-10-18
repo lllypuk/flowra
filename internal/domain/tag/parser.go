@@ -2,33 +2,40 @@ package tag
 
 import "strings"
 
-// TagParser парсит теги из текста сообщения
-type TagParser struct {
-	knownTags map[string]TagDefinition
+const (
+	// maxTagParts is the maximum number of parts when splitting tag (name and value)
+	maxTagParts = 2
+	// hashAndSpaceOffset is the offset for space and hash characters
+	hashAndSpaceOffset = 2
+)
+
+// Parser парсит теги из текста сообщения
+type Parser struct {
+	knownTags map[string]Definition
 }
 
-// NewTagParser создает новый парсер с зарегистрированными системными тегами
-func NewTagParser() *TagParser {
-	parser := &TagParser{
-		knownTags: make(map[string]TagDefinition),
+// NewParser создает новый парсер с зарегистрированными системными тегами
+func NewParser() *Parser {
+	parser := &Parser{
+		knownTags: make(map[string]Definition),
 	}
 
 	// Entity Creation Tags
-	parser.registerTag(TagDefinition{
+	parser.registerTag(Definition{
 		Name:          "task",
 		RequiresValue: true,
 		ValueType:     ValueTypeString,
 		Validator:     noValidation,
 	})
 
-	parser.registerTag(TagDefinition{
+	parser.registerTag(Definition{
 		Name:          "bug",
 		RequiresValue: true,
 		ValueType:     ValueTypeString,
 		Validator:     noValidation,
 	})
 
-	parser.registerTag(TagDefinition{
+	parser.registerTag(Definition{
 		Name:          "epic",
 		RequiresValue: true,
 		ValueType:     ValueTypeString,
@@ -36,7 +43,7 @@ func NewTagParser() *TagParser {
 	})
 
 	// Entity Management Tags
-	parser.registerTag(TagDefinition{
+	parser.registerTag(Definition{
 		Name:          "status",
 		RequiresValue: true,
 		ValueType:     ValueTypeEnum,
@@ -44,14 +51,14 @@ func NewTagParser() *TagParser {
 		Validator:     noValidation,
 	})
 
-	parser.registerTag(TagDefinition{
+	parser.registerTag(Definition{
 		Name:          "assignee",
 		RequiresValue: false, // Может быть пустым (снять assignee)
 		ValueType:     ValueTypeUsername,
 		Validator:     validateUsername,
 	})
 
-	parser.registerTag(TagDefinition{
+	parser.registerTag(Definition{
 		Name:          "priority",
 		RequiresValue: true,
 		ValueType:     ValueTypeEnum,
@@ -59,14 +66,14 @@ func NewTagParser() *TagParser {
 		Validator:     validatePriority,
 	})
 
-	parser.registerTag(TagDefinition{
+	parser.registerTag(Definition{
 		Name:          "due",
 		RequiresValue: false, // Может быть пустым (снять due_date)
 		ValueType:     ValueTypeDate,
 		Validator:     validateISODate,
 	})
 
-	parser.registerTag(TagDefinition{
+	parser.registerTag(Definition{
 		Name:          "title",
 		RequiresValue: true,
 		ValueType:     ValueTypeString,
@@ -74,7 +81,7 @@ func NewTagParser() *TagParser {
 	})
 
 	// Bug-Specific Tags
-	parser.registerTag(TagDefinition{
+	parser.registerTag(Definition{
 		Name:          "severity",
 		RequiresValue: true,
 		ValueType:     ValueTypeEnum,
@@ -86,18 +93,18 @@ func NewTagParser() *TagParser {
 }
 
 // registerTag регистрирует определение тега
-func (p *TagParser) registerTag(def TagDefinition) {
+func (p *Parser) registerTag(def Definition) {
 	p.knownTags[def.Name] = def
 }
 
 // isKnownTag проверяет, является ли тег известным
-func (p *TagParser) isKnownTag(name string) bool {
+func (p *Parser) isKnownTag(name string) bool {
 	_, exists := p.knownTags[name]
 	return exists
 }
 
 // GetTagDefinition возвращает определение тега по имени
-func (p *TagParser) GetTagDefinition(name string) (TagDefinition, bool) {
+func (p *Parser) GetTagDefinition(name string) (Definition, bool) {
 	def, exists := p.knownTags[name]
 	return def, exists
 }
@@ -108,7 +115,7 @@ func (p *TagParser) GetTagDefinition(name string) (TagDefinition, bool) {
 // 2. Строка не начинается с # → обычный текст, теги не парсятся
 // 3. После обычного текста новая строка с # → парсить теги
 // 4. Пустые строки игнорируются
-func (p *TagParser) Parse(content string) ParseResult {
+func (p *Parser) Parse(content string) ParseResult {
 	lines := strings.Split(content, "\n")
 	result := ParseResult{Tags: []ParsedTag{}}
 
@@ -146,7 +153,7 @@ func (p *TagParser) Parse(content string) ParseResult {
 
 // parseTagsFromLine парсит все теги на одной строке
 // Возвращает список распарсенных тегов и оставшийся текст
-func (p *TagParser) parseTagsFromLine(line string) ([]ParsedTag, string) {
+func (p *Parser) parseTagsFromLine(line string) ([]ParsedTag, string) {
 	tags := []ParsedTag{}
 	remaining := line
 
@@ -175,7 +182,7 @@ func (p *TagParser) parseTagsFromLine(line string) ([]ParsedTag, string) {
 
 // parseOneTag парсит один тег из начала строки
 // Возвращает ParsedTag и оставшуюся часть строки
-func (p *TagParser) parseOneTag(s string) (*ParsedTag, string) {
+func (p *Parser) parseOneTag(s string) (*ParsedTag, string) {
 	// s начинается с #
 	if !strings.HasPrefix(s, "#") {
 		return nil, s
@@ -185,7 +192,7 @@ func (p *TagParser) parseOneTag(s string) (*ParsedTag, string) {
 	withoutHash := s[1:]
 
 	// Находим конец имени тега (до пробела)
-	parts := strings.SplitN(withoutHash, " ", 2)
+	parts := strings.SplitN(withoutHash, " ", maxTagParts)
 	tagName := parts[0]
 
 	// Если тег в конце строки или следующий символ не пробел
@@ -219,7 +226,7 @@ func (p *TagParser) parseOneTag(s string) (*ParsedTag, string) {
 		}
 
 		// Проверяем, что после # идет lowercase буква a-z (валидное имя тега)
-		actualIndex := searchStart + nextHashIndex + 2 // +2 для пробела и #
+		actualIndex := searchStart + nextHashIndex + hashAndSpaceOffset // +2 для пробела и #
 		if actualIndex < len(rest) {
 			nextChar := rest[actualIndex]
 			// Проверяем что первый символ - латинская буква a-z

@@ -1,9 +1,10 @@
-package tag
+package tag //nolint:testpackage // Чтобы тестировать unexported функции
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidateUsername(t *testing.T) {
@@ -87,7 +88,7 @@ func TestValidateUsername(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateUsername(tt.value)
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 				if tt.errSubstr != "" {
 					assert.Contains(t, err.Error(), tt.errSubstr)
 				}
@@ -179,7 +180,7 @@ func TestValidateISODate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateISODate(tt.value)
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 				if tt.errSubstr != "" {
 					assert.Contains(t, err.Error(), tt.errSubstr)
 				}
@@ -245,7 +246,7 @@ func TestValidatePriority(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validatePriority(tt.value)
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 				if tt.errSubstr != "" {
 					assert.Contains(t, err.Error(), tt.errSubstr)
 				}
@@ -310,7 +311,7 @@ func TestValidateSeverity(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateSeverity(tt.value)
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 				if tt.errSubstr != "" {
 					assert.Contains(t, err.Error(), tt.errSubstr)
 				}
