@@ -331,6 +331,279 @@ func TestNoValidation(t *testing.T) {
 
 // ====== Task 03: Entity Creation Validation Tests ======
 
+// ====== Task 04: Entity Management Validators Tests ======
+
+func TestValidateStatus(t *testing.T) {
+	tests := []struct {
+		name       string
+		entityType string
+		status     string
+		wantErr    bool
+		errSubstr  string
+	}{
+		// Task статусы
+		{
+			name:       "valid Task status - To Do",
+			entityType: "Task",
+			status:     "To Do",
+			wantErr:    false,
+		},
+		{
+			name:       "valid Task status - In Progress",
+			entityType: "Task",
+			status:     "In Progress",
+			wantErr:    false,
+		},
+		{
+			name:       "valid Task status - Done",
+			entityType: "Task",
+			status:     "Done",
+			wantErr:    false,
+		},
+		{
+			name:       "invalid Task status - lowercase",
+			entityType: "Task",
+			status:     "done",
+			wantErr:    true,
+			errSubstr:  "Invalid status",
+		},
+		{
+			name:       "invalid Task status - wrong value",
+			entityType: "Task",
+			status:     "Completed",
+			wantErr:    true,
+			errSubstr:  "Invalid status",
+		},
+
+		// Bug статусы
+		{
+			name:       "valid Bug status - New",
+			entityType: "Bug",
+			status:     "New",
+			wantErr:    false,
+		},
+		{
+			name:       "valid Bug status - Investigating",
+			entityType: "Bug",
+			status:     "Investigating",
+			wantErr:    false,
+		},
+		{
+			name:       "valid Bug status - Fixed",
+			entityType: "Bug",
+			status:     "Fixed",
+			wantErr:    false,
+		},
+		{
+			name:       "valid Bug status - Verified",
+			entityType: "Bug",
+			status:     "Verified",
+			wantErr:    false,
+		},
+		{
+			name:       "invalid Bug status - Task status",
+			entityType: "Bug",
+			status:     "Done",
+			wantErr:    true,
+			errSubstr:  "Invalid status",
+		},
+
+		// Epic статусы
+		{
+			name:       "valid Epic status - Planned",
+			entityType: "Epic",
+			status:     "Planned",
+			wantErr:    false,
+		},
+		{
+			name:       "valid Epic status - In Progress",
+			entityType: "Epic",
+			status:     "In Progress",
+			wantErr:    false,
+		},
+		{
+			name:       "valid Epic status - Completed",
+			entityType: "Epic",
+			status:     "Completed",
+			wantErr:    false,
+		},
+
+		// Неизвестный тип сущности
+		{
+			name:       "unknown entity type",
+			entityType: "Story",
+			status:     "In Progress",
+			wantErr:    true,
+			errSubstr:  "unknown entity type",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateStatus(tt.entityType, tt.status)
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.errSubstr != "" {
+					assert.Contains(t, err.Error(), tt.errSubstr)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateDueDate(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		wantNil   bool
+		wantErr   bool
+		errSubstr string
+	}{
+		// Валидные форматы
+		{
+			name:    "YYYY-MM-DD",
+			input:   "2025-10-20",
+			wantNil: false,
+			wantErr: false,
+		},
+		{
+			name:    "YYYY-MM-DDTHH:MM",
+			input:   "2025-10-20T15:30",
+			wantNil: false,
+			wantErr: false,
+		},
+		{
+			name:    "YYYY-MM-DDTHH:MM:SS",
+			input:   "2025-10-20T15:30:00",
+			wantNil: false,
+			wantErr: false,
+		},
+		{
+			name:    "YYYY-MM-DDTHH:MM:SSZ (UTC)",
+			input:   "2025-10-20T15:30:00Z",
+			wantNil: false,
+			wantErr: false,
+		},
+		{
+			name:    "with timezone +03:00",
+			input:   "2025-10-20T15:30:00+03:00",
+			wantNil: false,
+			wantErr: false,
+		},
+		{
+			name:    "with timezone -05:00",
+			input:   "2025-10-20T15:30:00-05:00",
+			wantNil: false,
+			wantErr: false,
+		},
+		{
+			name:    "empty value (remove due date)",
+			input:   "",
+			wantNil: true,
+			wantErr: false,
+		},
+
+		// Невалидные форматы
+		{
+			name:      "DD-MM-YYYY",
+			input:     "20-10-2025",
+			wantErr:   true,
+			errSubstr: "Invalid date format",
+		},
+		{
+			name:      "MM/DD/YYYY",
+			input:     "10/20/2025",
+			wantErr:   true,
+			errSubstr: "Invalid date format",
+		},
+		{
+			name:      "natural language",
+			input:     "tomorrow",
+			wantErr:   true,
+			errSubstr: "Invalid date format",
+		},
+		{
+			name:      "random text",
+			input:     "not a date",
+			wantErr:   true,
+			errSubstr: "Invalid date format",
+		},
+		{
+			name:      "partial date",
+			input:     "2025-10",
+			wantErr:   true,
+			errSubstr: "Invalid date format",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := ValidateDueDate(tt.input)
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.errSubstr != "" {
+					assert.Contains(t, err.Error(), tt.errSubstr)
+				}
+			} else {
+				assert.NoError(t, err)
+				if tt.wantNil {
+					assert.Nil(t, result)
+				} else {
+					assert.NotNil(t, result)
+				}
+			}
+		})
+	}
+}
+
+func TestValidateTitle(t *testing.T) {
+	tests := []struct {
+		name    string
+		title   string
+		wantErr bool
+	}{
+		{
+			name:    "valid title",
+			title:   "Some title",
+			wantErr: false,
+		},
+		{
+			name:    "title with leading/trailing spaces",
+			title:   "  Spaces  ",
+			wantErr: false,
+		},
+		{
+			name:    "empty title",
+			title:   "",
+			wantErr: true,
+		},
+		{
+			name:    "whitespace only",
+			title:   "   ",
+			wantErr: true,
+		},
+		{
+			name:    "tabs only",
+			title:   "\t\t",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateTitle(tt.title)
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "Title cannot be empty")
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestValidateEntityCreation(t *testing.T) {
 	tests := []struct {
 		name      string

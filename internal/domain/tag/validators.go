@@ -8,8 +8,25 @@ import (
 	"time"
 )
 
+// ErrNoActiveEntity возвращается когда Entity Management Tag используется без активной сущности
+var ErrNoActiveEntity = errors.New("❌ No active entity to modify. Create an entity first with #task, #bug, or #epic")
+
 // usernameRegex определяет допустимый формат username: @[a-zA-Z0-9._-]+
 var usernameRegex = regexp.MustCompile(`^@[a-zA-Z0-9._-]+$`)
+
+// ====== Task 04: Status Validation Constants ======
+
+//nolint:gochecknoglobals // Domain constants for entity statuses
+var (
+	// TaskStatuses - допустимые статусы для Task (CASE-SENSITIVE)
+	TaskStatuses = []string{"To Do", "In Progress", "Done"}
+
+	// BugStatuses - допустимые статусы для Bug (CASE-SENSITIVE)
+	BugStatuses = []string{"New", "Investigating", "Fixed", "Verified"}
+
+	// EpicStatuses - допустимые статусы для Epic (CASE-SENSITIVE)
+	EpicStatuses = []string{"Planned", "In Progress", "Completed"}
+)
 
 // validateUsername проверяет формат username (@username)
 func validateUsername(value string) error {
@@ -106,5 +123,72 @@ func ValidateEntityCreation(tagKey, title string) error {
 			capitalizedKey, tagKey)
 	}
 
+	return nil
+}
+
+// ====== Task 04: Entity Management Validators ======
+
+// ValidateStatus проверяет валидность статуса для конкретного типа сущности
+// entityType должен быть "Task", "Bug" или "Epic"
+// Статусы CASE-SENSITIVE
+func ValidateStatus(entityType, status string) error {
+	var allowedStatuses []string
+
+	switch entityType {
+	case "Task":
+		allowedStatuses = TaskStatuses
+	case "Bug":
+		allowedStatuses = BugStatuses
+	case "Epic":
+		allowedStatuses = EpicStatuses
+	default:
+		return fmt.Errorf("unknown entity type: %s", entityType)
+	}
+
+	for _, allowed := range allowedStatuses {
+		if status == allowed {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("❌ Invalid status '%s' for %s. Available: %s",
+		status, entityType, strings.Join(allowedStatuses, ", "))
+}
+
+// ValidateDueDate парсит дату и возвращает *time.Time
+// Пустое значение возвращает nil (снятие due date)
+//
+//nolint:nilnil // Returning (nil, nil) is intentional for empty date (remove due date)
+func ValidateDueDate(dateStr string) (*time.Time, error) {
+	// Пустое значение допустимо (снятие due date)
+	if dateStr == "" {
+		return nil, nil
+	}
+
+	// Поддерживаемые форматы (MVP)
+	formats := []string{
+		"2006-01-02",                // YYYY-MM-DD
+		"2006-01-02T15:04",          // YYYY-MM-DDTHH:MM
+		"2006-01-02T15:04:05",       // YYYY-MM-DDTHH:MM:SS
+		time.RFC3339,                // YYYY-MM-DDTHH:MM:SSZ или с timezone
+		"2006-01-02T15:04:05Z07:00", // с explicit timezone
+	}
+
+	// Пытаемся распарсить дату в одном из форматов
+	for _, format := range formats {
+		if t, err := time.Parse(format, dateStr); err == nil {
+			return &t, nil
+		}
+	}
+
+	return nil, errors.New("❌ Invalid date format. Use ISO 8601: YYYY-MM-DD")
+}
+
+// ValidateTitle проверяет что title не пустой
+func ValidateTitle(title string) error {
+	trimmed := strings.TrimSpace(title)
+	if trimmed == "" {
+		return errors.New("❌ Title cannot be empty")
+	}
 	return nil
 }
