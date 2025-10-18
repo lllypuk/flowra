@@ -6,6 +6,7 @@ import (
 
 	"github.com/lllypuk/teams-up/internal/domain/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMockUserRepository_Exists(t *testing.T) {
@@ -14,7 +15,7 @@ func TestMockUserRepository_Exists(t *testing.T) {
 
 	// User doesn't exist initially
 	exists, err := repo.Exists(context.Background(), userID)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.False(t, exists)
 
 	// Add user
@@ -22,7 +23,7 @@ func TestMockUserRepository_Exists(t *testing.T) {
 
 	// User now exists
 	exists, err = repo.Exists(context.Background(), userID)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, exists)
 }
 
@@ -32,7 +33,7 @@ func TestMockUserRepository_GetByUsername(t *testing.T) {
 
 	// User doesn't exist initially
 	user, err := repo.GetByUsername(context.Background(), "testuser")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Nil(t, user)
 
 	// Add user
@@ -40,7 +41,7 @@ func TestMockUserRepository_GetByUsername(t *testing.T) {
 
 	// User can be found by username
 	user, err = repo.GetByUsername(context.Background(), "testuser")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, user)
 	assert.Equal(t, userID, user.ID)
 	assert.Equal(t, "testuser", user.Username)
@@ -61,7 +62,7 @@ func TestMockUserRepository_Reset(t *testing.T) {
 
 	// User no longer exists
 	exists, err := repo.Exists(context.Background(), userID)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.False(t, exists)
 }
 

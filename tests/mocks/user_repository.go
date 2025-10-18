@@ -3,6 +3,7 @@ package mocks
 import (
 	"context"
 
+	"github.com/lllypuk/teams-up/internal/domain/errs"
 	"github.com/lllypuk/teams-up/internal/domain/uuid"
 	"github.com/lllypuk/teams-up/internal/usecase/shared"
 )
@@ -41,7 +42,7 @@ func (m *MockUserRepository) GetByUsername(_ context.Context, username string) (
 			return user, nil
 		}
 	}
-	return nil, nil
+	return nil, errs.ErrNotFound
 }
 
 // Reset очищает все пользователей (для тестов)

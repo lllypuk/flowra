@@ -8,6 +8,8 @@ import (
 	taskusecase "github.com/lllypuk/teams-up/internal/usecase/task"
 )
 
+const dayDuration = 24 * time.Hour
+
 // CreateTaskCommandFixture возвращает валидную команду создания задачи
 func CreateTaskCommandFixture() taskusecase.CreateTaskCommand {
 	return taskusecase.CreateTaskCommand{
@@ -101,7 +103,10 @@ func WithStatusChangedBy(changedBy uuid.UUID) func(*taskusecase.ChangeStatusComm
 }
 
 // BuildChangeStatusCommand создает команду с модификаторами
-func BuildChangeStatusCommand(taskID uuid.UUID, modifiers ...func(*taskusecase.ChangeStatusCommand)) taskusecase.ChangeStatusCommand {
+func BuildChangeStatusCommand(
+	taskID uuid.UUID,
+	modifiers ...func(*taskusecase.ChangeStatusCommand),
+) taskusecase.ChangeStatusCommand {
 	cmd := ChangeStatusCommandFixture(taskID)
 	for _, modifier := range modifiers {
 		modifier(&cmd)
@@ -133,7 +138,11 @@ func WithAssignedBy(assignedBy uuid.UUID) func(*taskusecase.AssignTaskCommand) {
 }
 
 // BuildAssignTaskCommand создает команду с модификаторами
-func BuildAssignTaskCommand(taskID uuid.UUID, assigneeID uuid.UUID, modifiers ...func(*taskusecase.AssignTaskCommand)) taskusecase.AssignTaskCommand {
+func BuildAssignTaskCommand(
+	taskID uuid.UUID,
+	assigneeID uuid.UUID,
+	modifiers ...func(*taskusecase.AssignTaskCommand),
+) taskusecase.AssignTaskCommand {
 	cmd := AssignTaskCommandFixture(taskID, assigneeID)
 	for _, modifier := range modifiers {
 		modifier(&cmd)
@@ -165,7 +174,10 @@ func WithPriorityChangedBy(changedBy uuid.UUID) func(*taskusecase.ChangePriority
 }
 
 // BuildChangePriorityCommand создает команду с модификаторами
-func BuildChangePriorityCommand(taskID uuid.UUID, modifiers ...func(*taskusecase.ChangePriorityCommand)) taskusecase.ChangePriorityCommand {
+func BuildChangePriorityCommand(
+	taskID uuid.UUID,
+	modifiers ...func(*taskusecase.ChangePriorityCommand),
+) taskusecase.ChangePriorityCommand {
 	cmd := ChangePriorityCommandFixture(taskID)
 	for _, modifier := range modifiers {
 		modifier(&cmd)
@@ -175,7 +187,7 @@ func BuildChangePriorityCommand(taskID uuid.UUID, modifiers ...func(*taskusecase
 
 // SetDueDateCommandFixture возвращает валидную команду установки дедлайна
 func SetDueDateCommandFixture(taskID uuid.UUID) taskusecase.SetDueDateCommand {
-	tomorrow := time.Now().Add(24 * time.Hour)
+	tomorrow := time.Now().Add(dayDuration)
 	return taskusecase.SetDueDateCommand{
 		TaskID:    taskID,
 		DueDate:   &tomorrow,
@@ -198,7 +210,10 @@ func WithDueDateChangedBy(changedBy uuid.UUID) func(*taskusecase.SetDueDateComma
 }
 
 // BuildSetDueDateCommand создает команду с модификаторами
-func BuildSetDueDateCommand(taskID uuid.UUID, modifiers ...func(*taskusecase.SetDueDateCommand)) taskusecase.SetDueDateCommand {
+func BuildSetDueDateCommand(
+	taskID uuid.UUID,
+	modifiers ...func(*taskusecase.SetDueDateCommand),
+) taskusecase.SetDueDateCommand {
 	cmd := SetDueDateCommandFixture(taskID)
 	for _, modifier := range modifiers {
 		modifier(&cmd)
