@@ -156,19 +156,19 @@ func TestProcessTags_EntityCreation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			commands, errors := processor.ProcessTags(chatID, tt.tags, tt.entityType)
+			result := processor.ProcessTags(chatID, tt.tags, tt.entityType)
 
-			assert.Len(t, commands, tt.wantCommands, "unexpected number of commands")
-			assert.Len(t, errors, tt.wantErrors, "unexpected number of errors")
+			assert.Len(t, result.AppliedTags, tt.wantCommands, "unexpected number of commands")
+			assert.Len(t, result.Errors, tt.wantErrors, "unexpected number of errors")
 
-			if tt.checkCommand != nil && len(commands) > 0 {
-				tt.checkCommand(t, commands[0])
+			if tt.checkCommand != nil && len(result.AppliedTags) > 0 {
+				tt.checkCommand(t, result.AppliedTags[0].Command)
 			}
 
 			// Check error messages
 			if tt.wantErrors > 0 {
-				for _, err := range errors {
-					assert.Contains(t, err.Error(), "title is required")
+				for _, err := range result.Errors {
+					assert.Contains(t, err.Error.Error(), "title is required")
 				}
 			}
 		})
@@ -478,13 +478,13 @@ func TestProcessTags_EntityManagement(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			commands, errors := processor.ProcessTags(chatID, tt.tags, tt.entityType)
+			result := processor.ProcessTags(chatID, tt.tags, tt.entityType)
 
-			assert.Len(t, commands, tt.wantCommands, "unexpected number of commands")
-			assert.Len(t, errors, tt.wantErrors, "unexpected number of errors")
+			assert.Len(t, result.AppliedTags, tt.wantCommands, "unexpected number of commands")
+			assert.Len(t, result.Errors, tt.wantErrors, "unexpected number of errors")
 
-			if tt.checkCommand != nil && len(commands) > 0 {
-				tt.checkCommand(t, commands[0])
+			if tt.checkCommand != nil && len(result.AppliedTags) > 0 {
+				tt.checkCommand(t, result.AppliedTags[0].Command)
 			}
 		})
 	}

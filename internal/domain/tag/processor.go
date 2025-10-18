@@ -18,7 +18,27 @@ func NewProcessor() *Processor {
 	}
 }
 
-// ProcessTags обрабатывает теги и возвращает команды и ошибки
+// ProcessMessage обрабатывает сообщение с тегами и возвращает результат
+// currentEntityType - тип текущей активной сущности в чате ("Task", "Bug", "Epic")
+// Может быть пустой строкой, если нет активной сущности
+// Если в сообщении создается новая сущность, Entity Management Tags применяются к ней
+func (p *Processor) ProcessMessage(
+	chatID uuid.UUID,
+	message string,
+	currentEntityType string,
+) *ProcessingResult {
+	// Парсим сообщение
+	parseResult := p.parser.Parse(message)
+
+	// Обрабатываем теги
+	result := p.ProcessTags(chatID, parseResult.Tags, currentEntityType)
+	result.OriginalMessage = message
+	result.PlainText = parseResult.PlainText
+
+	return result
+}
+
+// ProcessTags обрабатывает теги и возвращает результат
 // currentEntityType - тип текущей активной сущности в чате ("Task", "Bug", "Epic")
 // Может быть пустой строкой, если нет активной сущности
 // Если в сообщении создается новая сущность, Entity Management Tags применяются к ней
@@ -28,9 +48,11 @@ func (p *Processor) ProcessTags(
 	chatID uuid.UUID,
 	parsedTags []ParsedTag,
 	currentEntityType string,
-) ([]Command, []error) {
-	var commands []Command
-	var errors []error
+) *ProcessingResult {
+	result := &ProcessingResult{
+		AppliedTags: []TagApplication{},
+		Errors:      []TagError{},
+	}
 
 	// Отслеживаем тип сущности для Entity Management Tags
 	entityType := currentEntityType
@@ -40,106 +62,210 @@ func (p *Processor) ProcessTags(
 		// ====== Entity Creation Tags ======
 		case "task":
 			if err := ValidateEntityCreation("task", tag.Value); err != nil {
-				errors = append(errors, err)
+				result.Errors = append(result.Errors, TagError{
+					TagKey:   tag.Key,
+					TagValue: tag.Value,
+					Error:    err,
+					Severity: ErrorSeverityError,
+				})
 				continue
 			}
-			commands = append(commands, CreateTaskCommand{
+			cmd := CreateTaskCommand{
 				ChatID: chatID,
 				Title:  strings.TrimSpace(tag.Value),
+			}
+			result.AppliedTags = append(result.AppliedTags, TagApplication{
+				TagKey:   tag.Key,
+				TagValue: tag.Value,
+				Command:  cmd,
+				Success:  true,
 			})
 			// Если создали сущность, используем ее тип для последующих тегов
 			entityType = "Task"
 
 		case "bug":
 			if err := ValidateEntityCreation("bug", tag.Value); err != nil {
-				errors = append(errors, err)
+				result.Errors = append(result.Errors, TagError{
+					TagKey:   tag.Key,
+					TagValue: tag.Value,
+					Error:    err,
+					Severity: ErrorSeverityError,
+				})
 				continue
 			}
-			commands = append(commands, CreateBugCommand{
+			cmd := CreateBugCommand{
 				ChatID: chatID,
 				Title:  strings.TrimSpace(tag.Value),
+			}
+			result.AppliedTags = append(result.AppliedTags, TagApplication{
+				TagKey:   tag.Key,
+				TagValue: tag.Value,
+				Command:  cmd,
+				Success:  true,
 			})
 			entityType = "Bug"
 
 		case "epic":
 			if err := ValidateEntityCreation("epic", tag.Value); err != nil {
-				errors = append(errors, err)
+				result.Errors = append(result.Errors, TagError{
+					TagKey:   tag.Key,
+					TagValue: tag.Value,
+					Error:    err,
+					Severity: ErrorSeverityError,
+				})
 				continue
 			}
-			commands = append(commands, CreateEpicCommand{
+			cmd := CreateEpicCommand{
 				ChatID: chatID,
 				Title:  strings.TrimSpace(tag.Value),
+			}
+			result.AppliedTags = append(result.AppliedTags, TagApplication{
+				TagKey:   tag.Key,
+				TagValue: tag.Value,
+				Command:  cmd,
+				Success:  true,
 			})
 			entityType = "Epic"
 
 		// ====== Entity Management Tags ======
 		case "status":
 			if entityType == "" {
-				errors = append(errors, ErrNoActiveEntity)
+				result.Errors = append(result.Errors, TagError{
+					TagKey:   tag.Key,
+					TagValue: tag.Value,
+					Error:    ErrNoActiveEntity,
+					Severity: ErrorSeverityError,
+				})
 				continue
 			}
 			if err := ValidateStatus(entityType, tag.Value); err != nil {
-				errors = append(errors, err)
+				result.Errors = append(result.Errors, TagError{
+					TagKey:   tag.Key,
+					TagValue: tag.Value,
+					Error:    err,
+					Severity: ErrorSeverityError,
+				})
 				continue
 			}
-			commands = append(commands, ChangeStatusCommand{
+			cmd := ChangeStatusCommand{
 				ChatID: chatID,
 				Status: tag.Value,
+			}
+			result.AppliedTags = append(result.AppliedTags, TagApplication{
+				TagKey:   tag.Key,
+				TagValue: tag.Value,
+				Command:  cmd,
+				Success:  true,
 			})
 
 		case "assignee":
 			if err := validateUsername(tag.Value); err != nil {
-				errors = append(errors, err)
+				result.Errors = append(result.Errors, TagError{
+					TagKey:   tag.Key,
+					TagValue: tag.Value,
+					Error:    err,
+					Severity: ErrorSeverityError,
+				})
 				continue
 			}
-			commands = append(commands, AssignUserCommand{
+			cmd := AssignUserCommand{
 				ChatID:   chatID,
 				Username: tag.Value,
 				UserID:   nil, // Будет резолвлен на уровне service
+			}
+			result.AppliedTags = append(result.AppliedTags, TagApplication{
+				TagKey:   tag.Key,
+				TagValue: tag.Value,
+				Command:  cmd,
+				Success:  true,
 			})
 
 		case "priority":
 			if err := validatePriority(tag.Value); err != nil {
-				errors = append(errors, err)
+				result.Errors = append(result.Errors, TagError{
+					TagKey:   tag.Key,
+					TagValue: tag.Value,
+					Error:    err,
+					Severity: ErrorSeverityError,
+				})
 				continue
 			}
-			commands = append(commands, ChangePriorityCommand{
+			cmd := ChangePriorityCommand{
 				ChatID:   chatID,
 				Priority: tag.Value,
+			}
+			result.AppliedTags = append(result.AppliedTags, TagApplication{
+				TagKey:   tag.Key,
+				TagValue: tag.Value,
+				Command:  cmd,
+				Success:  true,
 			})
 
 		case "due":
 			dueDate, err := ValidateDueDate(tag.Value)
 			if err != nil {
-				errors = append(errors, err)
+				result.Errors = append(result.Errors, TagError{
+					TagKey:   tag.Key,
+					TagValue: tag.Value,
+					Error:    err,
+					Severity: ErrorSeverityError,
+				})
 				continue
 			}
-			commands = append(commands, SetDueDateCommand{
+			cmd := SetDueDateCommand{
 				ChatID:  chatID,
 				DueDate: dueDate,
+			}
+			result.AppliedTags = append(result.AppliedTags, TagApplication{
+				TagKey:   tag.Key,
+				TagValue: tag.Value,
+				Command:  cmd,
+				Success:  true,
 			})
 
 		case "title":
 			if err := ValidateTitle(tag.Value); err != nil {
-				errors = append(errors, err)
+				result.Errors = append(result.Errors, TagError{
+					TagKey:   tag.Key,
+					TagValue: tag.Value,
+					Error:    err,
+					Severity: ErrorSeverityError,
+				})
 				continue
 			}
-			commands = append(commands, ChangeTitleCommand{
+			cmd := ChangeTitleCommand{
 				ChatID: chatID,
 				Title:  strings.TrimSpace(tag.Value),
+			}
+			result.AppliedTags = append(result.AppliedTags, TagApplication{
+				TagKey:   tag.Key,
+				TagValue: tag.Value,
+				Command:  cmd,
+				Success:  true,
 			})
 
 		case "severity":
 			if err := validateSeverity(tag.Value); err != nil {
-				errors = append(errors, err)
+				result.Errors = append(result.Errors, TagError{
+					TagKey:   tag.Key,
+					TagValue: tag.Value,
+					Error:    err,
+					Severity: ErrorSeverityError,
+				})
 				continue
 			}
-			commands = append(commands, SetSeverityCommand{
+			cmd := SetSeverityCommand{
 				ChatID:   chatID,
 				Severity: tag.Value,
+			}
+			result.AppliedTags = append(result.AppliedTags, TagApplication{
+				TagKey:   tag.Key,
+				TagValue: tag.Value,
+				Command:  cmd,
+				Success:  true,
 			})
 		}
 	}
 
-	return commands, errors
+	return result
 }
