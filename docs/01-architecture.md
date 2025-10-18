@@ -60,7 +60,7 @@ Background обработка задач:
 │    (Repository, External Services)      │
 ├─────────────────────────────────────────┤
 │            Data Layer                    │
-│      (PostgreSQL, Redis, S3)            │
+│       (MongoDB, Redis, S3)              │
 └─────────────────────────────────────────┘
 ```
 

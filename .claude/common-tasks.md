@@ -303,14 +303,9 @@ func (h *{Entity}Handler) respondWithData(w http.ResponseWriter, statusCode int,
 ### Создание новой миграции
 
 ```bash
-# Создать файлы миграции
-migrate create -ext sql -dir migrations -seq create_{table}_table
-
-# Применить миграции
-migrate -database "postgres://user:pass@localhost/dbname?sslmode=disable" -path migrations up
-
-# Откатить миграцию
-migrate -database "postgres://user:pass@localhost/dbname?sslmode=disable" -path migrations down 1
+# MongoDB не требует SQL миграций
+# Schema versioning управляется через application code
+# Индексы создаются при инициализации приложения
 ```
 
 ### Шаблон миграции
@@ -351,19 +346,19 @@ import (
     "{project}/pkg/logger"
 )
 
-type PostgreSQL{Entity}Repository struct {
-    db     *sqlx.DB
+type MongoDB{Entity}Repository struct {
+    db     *mongo.Database
     logger logger.Logger
 }
 
-func NewPostgreSQL{Entity}Repository(db *sqlx.DB, logger logger.Logger) *PostgreSQL{Entity}Repository {
-    return &PostgreSQL{Entity}Repository{
+func NewMongoDB{Entity}Repository(db *mongo.Database, logger logger.Logger) *MongoDB{Entity}Repository {
+    return &MongoDB{Entity}Repository{
         db:     db,
         logger: logger,
     }
 }
 
-func (r *PostgreSQL{Entity}Repository) Save(ctx context.Context, entity *entities.{Entity}) error {
+func (r *MongoDB{Entity}Repository) Save(ctx context.Context, entity *entities.{Entity}) error {
     query := `
         INSERT INTO {table} (id, field1, field2, created_at, updated_at)
         VALUES ($1, $2, $3, $4, $5)
@@ -391,7 +386,7 @@ func (r *PostgreSQL{Entity}Repository) Save(ctx context.Context, entity *entitie
     return nil
 }
 
-func (r *PostgreSQL{Entity}Repository) FindByID(ctx context.Context, id entities.{Entity}ID) (*entities.{Entity}, error) {
+func (r *MongoDB{Entity}Repository) FindByID(ctx context.Context, id entities.{Entity}ID) (*entities.{Entity}, error) {
     query := `
         SELECT id, field1, field2, created_at, updated_at
         FROM {table}
@@ -416,7 +411,7 @@ func (r *PostgreSQL{Entity}Repository) FindByID(ctx context.Context, id entities
     return r.toDomainEntity(row), nil
 }
 
-func (r *PostgreSQL{Entity}Repository) toDomainEntity(row struct{...}) *entities.{Entity} {
+func (r *MongoDB{Entity}Repository) toDomainEntity(row struct{...}) *entities.{Entity} {
     // конвертация из DB модели в доменную сущность
 }
 ```
@@ -496,48 +491,48 @@ import (
 
     "github.com/stretchr/testify/suite"
     "github.com/testcontainers/testcontainers-go"
-    "github.com/testcontainers/testcontainers-go/modules/postgres"
+    "github.com/testcontainers/testcontainers-go/modules/mongodb"
+    "go.mongodb.org/mongo-driver/v2/mongo"
+    "go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type {Service}IntegrationTestSuite struct {
     suite.Suite
-    db        *sql.DB
-    container *postgres.PostgresContainer
+    client    *mongo.Client
+    container *mongodb.MongoDBContainer
     service   *{Service}
 }
 
 func (s *{Service}IntegrationTestSuite) SetupSuite() {
     ctx := context.Background()
 
-    // Start PostgreSQL container
-    postgresContainer, err := postgres.RunContainer(ctx,
-        testcontainers.WithImage("postgres:14"),
-        postgres.WithDatabase("testdb"),
-        postgres.WithUsername("test"),
-        postgres.WithPassword("test"),
+    // Start MongoDB container
+    mongoContainer, err := mongodb.RunContainer(ctx,
+        testcontainers.WithImage("mongo:8"),
+        mongodb.WithUsername("admin"),
+        mongodb.WithPassword("admin123"),
     )
     s.Require().NoError(err)
 
-    s.container = postgresContainer
+    s.container = mongoContainer
 
     // Get connection string and connect
-    connStr, err := postgresContainer.ConnectionString(ctx)
+    uri, err := mongoContainer.ConnectionString(ctx)
     s.Require().NoError(err)
 
-    db, err := sql.Open("postgres", connStr)
+    client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
     s.Require().NoError(err)
-    s.db = db
-
-    // Run migrations
-    s.runMigrations()
+    s.client = client
 
     // Setup service
+    db := client.Database("testdb")
     s.service = New{Service}(NewRepository(db))
 }
 
 func (s *{Service}IntegrationTestSuite) TearDownSuite() {
-    s.db.Close()
-    s.container.Terminate(context.Background())
+    ctx := context.Background()
+    s.client.Disconnect(ctx)
+    s.container.Terminate(ctx)
 }
 
 func (s *{Service}IntegrationTestSuite) SetupTest() {
@@ -676,10 +671,10 @@ services:
       - "808{x}:8080"
     environment:
       - ENV=development
-      - DB_HOST=postgres
+      - MONGODB_URI=mongodb://admin:admin123@mongodb:27017
       - REDIS_HOST=redis
     depends_on:
-      - postgres
+      - mongodb
       - redis
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
@@ -744,9 +739,9 @@ docker logs {container_name}
 kubectl logs -f deployment/{service}-deployment
 
 # Database debugging
-psql -h localhost -U postgres -d new_teams_up_dev
-\dt # list tables
-\d+ table_name # describe table
+mongosh mongodb://admin:admin123@localhost:27017/teams_up
+show collections # list collections
+db.{collection}.find().limit(10) # query collection
 
 # Performance profiling
 go tool pprof http://localhost:8080/debug/pprof/profile

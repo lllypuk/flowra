@@ -1,6 +1,10 @@
 package task
 
-import "github.com/lllypuk/teams-up/internal/domain/errs"
+import (
+	"slices"
+
+	"github.com/lllypuk/teams-up/internal/domain/errs"
+)
 
 // EntityType представляет тип сущности
 type EntityType string
@@ -122,13 +126,7 @@ func (s *EntityState) isValidTransition(newStatus Status) bool {
 		return false
 	}
 
-	for _, allowed := range allowedStatuses {
-		if allowed == newStatus {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(allowedStatuses, newStatus)
 }
 
 // Getters

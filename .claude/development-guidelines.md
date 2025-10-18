@@ -110,19 +110,19 @@ func (uc *CreateUserUseCase) Execute(ctx context.Context, cmd CreateUserCommand)
 Всегда реализуй интерфейсы из domain/application слоев:
 
 ```go
-type PostgreSQLUserRepository struct {
-    db     *sqlx.DB
+type MongoDBUserRepository struct {
+    db     *mongo.Database
     logger Logger
 }
 
-func NewPostgreSQLUserRepository(db *sqlx.DB, logger Logger) *PostgreSQLUserRepository {
-    return &PostgreSQLUserRepository{
+func NewMongoDBUserRepository(db *mongo.Database, logger Logger) *MongoDBUserRepository {
+    return &MongoDBUserRepository{
         db:     db,
         logger: logger,
     }
 }
 
-func (r *PostgreSQLUserRepository) Save(ctx context.Context, user *User) error {
+func (r *MongoDBUserRepository) Save(ctx context.Context, user *User) error {
     query := `
         INSERT INTO users (id, email, first_name, last_name, created_at, updated_at)
         VALUES ($1, $2, $3, $4, $5, $6)
@@ -412,7 +412,7 @@ CREATE INDEX idx_users_created_at ON users(created_at);
 
 ### Repository Query Patterns
 ```go
-func (r *PostgreSQLUserRepository) FindByEmail(ctx context.Context, email Email) (*User, error) {
+func (r *MongoDBUserRepository) FindByEmail(ctx context.Context, email Email) (*User, error) {
     query := `
         SELECT id, email, first_name, last_name, created_at, updated_at
         FROM users

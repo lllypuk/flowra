@@ -35,7 +35,7 @@
 ### Backend
 - **Go 1.25+** - основной язык
 - **Echo v4** - веб-фреймворк
-- **PostgreSQL 18+** - основная БД
+- **MongoDB 8+** - основная БД
 - **Redis** - кеш и pub/sub
 - **Keycloak** - SSO и управление пользователями
 
@@ -80,7 +80,7 @@ chat-system/
 
 - Go 1.25+
 - Docker & Docker Compose
-- PostgreSQL 17+
+- MongoDB 8+
 - Redis 7+
 
 ### Локальная разработка
@@ -99,15 +99,10 @@ cp .env.example .env
 
 3. Запустить инфраструктуру:
 ```bash
-docker-compose up -d postgres redis keycloak
+docker-compose up -d mongodb redis keycloak
 ```
 
-4. Выполнить миграции:
-```bash
-go run cmd/migrator/main.go up
-```
-
-5. Запустить приложение:
+4. Запустить приложение:
 ```bash
 go run cmd/api/main.go
 ```

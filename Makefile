@@ -11,8 +11,43 @@ build: ## Build binaries
 	go build -o bin/worker cmd/worker/main.go
 	go build -o bin/migrator cmd/migrator/main.go
 
-test: ## Run tests
+test: ## Run all tests
 	go test -v -race -coverprofile=coverage.out ./...
+
+test-unit: ## Run unit tests only
+	go test -v -race ./internal/...
+
+test-integration: ## Run integration tests
+	docker-compose up -d mongodb
+	@sleep 2
+	TEST_MONGODB_URI="mongodb://admin:admin123@localhost:27017/test_db" go test -tags=integration -v ./tests/integration/...
+	docker-compose down
+
+test-coverage: ## Generate test coverage report
+	go test -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
+
+test-coverage-check: ## Check test coverage threshold (80%)
+	@go test -coverprofile=coverage.out ./... > /dev/null 2>&1 || true
+	@coverage=$$(go tool cover -func=coverage.out | grep total | awk '{print $$3}' | sed 's/%//'); \
+	if [ -z "$$coverage" ]; then \
+		echo "❌ Failed to calculate coverage"; \
+		exit 1; \
+	fi; \
+	if [ $$(echo "$$coverage < 80" | bc -l 2>/dev/null || echo 0) -eq 1 ]; then \
+		echo "❌ Coverage $$coverage% is below 80%"; \
+		exit 1; \
+	else \
+		echo "✅ Coverage $$coverage% meets threshold"; \
+	fi
+
+test-verbose: ## Run tests with verbose output
+	go test -v -race -coverprofile=coverage.out ./...
+
+test-clean: ## Clean test cache and coverage files
+	go clean -testcache
+	rm -f coverage.out coverage.html
 
 # Линтер
 lint:

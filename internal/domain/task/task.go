@@ -1,182 +1,340 @@
 package task
 
 import (
+	"slices"
 	"time"
 
 	"github.com/lllypuk/teams-up/internal/domain/errs"
+	"github.com/lllypuk/teams-up/internal/domain/event"
 	"github.com/lllypuk/teams-up/internal/domain/uuid"
 )
 
-// Entity представляет типизированную сущность (Task/Bug/Epic)
-// ID Entity всегда равен ID соответствующего Chat
-type Entity struct {
-	id           uuid.UUID
+// Aggregate представляет Task aggregate с поддержкой Event Sourcing
+type Aggregate struct {
+	// Идентификатор aggregate
+	id uuid.UUID
+
+	// Текущее состояние (восстанавливается из событий)
 	chatID       uuid.UUID
 	title        string
-	state        *EntityState
+	entityType   EntityType
+	status       Status
+	priority     Priority
 	assignedTo   *uuid.UUID
 	dueDate      *time.Time
 	customFields map[string]string
 	createdAt    time.Time
-	updatedAt    time.Time
+	createdBy    uuid.UUID
+
+	// Event Sourcing поля
+	version            int
+	uncommittedEvents  []event.DomainEvent
+	appliedEventCounts int
 }
 
-// NewTask создает новую задачу
-func NewTask(chatID uuid.UUID, title string, entityType EntityType) (*Entity, error) {
-	if chatID.IsZero() {
-		return nil, errs.ErrInvalidInput
+// NewTaskAggregate создает новый пустой агрегат
+func NewTaskAggregate(id uuid.UUID) *Aggregate {
+	return &Aggregate{
+		id:                id,
+		customFields:      make(map[string]string),
+		uncommittedEvents: make([]event.DomainEvent, 0),
 	}
-	if title == "" {
-		return nil, errs.ErrInvalidInput
+}
+
+// Create создает новую задачу (генерирует событие TaskCreated)
+func (a *Aggregate) Create(
+	chatID uuid.UUID,
+	title string,
+	entityType EntityType,
+	priority Priority,
+	assigneeID *uuid.UUID,
+	dueDate *time.Time,
+	createdBy uuid.UUID,
+) error {
+	// Проверка, что задача еще не создана
+	if a.version > 0 {
+		return errs.ErrAlreadyExists
 	}
 
-	state, err := NewEntityState(entityType)
-	if err != nil {
-		return nil, err
-	}
+	// Создаем событие
+	evt := NewTaskCreated(
+		a.id,
+		chatID,
+		title,
+		entityType,
+		StatusToDo, // начальный статус всегда "To Do"
+		priority,
+		assigneeID,
+		dueDate,
+		createdBy,
+		event.Metadata{
+			CorrelationID: uuid.NewUUID().String(),
+			CausationID:   uuid.NewUUID().String(),
+		},
+	)
 
-	return &Entity{
-		id:           chatID, // TaskEntity.ID == Chat.ID
-		chatID:       chatID,
-		title:        title,
-		state:        state,
-		assignedTo:   nil,
-		dueDate:      nil,
-		customFields: make(map[string]string),
-		createdAt:    time.Now(),
-		updatedAt:    time.Now(),
-	}, nil
+	// Применяем событие
+	a.apply(evt)
+
+	return nil
 }
 
 // ChangeStatus изменяет статус задачи
-func (t *Entity) ChangeStatus(newStatus Status) error {
-	err := t.state.ChangeStatus(newStatus)
-	if err != nil {
-		return err
+func (a *Aggregate) ChangeStatus(newStatus Status, changedBy uuid.UUID) error {
+	if a.version == 0 {
+		return errs.ErrNotFound
 	}
-	t.updatedAt = time.Now()
+
+	// Проверка валидности перехода
+	if !a.isValidStatusTransition(newStatus) {
+		return errs.ErrInvalidTransition
+	}
+
+	// Если статус не меняется, ничего не делаем
+	if a.status == newStatus {
+		return nil
+	}
+
+	oldStatus := a.status
+
+	evt := NewStatusChanged(
+		a.id,
+		oldStatus,
+		newStatus,
+		changedBy,
+		event.Metadata{
+			CorrelationID: uuid.NewUUID().String(),
+			CausationID:   uuid.NewUUID().String(),
+		},
+	)
+
+	a.apply(evt)
+
 	return nil
 }
 
-// Assign назначает задачу на пользователя
-func (t *Entity) Assign(userID uuid.UUID) error {
-	if userID.IsZero() {
-		return errs.ErrInvalidInput
+// Assign назначает исполнителя
+func (a *Aggregate) Assign(assigneeID *uuid.UUID, assignedBy uuid.UUID) error {
+	if a.version == 0 {
+		return errs.ErrNotFound
 	}
-	t.assignedTo = &userID
-	t.updatedAt = time.Now()
+
+	// Если assignee не меняется, ничего не делаем
+	if a.assignedTo != nil && assigneeID != nil && *a.assignedTo == *assigneeID {
+		return nil
+	}
+
+	if a.assignedTo == nil && assigneeID == nil {
+		return nil
+	}
+
+	oldAssignee := a.assignedTo
+
+	evt := NewAssigneeChanged(
+		a.id,
+		oldAssignee,
+		assigneeID,
+		assignedBy,
+		event.Metadata{
+			CorrelationID: uuid.NewUUID().String(),
+			CausationID:   uuid.NewUUID().String(),
+		},
+	)
+
+	a.apply(evt)
+
 	return nil
 }
 
-// Unassign снимает назначение задачи
-func (t *Entity) Unassign() {
-	t.assignedTo = nil
-	t.updatedAt = time.Now()
-}
-
-// SetPriority устанавливает приоритет задачи
-func (t *Entity) SetPriority(priority Priority) error {
-	err := t.state.SetPriority(priority)
-	if err != nil {
-		return err
+// ChangePriority изменяет приоритет
+func (a *Aggregate) ChangePriority(newPriority Priority, changedBy uuid.UUID) error {
+	if a.version == 0 {
+		return errs.ErrNotFound
 	}
-	t.updatedAt = time.Now()
+
+	// Если приоритет не меняется, ничего не делаем
+	if a.priority == newPriority {
+		return nil
+	}
+
+	oldPriority := a.priority
+
+	evt := NewPriorityChanged(
+		a.id,
+		oldPriority,
+		newPriority,
+		changedBy,
+		event.Metadata{
+			CorrelationID: uuid.NewUUID().String(),
+			CausationID:   uuid.NewUUID().String(),
+		},
+	)
+
+	a.apply(evt)
+
 	return nil
 }
 
-// SetDueDate устанавливает срок выполнения
-func (t *Entity) SetDueDate(dueDate time.Time) error {
-	if dueDate.Before(time.Now()) {
-		return errs.ErrInvalidInput
+// SetDueDate устанавливает или изменяет дедлайн
+func (a *Aggregate) SetDueDate(newDueDate *time.Time, changedBy uuid.UUID) error {
+	if a.version == 0 {
+		return errs.ErrNotFound
 	}
-	t.dueDate = &dueDate
-	t.updatedAt = time.Now()
+
+	// Если дата не меняется, ничего не делаем
+	if a.dueDate != nil && newDueDate != nil && a.dueDate.Equal(*newDueDate) {
+		return nil
+	}
+
+	if a.dueDate == nil && newDueDate == nil {
+		return nil
+	}
+
+	oldDueDate := a.dueDate
+
+	evt := NewDueDateChanged(
+		a.id,
+		oldDueDate,
+		newDueDate,
+		changedBy,
+		event.Metadata{
+			CorrelationID: uuid.NewUUID().String(),
+			CausationID:   uuid.NewUUID().String(),
+		},
+	)
+
+	a.apply(evt)
+
 	return nil
 }
 
-// ClearDueDate очищает срок выполнения
-func (t *Entity) ClearDueDate() {
-	t.dueDate = nil
-	t.updatedAt = time.Now()
+// apply применяет событие к агрегату и добавляет его в uncommittedEvents
+func (a *Aggregate) apply(evt event.DomainEvent) {
+	a.applyChange(evt)
+	a.uncommittedEvents = append(a.uncommittedEvents, evt)
 }
 
-// SetCustomField устанавливает кастомное поле
-func (t *Entity) SetCustomField(key, value string) error {
-	if key == "" {
-		return errs.ErrInvalidInput
+// applyChange применяет изменения из события к состоянию агрегата
+func (a *Aggregate) applyChange(evt event.DomainEvent) {
+	switch e := evt.(type) {
+	case *Created:
+		a.chatID = e.ChatID
+		a.title = e.Title
+		a.entityType = e.EntityType
+		a.status = e.Status
+		a.priority = e.Priority
+		a.assignedTo = e.AssigneeID
+		a.dueDate = e.DueDate
+		a.createdAt = evt.OccurredAt()
+		a.createdBy = e.CreatedBy
+
+	case *StatusChanged:
+		a.status = e.NewStatus
+
+	case *AssigneeChanged:
+		a.assignedTo = e.NewAssignee
+
+	case *PriorityChanged:
+		a.priority = e.NewPriority
+
+	case *DueDateChanged:
+		a.dueDate = e.NewDueDate
+
+	case *CustomFieldSet:
+		if e.Value == "" {
+			delete(a.customFields, e.Key)
+		} else {
+			a.customFields[e.Key] = e.Value
+		}
 	}
-	if value == "" {
-		// Пустое значение = удаление поля
-		delete(t.customFields, key)
-	} else {
-		t.customFields[key] = value
-	}
-	t.updatedAt = time.Now()
-	return nil
+
+	a.version++
+	a.appliedEventCounts++
 }
 
-// UpdateTitle обновляет заголовок задачи
-func (t *Entity) UpdateTitle(title string) error {
-	if title == "" {
-		return errs.ErrInvalidInput
+// ReplayEvents восстанавливает состояние агрегата из событий
+func (a *Aggregate) ReplayEvents(events []event.DomainEvent) {
+	for _, evt := range events {
+		a.applyChange(evt)
 	}
-	t.title = title
-	t.updatedAt = time.Now()
-	return nil
 }
 
-// IsOverdue проверяет, просрочена ли задача
-func (t *Entity) IsOverdue() bool {
-	if t.dueDate == nil {
+// UncommittedEvents возвращает события, которые еще не были сохранены
+func (a *Aggregate) UncommittedEvents() []event.DomainEvent {
+	return a.uncommittedEvents
+}
+
+// MarkEventsAsCommitted очищает список несохраненных событий
+func (a *Aggregate) MarkEventsAsCommitted() {
+	a.uncommittedEvents = make([]event.DomainEvent, 0)
+}
+
+// Version возвращает текущую версию агрегата
+func (a *Aggregate) Version() int {
+	return a.version
+}
+
+// isValidStatusTransition проверяет валидность перехода между статусами
+func (a *Aggregate) isValidStatusTransition(newStatus Status) bool {
+	// Если статус не меняется, это всегда валидно
+	if a.status == newStatus {
+		return true
+	}
+
+	// Из Cancelled можно вернуться только в Backlog
+	if a.status == StatusCancelled {
+		return newStatus == StatusBacklog
+	}
+
+	// Из Done можно вернуться в InReview (reopening)
+	if a.status == StatusDone {
+		return newStatus == StatusInReview || newStatus == StatusCancelled
+	}
+
+	// Стандартные переходы вперед
+	transitions := map[Status][]Status{ //nolint:exhaustive // StatusDone и StatusCancelled обрабатываются выше
+		StatusBacklog:    {StatusToDo, StatusCancelled},
+		StatusToDo:       {StatusInProgress, StatusBacklog, StatusCancelled},
+		StatusInProgress: {StatusInReview, StatusToDo, StatusCancelled},
+		StatusInReview:   {StatusDone, StatusInProgress, StatusCancelled},
+	}
+
+	allowedStatuses, exists := transitions[a.status]
+	if !exists {
 		return false
 	}
-	if t.state.Status() == StatusDone || t.state.Status() == StatusCancelled {
-		return false
-	}
-	return time.Now().After(*t.dueDate)
+
+	return slices.Contains(allowedStatuses, newStatus)
 }
 
 // Getters
 
-// ID возвращает ID задачи (равен ChatID)
-func (t *Entity) ID() uuid.UUID { return t.id }
+// ID возвращает ID агрегата
+func (a *Aggregate) ID() uuid.UUID { return a.id }
 
-// ChatID возвращает ID связанного чата
-func (t *Entity) ChatID() uuid.UUID { return t.chatID }
+// ChatID возвращает ID чата
+func (a *Aggregate) ChatID() uuid.UUID { return a.chatID }
 
-// Title возвращает заголовок задачи
-func (t *Entity) Title() string { return t.title }
+// Title возвращает заголовок
+func (a *Aggregate) Title() string { return a.title }
 
-// State возвращает состояние задачи
-func (t *Entity) State() *EntityState { return t.state }
+// EntityType возвращает тип сущности
+func (a *Aggregate) EntityType() EntityType { return a.entityType }
 
-// Type возвращает тип задачи
-func (t *Entity) Type() EntityType { return t.state.Type() }
+// Status возвращает статус
+func (a *Aggregate) Status() Status { return a.status }
 
-// Status возвращает статус задачи
-func (t *Entity) Status() Status { return t.state.Status() }
-
-// Priority возвращает приоритет задачи
-func (t *Entity) Priority() Priority { return t.state.Priority() }
+// Priority возвращает приоритет
+func (a *Aggregate) Priority() Priority { return a.priority }
 
 // AssignedTo возвращает ID назначенного пользователя
-func (t *Entity) AssignedTo() *uuid.UUID { return t.assignedTo }
+func (a *Aggregate) AssignedTo() *uuid.UUID { return a.assignedTo }
 
-// DueDate возвращает срок выполнения
-func (t *Entity) DueDate() *time.Time { return t.dueDate }
-
-// CustomFields возвращает кастомные поля
-func (t *Entity) CustomFields() map[string]string {
-	// Возвращаем копию чтобы избежать внешних изменений
-	fields := make(map[string]string, len(t.customFields))
-	for k, v := range t.customFields {
-		fields[k] = v
-	}
-	return fields
-}
+// DueDate возвращает дедлайн
+func (a *Aggregate) DueDate() *time.Time { return a.dueDate }
 
 // CreatedAt возвращает время создания
-func (t *Entity) CreatedAt() time.Time { return t.createdAt }
+func (a *Aggregate) CreatedAt() time.Time { return a.createdAt }
 
-// UpdatedAt возвращает время последнего обновления
-func (t *Entity) UpdatedAt() time.Time { return t.updatedAt }
+// CreatedBy возвращает ID создателя
+func (a *Aggregate) CreatedBy() uuid.UUID { return a.createdBy }

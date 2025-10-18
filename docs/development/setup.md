@@ -9,7 +9,7 @@
 ### Обязательные компоненты
 
 - **Go**: версия 1.19 или выше
-- **PostgreSQL**: версия 14 или выше
+- **MongoDB**: версия 8 или выше
 - **Redis**: версия 6 или выше
 - **Docker**: версия 20.10 или выше
 - **Docker Compose**: версия 2.0 или выше
@@ -21,7 +21,7 @@
 - **golangci-lint**: для статического анализа кода
 - **Air**: для hot reload в development
 - **Postman** или **Insomnia**: для тестирования API
-- **pgAdmin** или **DBeaver**: для работы с базой данных
+- **MongoDB Compass**: для работы с базой данных
 
 ## Установка зависимостей
 
@@ -31,9 +31,10 @@
 # Go
 brew install go
 
-# PostgreSQL
-brew install postgresql@14
-brew services start postgresql@14
+# MongoDB
+brew tap mongodb/brew
+brew install mongodb-community@8.0
+brew services start mongodb-community@8.0
 
 # Redis
 brew install redis
@@ -55,11 +56,13 @@ wget https://go.dev/dl/go1.21.0.linux-amd64.tar.gz
 sudo tar -C /usr/local -xzf go1.21.0.linux-amd64.tar.gz
 export PATH=$PATH:/usr/local/go/bin
 
-# PostgreSQL
+# MongoDB
+curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc | sudo gpg -o /usr/share/keyrings/mongodb-server-8.0.gpg --dearmor
+echo "deb [ signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/8.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-8.0.list
 sudo apt update
-sudo apt install postgresql postgresql-contrib
-sudo systemctl start postgresql
-sudo systemctl enable postgresql
+sudo apt install -y mongodb-org
+sudo systemctl start mongod
+sudo systemctl enable mongod
 
 # Redis
 sudo apt install redis-server
@@ -79,7 +82,7 @@ curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/insta
 ### Windows
 
 1. Установите Go с официального сайта: https://golang.org/dl/
-2. Установите PostgreSQL: https://www.postgresql.org/download/windows/
+2. Установите MongoDB: https://www.mongodb.com/try/download/community
 3. Установите Redis: https://redis.io/download
 4. Установите Docker Desktop: https://www.docker.com/products/docker-desktop
 
@@ -104,12 +107,8 @@ cp .env.example .env
 
 ```env
 # Database
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=new_teams_up_dev
-DB_USER=postgres
-DB_PASSWORD=your_password
-DB_SSL_MODE=disable
+MONGODB_URI=mongodb://admin:admin123@localhost:27017
+MONGODB_DATABASE=teams_up
 
 # Redis
 REDIS_HOST=localhost
@@ -141,43 +140,24 @@ GITHUB_CLIENT_ID=your-github-client-id
 GITHUB_CLIENT_SECRET=your-github-client-secret
 ```
 
-### 3. Настройка базы данных
-
-Создайте базу данных PostgreSQL:
-
-```bash
-# Подключитесь к PostgreSQL
-psql -U postgres
-
-# Создайте пользователя и базу данных
-CREATE USER new_teams_up WITH PASSWORD 'your_password';
-CREATE DATABASE new_teams_up_dev OWNER new_teams_up;
-CREATE DATABASE new_teams_up_test OWNER new_teams_up;
-GRANT ALL PRIVILEGES ON DATABASE new_teams_up_dev TO new_teams_up;
-GRANT ALL PRIVILEGES ON DATABASE new_teams_up_test TO new_teams_up;
-
-# Выйдите из psql
-\q
-```
-
-### 4. Установка Go зависимостей
+### 3. Установка Go зависимостей
 
 ```bash
 go mod download
 go mod tidy
 ```
 
-### 5. Запуск миграций
+### 4. Запуск MongoDB через Docker (рекомендуется)
 
 ```bash
-# Установите migrate tool
-go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+# Запустите MongoDB через docker-compose
+docker-compose up -d mongodb
 
-# Запустите миграции
-make migrate-up
+# Проверьте подключение
+mongosh mongodb://admin:admin123@localhost:27017
 ```
 
-### 6. Заполнение тестовыми данными (опционально)
+### 5. Заполнение тестовыми данными (опционально)
 
 ```bash
 make seed
@@ -236,10 +216,8 @@ make fmt          # Форматирование кода
 make vet          # Проверка кода vet'ом
 
 # База данных
-make migrate-up   # Применить миграции
-make migrate-down # Откатить миграции
-make migrate-create # Создать новую миграцию
 make seed         # Заполнить БД тестовыми данными
+make db-reset     # Очистить и пересоздать БД
 
 # Docker
 make docker-build # Собрать Docker образ
@@ -384,13 +362,16 @@ go test -bench=. ./...
 
 ### Частые проблемы
 
-**1. Не удается подключиться к PostgreSQL**
+**1. Не удается подключиться к MongoDB**
 ```bash
 # Проверьте статус сервиса
-sudo systemctl status postgresql
+sudo systemctl status mongod
 
-# Проверьте настройки в pg_hba.conf
-sudo nano /etc/postgresql/14/main/pg_hba.conf
+# Проверьте, запущен ли MongoDB через Docker
+docker ps | grep mongodb
+
+# Проверьте подключение
+mongosh mongodb://admin:admin123@localhost:27017
 ```
 
 **2. Go модули не загружаются**

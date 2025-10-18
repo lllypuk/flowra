@@ -23,23 +23,38 @@ const (
 type Created struct {
 	event.BaseEvent
 
-	ChatID uuid.UUID
-	Title  string
-	Type   EntityType
+	ChatID     uuid.UUID
+	Title      string
+	EntityType EntityType
+	Status     Status
+	Priority   Priority
+	AssigneeID *uuid.UUID
+	DueDate    *time.Time
+	CreatedBy  uuid.UUID
 }
 
 // NewTaskCreated создает новое событие TaskCreated
 func NewTaskCreated(
 	taskID, chatID uuid.UUID,
 	title string,
-	typ EntityType,
+	entityType EntityType,
+	status Status,
+	priority Priority,
+	assigneeID *uuid.UUID,
+	dueDate *time.Time,
+	createdBy uuid.UUID,
 	metadata event.Metadata,
 ) *Created {
 	return &Created{
-		BaseEvent: event.NewBaseEvent(EventTypeTaskCreated, taskID.String(), "Task", 1, metadata),
-		ChatID:    chatID,
-		Title:     title,
-		Type:      typ,
+		BaseEvent:  event.NewBaseEvent(EventTypeTaskCreated, taskID.String(), "Task", 1, metadata),
+		ChatID:     chatID,
+		Title:      title,
+		EntityType: entityType,
+		Status:     status,
+		Priority:   priority,
+		AssigneeID: assigneeID,
+		DueDate:    dueDate,
+		CreatedBy:  createdBy,
 	}
 }
 

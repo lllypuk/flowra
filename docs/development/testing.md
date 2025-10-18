@@ -379,24 +379,23 @@ go install github.com/golang/mock/mockgen@latest
 
 **testcontainers**: Интеграционные тесты с реальными зависимостями
 ```go
-func setupTestDB(t *testing.T) *sql.DB {
+func setupTestDB(t *testing.T) *mongo.Client {
     ctx := context.Background()
-    
-    postgresContainer, err := postgres.RunContainer(ctx,
-        testcontainers.WithImage("postgres:14"),
-        postgres.WithDatabase("testdb"),
-        postgres.WithUsername("test"),
-        postgres.WithPassword("test"),
+
+    mongoContainer, err := mongodb.RunContainer(ctx,
+        testcontainers.WithImage("mongo:8"),
+        mongodb.WithUsername("admin"),
+        mongodb.WithPassword("admin123"),
     )
     require.NoError(t, err)
-    
-    connStr, err := postgresContainer.ConnectionString(ctx)
+
+    uri, err := mongoContainer.ConnectionString(ctx)
     require.NoError(t, err)
-    
-    db, err := sql.Open("postgres", connStr)
+
+    client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
     require.NoError(t, err)
-    
-    return db
+
+    return client
 }
 ```
 
@@ -603,21 +602,21 @@ jobs:
     runs-on: ubuntu-latest
     
     services:
-      postgres:
-        image: postgres:14
+      mongodb:
+        image: mongo:8
         env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: test_db
+          MONGO_INITDB_ROOT_USERNAME: admin
+          MONGO_INITDB_ROOT_PASSWORD: admin123
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "mongosh --eval 'db.adminCommand(\"ping\")'"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
         ports:
-          - 5432:5432
-      
+          - 27017:27017
+
       redis:
-        image: redis:6
+        image: redis:7
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s
@@ -656,11 +655,8 @@ jobs:
     - name: Run integration tests
       run: make test-integration
       env:
-        DB_HOST: localhost
-        DB_PORT: 5432
-        DB_NAME: test_db
-        DB_USER: postgres
-        DB_PASSWORD: postgres
+        MONGODB_URI: mongodb://admin:admin123@localhost:27017
+        MONGODB_DATABASE: test_db
         REDIS_HOST: localhost
         REDIS_PORT: 6379
     

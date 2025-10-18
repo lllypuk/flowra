@@ -8,7 +8,7 @@ This is a **Chat System with Task Management** built in Go. It's a comprehensive
 
 **Key Technologies:**
 - **Backend**: Go 1.25+ with Echo v4 framework
-- **Database**: PostgreSQL 18+ (main), Redis (cache/pub-sub)
+- **Database**: MongoDB 8+ (main), Redis (cache/pub-sub)
 - **Frontend**: HTMX 2+ for dynamic updates, Pico CSS v2 for styling
 - **Auth**: Keycloak for SSO and user management
 - **Infrastructure**: Docker Compose for development
@@ -18,10 +18,7 @@ This is a **Chat System with Task Management** built in Go. It's a comprehensive
 ### Environment Setup
 ```bash
 # Start infrastructure services
-docker-compose up -d postgres redis keycloak
-
-# Run database migrations (when implemented)
-go run cmd/migrator/main.go up
+docker-compose up -d mongodb redis keycloak
 
 # Start the main application (when implemented)
 go run cmd/api/main.go
@@ -98,10 +95,10 @@ configs/              # Configuration files
 
 ## Database
 
-- **Primary**: PostgreSQL with connection pooling
+- **Primary**: MongoDB 8+ (document store)
 - **Cache**: Redis for sessions, pub/sub, caching
-- Main entities: Users, Chats, Messages, Tasks, Chat_members, Audit_log
-- Migration path: `./migrations` (auto_migrate: false by default)
+- Main collections: Users, Chats, Messages, Tasks, Chat_members, Audit_log
+- Schema versioning handled through application code
 
 ## Development Notes
 
@@ -117,13 +114,13 @@ configs/              # Configuration files
 - **Main App**: http://localhost:8080 (when implemented)
 - **Keycloak**: http://localhost:8090 (admin/admin123)
 - **Traefik Dashboard**: http://localhost:8080 (reverse proxy)
-- **PostgreSQL**: localhost:5432 (postgres/postgres123)
+- **MongoDB**: localhost:27017 (admin/admin123)
 - **Redis**: localhost:6379
 
 ## Testing Strategy
 
 - Unit tests for all business logic
-- Integration tests with database
+- Integration tests with MongoDB
 - E2E tests for user workflows
 - Load testing for performance validation
-- Test database on port 5433
+- Test database uses in-memory MongoDB (testcontainers)
