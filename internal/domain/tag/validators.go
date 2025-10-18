@@ -94,3 +94,17 @@ func validateSeverity(value string) error {
 func noValidation(_ string) error {
 	return nil
 }
+
+// ValidateEntityCreation проверяет валидность title для создания сущности
+func ValidateEntityCreation(tagKey, title string) error {
+	trimmed := strings.TrimSpace(title)
+
+	if trimmed == "" {
+		// Capitalize first letter of tagKey for error message
+		capitalizedKey := strings.ToUpper(string(tagKey[0])) + tagKey[1:]
+		return fmt.Errorf("❌ %s title is required. Usage: #%s <title>",
+			capitalizedKey, tagKey)
+	}
+
+	return nil
+}

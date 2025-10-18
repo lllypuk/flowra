@@ -328,3 +328,111 @@ func TestNoValidation(t *testing.T) {
 	assert.NoError(t, noValidation("any value"))
 	assert.NoError(t, noValidation("🎉 emoji"))
 }
+
+// ====== Task 03: Entity Creation Validation Tests ======
+
+func TestValidateEntityCreation(t *testing.T) {
+	tests := []struct {
+		name      string
+		tagKey    string
+		title     string
+		wantErr   bool
+		errSubstr string
+	}{
+		// Валидные title
+		{
+			name:    "valid task title",
+			tagKey:  "task",
+			title:   "Реализовать авторизацию",
+			wantErr: false,
+		},
+		{
+			name:    "valid bug title",
+			tagKey:  "bug",
+			title:   "Ошибка при логине",
+			wantErr: false,
+		},
+		{
+			name:    "valid epic title",
+			tagKey:  "epic",
+			title:   "Новая фича",
+			wantErr: false,
+		},
+		{
+			name:    "title with special chars",
+			tagKey:  "bug",
+			title:   "Fix issue #123 (critical!)",
+			wantErr: false,
+		},
+		{
+			name:    "title with unicode",
+			tagKey:  "task",
+			title:   "Исправить баг 🐛",
+			wantErr: false,
+		},
+		{
+			name:    "title with leading/trailing spaces",
+			tagKey:  "task",
+			title:   "  Много пробелов  ",
+			wantErr: false,
+		},
+
+		// Невалидные title
+		{
+			name:      "empty task title",
+			tagKey:    "task",
+			title:     "",
+			wantErr:   true,
+			errSubstr: "Task title is required",
+		},
+		{
+			name:      "empty bug title",
+			tagKey:    "bug",
+			title:     "",
+			wantErr:   true,
+			errSubstr: "Bug title is required",
+		},
+		{
+			name:      "empty epic title",
+			tagKey:    "epic",
+			title:     "",
+			wantErr:   true,
+			errSubstr: "Epic title is required",
+		},
+		{
+			name:      "whitespace only",
+			tagKey:    "task",
+			title:     "   ",
+			wantErr:   true,
+			errSubstr: "title is required",
+		},
+		{
+			name:      "tabs only",
+			tagKey:    "task",
+			title:     "\t\t",
+			wantErr:   true,
+			errSubstr: "title is required",
+		},
+		{
+			name:      "newlines only",
+			tagKey:    "task",
+			title:     "\n\n",
+			wantErr:   true,
+			errSubstr: "title is required",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateEntityCreation(tt.tagKey, tt.title)
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.errSubstr != "" {
+					assert.Contains(t, err.Error(), tt.errSubstr)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
