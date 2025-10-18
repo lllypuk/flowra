@@ -76,7 +76,7 @@
 ## Результаты тестирования
 
 ```bash
-$ go test ./internal/tag/... -v
+$ go test ./internal/domain/tag/... -v
 === RUN   TestIsKnownTag
 --- PASS: TestIsKnownTag (0.00s)
 === RUN   TestGetTagDefinition
@@ -98,22 +98,28 @@ $ go test ./internal/tag/... -v
 === RUN   TestNoValidation
 --- PASS: TestNoValidation (0.00s)
 PASS
-ok      github.com/lllypuk/teams-up/internal/tag       0.007s
+ok      github.com/lllypuk/teams-up/internal/domain/tag       0.009s
 
-$ go test ./internal/tag/... -cover
-ok      github.com/lllypuk/teams-up/internal/tag       0.007s  coverage: 96.0% of statements
+$ go test ./internal/domain/tag/... -cover
+ok      github.com/lllypuk/teams-up/internal/domain/tag       0.008s  coverage: 96.0% of statements
 ```
 
 ## Файловая структура
 
 ```
-internal/tag/
+internal/domain/tag/
 ├── parser.go           # TagParser и NewTagParser() (3202 bytes)
 ├── types.go            # ValueType и структуры данных (1378 bytes)
 ├── validators.go       # Валидаторы (2723 bytes)
 ├── parser_test.go      # Тесты парсера (4379 bytes)
 └── validators_test.go  # Тесты валидаторов (6285 bytes)
 ```
+
+**Примечание:** Пакет находится в `internal/domain/tag/`, так как теги являются частью domain model:
+- Теги описывают ubiquitous language проекта
+- Валидация тегов - это domain rules
+- Прямая связь с Chat и Task aggregates
+- Tag grammar - часть domain model
 
 ## Качество кода
 

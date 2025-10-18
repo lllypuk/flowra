@@ -99,7 +99,7 @@ func validateISODate(value string) error {
 ## Файловая структура
 
 ```
-internal/tag/
+internal/domain/tag/
 ├── parser.go           # Основные структуры и NewTagParser()
 ├── types.go            # ValueType и константы
 ├── validators.go       # Валидаторы

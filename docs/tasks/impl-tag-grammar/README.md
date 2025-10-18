@@ -146,7 +146,7 @@ End-to-end интеграционные тесты.
 ## Архитектура
 
 ```
-internal/
+internal/domain/
 ├── tag/
 │   ├── parser.go              # Task 01, 02
 │   ├── types.go               # Task 01
@@ -164,17 +164,18 @@ internal/
 │   ├── handler.go             # Task 06, 07
 │   ├── executor.go            # Task 07
 │   └── *_test.go              # Task 08
-└── domain/
-    └── chat/
-        ├── aggregate.go       # Task 07
-        ├── commands.go        # Task 07
-        └── events.go          # Task 07
+└── chat/
+    ├── aggregate.go           # Task 07
+    ├── commands.go            # Task 07
+    └── events.go              # Task 07
 
 tests/
 └── integration/
     └── tag/
         └── *_test.go          # Task 09
 ```
+
+**Примечание:** Пакет `tag` находится в `internal/domain/`, так как теги являются частью domain model и описывают ubiquitous language проекта.
 
 ## Критерии завершения
 
