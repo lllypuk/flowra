@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/lllypuk/teams-up/internal/domain/errs"
 	"github.com/lllypuk/teams-up/internal/domain/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,7 +34,7 @@ func TestMockUserRepository_GetByUsername(t *testing.T) {
 
 	// User doesn't exist initially
 	user, err := repo.GetByUsername(context.Background(), "testuser")
-	require.NoError(t, err)
+	require.ErrorIs(t, err, errs.ErrNotFound)
 	assert.Nil(t, user)
 
 	// Add user
