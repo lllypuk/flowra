@@ -1,0 +1,132 @@
+package message
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/lllypuk/teams-up/internal/application/shared"
+	"github.com/lllypuk/teams-up/internal/domain/chat"
+	"github.com/lllypuk/teams-up/internal/domain/event"
+	"github.com/lllypuk/teams-up/internal/domain/message"
+	"github.com/lllypuk/teams-up/internal/domain/uuid"
+)
+
+// ChatRepository определяет интерфейс для доступа к чатам (consumer-side interface)
+type ChatRepository interface {
+	FindByID(ctx context.Context, chatID string) (*chat.ReadModel, error)
+}
+
+// SendMessageUseCase обрабатывает отправку сообщения
+type SendMessageUseCase struct {
+	messageRepo message.Repository
+	chatRepo    ChatRepository
+	eventBus    event.Bus
+}
+
+// NewSendMessageUseCase создает новый SendMessageUseCase
+func NewSendMessageUseCase(
+	messageRepo message.Repository,
+	chatRepo ChatRepository,
+	eventBus event.Bus,
+) *SendMessageUseCase {
+	return &SendMessageUseCase{
+		messageRepo: messageRepo,
+		chatRepo:    chatRepo,
+		eventBus:    eventBus,
+	}
+}
+
+// Execute выполняет отправку сообщения
+func (uc *SendMessageUseCase) Execute(
+	ctx context.Context,
+	cmd SendMessageCommand,
+) (Result, error) {
+	// 1. Валидация
+	if err := uc.validate(cmd); err != nil {
+		return Result{}, fmt.Errorf("validation failed: %w", err)
+	}
+
+	// 2. Проверка доступа к чату
+	chatReadModel, err := uc.chatRepo.FindByID(ctx, cmd.ChatID.String())
+	if err != nil {
+		return Result{}, ErrChatNotFound
+	}
+
+	// Проверяем, что пользователь является участником чата
+	if !uc.isParticipant(chatReadModel, cmd.AuthorID) {
+		return Result{}, ErrNotChatParticipant
+	}
+
+	// 3. Проверка parent message (если это reply)
+	if !cmd.ParentMessageID.IsZero() {
+		parent, parentErr := uc.messageRepo.FindByID(ctx, cmd.ParentMessageID)
+		if parentErr != nil {
+			return Result{}, ErrParentNotFound
+		}
+		// Проверка, что parent в том же чате
+		if parent.ChatID() != cmd.ChatID {
+			return Result{}, ErrParentInDifferentChat
+		}
+	}
+
+	// 4. Создание сообщения
+	msg, err := message.NewMessage(
+		cmd.ChatID,
+		cmd.AuthorID,
+		cmd.Content,
+		cmd.ParentMessageID,
+	)
+	if err != nil {
+		return Result{}, fmt.Errorf("failed to create message: %w", err)
+	}
+
+	// 5. Сохранение
+	if saveErr := uc.messageRepo.Save(ctx, msg); saveErr != nil {
+		return Result{}, fmt.Errorf("failed to save message: %w", saveErr)
+	}
+
+	// 6. Публикация события (для WebSocket broadcast)
+	evt := message.NewCreated(
+		msg.ID(),
+		cmd.ChatID,
+		cmd.AuthorID,
+		cmd.Content,
+		cmd.ParentMessageID,
+		event.Metadata{
+			UserID:    cmd.AuthorID.String(),
+			Timestamp: msg.CreatedAt(),
+		},
+	)
+	// Не критично, сообщение уже сохранено
+	// TODO: log error
+	_ = uc.eventBus.Publish(ctx, evt)
+
+	return Result{
+		Value: msg,
+	}, nil
+}
+
+func (uc *SendMessageUseCase) validate(cmd SendMessageCommand) error {
+	if err := shared.ValidateUUID("chatID", cmd.ChatID); err != nil {
+		return err
+	}
+	if err := shared.ValidateRequired("content", cmd.Content); err != nil {
+		return ErrEmptyContent
+	}
+	if len(cmd.Content) > MaxContentLength {
+		return ErrContentTooLong
+	}
+	if err := shared.ValidateUUID("authorID", cmd.AuthorID); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (uc *SendMessageUseCase) isParticipant(chatReadModel *chat.ReadModel, userID uuid.UUID) bool {
+	for _, p := range chatReadModel.Participants {
+		if p.UserID() == userID {
+			return true
+		}
+	}
+	return false
+}

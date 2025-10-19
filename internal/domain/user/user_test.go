@@ -14,17 +14,19 @@ import (
 
 func TestNewUser_Success(t *testing.T) {
 	// Arrange
+	keycloakID := "keycloak-123"
 	username := "john_doe"
 	email := "john@example.com"
 	displayName := "John Doe"
 
 	// Act
-	user, err := userDomain.NewUser(username, email, displayName)
+	user, err := userDomain.NewUser(keycloakID, username, email, displayName)
 
 	// Assert
 	require.NoError(t, err)
 	assert.NotNil(t, user)
 	assert.False(t, user.ID().IsZero())
+	assert.Equal(t, keycloakID, user.KeycloakID())
 	assert.Equal(t, username, user.Username())
 	assert.Equal(t, email, user.Email())
 	assert.Equal(t, displayName, user.DisplayName())
@@ -35,9 +37,19 @@ func TestNewUser_Success(t *testing.T) {
 	assert.WithinDuration(t, time.Now(), user.UpdatedAt(), time.Second)
 }
 
+func TestNewUser_EmptyKeycloakID(t *testing.T) {
+	// Act
+	user, err := userDomain.NewUser("", "username", "email@example.com", "Display")
+
+	// Assert
+	require.Error(t, err)
+	require.ErrorIs(t, err, errs.ErrInvalidInput)
+	assert.Nil(t, user)
+}
+
 func TestNewUser_EmptyUsername(t *testing.T) {
 	// Act
-	user, err := userDomain.NewUser("", "email@example.com", "Display")
+	user, err := userDomain.NewUser("keycloak-123", "", "email@example.com", "Display")
 
 	// Assert
 	require.Error(t, err)
@@ -47,7 +59,7 @@ func TestNewUser_EmptyUsername(t *testing.T) {
 
 func TestNewUser_EmptyEmail(t *testing.T) {
 	// Act
-	user, err := userDomain.NewUser("username", "", "Display")
+	user, err := userDomain.NewUser("keycloak-123", "username", "", "Display")
 
 	// Assert
 	require.Error(t, err)
@@ -57,11 +69,12 @@ func TestNewUser_EmptyEmail(t *testing.T) {
 
 func TestNewUser_EmptyDisplayName_Allowed(t *testing.T) {
 	// Arrange - display name может быть пустым
+	keycloakID := "keycloak-123"
 	username := "john_doe"
 	email := "john@example.com"
 
 	// Act
-	user, err := userDomain.NewUser(username, email, "")
+	user, err := userDomain.NewUser(keycloakID, username, email, "")
 
 	// Assert
 	require.NoError(t, err)
@@ -72,6 +85,7 @@ func TestNewUser_EmptyDisplayName_Allowed(t *testing.T) {
 func TestReconstruct(t *testing.T) {
 	// Arrange
 	id := uuid.NewUUID()
+	keycloakID := "keycloak-jane"
 	username := "jane_doe"
 	email := "jane@example.com"
 	displayName := "Jane Doe"
@@ -80,11 +94,12 @@ func TestReconstruct(t *testing.T) {
 	updatedAt := time.Now().Add(-1 * time.Hour)
 
 	// Act
-	user := userDomain.Reconstruct(id, username, email, displayName, isSystemAdmin, createdAt, updatedAt)
+	user := userDomain.Reconstruct(id, keycloakID, username, email, displayName, isSystemAdmin, createdAt, updatedAt)
 
 	// Assert
 	assert.NotNil(t, user)
 	assert.Equal(t, id, user.ID())
+	assert.Equal(t, keycloakID, user.KeycloakID())
 	assert.Equal(t, username, user.Username())
 	assert.Equal(t, email, user.Email())
 	assert.Equal(t, displayName, user.DisplayName())
@@ -95,7 +110,7 @@ func TestReconstruct(t *testing.T) {
 
 func TestUser_UpdateProfile_Success(t *testing.T) {
 	// Arrange
-	user, _ := userDomain.NewUser("john", "john@example.com", "John")
+	user, _ := userDomain.NewUser("keycloak-john", "john", "john@example.com", "John")
 	oldUpdatedAt := user.UpdatedAt()
 	newDisplayName := "John Smith"
 
@@ -103,7 +118,7 @@ func TestUser_UpdateProfile_Success(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Act
-	err := user.UpdateProfile(newDisplayName)
+	err := user.UpdateProfile(&newDisplayName, nil)
 
 	// Assert
 	require.NoError(t, err)
@@ -111,14 +126,14 @@ func TestUser_UpdateProfile_Success(t *testing.T) {
 	assert.True(t, user.UpdatedAt().After(oldUpdatedAt))
 }
 
-func TestUser_UpdateProfile_EmptyDisplayName(t *testing.T) {
+func TestUser_UpdateProfile_NothingToUpdate(t *testing.T) {
 	// Arrange
-	user, _ := userDomain.NewUser("john", "john@example.com", "John")
+	user, _ := userDomain.NewUser("keycloak-john", "john", "john@example.com", "John")
 	oldDisplayName := user.DisplayName()
 	oldUpdatedAt := user.UpdatedAt()
 
-	// Act
-	err := user.UpdateProfile("")
+	// Act - ничего не передаем
+	err := user.UpdateProfile(nil, nil)
 
 	// Assert
 	require.Error(t, err)
@@ -129,7 +144,7 @@ func TestUser_UpdateProfile_EmptyDisplayName(t *testing.T) {
 
 func TestUser_SetAdmin_GrantRights(t *testing.T) {
 	// Arrange
-	user, _ := userDomain.NewUser("john", "john@example.com", "John")
+	user, _ := userDomain.NewUser("keycloak-john", "john", "john@example.com", "John")
 	assert.False(t, user.IsSystemAdmin())
 	oldUpdatedAt := user.UpdatedAt()
 
@@ -147,7 +162,16 @@ func TestUser_SetAdmin_GrantRights(t *testing.T) {
 func TestUser_SetAdmin_RevokeRights(t *testing.T) {
 	// Arrange
 	id := uuid.NewUUID()
-	user := userDomain.Reconstruct(id, "admin", "admin@example.com", "Admin", true, time.Now(), time.Now())
+	user := userDomain.Reconstruct(
+		id,
+		"keycloak-admin",
+		"admin",
+		"admin@example.com",
+		"Admin",
+		true,
+		time.Now(),
+		time.Now(),
+	)
 	assert.True(t, user.IsSystemAdmin())
 	oldUpdatedAt := user.UpdatedAt()
 
@@ -165,6 +189,7 @@ func TestUser_SetAdmin_RevokeRights(t *testing.T) {
 func TestUser_AllGetters(t *testing.T) {
 	// Arrange
 	id := uuid.NewUUID()
+	keycloakID := "keycloak-test"
 	username := "testuser"
 	email := "test@example.com"
 	displayName := "Test User"
@@ -172,11 +197,15 @@ func TestUser_AllGetters(t *testing.T) {
 	createdAt := time.Now().Add(-48 * time.Hour)
 	updatedAt := time.Now().Add(-24 * time.Hour)
 
-	user := userDomain.Reconstruct(id, username, email, displayName, isAdmin, createdAt, updatedAt)
+	user := userDomain.Reconstruct(id, keycloakID, username, email, displayName, isAdmin, createdAt, updatedAt)
 
 	// Act & Assert
 	t.Run("ID", func(t *testing.T) {
 		assert.Equal(t, id, user.ID())
+	})
+
+	t.Run("KeycloakID", func(t *testing.T) {
+		assert.Equal(t, keycloakID, user.KeycloakID())
 	})
 
 	t.Run("Username", func(t *testing.T) {

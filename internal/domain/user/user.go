@@ -10,6 +10,7 @@ import (
 // User представляет пользователя системы
 type User struct {
 	id            uuid.UUID
+	keycloakID    string // ID пользователя в Keycloak
 	username      string
 	email         string
 	displayName   string
@@ -19,7 +20,10 @@ type User struct {
 }
 
 // NewUser создает нового пользователя
-func NewUser(username, email, displayName string) (*User, error) {
+func NewUser(keycloakID, username, email, displayName string) (*User, error) {
+	if keycloakID == "" {
+		return nil, errs.ErrInvalidInput
+	}
 	if username == "" {
 		return nil, errs.ErrInvalidInput
 	}
@@ -29,6 +33,7 @@ func NewUser(username, email, displayName string) (*User, error) {
 
 	return &User{
 		id:          uuid.NewUUID(),
+		keycloakID:  keycloakID,
 		username:    username,
 		email:       email,
 		displayName: displayName,
@@ -40,12 +45,13 @@ func NewUser(username, email, displayName string) (*User, error) {
 // Reconstruct восстанавливает пользователя из хранилища
 func Reconstruct(
 	id uuid.UUID,
-	username, email, displayName string,
+	keycloakID, username, email, displayName string,
 	isSystemAdmin bool,
 	createdAt, updatedAt time.Time,
 ) *User {
 	return &User{
 		id:            id,
+		keycloakID:    keycloakID,
 		username:      username,
 		email:         email,
 		displayName:   displayName,
@@ -60,6 +66,11 @@ func Reconstruct(
 // ID возвращает ID пользователя
 func (u *User) ID() uuid.UUID {
 	return u.id
+}
+
+// KeycloakID возвращает ID пользователя в Keycloak
+func (u *User) KeycloakID() string {
+	return u.keycloakID
 }
 
 // Username возвращает имя пользователя
@@ -93,11 +104,23 @@ func (u *User) UpdatedAt() time.Time {
 }
 
 // UpdateProfile обновляет профиль пользователя
-func (u *User) UpdateProfile(displayName string) error {
-	if displayName == "" {
+func (u *User) UpdateProfile(displayName *string, email *string) error {
+	updated := false
+
+	if displayName != nil && *displayName != "" {
+		u.displayName = *displayName
+		updated = true
+	}
+
+	if email != nil && *email != "" {
+		u.email = *email
+		updated = true
+	}
+
+	if !updated {
 		return errs.ErrInvalidInput
 	}
-	u.displayName = displayName
+
 	u.updatedAt = time.Now()
 	return nil
 }

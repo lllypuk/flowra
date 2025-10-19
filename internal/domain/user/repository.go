@@ -11,6 +11,9 @@ type Repository interface {
 	// FindByID находит пользователя по ID
 	FindByID(ctx context.Context, id uuid.UUID) (*User, error)
 
+	// FindByKeycloakID находит пользователя по Keycloak ID
+	FindByKeycloakID(ctx context.Context, keycloakID string) (*User, error)
+
 	// FindByEmail находит пользователя по email
 	FindByEmail(ctx context.Context, email string) (*User, error)
 
