@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 )
@@ -83,10 +84,8 @@ func validateISODate(value string) error {
 func validatePriority(value string) error {
 	allowedValues := []string{"High", "Medium", "Low"}
 
-	for _, allowed := range allowedValues {
-		if value == allowed {
-			return nil
-		}
+	if slices.Contains(allowedValues, value) {
+		return nil
 	}
 
 	return fmt.Errorf("invalid priority '%s'. Available: %s",
@@ -97,10 +96,8 @@ func validatePriority(value string) error {
 func validateSeverity(value string) error {
 	allowedValues := []string{"Critical", "Major", "Minor", "Trivial"}
 
-	for _, allowed := range allowedValues {
-		if value == allowed {
-			return nil
-		}
+	if slices.Contains(allowedValues, value) {
+		return nil
 	}
 
 	return fmt.Errorf("invalid severity '%s'. Available: %s",
@@ -145,10 +142,8 @@ func ValidateStatus(entityType, status string) error {
 		return fmt.Errorf("unknown entity type: %s", entityType)
 	}
 
-	for _, allowed := range allowedStatuses {
-		if status == allowed {
-			return nil
-		}
+	if slices.Contains(allowedStatuses, status) {
+		return nil
 	}
 
 	return fmt.Errorf("❌ Invalid status '%s' for %s. Available: %s",

@@ -1,6 +1,9 @@
 package event
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 // DomainEvent представляет доменное событие
 type DomainEvent interface {
@@ -21,4 +24,10 @@ type DomainEvent interface {
 
 	// Metadata возвращает метаданные события
 	Metadata() Metadata
+}
+
+// Bus интерфейс для публикации событий
+type Bus interface {
+	// Publish публикует событие
+	Publish(ctx context.Context, event DomainEvent) error
 }
