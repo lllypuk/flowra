@@ -15,7 +15,7 @@ func TestGetUserByUsernameUseCase_Execute_Success(t *testing.T) {
 	useCase := user.NewGetUserByUsernameUseCase(repo)
 
 	// Создаем пользователя
-	existingUser, _ := domainuser.NewUser("keycloak-123", "testuser", "test@example.com", "Test User")
+	existingUser, _ := domainuser.NewUser("external-123", "testuser", "test@example.com", "Test User")
 	_ = repo.Save(context.Background(), existingUser)
 
 	query := user.GetUserByUsernameQuery{
@@ -85,7 +85,7 @@ func TestGetUserByUsernameUseCase_Execute_CaseSensitive(t *testing.T) {
 	useCase := user.NewGetUserByUsernameUseCase(repo)
 
 	// Создаем пользователя с lowercase username
-	existingUser, _ := domainuser.NewUser("keycloak-123", "testuser", "test@example.com", "Test User")
+	existingUser, _ := domainuser.NewUser("external-123", "testuser", "test@example.com", "Test User")
 	_ = repo.Save(context.Background(), existingUser)
 
 	// Ищем с uppercase (должно не найтись, так как наш мок case-sensitive)

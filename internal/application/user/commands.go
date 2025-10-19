@@ -9,7 +9,7 @@ type Command interface {
 
 // RegisterUserCommand - регистрация пользователя
 type RegisterUserCommand struct {
-	KeycloakID  string // ID из Keycloak
+	ExternalID  string // ID из внешней системы аутентификации (Keycloak, Auth0, etc.)
 	Username    string
 	Email       string
 	DisplayName string

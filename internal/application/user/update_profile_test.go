@@ -15,7 +15,7 @@ func TestUpdateProfileUseCase_Execute_Success_DisplayName(t *testing.T) {
 	useCase := user.NewUpdateProfileUseCase(repo)
 
 	// Создаем пользователя
-	existingUser, _ := domainuser.NewUser("keycloak-123", "testuser", "test@example.com", "Old Name")
+	existingUser, _ := domainuser.NewUser("external-123", "testuser", "test@example.com", "Old Name")
 	_ = repo.Save(context.Background(), existingUser)
 
 	newDisplayName := "New Display Name"
@@ -43,7 +43,7 @@ func TestUpdateProfileUseCase_Execute_Success_Email(t *testing.T) {
 	useCase := user.NewUpdateProfileUseCase(repo)
 
 	// Создаем пользователя
-	existingUser, _ := domainuser.NewUser("keycloak-123", "testuser", "old@example.com", "Test User")
+	existingUser, _ := domainuser.NewUser("external-123", "testuser", "old@example.com", "Test User")
 	_ = repo.Save(context.Background(), existingUser)
 
 	newEmail := "new@example.com"
@@ -71,7 +71,7 @@ func TestUpdateProfileUseCase_Execute_Success_Both(t *testing.T) {
 	useCase := user.NewUpdateProfileUseCase(repo)
 
 	// Создаем пользователя
-	existingUser, _ := domainuser.NewUser("keycloak-123", "testuser", "old@example.com", "Old Name")
+	existingUser, _ := domainuser.NewUser("external-123", "testuser", "old@example.com", "Old Name")
 	_ = repo.Save(context.Background(), existingUser)
 
 	newDisplayName := "New Name"
@@ -104,7 +104,7 @@ func TestUpdateProfileUseCase_Execute_UserNotFound(t *testing.T) {
 	repo := newMockUserRepository()
 	useCase := user.NewUpdateProfileUseCase(repo)
 
-	nonExistentUser, _ := domainuser.NewUser("keycloak-123", "test", "test@example.com", "Test")
+	nonExistentUser, _ := domainuser.NewUser("external-123", "test", "test@example.com", "Test")
 	newDisplayName := "New Name"
 	cmd := user.UpdateProfileCommand{
 		UserID:      nonExistentUser.ID(),
@@ -126,8 +126,8 @@ func TestUpdateProfileUseCase_Execute_EmailAlreadyExists(t *testing.T) {
 	useCase := user.NewUpdateProfileUseCase(repo)
 
 	// Создаем двух пользователей
-	user1, _ := domainuser.NewUser("keycloak-1", "user1", "user1@example.com", "User 1")
-	user2, _ := domainuser.NewUser("keycloak-2", "user2", "user2@example.com", "User 2")
+	user1, _ := domainuser.NewUser("external-1", "user1", "user1@example.com", "User 1")
+	user2, _ := domainuser.NewUser("external-2", "user2", "user2@example.com", "User 2")
 	_ = repo.Save(context.Background(), user1)
 	_ = repo.Save(context.Background(), user2)
 
@@ -152,7 +152,7 @@ func TestUpdateProfileUseCase_Validate_NoFieldsProvided(t *testing.T) {
 	repo := newMockUserRepository()
 	useCase := user.NewUpdateProfileUseCase(repo)
 
-	existingUser, _ := domainuser.NewUser("keycloak-123", "testuser", "test@example.com", "Test User")
+	existingUser, _ := domainuser.NewUser("external-123", "testuser", "test@example.com", "Test User")
 	_ = repo.Save(context.Background(), existingUser)
 
 	cmd := user.UpdateProfileCommand{
@@ -174,7 +174,7 @@ func TestUpdateProfileUseCase_Validate_InvalidEmail(t *testing.T) {
 	repo := newMockUserRepository()
 	useCase := user.NewUpdateProfileUseCase(repo)
 
-	existingUser, _ := domainuser.NewUser("keycloak-123", "testuser", "test@example.com", "Test User")
+	existingUser, _ := domainuser.NewUser("external-123", "testuser", "test@example.com", "Test User")
 	_ = repo.Save(context.Background(), existingUser)
 
 	invalidEmail := "invalid-email"
@@ -197,7 +197,7 @@ func TestUpdateProfileUseCase_Validate_EmptyDisplayName(t *testing.T) {
 	repo := newMockUserRepository()
 	useCase := user.NewUpdateProfileUseCase(repo)
 
-	existingUser, _ := domainuser.NewUser("keycloak-123", "testuser", "test@example.com", "Test User")
+	existingUser, _ := domainuser.NewUser("external-123", "testuser", "test@example.com", "Test User")
 	_ = repo.Save(context.Background(), existingUser)
 
 	emptyDisplayName := ""

@@ -14,7 +14,7 @@ import (
 type mockUserRepository struct {
 	users               map[string]*domainuser.User    // username -> user
 	usersByEmail        map[string]*domainuser.User    // email -> user
-	usersByKeycloakID   map[string]*domainuser.User    // keycloakID -> user
+	usersByExternalID   map[string]*domainuser.User    // keycloakID -> user
 	usersByID           map[uuid.UUID]*domainuser.User // id -> user
 	saveError           error
 	findByUsernameError error
@@ -25,7 +25,7 @@ func newMockUserRepository() *mockUserRepository {
 	return &mockUserRepository{
 		users:             make(map[string]*domainuser.User),
 		usersByEmail:      make(map[string]*domainuser.User),
-		usersByKeycloakID: make(map[string]*domainuser.User),
+		usersByExternalID: make(map[string]*domainuser.User),
 		usersByID:         make(map[uuid.UUID]*domainuser.User),
 	}
 }
@@ -37,8 +37,8 @@ func (m *mockUserRepository) FindByID(_ context.Context, id uuid.UUID) (*domainu
 	return nil, errors.New("not found")
 }
 
-func (m *mockUserRepository) FindByKeycloakID(_ context.Context, keycloakID string) (*domainuser.User, error) {
-	if usr, ok := m.usersByKeycloakID[keycloakID]; ok {
+func (m *mockUserRepository) FindByExternalID(_ context.Context, keycloakID string) (*domainuser.User, error) {
+	if usr, ok := m.usersByExternalID[keycloakID]; ok {
 		return usr, nil
 	}
 	return nil, errors.New("not found")
@@ -70,7 +70,7 @@ func (m *mockUserRepository) Save(_ context.Context, usr *domainuser.User) error
 	}
 	m.users[usr.Username()] = usr
 	m.usersByEmail[usr.Email()] = usr
-	m.usersByKeycloakID[usr.KeycloakID()] = usr
+	m.usersByExternalID[usr.ExternalID()] = usr
 	m.usersByID[usr.ID()] = usr
 	return nil
 }
@@ -108,7 +108,7 @@ func TestRegisterUserUseCase_Execute_Success(t *testing.T) {
 	repo := newMockUserRepository()
 	useCase := user.NewRegisterUserUseCase(repo)
 	cmd := user.RegisterUserCommand{
-		KeycloakID:  "keycloak-123",
+		ExternalID:  "external-123",
 		Username:    "testuser",
 		Email:       "test@example.com",
 		DisplayName: "Test User",
@@ -134,8 +134,8 @@ func TestRegisterUserUseCase_Execute_Success(t *testing.T) {
 		t.Errorf("expected email %s, got %s", cmd.Email, result.Value.Email())
 	}
 
-	if result.Value.KeycloakID() != cmd.KeycloakID {
-		t.Errorf("expected keycloakID %s, got %s", cmd.KeycloakID, result.Value.KeycloakID())
+	if result.Value.ExternalID() != cmd.ExternalID {
+		t.Errorf("expected keycloakID %s, got %s", cmd.ExternalID, result.Value.ExternalID())
 	}
 
 	// Проверка, что пользователь сохранен
@@ -150,12 +150,12 @@ func TestRegisterUserUseCase_Execute_UsernameAlreadyExists(t *testing.T) {
 	useCase := user.NewRegisterUserUseCase(repo)
 
 	// Сначала создаем пользователя
-	existingUser, _ := domainuser.NewUser("keycloak-existing", "testuser", "existing@example.com", "Existing User")
+	existingUser, _ := domainuser.NewUser("external-existing", "testuser", "existing@example.com", "Existing User")
 	_ = repo.Save(context.Background(), existingUser)
 
 	// Пытаемся создать с тем же username
 	cmd := user.RegisterUserCommand{
-		KeycloakID:  "keycloak-new",
+		ExternalID:  "external-new",
 		Username:    "testuser",
 		Email:       "new@example.com",
 		DisplayName: "New User",
@@ -176,12 +176,12 @@ func TestRegisterUserUseCase_Execute_EmailAlreadyExists(t *testing.T) {
 	useCase := user.NewRegisterUserUseCase(repo)
 
 	// Сначала создаем пользователя
-	existingUser, _ := domainuser.NewUser("keycloak-existing", "existinguser", "test@example.com", "Existing User")
+	existingUser, _ := domainuser.NewUser("external-existing", "existinguser", "test@example.com", "Existing User")
 	_ = repo.Save(context.Background(), existingUser)
 
 	// Пытаемся создать с тем же email
 	cmd := user.RegisterUserCommand{
-		KeycloakID:  "keycloak-new",
+		ExternalID:  "external-new",
 		Username:    "newuser",
 		Email:       "test@example.com",
 		DisplayName: "New User",
@@ -196,12 +196,12 @@ func TestRegisterUserUseCase_Execute_EmailAlreadyExists(t *testing.T) {
 	}
 }
 
-func TestRegisterUserUseCase_Validate_MissingKeycloakID(t *testing.T) {
+func TestRegisterUserUseCase_Validate_MissingExternalID(t *testing.T) {
 	// Arrange
 	repo := newMockUserRepository()
 	useCase := user.NewRegisterUserUseCase(repo)
 	cmd := user.RegisterUserCommand{
-		KeycloakID:  "",
+		ExternalID:  "",
 		Username:    "testuser",
 		Email:       "test@example.com",
 		DisplayName: "Test User",
@@ -221,7 +221,7 @@ func TestRegisterUserUseCase_Validate_InvalidEmail(t *testing.T) {
 	repo := newMockUserRepository()
 	useCase := user.NewRegisterUserUseCase(repo)
 	cmd := user.RegisterUserCommand{
-		KeycloakID:  "keycloak-123",
+		ExternalID:  "external-123",
 		Username:    "testuser",
 		Email:       "invalid-email",
 		DisplayName: "Test User",
@@ -242,7 +242,7 @@ func TestRegisterUserUseCase_Execute_SaveError(t *testing.T) {
 	repo.saveError = errors.New("database error")
 	useCase := user.NewRegisterUserUseCase(repo)
 	cmd := user.RegisterUserCommand{
-		KeycloakID:  "keycloak-123",
+		ExternalID:  "external-123",
 		Username:    "testuser",
 		Email:       "test@example.com",
 		DisplayName: "Test User",

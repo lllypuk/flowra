@@ -14,9 +14,9 @@ func TestListUsersUseCase_Execute_Success(t *testing.T) {
 	useCase := user.NewListUsersUseCase(repo)
 
 	// Создаем несколько пользователей
-	user1, _ := domainuser.NewUser("keycloak-1", "user1", "user1@example.com", "User 1")
-	user2, _ := domainuser.NewUser("keycloak-2", "user2", "user2@example.com", "User 2")
-	user3, _ := domainuser.NewUser("keycloak-3", "user3", "user3@example.com", "User 3")
+	user1, _ := domainuser.NewUser("external-1", "user1", "user1@example.com", "User 1")
+	user2, _ := domainuser.NewUser("external-2", "user2", "user2@example.com", "User 2")
+	user3, _ := domainuser.NewUser("external-3", "user3", "user3@example.com", "User 3")
 	_ = repo.Save(context.Background(), user1)
 	_ = repo.Save(context.Background(), user2)
 	_ = repo.Save(context.Background(), user3)
@@ -59,7 +59,7 @@ func TestListUsersUseCase_Execute_Pagination(t *testing.T) {
 	// Создаем 5 пользователей
 	for i := 1; i <= 5; i++ {
 		usr, _ := domainuser.NewUser(
-			"keycloak-"+string(rune('0'+i)),
+			"external-"+string(rune('0'+i)),
 			"user"+string(rune('0'+i)),
 			"user"+string(rune('0'+i))+"@example.com",
 			"User "+string(rune('0'+i)),

@@ -42,7 +42,7 @@ func (uc *RegisterUserUseCase) Execute(
 
 	// Создание пользователя
 	usr, err := user.NewUser(
-		cmd.KeycloakID,
+		cmd.ExternalID,
 		cmd.Username,
 		cmd.Email,
 		cmd.DisplayName,
@@ -64,7 +64,7 @@ func (uc *RegisterUserUseCase) Execute(
 }
 
 func (uc *RegisterUserUseCase) validate(cmd RegisterUserCommand) error {
-	if err := shared.ValidateRequired("keycloakID", cmd.KeycloakID); err != nil {
+	if err := shared.ValidateRequired("externalID", cmd.ExternalID); err != nil {
 		return err
 	}
 	if err := shared.ValidateRequired("username", cmd.Username); err != nil {

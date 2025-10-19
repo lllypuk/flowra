@@ -16,7 +16,7 @@ func TestGetUserUseCase_Execute_Success(t *testing.T) {
 	useCase := user.NewGetUserUseCase(repo)
 
 	// Создаем пользователя
-	existingUser, _ := domainuser.NewUser("keycloak-123", "testuser", "test@example.com", "Test User")
+	existingUser, _ := domainuser.NewUser("external-123", "testuser", "test@example.com", "Test User")
 	_ = repo.Save(context.Background(), existingUser)
 
 	query := user.GetUserQuery{
@@ -49,7 +49,7 @@ func TestGetUserUseCase_Execute_UserNotFound(t *testing.T) {
 	repo := newMockUserRepository()
 	useCase := user.NewGetUserUseCase(repo)
 
-	nonExistentUser, _ := domainuser.NewUser("keycloak-123", "test", "test@example.com", "Test")
+	nonExistentUser, _ := domainuser.NewUser("external-123", "test", "test@example.com", "Test")
 
 	query := user.GetUserQuery{
 		UserID: nonExistentUser.ID(),

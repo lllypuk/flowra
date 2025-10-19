@@ -16,12 +16,12 @@ func TestPromoteToAdminUseCase_Execute_Success(t *testing.T) {
 	useCase := user.NewPromoteToAdminUseCase(repo)
 
 	// Создаем администратора
-	admin, _ := domainuser.NewUser("keycloak-admin", "admin", "admin@example.com", "Admin User")
+	admin, _ := domainuser.NewUser("external-admin", "admin", "admin@example.com", "Admin User")
 	admin.SetAdmin(true)
 	_ = repo.Save(context.Background(), admin)
 
 	// Создаем обычного пользователя
-	regularUser, _ := domainuser.NewUser("keycloak-user", "user", "user@example.com", "Regular User")
+	regularUser, _ := domainuser.NewUser("external-user", "user", "user@example.com", "Regular User")
 	_ = repo.Save(context.Background(), regularUser)
 
 	cmd := user.PromoteToAdminCommand{
@@ -48,8 +48,8 @@ func TestPromoteToAdminUseCase_Execute_PromoterNotAdmin(t *testing.T) {
 	useCase := user.NewPromoteToAdminUseCase(repo)
 
 	// Создаем двух обычных пользователей
-	user1, _ := domainuser.NewUser("keycloak-1", "user1", "user1@example.com", "User 1")
-	user2, _ := domainuser.NewUser("keycloak-2", "user2", "user2@example.com", "User 2")
+	user1, _ := domainuser.NewUser("external-1", "user1", "user1@example.com", "User 1")
+	user2, _ := domainuser.NewUser("external-2", "user2", "user2@example.com", "User 2")
 	_ = repo.Save(context.Background(), user1)
 	_ = repo.Save(context.Background(), user2)
 
@@ -73,10 +73,10 @@ func TestPromoteToAdminUseCase_Execute_PromoterNotFound(t *testing.T) {
 	useCase := user.NewPromoteToAdminUseCase(repo)
 
 	// Создаем обычного пользователя
-	regularUser, _ := domainuser.NewUser("keycloak-user", "user", "user@example.com", "Regular User")
+	regularUser, _ := domainuser.NewUser("external-user", "user", "user@example.com", "Regular User")
 	_ = repo.Save(context.Background(), regularUser)
 
-	nonExistentUser, _ := domainuser.NewUser("keycloak-fake", "fake", "fake@example.com", "Fake")
+	nonExistentUser, _ := domainuser.NewUser("external-fake", "fake", "fake@example.com", "Fake")
 
 	cmd := user.PromoteToAdminCommand{
 		UserID:     regularUser.ID(),
@@ -98,11 +98,11 @@ func TestPromoteToAdminUseCase_Execute_TargetUserNotFound(t *testing.T) {
 	useCase := user.NewPromoteToAdminUseCase(repo)
 
 	// Создаем администратора
-	admin, _ := domainuser.NewUser("keycloak-admin", "admin", "admin@example.com", "Admin User")
+	admin, _ := domainuser.NewUser("external-admin", "admin", "admin@example.com", "Admin User")
 	admin.SetAdmin(true)
 	_ = repo.Save(context.Background(), admin)
 
-	nonExistentUser, _ := domainuser.NewUser("keycloak-fake", "fake", "fake@example.com", "Fake")
+	nonExistentUser, _ := domainuser.NewUser("external-fake", "fake", "fake@example.com", "Fake")
 
 	cmd := user.PromoteToAdminCommand{
 		UserID:     nonExistentUser.ID(), // не существует
@@ -124,12 +124,12 @@ func TestPromoteToAdminUseCase_Execute_AlreadyAdmin(t *testing.T) {
 	useCase := user.NewPromoteToAdminUseCase(repo)
 
 	// Создаем администратора
-	admin1, _ := domainuser.NewUser("keycloak-admin1", "admin1", "admin1@example.com", "Admin 1")
+	admin1, _ := domainuser.NewUser("external-admin1", "admin1", "admin1@example.com", "Admin 1")
 	admin1.SetAdmin(true)
 	_ = repo.Save(context.Background(), admin1)
 
 	// Создаем еще одного администратора
-	admin2, _ := domainuser.NewUser("keycloak-admin2", "admin2", "admin2@example.com", "Admin 2")
+	admin2, _ := domainuser.NewUser("external-admin2", "admin2", "admin2@example.com", "Admin 2")
 	admin2.SetAdmin(true)
 	_ = repo.Save(context.Background(), admin2)
 
@@ -157,7 +157,7 @@ func TestPromoteToAdminUseCase_Validate_InvalidUserID(t *testing.T) {
 	repo := newMockUserRepository()
 	useCase := user.NewPromoteToAdminUseCase(repo)
 
-	admin, _ := domainuser.NewUser("keycloak-admin", "admin", "admin@example.com", "Admin")
+	admin, _ := domainuser.NewUser("external-admin", "admin", "admin@example.com", "Admin")
 	admin.SetAdmin(true)
 	_ = repo.Save(context.Background(), admin)
 

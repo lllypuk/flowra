@@ -14,7 +14,7 @@ import (
 
 func TestNewUser_Success(t *testing.T) {
 	// Arrange
-	keycloakID := "keycloak-123"
+	keycloakID := "external-123"
 	username := "john_doe"
 	email := "john@example.com"
 	displayName := "John Doe"
@@ -26,7 +26,7 @@ func TestNewUser_Success(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, user)
 	assert.False(t, user.ID().IsZero())
-	assert.Equal(t, keycloakID, user.KeycloakID())
+	assert.Equal(t, keycloakID, user.ExternalID())
 	assert.Equal(t, username, user.Username())
 	assert.Equal(t, email, user.Email())
 	assert.Equal(t, displayName, user.DisplayName())
@@ -37,7 +37,7 @@ func TestNewUser_Success(t *testing.T) {
 	assert.WithinDuration(t, time.Now(), user.UpdatedAt(), time.Second)
 }
 
-func TestNewUser_EmptyKeycloakID(t *testing.T) {
+func TestNewUser_EmptyExternalID(t *testing.T) {
 	// Act
 	user, err := userDomain.NewUser("", "username", "email@example.com", "Display")
 
@@ -49,7 +49,7 @@ func TestNewUser_EmptyKeycloakID(t *testing.T) {
 
 func TestNewUser_EmptyUsername(t *testing.T) {
 	// Act
-	user, err := userDomain.NewUser("keycloak-123", "", "email@example.com", "Display")
+	user, err := userDomain.NewUser("external-123", "", "email@example.com", "Display")
 
 	// Assert
 	require.Error(t, err)
@@ -59,7 +59,7 @@ func TestNewUser_EmptyUsername(t *testing.T) {
 
 func TestNewUser_EmptyEmail(t *testing.T) {
 	// Act
-	user, err := userDomain.NewUser("keycloak-123", "username", "", "Display")
+	user, err := userDomain.NewUser("external-123", "username", "", "Display")
 
 	// Assert
 	require.Error(t, err)
@@ -69,7 +69,7 @@ func TestNewUser_EmptyEmail(t *testing.T) {
 
 func TestNewUser_EmptyDisplayName_Allowed(t *testing.T) {
 	// Arrange - display name может быть пустым
-	keycloakID := "keycloak-123"
+	keycloakID := "external-123"
 	username := "john_doe"
 	email := "john@example.com"
 
@@ -85,7 +85,7 @@ func TestNewUser_EmptyDisplayName_Allowed(t *testing.T) {
 func TestReconstruct(t *testing.T) {
 	// Arrange
 	id := uuid.NewUUID()
-	keycloakID := "keycloak-jane"
+	keycloakID := "external-jane"
 	username := "jane_doe"
 	email := "jane@example.com"
 	displayName := "Jane Doe"
@@ -99,7 +99,7 @@ func TestReconstruct(t *testing.T) {
 	// Assert
 	assert.NotNil(t, user)
 	assert.Equal(t, id, user.ID())
-	assert.Equal(t, keycloakID, user.KeycloakID())
+	assert.Equal(t, keycloakID, user.ExternalID())
 	assert.Equal(t, username, user.Username())
 	assert.Equal(t, email, user.Email())
 	assert.Equal(t, displayName, user.DisplayName())
@@ -110,7 +110,7 @@ func TestReconstruct(t *testing.T) {
 
 func TestUser_UpdateProfile_Success(t *testing.T) {
 	// Arrange
-	user, _ := userDomain.NewUser("keycloak-john", "john", "john@example.com", "John")
+	user, _ := userDomain.NewUser("external-john", "john", "john@example.com", "John")
 	oldUpdatedAt := user.UpdatedAt()
 	newDisplayName := "John Smith"
 
@@ -128,7 +128,7 @@ func TestUser_UpdateProfile_Success(t *testing.T) {
 
 func TestUser_UpdateProfile_NothingToUpdate(t *testing.T) {
 	// Arrange
-	user, _ := userDomain.NewUser("keycloak-john", "john", "john@example.com", "John")
+	user, _ := userDomain.NewUser("external-john", "john", "john@example.com", "John")
 	oldDisplayName := user.DisplayName()
 	oldUpdatedAt := user.UpdatedAt()
 
@@ -144,7 +144,7 @@ func TestUser_UpdateProfile_NothingToUpdate(t *testing.T) {
 
 func TestUser_SetAdmin_GrantRights(t *testing.T) {
 	// Arrange
-	user, _ := userDomain.NewUser("keycloak-john", "john", "john@example.com", "John")
+	user, _ := userDomain.NewUser("external-john", "john", "john@example.com", "John")
 	assert.False(t, user.IsSystemAdmin())
 	oldUpdatedAt := user.UpdatedAt()
 
@@ -164,7 +164,7 @@ func TestUser_SetAdmin_RevokeRights(t *testing.T) {
 	id := uuid.NewUUID()
 	user := userDomain.Reconstruct(
 		id,
-		"keycloak-admin",
+		"external-admin",
 		"admin",
 		"admin@example.com",
 		"Admin",
@@ -189,7 +189,7 @@ func TestUser_SetAdmin_RevokeRights(t *testing.T) {
 func TestUser_AllGetters(t *testing.T) {
 	// Arrange
 	id := uuid.NewUUID()
-	keycloakID := "keycloak-test"
+	keycloakID := "external-test"
 	username := "testuser"
 	email := "test@example.com"
 	displayName := "Test User"
@@ -204,8 +204,8 @@ func TestUser_AllGetters(t *testing.T) {
 		assert.Equal(t, id, user.ID())
 	})
 
-	t.Run("KeycloakID", func(t *testing.T) {
-		assert.Equal(t, keycloakID, user.KeycloakID())
+	t.Run("ExternalID", func(t *testing.T) {
+		assert.Equal(t, keycloakID, user.ExternalID())
 	})
 
 	t.Run("Username", func(t *testing.T) {

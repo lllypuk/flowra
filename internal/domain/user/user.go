@@ -10,7 +10,7 @@ import (
 // User представляет пользователя системы
 type User struct {
 	id            uuid.UUID
-	keycloakID    string // ID пользователя в Keycloak
+	externalID    string // ID из внешней системы аутентификации (Keycloak, Auth0, etc.)
 	username      string
 	email         string
 	displayName   string
@@ -20,8 +20,8 @@ type User struct {
 }
 
 // NewUser создает нового пользователя
-func NewUser(keycloakID, username, email, displayName string) (*User, error) {
-	if keycloakID == "" {
+func NewUser(externalID, username, email, displayName string) (*User, error) {
+	if externalID == "" {
 		return nil, errs.ErrInvalidInput
 	}
 	if username == "" {
@@ -33,7 +33,7 @@ func NewUser(keycloakID, username, email, displayName string) (*User, error) {
 
 	return &User{
 		id:          uuid.NewUUID(),
-		keycloakID:  keycloakID,
+		externalID:  externalID,
 		username:    username,
 		email:       email,
 		displayName: displayName,
@@ -45,13 +45,13 @@ func NewUser(keycloakID, username, email, displayName string) (*User, error) {
 // Reconstruct восстанавливает пользователя из хранилища
 func Reconstruct(
 	id uuid.UUID,
-	keycloakID, username, email, displayName string,
+	externalID, username, email, displayName string,
 	isSystemAdmin bool,
 	createdAt, updatedAt time.Time,
 ) *User {
 	return &User{
 		id:            id,
-		keycloakID:    keycloakID,
+		externalID:    externalID,
 		username:      username,
 		email:         email,
 		displayName:   displayName,
@@ -68,9 +68,9 @@ func (u *User) ID() uuid.UUID {
 	return u.id
 }
 
-// KeycloakID возвращает ID пользователя в Keycloak
-func (u *User) KeycloakID() string {
-	return u.keycloakID
+// ExternalID возвращает ID пользователя во внешней системе аутентификации
+func (u *User) ExternalID() string {
+	return u.externalID
 }
 
 // Username возвращает имя пользователя
