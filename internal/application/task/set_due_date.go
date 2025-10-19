@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/lllypuk/teams-up/internal/application/shared"
 	"github.com/lllypuk/teams-up/internal/domain/task"
-	"github.com/lllypuk/teams-up/internal/infrastructure/eventstore"
 )
 
 const minYear = 2020
@@ -16,7 +16,7 @@ type SetDueDateUseCase struct {
 }
 
 // NewSetDueDateUseCase создает новый use case для установки дедлайна
-func NewSetDueDateUseCase(eventStore eventstore.EventStore) *SetDueDateUseCase {
+func NewSetDueDateUseCase(eventStore shared.EventStore) *SetDueDateUseCase {
 	return &SetDueDateUseCase{
 		baseExecutor: NewBaseExecutor(eventStore),
 	}

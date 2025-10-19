@@ -3,9 +3,9 @@ package mocks
 import (
 	"context"
 
+	"github.com/lllypuk/teams-up/internal/application/shared"
 	"github.com/lllypuk/teams-up/internal/domain/errs"
 	"github.com/lllypuk/teams-up/internal/domain/uuid"
-	"github.com/lllypuk/teams-up/internal/usecase/shared"
 )
 
 // MockUserRepository реализует shared.UserRepository для тестирования

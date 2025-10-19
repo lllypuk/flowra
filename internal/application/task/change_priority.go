@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/lllypuk/teams-up/internal/application/shared"
 	"github.com/lllypuk/teams-up/internal/domain/task"
-	"github.com/lllypuk/teams-up/internal/infrastructure/eventstore"
 )
 
 // ChangePriorityUseCase обрабатывает изменение приоритета задачи
@@ -14,7 +14,7 @@ type ChangePriorityUseCase struct {
 }
 
 // NewChangePriorityUseCase создает новый use case для изменения приоритета
-func NewChangePriorityUseCase(eventStore eventstore.EventStore) *ChangePriorityUseCase {
+func NewChangePriorityUseCase(eventStore shared.EventStore) *ChangePriorityUseCase {
 	return &ChangePriorityUseCase{
 		baseExecutor: NewBaseExecutor(eventStore),
 	}

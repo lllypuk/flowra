@@ -8,23 +8,23 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	taskapp "github.com/lllypuk/teams-up/internal/application/task"
 	"github.com/lllypuk/teams-up/internal/domain/task"
 	"github.com/lllypuk/teams-up/internal/domain/uuid"
 	"github.com/lllypuk/teams-up/internal/infrastructure/eventstore"
-	taskusecase "github.com/lllypuk/teams-up/internal/usecase/task"
 )
 
 func TestCreateTaskUseCase_Success(t *testing.T) {
 	// Arrange
 	store := eventstore.NewInMemoryEventStore()
-	useCase := taskusecase.NewCreateTaskUseCase(store)
+	useCase := taskapp.NewCreateTaskUseCase(store)
 
 	chatID := uuid.NewUUID()
 	userID := uuid.NewUUID()
 	assigneeID := uuid.NewUUID()
 	dueDate := time.Now().Add(24 * time.Hour)
 
-	cmd := taskusecase.CreateTaskCommand{
+	cmd := taskapp.CreateTaskCommand{
 		ChatID:     chatID,
 		Title:      "Implement OAuth authentication",
 		EntityType: task.TypeTask,
@@ -65,9 +65,9 @@ func TestCreateTaskUseCase_Success(t *testing.T) {
 func TestCreateTaskUseCase_WithDefaults(t *testing.T) {
 	// Arrange
 	store := eventstore.NewInMemoryEventStore()
-	useCase := taskusecase.NewCreateTaskUseCase(store)
+	useCase := taskapp.NewCreateTaskUseCase(store)
 
-	cmd := taskusecase.CreateTaskCommand{
+	cmd := taskapp.CreateTaskCommand{
 		ChatID: uuid.NewUUID(),
 		Title:  "Simple task",
 		// EntityType не указан - должен стать TypeTask
@@ -95,9 +95,9 @@ func TestCreateTaskUseCase_WithDefaults(t *testing.T) {
 func TestCreateTaskUseCase_TitleTrimming(t *testing.T) {
 	// Arrange
 	store := eventstore.NewInMemoryEventStore()
-	useCase := taskusecase.NewCreateTaskUseCase(store)
+	useCase := taskapp.NewCreateTaskUseCase(store)
 
-	cmd := taskusecase.CreateTaskCommand{
+	cmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "   Task with spaces   ",
 		CreatedBy: uuid.NewUUID(),
@@ -117,83 +117,83 @@ func TestCreateTaskUseCase_TitleTrimming(t *testing.T) {
 func TestCreateTaskUseCase_ValidationErrors(t *testing.T) {
 	tests := []struct {
 		name        string
-		cmd         taskusecase.CreateTaskCommand
+		cmd         taskapp.CreateTaskCommand
 		expectedErr error
 	}{
 		{
 			name: "Empty ChatID",
-			cmd: taskusecase.CreateTaskCommand{
+			cmd: taskapp.CreateTaskCommand{
 				ChatID:    uuid.UUID(""),
 				Title:     "Test",
 				CreatedBy: uuid.NewUUID(),
 			},
-			expectedErr: taskusecase.ErrInvalidChatID,
+			expectedErr: taskapp.ErrInvalidChatID,
 		},
 		{
 			name: "Empty Title",
-			cmd: taskusecase.CreateTaskCommand{
+			cmd: taskapp.CreateTaskCommand{
 				ChatID:    uuid.NewUUID(),
 				Title:     "",
 				CreatedBy: uuid.NewUUID(),
 			},
-			expectedErr: taskusecase.ErrEmptyTitle,
+			expectedErr: taskapp.ErrEmptyTitle,
 		},
 		{
 			name: "Whitespace-only Title",
-			cmd: taskusecase.CreateTaskCommand{
+			cmd: taskapp.CreateTaskCommand{
 				ChatID:    uuid.NewUUID(),
 				Title:     "   ",
 				CreatedBy: uuid.NewUUID(),
 			},
-			expectedErr: taskusecase.ErrEmptyTitle,
+			expectedErr: taskapp.ErrEmptyTitle,
 		},
 		{
 			name: "Title too long",
-			cmd: taskusecase.CreateTaskCommand{
+			cmd: taskapp.CreateTaskCommand{
 				ChatID:    uuid.NewUUID(),
 				Title:     string(make([]byte, 501)), // 501 символ
 				CreatedBy: uuid.NewUUID(),
 			},
-			expectedErr: taskusecase.ErrInvalidTitle,
+			expectedErr: taskapp.ErrInvalidTitle,
 		},
 		{
 			name: "Invalid EntityType",
-			cmd: taskusecase.CreateTaskCommand{
+			cmd: taskapp.CreateTaskCommand{
 				ChatID:     uuid.NewUUID(),
 				Title:      "Test",
 				EntityType: "invalid",
 				CreatedBy:  uuid.NewUUID(),
 			},
-			expectedErr: taskusecase.ErrInvalidEntityType,
+			expectedErr: taskapp.ErrInvalidEntityType,
 		},
 		{
 			name: "Invalid Priority",
-			cmd: taskusecase.CreateTaskCommand{
+			cmd: taskapp.CreateTaskCommand{
 				ChatID:    uuid.NewUUID(),
 				Title:     "Test",
 				Priority:  "Urgent", // не существует
 				CreatedBy: uuid.NewUUID(),
 			},
-			expectedErr: taskusecase.ErrInvalidPriority,
+			expectedErr: taskapp.ErrInvalidPriority,
 		},
 		{
 			name: "Empty CreatedBy",
-			cmd: taskusecase.CreateTaskCommand{
+			cmd: taskapp.CreateTaskCommand{
 				ChatID:    uuid.NewUUID(),
 				Title:     "Test",
 				CreatedBy: uuid.UUID(""),
 			},
-			expectedErr: taskusecase.ErrInvalidUserID,
+			expectedErr: taskapp.ErrInvalidUserID,
 		},
 		{
 			name: "Date in far past",
-			cmd: taskusecase.CreateTaskCommand{
+			cmd: taskapp.CreateTaskCommand{
 				ChatID:    uuid.NewUUID(),
 				Title:     "Test",
 				DueDate:   ptr(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)),
 				CreatedBy: uuid.NewUUID(),
 			},
-			expectedErr: taskusecase.ErrInvalidDate,
+			expectedErr: taskapp.ErrInvalidDate,
 		},
 	}
 
@@ -201,7 +201,7 @@ func TestCreateTaskUseCase_ValidationErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
 			store := eventstore.NewInMemoryEventStore()
-			useCase := taskusecase.NewCreateTaskUseCase(store)
+			useCase := taskapp.NewCreateTaskUseCase(store)
 
 			// Act
 			result, err := useCase.Execute(context.Background(), tt.cmd)
@@ -230,9 +230,9 @@ func TestCreateTaskUseCase_AllEntityTypes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
 			store := eventstore.NewInMemoryEventStore()
-			useCase := taskusecase.NewCreateTaskUseCase(store)
+			useCase := taskapp.NewCreateTaskUseCase(store)
 
-			cmd := taskusecase.CreateTaskCommand{
+			cmd := taskapp.CreateTaskCommand{
 				ChatID:     uuid.NewUUID(),
 				Title:      "Test " + tt.name,
 				EntityType: tt.entityType,
@@ -266,9 +266,9 @@ func TestCreateTaskUseCase_AllPriorities(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
 			store := eventstore.NewInMemoryEventStore()
-			useCase := taskusecase.NewCreateTaskUseCase(store)
+			useCase := taskapp.NewCreateTaskUseCase(store)
 
-			cmd := taskusecase.CreateTaskCommand{
+			cmd := taskapp.CreateTaskCommand{
 				ChatID:    uuid.NewUUID(),
 				Title:     "Test priority",
 				Priority:  tt.priority,
@@ -290,9 +290,9 @@ func TestCreateTaskUseCase_AllPriorities(t *testing.T) {
 func TestCreateTaskUseCase_InitialStatusIsAlwaysToDo(t *testing.T) {
 	// Arrange
 	store := eventstore.NewInMemoryEventStore()
-	useCase := taskusecase.NewCreateTaskUseCase(store)
+	useCase := taskapp.NewCreateTaskUseCase(store)
 
-	cmd := taskusecase.CreateTaskCommand{
+	cmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test task",
 		CreatedBy: uuid.NewUUID(),

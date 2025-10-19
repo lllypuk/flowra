@@ -18,15 +18,15 @@ const (
 
 // CommandExecutor выполняет tag команды на Chat aggregate
 type CommandExecutor struct {
-	chatRepo chat.Repository
-	userRepo user.Repository
+	chatRepo ChatRepository
+	userRepo UserRepository
 	eventBus event.Bus
 }
 
 // NewCommandExecutor создает новый CommandExecutor
 func NewCommandExecutor(
-	chatRepo chat.Repository,
-	userRepo user.Repository,
+	chatRepo ChatRepository,
+	userRepo UserRepository,
 	eventBus event.Bus,
 ) *CommandExecutor {
 	return &CommandExecutor{

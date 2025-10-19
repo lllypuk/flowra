@@ -20,16 +20,16 @@ const (
 type Handler struct {
 	processor   *Processor
 	executor    *CommandExecutor
-	messageRepo message.Repository
-	chatRepo    chat.Repository
+	messageRepo MessageRepository
+	chatRepo    ChatRepository
 }
 
 // NewHandler создает новый Handler
 func NewHandler(
 	processor *Processor,
 	executor *CommandExecutor,
-	messageRepo message.Repository,
-	chatRepo chat.Repository,
+	messageRepo MessageRepository,
+	chatRepo ChatRepository,
 ) *Handler {
 	return &Handler{
 		processor:   processor,

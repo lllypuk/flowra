@@ -1,4 +1,4 @@
-package eventstore
+package shared
 
 import (
 	"context"
@@ -19,6 +19,8 @@ var (
 )
 
 // EventStore определяет интерфейс для сохранения и загрузки событий
+// Интерфейс объявлен здесь (на стороне потребителя - application layer),
+// а не в infrastructure, следуя идиоматичному Go подходу.
 type EventStore interface {
 	// SaveEvents сохраняет события для агрегата
 	// aggregateID - идентификатор агрегата

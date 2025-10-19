@@ -5,18 +5,18 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/lllypuk/teams-up/internal/application/shared"
 	"github.com/lllypuk/teams-up/internal/domain/task"
 	"github.com/lllypuk/teams-up/internal/domain/uuid"
-	"github.com/lllypuk/teams-up/internal/infrastructure/eventstore"
 )
 
 // CreateTaskUseCase обрабатывает создание новой задачи
 type CreateTaskUseCase struct {
-	eventStore eventstore.EventStore
+	eventStore shared.EventStore
 }
 
 // NewCreateTaskUseCase создает новый экземпляр CreateTaskUseCase
-func NewCreateTaskUseCase(eventStore eventstore.EventStore) *CreateTaskUseCase {
+func NewCreateTaskUseCase(eventStore shared.EventStore) *CreateTaskUseCase {
 	return &CreateTaskUseCase{
 		eventStore: eventStore,
 	}

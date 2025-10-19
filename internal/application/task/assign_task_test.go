@@ -7,10 +7,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	taskapp "github.com/lllypuk/teams-up/internal/application/task"
 	"github.com/lllypuk/teams-up/internal/domain/task"
 	"github.com/lllypuk/teams-up/internal/domain/uuid"
 	"github.com/lllypuk/teams-up/internal/infrastructure/eventstore"
-	taskusecase "github.com/lllypuk/teams-up/internal/usecase/task"
 	"github.com/lllypuk/teams-up/tests/mocks"
 )
 
@@ -19,11 +19,11 @@ func TestAssignTaskUseCase_Success(t *testing.T) {
 	store := eventstore.NewInMemoryEventStore()
 	userRepo := mocks.NewMockUserRepository()
 
-	createUseCase := taskusecase.NewCreateTaskUseCase(store)
-	assignUseCase := taskusecase.NewAssignTaskUseCase(store, userRepo)
+	createUseCase := taskapp.NewCreateTaskUseCase(store)
+	assignUseCase := taskapp.NewAssignTaskUseCase(store, userRepo)
 
 	// Создаем задачу
-	createCmd := taskusecase.CreateTaskCommand{
+	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
 		CreatedBy: uuid.NewUUID(),
@@ -37,7 +37,7 @@ func TestAssignTaskUseCase_Success(t *testing.T) {
 
 	// Назначаем исполнителя
 	assignerID := uuid.NewUUID()
-	assignCmd := taskusecase.AssignTaskCommand{
+	assignCmd := taskapp.AssignTaskCommand{
 		TaskID:     createResult.TaskID,
 		AssigneeID: &assigneeID,
 		AssignedBy: assignerID,
@@ -66,14 +66,14 @@ func TestAssignTaskUseCase_Unassign(t *testing.T) {
 	store := eventstore.NewInMemoryEventStore()
 	userRepo := mocks.NewMockUserRepository()
 
-	createUseCase := taskusecase.NewCreateTaskUseCase(store)
-	assignUseCase := taskusecase.NewAssignTaskUseCase(store, userRepo)
+	createUseCase := taskapp.NewCreateTaskUseCase(store)
+	assignUseCase := taskapp.NewAssignTaskUseCase(store, userRepo)
 
 	// Создаем задачу с assignee
 	assigneeID := uuid.NewUUID()
 	userRepo.AddUser(assigneeID, "bob", "Bob Johnson")
 
-	createCmd := taskusecase.CreateTaskCommand{
+	createCmd := taskapp.CreateTaskCommand{
 		ChatID:     uuid.NewUUID(),
 		Title:      "Test Task",
 		AssigneeID: &assigneeID,
@@ -83,7 +83,7 @@ func TestAssignTaskUseCase_Unassign(t *testing.T) {
 	require.NoError(t, err)
 
 	// Act: Снимаем assignee (nil)
-	unassignCmd := taskusecase.AssignTaskCommand{
+	unassignCmd := taskapp.AssignTaskCommand{
 		TaskID:     createResult.TaskID,
 		AssigneeID: nil, // снятие
 		AssignedBy: uuid.NewUUID(),
@@ -106,8 +106,8 @@ func TestAssignTaskUseCase_Reassign(t *testing.T) {
 	store := eventstore.NewInMemoryEventStore()
 	userRepo := mocks.NewMockUserRepository()
 
-	createUseCase := taskusecase.NewCreateTaskUseCase(store)
-	assignUseCase := taskusecase.NewAssignTaskUseCase(store, userRepo)
+	createUseCase := taskapp.NewCreateTaskUseCase(store)
+	assignUseCase := taskapp.NewAssignTaskUseCase(store, userRepo)
 
 	// Создаем двух пользователей
 	alice := uuid.NewUUID()
@@ -116,7 +116,7 @@ func TestAssignTaskUseCase_Reassign(t *testing.T) {
 	userRepo.AddUser(bob, "bob", "Bob")
 
 	// Создаем задачу, назначенную на Alice
-	createCmd := taskusecase.CreateTaskCommand{
+	createCmd := taskapp.CreateTaskCommand{
 		ChatID:     uuid.NewUUID(),
 		Title:      "Test Task",
 		AssigneeID: &alice,
@@ -126,7 +126,7 @@ func TestAssignTaskUseCase_Reassign(t *testing.T) {
 	require.NoError(t, err)
 
 	// Act: Переназначаем на Bob
-	reassignCmd := taskusecase.AssignTaskCommand{
+	reassignCmd := taskapp.AssignTaskCommand{
 		TaskID:     createResult.TaskID,
 		AssigneeID: &bob,
 		AssignedBy: uuid.NewUUID(),
@@ -148,14 +148,14 @@ func TestAssignTaskUseCase_Idempotent(t *testing.T) {
 	store := eventstore.NewInMemoryEventStore()
 	userRepo := mocks.NewMockUserRepository()
 
-	createUseCase := taskusecase.NewCreateTaskUseCase(store)
-	assignUseCase := taskusecase.NewAssignTaskUseCase(store, userRepo)
+	createUseCase := taskapp.NewCreateTaskUseCase(store)
+	assignUseCase := taskapp.NewAssignTaskUseCase(store, userRepo)
 
 	assigneeID := uuid.NewUUID()
 	userRepo.AddUser(assigneeID, "alice", "Alice")
 
 	// Создаем задачу, уже назначенную на Alice
-	createCmd := taskusecase.CreateTaskCommand{
+	createCmd := taskapp.CreateTaskCommand{
 		ChatID:     uuid.NewUUID(),
 		Title:      "Test Task",
 		AssigneeID: &assigneeID,
@@ -165,7 +165,7 @@ func TestAssignTaskUseCase_Idempotent(t *testing.T) {
 	require.NoError(t, err)
 
 	// Act: Повторно назначаем на Alice
-	assignCmd := taskusecase.AssignTaskCommand{
+	assignCmd := taskapp.AssignTaskCommand{
 		TaskID:     createResult.TaskID,
 		AssigneeID: &assigneeID,
 		AssignedBy: uuid.NewUUID(),
@@ -185,11 +185,11 @@ func TestAssignTaskUseCase_IdempotentUnassign(t *testing.T) {
 	store := eventstore.NewInMemoryEventStore()
 	userRepo := mocks.NewMockUserRepository()
 
-	createUseCase := taskusecase.NewCreateTaskUseCase(store)
-	assignUseCase := taskusecase.NewAssignTaskUseCase(store, userRepo)
+	createUseCase := taskapp.NewCreateTaskUseCase(store)
+	assignUseCase := taskapp.NewAssignTaskUseCase(store, userRepo)
 
 	// Создаем задачу без assignee
-	createCmd := taskusecase.CreateTaskCommand{
+	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
 		CreatedBy: uuid.NewUUID(),
@@ -198,7 +198,7 @@ func TestAssignTaskUseCase_IdempotentUnassign(t *testing.T) {
 	require.NoError(t, err)
 
 	// Act: Пытаемся снять assignee, когда его нет
-	unassignCmd := taskusecase.AssignTaskCommand{
+	unassignCmd := taskapp.AssignTaskCommand{
 		TaskID:     createResult.TaskID,
 		AssigneeID: nil,
 		AssignedBy: uuid.NewUUID(),
@@ -215,40 +215,40 @@ func TestAssignTaskUseCase_ValidationErrors(t *testing.T) {
 	tests := []struct {
 		name        string
 		setupMock   func(*mocks.MockUserRepository)
-		cmd         taskusecase.AssignTaskCommand
+		cmd         taskapp.AssignTaskCommand
 		expectedErr error
 	}{
 		{
 			name:      "Empty TaskID",
 			setupMock: func(_ *mocks.MockUserRepository) {},
-			cmd: taskusecase.AssignTaskCommand{
+			cmd: taskapp.AssignTaskCommand{
 				TaskID:     uuid.UUID(""),
 				AssigneeID: ptr(uuid.NewUUID()),
 				AssignedBy: uuid.NewUUID(),
 			},
-			expectedErr: taskusecase.ErrInvalidTaskID,
+			expectedErr: taskapp.ErrInvalidTaskID,
 		},
 		{
 			name:      "Empty AssignedBy",
 			setupMock: func(_ *mocks.MockUserRepository) {},
-			cmd: taskusecase.AssignTaskCommand{
+			cmd: taskapp.AssignTaskCommand{
 				TaskID:     uuid.NewUUID(),
 				AssigneeID: ptr(uuid.NewUUID()),
 				AssignedBy: uuid.UUID(""),
 			},
-			expectedErr: taskusecase.ErrInvalidUserID,
+			expectedErr: taskapp.ErrInvalidUserID,
 		},
 		{
 			name: "User Not Found",
 			setupMock: func(_ *mocks.MockUserRepository) {
 				// не добавляем пользователя
 			},
-			cmd: taskusecase.AssignTaskCommand{
+			cmd: taskapp.AssignTaskCommand{
 				TaskID:     uuid.NewUUID(),
 				AssigneeID: ptr(uuid.NewUUID()),
 				AssignedBy: uuid.NewUUID(),
 			},
-			expectedErr: taskusecase.ErrUserNotFound,
+			expectedErr: taskapp.ErrUserNotFound,
 		},
 	}
 
@@ -259,7 +259,7 @@ func TestAssignTaskUseCase_ValidationErrors(t *testing.T) {
 			userRepo := mocks.NewMockUserRepository()
 			tt.setupMock(userRepo)
 
-			useCase := taskusecase.NewAssignTaskUseCase(store, userRepo)
+			useCase := taskapp.NewAssignTaskUseCase(store, userRepo)
 
 			// Act
 			result, err := useCase.Execute(context.Background(), tt.cmd)
@@ -280,9 +280,9 @@ func TestAssignTaskUseCase_TaskNotFound(t *testing.T) {
 	assigneeID := uuid.NewUUID()
 	userRepo.AddUser(assigneeID, "alice", "Alice")
 
-	useCase := taskusecase.NewAssignTaskUseCase(store, userRepo)
+	useCase := taskapp.NewAssignTaskUseCase(store, userRepo)
 
-	cmd := taskusecase.AssignTaskCommand{
+	cmd := taskapp.AssignTaskCommand{
 		TaskID:     uuid.NewUUID(), // не существует
 		AssigneeID: &assigneeID,
 		AssignedBy: uuid.NewUUID(),
@@ -293,7 +293,7 @@ func TestAssignTaskUseCase_TaskNotFound(t *testing.T) {
 
 	// Assert
 	require.Error(t, err)
-	require.ErrorIs(t, err, taskusecase.ErrTaskNotFound)
+	require.ErrorIs(t, err, taskapp.ErrTaskNotFound)
 	assert.Empty(t, result.Events)
 }
 
@@ -302,8 +302,8 @@ func TestAssignTaskUseCase_MultipleReassignments(t *testing.T) {
 	store := eventstore.NewInMemoryEventStore()
 	userRepo := mocks.NewMockUserRepository()
 
-	createUseCase := taskusecase.NewCreateTaskUseCase(store)
-	assignUseCase := taskusecase.NewAssignTaskUseCase(store, userRepo)
+	createUseCase := taskapp.NewCreateTaskUseCase(store)
+	assignUseCase := taskapp.NewAssignTaskUseCase(store, userRepo)
 
 	// Создаем трех пользователей
 	alice := uuid.NewUUID()
@@ -314,7 +314,7 @@ func TestAssignTaskUseCase_MultipleReassignments(t *testing.T) {
 	userRepo.AddUser(charlie, "charlie", "Charlie")
 
 	// Создаем задачу без assignee
-	createCmd := taskusecase.CreateTaskCommand{
+	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
 		CreatedBy: uuid.NewUUID(),
@@ -325,7 +325,7 @@ func TestAssignTaskUseCase_MultipleReassignments(t *testing.T) {
 	managerID := uuid.NewUUID()
 
 	// Act & Assert: nil → Alice
-	result1, err := assignUseCase.Execute(context.Background(), taskusecase.AssignTaskCommand{
+	result1, err := assignUseCase.Execute(context.Background(), taskapp.AssignTaskCommand{
 		TaskID:     createResult.TaskID,
 		AssigneeID: &alice,
 		AssignedBy: managerID,
@@ -334,7 +334,7 @@ func TestAssignTaskUseCase_MultipleReassignments(t *testing.T) {
 	assert.Equal(t, 2, result1.Version)
 
 	// Alice → Bob
-	result2, err := assignUseCase.Execute(context.Background(), taskusecase.AssignTaskCommand{
+	result2, err := assignUseCase.Execute(context.Background(), taskapp.AssignTaskCommand{
 		TaskID:     createResult.TaskID,
 		AssigneeID: &bob,
 		AssignedBy: managerID,
@@ -343,7 +343,7 @@ func TestAssignTaskUseCase_MultipleReassignments(t *testing.T) {
 	assert.Equal(t, 3, result2.Version)
 
 	// Bob → Charlie
-	result3, err := assignUseCase.Execute(context.Background(), taskusecase.AssignTaskCommand{
+	result3, err := assignUseCase.Execute(context.Background(), taskapp.AssignTaskCommand{
 		TaskID:     createResult.TaskID,
 		AssigneeID: &charlie,
 		AssignedBy: managerID,
@@ -352,7 +352,7 @@ func TestAssignTaskUseCase_MultipleReassignments(t *testing.T) {
 	assert.Equal(t, 4, result3.Version)
 
 	// Charlie → nil
-	result4, err := assignUseCase.Execute(context.Background(), taskusecase.AssignTaskCommand{
+	result4, err := assignUseCase.Execute(context.Background(), taskapp.AssignTaskCommand{
 		TaskID:     createResult.TaskID,
 		AssigneeID: nil,
 		AssignedBy: managerID,
@@ -371,13 +371,13 @@ func TestAssignTaskUseCase_UnassignValidation(t *testing.T) {
 	store := eventstore.NewInMemoryEventStore()
 	userRepo := mocks.NewMockUserRepository()
 
-	createUseCase := taskusecase.NewCreateTaskUseCase(store)
-	assignUseCase := taskusecase.NewAssignTaskUseCase(store, userRepo)
+	createUseCase := taskapp.NewCreateTaskUseCase(store)
+	assignUseCase := taskapp.NewAssignTaskUseCase(store, userRepo)
 
 	assigneeID := uuid.NewUUID()
 	userRepo.AddUser(assigneeID, "alice", "Alice")
 
-	createCmd := taskusecase.CreateTaskCommand{
+	createCmd := taskapp.CreateTaskCommand{
 		ChatID:     uuid.NewUUID(),
 		Title:      "Test Task",
 		AssigneeID: &assigneeID,
@@ -387,7 +387,7 @@ func TestAssignTaskUseCase_UnassignValidation(t *testing.T) {
 	require.NoError(t, err)
 
 	// Act: Снимаем assignee - не требуется валидация пользователя
-	unassignCmd := taskusecase.AssignTaskCommand{
+	unassignCmd := taskapp.AssignTaskCommand{
 		TaskID:     createResult.TaskID,
 		AssigneeID: nil,
 		AssignedBy: uuid.NewUUID(),

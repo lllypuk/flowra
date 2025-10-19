@@ -8,19 +8,19 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	taskapp "github.com/lllypuk/teams-up/internal/application/task"
 	"github.com/lllypuk/teams-up/internal/domain/task"
 	"github.com/lllypuk/teams-up/internal/domain/uuid"
 	"github.com/lllypuk/teams-up/internal/infrastructure/eventstore"
-	taskusecase "github.com/lllypuk/teams-up/internal/usecase/task"
 )
 
 func TestSetDueDateUseCase_Success(t *testing.T) {
 	// Arrange
 	store := eventstore.NewInMemoryEventStore()
-	createUseCase := taskusecase.NewCreateTaskUseCase(store)
-	dueDateUseCase := taskusecase.NewSetDueDateUseCase(store)
+	createUseCase := taskapp.NewCreateTaskUseCase(store)
+	dueDateUseCase := taskapp.NewSetDueDateUseCase(store)
 
-	createCmd := taskusecase.CreateTaskCommand{
+	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
 		CreatedBy: uuid.NewUUID(),
@@ -31,7 +31,7 @@ func TestSetDueDateUseCase_Success(t *testing.T) {
 	// Устанавливаем дедлайн
 	dueDate := time.Now().Add(7 * 24 * time.Hour) // через неделю
 	userID := uuid.NewUUID()
-	dueDateCmd := taskusecase.SetDueDateCommand{
+	dueDateCmd := taskapp.SetDueDateCommand{
 		TaskID:    createResult.TaskID,
 		DueDate:   &dueDate,
 		ChangedBy: userID,
@@ -57,12 +57,12 @@ func TestSetDueDateUseCase_Success(t *testing.T) {
 func TestSetDueDateUseCase_RemoveDueDate(t *testing.T) {
 	// Arrange
 	store := eventstore.NewInMemoryEventStore()
-	createUseCase := taskusecase.NewCreateTaskUseCase(store)
-	dueDateUseCase := taskusecase.NewSetDueDateUseCase(store)
+	createUseCase := taskapp.NewCreateTaskUseCase(store)
+	dueDateUseCase := taskapp.NewSetDueDateUseCase(store)
 
 	// Создаем задачу с дедлайном
 	dueDate := time.Now().Add(7 * 24 * time.Hour)
-	createCmd := taskusecase.CreateTaskCommand{
+	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
 		DueDate:   &dueDate,
@@ -72,7 +72,7 @@ func TestSetDueDateUseCase_RemoveDueDate(t *testing.T) {
 	require.NoError(t, err)
 
 	// Act: Снимаем дедлайн (nil)
-	dueDateCmd := taskusecase.SetDueDateCommand{
+	dueDateCmd := taskapp.SetDueDateCommand{
 		TaskID:    createResult.TaskID,
 		DueDate:   nil,
 		ChangedBy: uuid.NewUUID(),
@@ -92,11 +92,11 @@ func TestSetDueDateUseCase_RemoveDueDate(t *testing.T) {
 func TestSetDueDateUseCase_Idempotent(t *testing.T) {
 	// Arrange
 	store := eventstore.NewInMemoryEventStore()
-	createUseCase := taskusecase.NewCreateTaskUseCase(store)
-	dueDateUseCase := taskusecase.NewSetDueDateUseCase(store)
+	createUseCase := taskapp.NewCreateTaskUseCase(store)
+	dueDateUseCase := taskapp.NewSetDueDateUseCase(store)
 
 	dueDate := time.Now().Add(7 * 24 * time.Hour)
-	createCmd := taskusecase.CreateTaskCommand{
+	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
 		DueDate:   &dueDate,
@@ -106,7 +106,7 @@ func TestSetDueDateUseCase_Idempotent(t *testing.T) {
 	require.NoError(t, err)
 
 	// Act: Повторная установка той же даты
-	dueDateCmd := taskusecase.SetDueDateCommand{
+	dueDateCmd := taskapp.SetDueDateCommand{
 		TaskID:    createResult.TaskID,
 		DueDate:   &dueDate,
 		ChangedBy: uuid.NewUUID(),
@@ -124,11 +124,11 @@ func TestSetDueDateUseCase_Idempotent(t *testing.T) {
 func TestSetDueDateUseCase_IdempotentRemove(t *testing.T) {
 	// Arrange
 	store := eventstore.NewInMemoryEventStore()
-	createUseCase := taskusecase.NewCreateTaskUseCase(store)
-	dueDateUseCase := taskusecase.NewSetDueDateUseCase(store)
+	createUseCase := taskapp.NewCreateTaskUseCase(store)
+	dueDateUseCase := taskapp.NewSetDueDateUseCase(store)
 
 	// Создаем задачу без дедлайна
-	createCmd := taskusecase.CreateTaskCommand{
+	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
 		CreatedBy: uuid.NewUUID(),
@@ -137,7 +137,7 @@ func TestSetDueDateUseCase_IdempotentRemove(t *testing.T) {
 	require.NoError(t, err)
 
 	// Act: Пытаемся снять дедлайн, когда его нет
-	dueDateCmd := taskusecase.SetDueDateCommand{
+	dueDateCmd := taskapp.SetDueDateCommand{
 		TaskID:    createResult.TaskID,
 		DueDate:   nil,
 		ChangedBy: uuid.NewUUID(),
@@ -153,10 +153,10 @@ func TestSetDueDateUseCase_IdempotentRemove(t *testing.T) {
 func TestSetDueDateUseCase_PastDate(t *testing.T) {
 	// Arrange
 	store := eventstore.NewInMemoryEventStore()
-	createUseCase := taskusecase.NewCreateTaskUseCase(store)
-	dueDateUseCase := taskusecase.NewSetDueDateUseCase(store)
+	createUseCase := taskapp.NewCreateTaskUseCase(store)
+	dueDateUseCase := taskapp.NewSetDueDateUseCase(store)
 
-	createCmd := taskusecase.CreateTaskCommand{
+	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
 		CreatedBy: uuid.NewUUID(),
@@ -166,7 +166,7 @@ func TestSetDueDateUseCase_PastDate(t *testing.T) {
 
 	// Act: Устанавливаем дату в прошлом (просроченная задача)
 	pastDate := time.Now().Add(-7 * 24 * time.Hour)
-	dueDateCmd := taskusecase.SetDueDateCommand{
+	dueDateCmd := taskapp.SetDueDateCommand{
 		TaskID:    createResult.TaskID,
 		DueDate:   &pastDate,
 		ChangedBy: uuid.NewUUID(),
@@ -185,10 +185,10 @@ func TestSetDueDateUseCase_PastDate(t *testing.T) {
 func TestSetDueDateUseCase_MultipleDateChanges(t *testing.T) {
 	// Arrange
 	store := eventstore.NewInMemoryEventStore()
-	createUseCase := taskusecase.NewCreateTaskUseCase(store)
-	dueDateUseCase := taskusecase.NewSetDueDateUseCase(store)
+	createUseCase := taskapp.NewCreateTaskUseCase(store)
+	dueDateUseCase := taskapp.NewSetDueDateUseCase(store)
 
-	createCmd := taskusecase.CreateTaskCommand{
+	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
 		CreatedBy: uuid.NewUUID(),
@@ -200,7 +200,7 @@ func TestSetDueDateUseCase_MultipleDateChanges(t *testing.T) {
 
 	// Act & Assert: nil → date1 → date2 → nil
 	date1 := time.Now().Add(7 * 24 * time.Hour)
-	result1, err := dueDateUseCase.Execute(context.Background(), taskusecase.SetDueDateCommand{
+	result1, err := dueDateUseCase.Execute(context.Background(), taskapp.SetDueDateCommand{
 		TaskID:    createResult.TaskID,
 		DueDate:   &date1,
 		ChangedBy: userID,
@@ -209,7 +209,7 @@ func TestSetDueDateUseCase_MultipleDateChanges(t *testing.T) {
 	assert.Equal(t, 2, result1.Version)
 
 	date2 := time.Now().Add(14 * 24 * time.Hour)
-	result2, err := dueDateUseCase.Execute(context.Background(), taskusecase.SetDueDateCommand{
+	result2, err := dueDateUseCase.Execute(context.Background(), taskapp.SetDueDateCommand{
 		TaskID:    createResult.TaskID,
 		DueDate:   &date2,
 		ChangedBy: userID,
@@ -217,7 +217,7 @@ func TestSetDueDateUseCase_MultipleDateChanges(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 3, result2.Version)
 
-	result3, err := dueDateUseCase.Execute(context.Background(), taskusecase.SetDueDateCommand{
+	result3, err := dueDateUseCase.Execute(context.Background(), taskapp.SetDueDateCommand{
 		TaskID:    createResult.TaskID,
 		DueDate:   nil,
 		ChangedBy: userID,
@@ -234,35 +234,35 @@ func TestSetDueDateUseCase_MultipleDateChanges(t *testing.T) {
 func TestSetDueDateUseCase_ValidationErrors(t *testing.T) {
 	tests := []struct {
 		name        string
-		cmd         taskusecase.SetDueDateCommand
+		cmd         taskapp.SetDueDateCommand
 		expectedErr error
 	}{
 		{
 			name: "Empty TaskID",
-			cmd: taskusecase.SetDueDateCommand{
+			cmd: taskapp.SetDueDateCommand{
 				TaskID:    uuid.UUID(""),
 				DueDate:   ptr(time.Now()),
 				ChangedBy: uuid.NewUUID(),
 			},
-			expectedErr: taskusecase.ErrInvalidTaskID,
+			expectedErr: taskapp.ErrInvalidTaskID,
 		},
 		{
 			name: "Date Too Far in Past",
-			cmd: taskusecase.SetDueDateCommand{
+			cmd: taskapp.SetDueDateCommand{
 				TaskID:    uuid.NewUUID(),
 				DueDate:   ptr(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)),
 				ChangedBy: uuid.NewUUID(),
 			},
-			expectedErr: taskusecase.ErrInvalidDate,
+			expectedErr: taskapp.ErrInvalidDate,
 		},
 		{
 			name: "Empty ChangedBy",
-			cmd: taskusecase.SetDueDateCommand{
+			cmd: taskapp.SetDueDateCommand{
 				TaskID:    uuid.NewUUID(),
 				DueDate:   ptr(time.Now()),
 				ChangedBy: uuid.UUID(""),
 			},
-			expectedErr: taskusecase.ErrInvalidUserID,
+			expectedErr: taskapp.ErrInvalidUserID,
 		},
 	}
 
@@ -270,7 +270,7 @@ func TestSetDueDateUseCase_ValidationErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
 			store := eventstore.NewInMemoryEventStore()
-			useCase := taskusecase.NewSetDueDateUseCase(store)
+			useCase := taskapp.NewSetDueDateUseCase(store)
 
 			// Act
 			result, err := useCase.Execute(context.Background(), tt.cmd)
@@ -286,10 +286,10 @@ func TestSetDueDateUseCase_ValidationErrors(t *testing.T) {
 func TestSetDueDateUseCase_TaskNotFound(t *testing.T) {
 	// Arrange
 	store := eventstore.NewInMemoryEventStore()
-	useCase := taskusecase.NewSetDueDateUseCase(store)
+	useCase := taskapp.NewSetDueDateUseCase(store)
 
 	dueDate := time.Now().Add(7 * 24 * time.Hour)
-	cmd := taskusecase.SetDueDateCommand{
+	cmd := taskapp.SetDueDateCommand{
 		TaskID:    uuid.NewUUID(), // не существует
 		DueDate:   &dueDate,
 		ChangedBy: uuid.NewUUID(),
@@ -300,6 +300,6 @@ func TestSetDueDateUseCase_TaskNotFound(t *testing.T) {
 
 	// Assert
 	require.Error(t, err)
-	require.ErrorIs(t, err, taskusecase.ErrTaskNotFound)
+	require.ErrorIs(t, err, taskapp.ErrTaskNotFound)
 	assert.Empty(t, result.Events)
 }

@@ -5,20 +5,19 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/lllypuk/teams-up/internal/application/shared"
 	"github.com/lllypuk/teams-up/internal/domain/task"
-	"github.com/lllypuk/teams-up/internal/infrastructure/eventstore"
-	"github.com/lllypuk/teams-up/internal/usecase/shared"
 )
 
 // AssignTaskUseCase обрабатывает назначение исполнителя задачи
 type AssignTaskUseCase struct {
-	eventStore     eventstore.EventStore
+	eventStore     shared.EventStore
 	userRepository shared.UserRepository
 }
 
 // NewAssignTaskUseCase создает новый use case для назначения исполнителя
 func NewAssignTaskUseCase(
-	eventStore eventstore.EventStore,
+	eventStore shared.EventStore,
 	userRepository shared.UserRepository,
 ) *AssignTaskUseCase {
 	return &AssignTaskUseCase{
@@ -37,7 +36,7 @@ func (uc *AssignTaskUseCase) Execute(ctx context.Context, cmd AssignTaskCommand)
 	// 2. Загрузка событий из Event Store
 	events, err := uc.eventStore.LoadEvents(ctx, cmd.TaskID.String())
 	if err != nil {
-		if errors.Is(err, eventstore.ErrAggregateNotFound) {
+		if errors.Is(err, shared.ErrAggregateNotFound) {
 			return TaskResult{}, ErrTaskNotFound
 		}
 		return TaskResult{}, fmt.Errorf("failed to load events: %w", err)
@@ -74,7 +73,7 @@ func (uc *AssignTaskUseCase) Execute(ctx context.Context, cmd AssignTaskCommand)
 	// 6. Сохранение новых событий
 	expectedVersion := len(events)
 	if saveErr := uc.eventStore.SaveEvents(ctx, cmd.TaskID.String(), newEvents, expectedVersion); saveErr != nil {
-		if errors.Is(saveErr, eventstore.ErrConcurrencyConflict) {
+		if errors.Is(saveErr, shared.ErrConcurrencyConflict) {
 			return TaskResult{}, ErrConcurrentUpdate
 		}
 		return TaskResult{}, fmt.Errorf("failed to save events: %w", saveErr)

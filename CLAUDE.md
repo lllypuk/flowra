@@ -124,3 +124,136 @@ configs/              # Configuration files
 - E2E tests for user workflows
 - Load testing for performance validation
 - Test database uses in-memory MongoDB (testcontainers)
+
+## Interface Design Guidelines
+
+This project follows **idiomatic Go interface patterns**. Always follow these rules when working with interfaces:
+
+### Core Principle: Accept Interfaces, Return Structs
+
+> **"Interfaces should be declared on the consumer side, not the producer side"**
+
+### Rules for Interface Declaration
+
+1. **Declare interfaces where they are used (consumer side)**
+   - ✅ CORRECT: Application layer declares `EventStore` interface it depends on
+   - ❌ WRONG: Infrastructure layer declares `EventStore` interface it implements
+
+2. **Keep interfaces small and focused**
+   - Prefer small, single-purpose interfaces
+   - Large interfaces are acceptable if the consumer needs all methods
+
+3. **Cross-domain dependencies require local interfaces**
+   - If domain A uses domain B's repository, declare the interface in domain A
+   - Example: `tag` domain declares `ChatRepository`, `UserRepository`, `MessageRepository` locally
+
+### Directory-Specific Patterns
+
+#### Application Layer (`internal/application/`)
+```go
+// ✅ CORRECT: Application layer owns interfaces it depends on
+package shared
+
+type EventStore interface {
+    SaveEvents(...) error
+    LoadEvents(...) error
+}
+
+type UserRepository interface {
+    Exists(ctx context.Context, userID uuid.UUID) (bool, error)
+}
+```
+
+#### Domain Layer (`internal/domain/`)
+```go
+// ✅ CORRECT: Domain declares interfaces for dependencies it needs
+package tag
+
+type ChatRepository interface {
+    Load(ctx context.Context, chatID uuid.UUID) (*chat.Chat, error)
+    Save(ctx context.Context, chat *chat.Chat) error
+}
+
+// Note: Still import domain types (chat.Chat), but NOT their repository interfaces
+```
+
+#### Infrastructure Layer (`internal/infrastructure/`)
+```go
+// ✅ CORRECT: Infrastructure implements interfaces, doesn't declare them
+package eventstore
+
+import "github.com/lllypuk/teams-up/internal/application/shared"
+
+type InMemoryEventStore struct { ... }
+
+// Implements shared.EventStore interface
+func (s *InMemoryEventStore) SaveEvents(...) error { ... }
+```
+
+### Anti-Patterns to Avoid
+
+❌ **DON'T declare interfaces in infrastructure**
+```go
+// BAD: infrastructure/eventstore/eventstore.go
+type EventStore interface { ... }  // ❌ Wrong location!
+```
+
+❌ **DON'T import repository interfaces across domains**
+```go
+// BAD: domain/tag/executor.go
+import "github.com/lllypuk/teams-up/internal/domain/chat"
+
+type Executor struct {
+    chatRepo chat.Repository  // ❌ Cross-domain interface dependency!
+}
+```
+
+❌ **DON'T create generic repository interfaces in shared packages** (unless truly needed everywhere)
+```go
+// BAD (usually): domain/shared/repository.go
+type Repository[T any] interface { ... }  // ❌ Premature abstraction!
+```
+
+### When to Share Interfaces
+
+Only share interfaces when multiple consumers need the **exact same interface**:
+- `application/shared/` - for interfaces used by multiple use cases
+- NOT for "might be reused someday" - wait until actual reuse happens
+
+### Migration Checklist
+
+When adding a new dependency:
+1. ✅ Declare interface in the **consumer** package
+2. ✅ Import only domain **types**, not interfaces
+3. ✅ Implementation imports interface from consumer
+4. ✅ Use dependency injection to wire everything together
+
+### Example: Correct Interface Usage
+
+```go
+// Package: internal/application/task
+type TaskUseCase struct {
+    eventStore shared.EventStore      // ✅ Interface from shared (consumer side)
+    userRepo   shared.UserRepository   // ✅ Interface from shared (consumer side)
+}
+
+// Package: internal/domain/tag
+type CommandExecutor struct {
+    chatRepo ChatRepository    // ✅ Interface declared in THIS package
+    userRepo UserRepository    // ✅ Interface declared in THIS package
+}
+
+// Package: internal/infrastructure/persistence
+type MongoUserRepository struct { ... }
+
+// ✅ Implements shared.UserRepository (from consumer)
+func (r *MongoUserRepository) Exists(...) (bool, error) { ... }
+```
+
+### Benefits of This Approach
+
+- **Loose coupling**: Consumers don't depend on infrastructure packages
+- **Testability**: Easy to mock dependencies
+- **Flexibility**: Change implementations without affecting consumers
+- **Idiomatic Go**: Follows community best practices
+- **Clear ownership**: Interface changes driven by consumer needs

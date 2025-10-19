@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/lllypuk/teams-up/internal/application/shared"
 	"github.com/lllypuk/teams-up/internal/domain/task"
 	"github.com/lllypuk/teams-up/internal/domain/uuid"
-	"github.com/lllypuk/teams-up/internal/infrastructure/eventstore"
 )
 
 // AggregateCommand представляет общий интерфейс для команд, работающих с агрегатом задачи
@@ -20,11 +20,11 @@ type AggregateOperation func(aggregate *task.Aggregate) error
 
 // BaseExecutor содержит общую логику для выполнения команд с Event Sourcing
 type BaseExecutor struct {
-	eventStore eventstore.EventStore
+	eventStore shared.EventStore
 }
 
 // NewBaseExecutor создает новый базовый executor
-func NewBaseExecutor(eventStore eventstore.EventStore) *BaseExecutor {
+func NewBaseExecutor(eventStore shared.EventStore) *BaseExecutor {
 	return &BaseExecutor{
 		eventStore: eventStore,
 	}
@@ -45,7 +45,7 @@ func (e *BaseExecutor) Execute(
 	// 1. Загрузка событий из Event Store
 	events, err := e.eventStore.LoadEvents(ctx, taskID.String())
 	if err != nil {
-		if errors.Is(err, eventstore.ErrAggregateNotFound) {
+		if errors.Is(err, shared.ErrAggregateNotFound) {
 			return TaskResult{}, ErrTaskNotFound
 		}
 		return TaskResult{}, fmt.Errorf("failed to load events: %w", err)
@@ -81,7 +81,7 @@ func (e *BaseExecutor) Execute(
 	// 5. Сохранение новых событий
 	expectedVersion := len(events)
 	if saveErr := e.eventStore.SaveEvents(ctx, taskID.String(), newEvents, expectedVersion); saveErr != nil {
-		if errors.Is(saveErr, eventstore.ErrConcurrencyConflict) {
+		if errors.Is(saveErr, shared.ErrConcurrencyConflict) {
 			return TaskResult{}, ErrConcurrentUpdate
 		}
 		return TaskResult{}, fmt.Errorf("failed to save events: %w", saveErr)

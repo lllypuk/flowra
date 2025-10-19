@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/lllypuk/teams-up/internal/application/shared"
 	"github.com/lllypuk/teams-up/internal/domain/event"
 )
 
@@ -37,7 +38,7 @@ func (s *InMemoryEventStore) SaveEvents(
 	// Проверка optimistic locking
 	currentVersion := len(s.events[aggregateID])
 	if currentVersion != expectedVersion {
-		return ErrConcurrencyConflict
+		return shared.ErrConcurrencyConflict
 	}
 
 	// Сохраняем события
@@ -56,7 +57,7 @@ func (s *InMemoryEventStore) LoadEvents(
 
 	events, exists := s.events[aggregateID]
 	if !exists {
-		return nil, ErrAggregateNotFound
+		return nil, shared.ErrAggregateNotFound
 	}
 
 	// Возвращаем копию чтобы избежать race conditions
