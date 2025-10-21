@@ -6,6 +6,7 @@ import (
 
 	"github.com/lllypuk/flowra/internal/application/shared"
 	"github.com/lllypuk/flowra/internal/domain/chat"
+	"github.com/lllypuk/flowra/internal/domain/event"
 )
 
 // CreateChatUseCase обрабатывает создание нового чата
@@ -27,14 +28,32 @@ func (uc *CreateChatUseCase) Execute(ctx context.Context, cmd CreateChatCommand)
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Создание агрегата
-	chatAggregate, err := chat.NewChat(cmd.WorkspaceID, cmd.Type, cmd.IsPublic, cmd.CreatedBy)
+	// Создание агрегата как Discussion для сохранения трейла событий конверсии
+	chatAggregate, err := chat.NewChat(cmd.WorkspaceID, chat.TypeDiscussion, cmd.IsPublic, cmd.CreatedBy)
 	if err != nil {
 		return Result{}, fmt.Errorf("failed to create chat: %w", err)
 	}
 
+	// Создание события ChatCreated для отслеживания создания в event sourcing
+	chatCreatedEvent := chat.NewChatCreated(
+		chatAggregate.ID(),
+		cmd.WorkspaceID,
+		chat.TypeDiscussion,
+		cmd.IsPublic,
+		cmd.CreatedBy,
+		chatAggregate.CreatedAt(),
+		event.Metadata{
+			CorrelationID: chatAggregate.ID().String(),
+			CausationID:   chatAggregate.ID().String(),
+			UserID:        cmd.CreatedBy.String(),
+		},
+	)
+	if applyErr := chatAggregate.ApplyAndTrack(chatCreatedEvent); applyErr != nil {
+		return Result{}, fmt.Errorf("failed to apply ChatCreated event: %w", applyErr)
+	}
+
 	// Для typed чатов (Task/Bug/Epic) конвертируем и устанавливаем title
-	if cmd.Type != chat.TypeDiscussion && cmd.Title != "" {
+	if cmd.Type != chat.TypeDiscussion {
 		switch cmd.Type {
 		case chat.TypeTask:
 			if convertErr := chatAggregate.ConvertToTask(cmd.Title, cmd.CreatedBy); convertErr != nil {
@@ -48,8 +67,6 @@ func (uc *CreateChatUseCase) Execute(ctx context.Context, cmd CreateChatCommand)
 			if convertErr := chatAggregate.ConvertToEpic(cmd.Title, cmd.CreatedBy); convertErr != nil {
 				return Result{}, fmt.Errorf("failed to convert to epic: %w", convertErr)
 			}
-		case chat.TypeDiscussion:
-			// TypeDiscussion не требует конвертации
 		}
 	}
 

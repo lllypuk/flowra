@@ -586,6 +586,16 @@ func (c *Chat) applyEvent(evt event.DomainEvent) {
 	c.uncommittedEvents = append(c.uncommittedEvents, evt)
 }
 
+// ApplyAndTrack применяет событие и добавляет его в списокнеиспользованных событий
+// Используется для создания новых событий в UseCase layer
+func (c *Chat) ApplyAndTrack(evt event.DomainEvent) error {
+	if err := c.Apply(evt); err != nil {
+		return err
+	}
+	c.uncommittedEvents = append(c.uncommittedEvents, evt)
+	return nil
+}
+
 // GetUncommittedEvents возвращает новые события
 func (c *Chat) GetUncommittedEvents() []event.DomainEvent {
 	return c.uncommittedEvents
