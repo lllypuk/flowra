@@ -2,7 +2,7 @@
 
 ## Обзор
 
-Этот документ содержит инструкции по настройке локальной среды разработки для проекта New Teams Up.
+Этот документ содержит инструкции по настройке локальной среды разработки для проекта Flowra.
 
 ## Системные требования
 
@@ -91,8 +91,8 @@ curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/insta
 ### 1. Клонирование репозитория
 
 ```bash
-git clone https://github.com/lllypuk/new-flowra.git
-cd new-flowra
+git clone https://github.com/lllypuk/flowra.git
+cd flowra
 ```
 
 ### 2. Настройка переменных окружения
@@ -108,7 +108,7 @@ cp .env.example .env
 ```env
 # Database
 MONGODB_URI=mongodb://admin:admin123@localhost:27017
-MONGODB_DATABASE=teams_up
+MONGODB_DATABASE=flowra
 
 # Redis
 REDIS_HOST=localhost

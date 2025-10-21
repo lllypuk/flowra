@@ -31,7 +31,7 @@ func SetupTestMongoDB(t *testing.T) *mongo.Database {
 	}
 
 	// Создаем тестовую БД с уникальным именем
-	dbName := "teams_up_test_" + t.Name()
+	dbName := "flowra_test_" + t.Name()
 	db := client.Database(dbName)
 
 	// Cleanup: удаляем БД после теста

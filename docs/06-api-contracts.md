@@ -14,7 +14,7 @@ API системы состоит из двух частей:
 ### Base URL
 
 ```
-Production:  https://api.teamsup.com
+Production:  https://api.flowra.com
 Development: http://localhost:8080
 ```
 
@@ -132,7 +132,7 @@ HTTP/1.1 200 OK
 Content-Type: application/json
 
 {
-  "authUrl": "http://localhost:8090/realms/flowra/protocol/openid-connect/auth?client_id=flowra-app&redirect_uri=http://localhost:8080/auth/callback&response_type=code&state=random-state"
+  "authUrl": "http://localhost:8090/realms/flowra/protocol/openid-connect/auth?client_id=flowra-backend&redirect_uri=http://localhost:8080/auth/callback&response_type=code&state=random-state"
 }
 ```
 
@@ -211,7 +211,7 @@ Authorization: Bearer {token}
   "username": "alice",
   "email": "alice@example.com",
   "displayName": "Alice Smith",
-  "avatarUrl": "https://cdn.teamsup.com/avatars/alice.jpg",
+  "avatarUrl": "https://cdn.flowra.com/avatars/alice.jpg",
   "isSystemAdmin": false,
   "workspaces": [
     {
@@ -566,7 +566,7 @@ HTTP/1.1 201 Created
 {
   "id": "invite-uuid",
   "token": "random-secure-token",
-  "url": "https://teamsup.com/invite/random-secure-token",
+  "url": "https://flowra.com/invite/random-secure-token",
   "workspaceId": "workspace-uuid",
   "createdBy": {
     "id": "user-uuid",
@@ -604,7 +604,7 @@ Authorization: Bearer {token}
     {
       "id": "invite-uuid-1",
       "token": "token-1",
-      "url": "https://teamsup.com/invite/token-1",
+      "url": "https://flowra.com/invite/token-1",
       "expiresAt": "2025-10-07T10:00:00Z",
       "maxUses": 10,
       "usedCount": 3,
@@ -2118,7 +2118,7 @@ HTTP/1.1 410 Gone
   "error": {
     "code": "API_VERSION_DEPRECATED",
     "message": "API v1 is no longer available. Please use v2.",
-    "upgradeUrl": "https://docs.teamsup.com/api/migration/v1-to-v2"
+    "upgradeUrl": "https://docs.flowra.com/api/migration/v1-to-v2"
   }
 }
 ```

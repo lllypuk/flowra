@@ -269,7 +269,7 @@
 
    mongodb:
      uri: "mongodb://admin:admin123@localhost:27017"
-     database: "teams_up"
+     database: "flowra"
      timeout: 10s
      max_pool_size: 100
 
@@ -387,7 +387,7 @@
 
    # MongoDB
    MONGODB_URI=mongodb://admin:admin123@localhost:27017
-   MONGODB_DATABASE=teams_up
+   MONGODB_DATABASE=flowra
 
    # Redis
    REDIS_ADDR=localhost:6379
@@ -607,7 +607,7 @@
        }
 
        // Создаем тестовую БД с уникальным именем
-       dbName := "teams_up_test_" + t.Name()
+       dbName := "flowra_test_" + t.Name()
        db := client.Database(dbName)
 
        // Cleanup: удаляем БД после теста

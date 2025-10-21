@@ -2,7 +2,7 @@
 
 ## Обзор
 
-Этот документ содержит часто выполняемые задачи и команды для работы с проектом New Teams Up. Используй его как справочник для быстрого выполнения типичных операций разработки.
+Этот документ содержит часто выполняемые задачи и команды для работы с проектом Flowra. Используй его как справочник для быстрого выполнения типичных операций разработки.
 
 ## Структура разработки
 
@@ -739,7 +739,7 @@ docker logs {container_name}
 kubectl logs -f deployment/{service}-deployment
 
 # Database debugging
-mongosh mongodb://admin:admin123@localhost:27017/teams_up
+mongosh mongodb://admin:admin123@localhost:27017/flowra
 show collections # list collections
 db.{collection}.find().limit(10) # query collection
 
@@ -787,4 +787,4 @@ curl http://localhost:8080/ready
 
 ---
 
-*Используй этот документ как быстрый справочник для типичных задач разработки в проекте New Teams Up.*
+*Используй этот документ как быстрый справочник для типичных задач разработки в проекте Flowra.*

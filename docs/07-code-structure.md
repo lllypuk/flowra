@@ -1446,7 +1446,7 @@ func Load() (*Config, error) {
 
     // Environment variables override
     viper.AutomaticEnv()
-    viper.SetEnvPrefix("TEAMSUP")
+    viper.SetEnvPrefix("FLOWRA")
 
     // Defaults
     viper.SetDefault("server.host", "0.0.0.0")

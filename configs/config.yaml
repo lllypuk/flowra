@@ -7,7 +7,7 @@ server:
 
 mongodb:
   uri: "mongodb://admin:admin123@localhost:27017"
-  database: "teams_up"
+  database: "flowra"
   timeout: 10s
   max_pool_size: 100
 
