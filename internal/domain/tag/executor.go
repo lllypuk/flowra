@@ -6,9 +6,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/lllypuk/flowra/internal/domain/chat"
-	"github.com/lllypuk/flowra/internal/domain/event"
-	"github.com/lllypuk/flowra/internal/domain/user"
+	chatApp "github.com/lllypuk/flowra/internal/application/chat"
 	domainUUID "github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
@@ -16,23 +14,20 @@ const (
 	noneUsername = "@none"
 )
 
-// CommandExecutor выполняет tag команды на Chat aggregate
+// CommandExecutor выполняет tag команды через Chat UseCases
 type CommandExecutor struct {
-	chatRepo ChatRepository
-	userRepo UserRepository
-	eventBus event.Bus
+	chatUseCases *ChatUseCases
+	userRepo     UserRepository
 }
 
 // NewCommandExecutor создает новый CommandExecutor
 func NewCommandExecutor(
-	chatRepo ChatRepository,
+	chatUseCases *ChatUseCases,
 	userRepo UserRepository,
-	eventBus event.Bus,
 ) *CommandExecutor {
 	return &CommandExecutor{
-		chatRepo: chatRepo,
-		userRepo: userRepo,
-		eventBus: eventBus,
+		chatUseCases: chatUseCases,
+		userRepo:     userRepo,
 	}
 }
 
@@ -62,94 +57,77 @@ func (e *CommandExecutor) Execute(ctx context.Context, cmd Command, actorID uuid
 	}
 }
 
-// executeCreateTask выполняет команду создания Task
+// executeCreateTask выполняет команду создания Task через UseCase
 func (e *CommandExecutor) executeCreateTask(ctx context.Context, cmd CreateTaskCommand, actorID uuid.UUID) error {
-	// Конвертация UUID
-	chatID := domainUUID.FromGoogleUUID(cmd.ChatID)
-	userID := domainUUID.FromGoogleUUID(actorID)
-
-	// Загрузка чата
-	c, err := e.chatRepo.Load(ctx, chatID)
-	if err != nil {
-		return fmt.Errorf("failed to load chat: %w", err)
+	usecaseCmd := chatApp.ConvertToTaskCommand{
+		ChatID:      domainUUID.FromGoogleUUID(cmd.ChatID),
+		Title:       cmd.Title,
+		ConvertedBy: domainUUID.FromGoogleUUID(actorID),
 	}
 
-	// Выполнение команды на aggregate
-	if err = c.ConvertToTask(cmd.Title, userID); err != nil {
+	_, err := e.chatUseCases.ConvertToTask.Execute(ctx, usecaseCmd)
+	if err != nil {
 		return fmt.Errorf("failed to convert to task: %w", err)
 	}
 
-	// Публикация событий и сохранение
-	return e.publishAndSave(ctx, c)
+	return nil
 }
 
-// executeCreateBug выполняет команду создания Bug
+// executeCreateBug выполняет команду создания Bug через UseCase
 func (e *CommandExecutor) executeCreateBug(ctx context.Context, cmd CreateBugCommand, actorID uuid.UUID) error {
-	chatID := domainUUID.FromGoogleUUID(cmd.ChatID)
-	userID := domainUUID.FromGoogleUUID(actorID)
-
-	c, err := e.chatRepo.Load(ctx, chatID)
-	if err != nil {
-		return fmt.Errorf("failed to load chat: %w", err)
+	usecaseCmd := chatApp.ConvertToBugCommand{
+		ChatID:      domainUUID.FromGoogleUUID(cmd.ChatID),
+		Title:       cmd.Title,
+		ConvertedBy: domainUUID.FromGoogleUUID(actorID),
 	}
 
-	if err = c.ConvertToBug(cmd.Title, userID); err != nil {
+	_, err := e.chatUseCases.ConvertToBug.Execute(ctx, usecaseCmd)
+	if err != nil {
 		return fmt.Errorf("failed to convert to bug: %w", err)
 	}
 
-	return e.publishAndSave(ctx, c)
+	return nil
 }
 
-// executeCreateEpic выполняет команду создания Epic
+// executeCreateEpic выполняет команду создания Epic через UseCase
 func (e *CommandExecutor) executeCreateEpic(ctx context.Context, cmd CreateEpicCommand, actorID uuid.UUID) error {
-	chatID := domainUUID.FromGoogleUUID(cmd.ChatID)
-	userID := domainUUID.FromGoogleUUID(actorID)
-
-	c, err := e.chatRepo.Load(ctx, chatID)
-	if err != nil {
-		return fmt.Errorf("failed to load chat: %w", err)
+	usecaseCmd := chatApp.ConvertToEpicCommand{
+		ChatID:      domainUUID.FromGoogleUUID(cmd.ChatID),
+		Title:       cmd.Title,
+		ConvertedBy: domainUUID.FromGoogleUUID(actorID),
 	}
 
-	if err = c.ConvertToEpic(cmd.Title, userID); err != nil {
+	_, err := e.chatUseCases.ConvertToEpic.Execute(ctx, usecaseCmd)
+	if err != nil {
 		return fmt.Errorf("failed to convert to epic: %w", err)
 	}
 
-	return e.publishAndSave(ctx, c)
+	return nil
 }
 
-// executeChangeStatus выполняет команду изменения статуса
+// executeChangeStatus выполняет команду изменения статуса через UseCase
 func (e *CommandExecutor) executeChangeStatus(ctx context.Context, cmd ChangeStatusCommand, actorID uuid.UUID) error {
-	chatID := domainUUID.FromGoogleUUID(cmd.ChatID)
-	userID := domainUUID.FromGoogleUUID(actorID)
-
-	c, err := e.chatRepo.Load(ctx, chatID)
-	if err != nil {
-		return fmt.Errorf("failed to load chat: %w", err)
+	usecaseCmd := chatApp.ChangeStatusCommand{
+		ChatID:    domainUUID.FromGoogleUUID(cmd.ChatID),
+		Status:    cmd.Status,
+		ChangedBy: domainUUID.FromGoogleUUID(actorID),
 	}
 
-	if err = c.ChangeStatus(cmd.Status, userID); err != nil {
+	_, err := e.chatUseCases.ChangeStatus.Execute(ctx, usecaseCmd)
+	if err != nil {
 		return fmt.Errorf("failed to change status: %w", err)
 	}
 
-	return e.publishAndSave(ctx, c)
+	return nil
 }
 
-// executeAssignUser выполняет команду назначения пользователя
+// executeAssignUser выполняет команду назначения пользователя через UseCase
 func (e *CommandExecutor) executeAssignUser(ctx context.Context, cmd AssignUserCommand, actorID uuid.UUID) error {
-	chatID := domainUUID.FromGoogleUUID(cmd.ChatID)
-	userID := domainUUID.FromGoogleUUID(actorID)
-
-	c, err := e.chatRepo.Load(ctx, chatID)
-	if err != nil {
-		return fmt.Errorf("failed to load chat: %w", err)
-	}
-
-	// Резолвинг пользователя
+	// Резолвинг пользователя по username
 	var assigneeID *domainUUID.UUID
 	if cmd.Username != "" && cmd.Username != noneUsername {
 		username := strings.TrimPrefix(cmd.Username, "@")
-		var u *user.User
-		u, err = e.userRepo.FindByUsername(ctx, username)
+		u, err := e.userRepo.FindByUsername(ctx, username)
 		if err != nil {
 			return fmt.Errorf("user %s not found: %w", cmd.Username, err)
 		}
@@ -157,105 +135,84 @@ func (e *CommandExecutor) executeAssignUser(ctx context.Context, cmd AssignUserC
 		assigneeID = &uid
 	}
 
-	// Выполнение команды
-	if err = c.AssignUser(assigneeID, userID); err != nil {
+	usecaseCmd := chatApp.AssignUserCommand{
+		ChatID:     domainUUID.FromGoogleUUID(cmd.ChatID),
+		AssigneeID: assigneeID,
+		AssignedBy: domainUUID.FromGoogleUUID(actorID),
+	}
+
+	_, err := e.chatUseCases.AssignUser.Execute(ctx, usecaseCmd)
+	if err != nil {
 		return fmt.Errorf("failed to assign user: %w", err)
 	}
 
-	return e.publishAndSave(ctx, c)
+	return nil
 }
 
-// executeChangePriority выполняет команду изменения приоритета
+// executeChangePriority выполняет команду изменения приоритета через UseCase
 func (e *CommandExecutor) executeChangePriority(
 	ctx context.Context,
 	cmd ChangePriorityCommand,
 	actorID uuid.UUID,
 ) error {
-	chatID := domainUUID.FromGoogleUUID(cmd.ChatID)
-	userID := domainUUID.FromGoogleUUID(actorID)
-
-	c, err := e.chatRepo.Load(ctx, chatID)
-	if err != nil {
-		return fmt.Errorf("failed to load chat: %w", err)
+	usecaseCmd := chatApp.SetPriorityCommand{
+		ChatID:   domainUUID.FromGoogleUUID(cmd.ChatID),
+		Priority: cmd.Priority,
+		SetBy:    domainUUID.FromGoogleUUID(actorID),
 	}
 
-	if err = c.SetPriority(cmd.Priority, userID); err != nil {
+	_, err := e.chatUseCases.SetPriority.Execute(ctx, usecaseCmd)
+	if err != nil {
 		return fmt.Errorf("failed to set priority: %w", err)
 	}
 
-	return e.publishAndSave(ctx, c)
+	return nil
 }
 
-// executeSetDueDate выполняет команду установки дедлайна
+// executeSetDueDate выполняет команду установки дедлайна через UseCase
 func (e *CommandExecutor) executeSetDueDate(ctx context.Context, cmd SetDueDateCommand, actorID uuid.UUID) error {
-	chatID := domainUUID.FromGoogleUUID(cmd.ChatID)
-	userID := domainUUID.FromGoogleUUID(actorID)
-
-	c, err := e.chatRepo.Load(ctx, chatID)
-	if err != nil {
-		return fmt.Errorf("failed to load chat: %w", err)
+	usecaseCmd := chatApp.SetDueDateCommand{
+		ChatID:  domainUUID.FromGoogleUUID(cmd.ChatID),
+		DueDate: cmd.DueDate,
+		SetBy:   domainUUID.FromGoogleUUID(actorID),
 	}
 
-	if err = c.SetDueDate(cmd.DueDate, userID); err != nil {
+	_, err := e.chatUseCases.SetDueDate.Execute(ctx, usecaseCmd)
+	if err != nil {
 		return fmt.Errorf("failed to set due date: %w", err)
 	}
 
-	return e.publishAndSave(ctx, c)
+	return nil
 }
 
-// executeChangeTitle выполняет команду изменения названия
+// executeChangeTitle выполняет команду изменения названия через UseCase
 func (e *CommandExecutor) executeChangeTitle(ctx context.Context, cmd ChangeTitleCommand, actorID uuid.UUID) error {
-	chatID := domainUUID.FromGoogleUUID(cmd.ChatID)
-	userID := domainUUID.FromGoogleUUID(actorID)
-
-	c, err := e.chatRepo.Load(ctx, chatID)
-	if err != nil {
-		return fmt.Errorf("failed to load chat: %w", err)
+	usecaseCmd := chatApp.RenameChatCommand{
+		ChatID:    domainUUID.FromGoogleUUID(cmd.ChatID),
+		NewTitle:  cmd.Title,
+		RenamedBy: domainUUID.FromGoogleUUID(actorID),
 	}
 
-	if err = c.Rename(cmd.Title, userID); err != nil {
+	_, err := e.chatUseCases.Rename.Execute(ctx, usecaseCmd)
+	if err != nil {
 		return fmt.Errorf("failed to rename: %w", err)
 	}
 
-	return e.publishAndSave(ctx, c)
+	return nil
 }
 
-// executeSetSeverity выполняет команду установки severity
+// executeSetSeverity выполняет команду установки severity через UseCase
 func (e *CommandExecutor) executeSetSeverity(ctx context.Context, cmd SetSeverityCommand, actorID uuid.UUID) error {
-	chatID := domainUUID.FromGoogleUUID(cmd.ChatID)
-	userID := domainUUID.FromGoogleUUID(actorID)
-
-	c, err := e.chatRepo.Load(ctx, chatID)
-	if err != nil {
-		return fmt.Errorf("failed to load chat: %w", err)
+	usecaseCmd := chatApp.SetSeverityCommand{
+		ChatID:   domainUUID.FromGoogleUUID(cmd.ChatID),
+		Severity: cmd.Severity,
+		SetBy:    domainUUID.FromGoogleUUID(actorID),
 	}
 
-	if err = c.SetSeverity(cmd.Severity, userID); err != nil {
+	_, err := e.chatUseCases.SetSeverity.Execute(ctx, usecaseCmd)
+	if err != nil {
 		return fmt.Errorf("failed to set severity: %w", err)
 	}
-
-	return e.publishAndSave(ctx, c)
-}
-
-// publishAndSave публикует события и сохраняет aggregate
-func (e *CommandExecutor) publishAndSave(ctx context.Context, c *chat.Chat) error {
-	// Получение несохраненных событий
-	events := c.GetUncommittedEvents()
-
-	// Публикация событий
-	for _, evt := range events {
-		if err := e.eventBus.Publish(ctx, evt); err != nil {
-			return fmt.Errorf("failed to publish event: %w", err)
-		}
-	}
-
-	// Сохранение aggregate
-	if err := e.chatRepo.Save(ctx, c); err != nil {
-		return fmt.Errorf("failed to save chat: %w", err)
-	}
-
-	// Пометка событий как зафиксированных
-	c.MarkEventsAsCommitted()
 
 	return nil
 }
