@@ -8,7 +8,7 @@ This is a **Chat System with Task Management** built in Go. It's a comprehensive
 
 **Key Technologies:**
 - **Backend**: Go 1.25+ with Echo v4 framework
-- **Database**: MongoDB 8+ (main), Redis (cache/pub-sub)
+- **Database**: MongoDB 8+ (main with Go Driver v2), Redis (cache/pub-sub)
 - **Frontend**: HTMX 2+ for dynamic updates, Pico CSS v2 for styling
 - **Auth**: Keycloak for SSO and user management
 - **Infrastructure**: Docker Compose for development
@@ -108,6 +108,22 @@ configs/              # Configuration files
 - HTMX will be used for minimal JavaScript frontend with server-side rendering
 - Comprehensive linting rules are configured in `.golangci.yml`
 - Security-first approach with Keycloak SSO, RBAC, and secure defaults
+
+## MongoDB Driver
+
+**Current Version**: Go Driver v2 (go.mongodb.org/mongo-driver/v2)
+
+**Migration Notes**:
+- Project was migrated from v1 to v2 on 2025-10-21
+- Key v2 API changes to remember:
+  - `mongo.Connect()` no longer takes `context` as first argument
+  - `StartSession()` returns `*mongo.Session` (pointer) instead of value type
+  - `UseSession` callback now receives `context.Context`, use `mongo.SessionFromContext()` to get session
+  - `Distinct` results use `DistinctResult` with `.Decode()` method instead of returning `[]any`
+
+**Implementation Reference**:
+- Test utilities: `tests/testutil/db.go` (v2 integration tests)
+- Test utilities: `tests/testutil/mongodb.go` (v2 connection setup)
 
 ## Application Access
 

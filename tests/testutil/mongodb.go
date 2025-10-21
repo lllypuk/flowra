@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 const mongoCtxTimeout = 5 * time.Second
@@ -19,7 +19,7 @@ func SetupTestMongoDB(t *testing.T) *mongo.Database {
 
 	// Для интеграционных тестов используем отдельную БД
 	uri := "mongodb://admin:admin123@localhost:27017" //nolint:gosec // Пример URI, заменить на реальный
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
+	client, err := mongo.Connect(options.Client().ApplyURI(uri))
 	if err != nil {
 		t.Fatalf("Failed to connect to MongoDB: %v", err)
 	}
