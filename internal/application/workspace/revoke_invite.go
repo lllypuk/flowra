@@ -3,9 +3,9 @@ package workspace
 import (
 	"context"
 
-	"github.com/lllypuk/teams-up/internal/application/shared"
-	"github.com/lllypuk/teams-up/internal/domain/uuid"
-	"github.com/lllypuk/teams-up/internal/domain/workspace"
+	"github.com/flowra/flowra/internal/application/shared"
+	"github.com/flowra/flowra/internal/domain/uuid"
+	"github.com/flowra/flowra/internal/domain/workspace"
 )
 
 // RevokeInviteUseCase - use case для отзыва инвайта

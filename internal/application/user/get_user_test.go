@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/lllypuk/teams-up/internal/application/user"
-	domainuser "github.com/lllypuk/teams-up/internal/domain/user"
-	"github.com/lllypuk/teams-up/internal/domain/uuid"
+	"github.com/flowra/flowra/internal/application/user"
+	domainuser "github.com/flowra/flowra/internal/domain/user"
+	"github.com/flowra/flowra/internal/domain/uuid"
 )
 
 func TestGetUserUseCase_Execute_Success(t *testing.T) {

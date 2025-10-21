@@ -1,8 +1,8 @@
 package message
 
 import (
-	"github.com/lllypuk/teams-up/internal/application/shared"
-	"github.com/lllypuk/teams-up/internal/domain/message"
+	"github.com/flowra/flowra/internal/application/shared"
+	"github.com/flowra/flowra/internal/domain/message"
 )
 
 // Result представляет результат для одного сообщения

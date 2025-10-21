@@ -88,9 +88,9 @@ import (
     "fmt"
 
     "github.com/google/uuid"
-    "teams-up/internal/domain/task"
-    "teams-up/internal/infrastructure/eventstore"
-    "teams-up/internal/usecase/shared"
+    "flowra/internal/domain/task"
+    "flowra/internal/infrastructure/eventstore"
+    "flowra/internal/usecase/shared"
 )
 
 // AssignTaskUseCase обрабатывает назначение исполнителя задачи
@@ -214,10 +214,10 @@ import (
     "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/require"
 
-    "teams-up/internal/domain/task"
-    "teams-up/internal/infrastructure/eventstore"
-    taskusecase "teams-up/internal/usecase/task"
-    "teams-up/tests/mocks"
+    "flowra/internal/domain/task"
+    "flowra/internal/infrastructure/eventstore"
+    taskusecase "flowra/internal/usecase/task"
+    "flowra/tests/mocks"
 )
 
 func TestAssignTaskUseCase_Success(t *testing.T) {
@@ -483,7 +483,7 @@ package mocks
 import (
     "context"
     "github.com/google/uuid"
-    "teams-up/internal/usecase/shared"
+    "flowra/internal/usecase/shared"
 )
 
 type MockUserRepository struct {

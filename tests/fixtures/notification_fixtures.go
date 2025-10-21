@@ -1,9 +1,9 @@
 package fixtures
 
 import (
-	notifapp "github.com/lllypuk/teams-up/internal/application/notification"
-	"github.com/lllypuk/teams-up/internal/domain/notification"
-	domainUUID "github.com/lllypuk/teams-up/internal/domain/uuid"
+	notifapp "github.com/flowra/flowra/internal/application/notification"
+	"github.com/flowra/flowra/internal/domain/notification"
+	domainUUID "github.com/flowra/flowra/internal/domain/uuid"
 )
 
 // CreateNotificationCommandBuilder создает builder для CreateNotificationCommand

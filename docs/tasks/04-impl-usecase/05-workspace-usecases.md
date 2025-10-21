@@ -121,9 +121,9 @@ import (
     "context"
     "fmt"
 
-    "github.com/lllypuk/teams-up/internal/application/shared"
-    "github.com/lllypuk/teams-up/internal/domain/workspace"
-    "github.com/lllypuk/teams-up/internal/infrastructure/keycloak"
+    "github.com/flowra/flowra/internal/application/shared"
+    "github.com/flowra/flowra/internal/domain/workspace"
+    "github.com/flowra/flowra/internal/infrastructure/keycloak"
 )
 
 type CreateWorkspaceUseCase struct {
@@ -201,9 +201,9 @@ import (
     "context"
     "fmt"
 
-    "github.com/lllypuk/teams-up/internal/application/shared"
-    "github.com/lllypuk/teams-up/internal/domain/workspace"
-    "github.com/lllypuk/teams-up/internal/infrastructure/keycloak"
+    "github.com/flowra/flowra/internal/application/shared"
+    "github.com/flowra/flowra/internal/domain/workspace"
+    "github.com/flowra/flowra/internal/infrastructure/keycloak"
 )
 
 type AcceptInviteUseCase struct {

@@ -265,10 +265,10 @@ $ go test ./internal/domain/tag/... -v -run "TestGenerateBotResponse|TestFormatS
 --- PASS: TestProcessingResult_HelperMethods (0.00s)
     [6/6 sub-tests passed]
 PASS
-ok      github.com/lllypuk/teams-up/internal/domain/tag       0.008s
+ok      github.com/flowra/flowra/internal/domain/tag       0.008s
 
 $ go test ./internal/domain/tag/... -cover
-ok      github.com/lllypuk/teams-up/internal/domain/tag       0.014s  coverage: 90.5% of statements
+ok      github.com/flowra/flowra/internal/domain/tag       0.014s  coverage: 90.5% of statements
 
 $ make lint
 Running linter...

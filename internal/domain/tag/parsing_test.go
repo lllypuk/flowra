@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/lllypuk/teams-up/internal/domain/tag"
+	"github.com/flowra/flowra/internal/domain/tag"
 )
 
 // ====== Task 02: Tag Position Parsing Tests ======

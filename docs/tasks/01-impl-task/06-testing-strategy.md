@@ -74,7 +74,7 @@ import (
     "context"
     "testing"
 
-    "teams-up/tests/testutil"
+    "flowra/tests/testutil"
 )
 
 func TestCreateTaskUseCase_Integration(t *testing.T) {
@@ -189,7 +189,7 @@ package eventstore
 import (
     "context"
     "sync"
-    "teams-up/internal/domain/task"
+    "flowra/internal/domain/task"
 )
 
 type InMemoryEventStore struct {
@@ -247,7 +247,7 @@ package mocks
 import (
     "context"
     "github.com/google/uuid"
-    "teams-up/internal/usecase/shared"
+    "flowra/internal/usecase/shared"
 )
 
 type MockUserRepository struct {
@@ -361,7 +361,7 @@ package testutil
 import (
     "time"
     "github.com/google/uuid"
-    taskusecase "teams-up/internal/usecase/task"
+    taskusecase "flowra/internal/usecase/task"
 )
 
 // CreateTaskCommandFixture возвращает валидную команду создания задачи

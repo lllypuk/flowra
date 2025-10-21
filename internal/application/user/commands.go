@@ -1,6 +1,6 @@
 package user
 
-import "github.com/lllypuk/teams-up/internal/domain/uuid"
+import "github.com/flowra/flowra/internal/domain/uuid"
 
 // Command базовый интерфейс команд
 type Command interface {

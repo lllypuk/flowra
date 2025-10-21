@@ -3,8 +3,8 @@ package workspace
 import (
 	"time"
 
-	"github.com/lllypuk/teams-up/internal/domain/event"
-	"github.com/lllypuk/teams-up/internal/domain/uuid"
+	"github.com/flowra/flowra/internal/domain/event"
+	"github.com/flowra/flowra/internal/domain/uuid"
 )
 
 // Event types

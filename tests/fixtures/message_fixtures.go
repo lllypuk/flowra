@@ -1,8 +1,8 @@
 package fixtures
 
 import (
-	messageapp "github.com/lllypuk/teams-up/internal/application/message"
-	domainUUID "github.com/lllypuk/teams-up/internal/domain/uuid"
+	messageapp "github.com/flowra/flowra/internal/application/message"
+	domainUUID "github.com/flowra/flowra/internal/domain/uuid"
 )
 
 // SendMessageCommandBuilder создает builder для SendMessageCommand

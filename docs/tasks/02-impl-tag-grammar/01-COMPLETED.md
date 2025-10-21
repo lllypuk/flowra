@@ -98,10 +98,10 @@ $ go test ./internal/domain/tag/... -v
 === RUN   TestNoValidation
 --- PASS: TestNoValidation (0.00s)
 PASS
-ok      github.com/lllypuk/teams-up/internal/domain/tag       0.009s
+ok      github.com/flowra/flowra/internal/domain/tag       0.009s
 
 $ go test ./internal/domain/tag/... -cover
-ok      github.com/lllypuk/teams-up/internal/domain/tag       0.008s  coverage: 96.0% of statements
+ok      github.com/flowra/flowra/internal/domain/tag       0.008s  coverage: 96.0% of statements
 ```
 
 ## Файловая структура

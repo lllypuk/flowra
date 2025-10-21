@@ -9,14 +9,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	chatapp "github.com/lllypuk/teams-up/internal/application/chat"
-	messageapp "github.com/lllypuk/teams-up/internal/application/message"
-	notificationapp "github.com/lllypuk/teams-up/internal/application/notification"
-	taskapp "github.com/lllypuk/teams-up/internal/application/task"
-	"github.com/lllypuk/teams-up/internal/domain/chat"
-	"github.com/lllypuk/teams-up/internal/domain/uuid"
-	"github.com/lllypuk/teams-up/tests/fixtures"
-	"github.com/lllypuk/teams-up/tests/testutil"
+	chatapp "github.com/flowra/flowra/internal/application/chat"
+	messageapp "github.com/flowra/flowra/internal/application/message"
+	notificationapp "github.com/flowra/flowra/internal/application/notification"
+	taskapp "github.com/flowra/flowra/internal/application/task"
+	"github.com/flowra/flowra/internal/domain/chat"
+	"github.com/flowra/flowra/internal/domain/uuid"
+	"github.com/flowra/flowra/tests/fixtures"
+	"github.com/flowra/flowra/tests/testutil"
 )
 
 // TestE2E_TaskWorkflow_CompleteFlow проверяет полный workflow создания и управления задачей

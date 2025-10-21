@@ -3,9 +3,9 @@ package testutil
 import (
 	"time"
 
-	taskapp "github.com/lllypuk/teams-up/internal/application/task"
-	"github.com/lllypuk/teams-up/internal/domain/task"
-	"github.com/lllypuk/teams-up/internal/domain/uuid"
+	taskapp "github.com/flowra/flowra/internal/application/task"
+	"github.com/flowra/flowra/internal/domain/task"
+	"github.com/flowra/flowra/internal/domain/uuid"
 )
 
 const dayDuration = 24 * time.Hour

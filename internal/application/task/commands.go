@@ -3,8 +3,8 @@ package task
 import (
 	"time"
 
-	"github.com/lllypuk/teams-up/internal/domain/task"
-	"github.com/lllypuk/teams-up/internal/domain/uuid"
+	"github.com/flowra/flowra/internal/domain/task"
+	"github.com/flowra/flowra/internal/domain/uuid"
 )
 
 // CreateTaskCommand содержит данные для создания задачи

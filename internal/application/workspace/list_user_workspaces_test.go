@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/lllypuk/teams-up/internal/application/workspace"
-	"github.com/lllypuk/teams-up/internal/domain/uuid"
+	"github.com/flowra/flowra/internal/application/workspace"
+	"github.com/flowra/flowra/internal/domain/uuid"
 )
 
 func TestListUserWorkspacesUseCase_Execute_Success(t *testing.T) {

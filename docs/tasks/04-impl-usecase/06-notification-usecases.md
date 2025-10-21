@@ -64,7 +64,7 @@ package notification
 
 import (
     "github.com/google/uuid"
-    "github.com/lllypuk/teams-up/internal/domain/notification"
+    "github.com/flowra/flowra/internal/domain/notification"
 )
 
 // CreateNotificationCommand - создание notification
@@ -110,9 +110,9 @@ import (
     "context"
     "fmt"
 
-    "github.com/lllypuk/teams-up/internal/application/shared"
-    "github.com/lllypuk/teams-up/internal/domain/notification"
-    domainUUID "github.com/lllypuk/teams-up/internal/domain/uuid"
+    "github.com/flowra/flowra/internal/application/shared"
+    "github.com/flowra/flowra/internal/domain/notification"
+    domainUUID "github.com/flowra/flowra/internal/domain/uuid"
 )
 
 type CreateNotificationUseCase struct {
@@ -196,9 +196,9 @@ import (
     "context"
     "fmt"
 
-    "github.com/lllypuk/teams-up/internal/application/shared"
-    "github.com/lllypuk/teams-up/internal/domain/notification"
-    domainUUID "github.com/lllypuk/teams-up/internal/domain/uuid"
+    "github.com/flowra/flowra/internal/application/shared"
+    "github.com/flowra/flowra/internal/domain/notification"
+    domainUUID "github.com/flowra/flowra/internal/domain/uuid"
 )
 
 type ListNotificationsUseCase struct {
@@ -280,10 +280,10 @@ package eventhandlers
 import (
     "context"
 
-    "github.com/lllypuk/teams-up/internal/application/notification"
-    "github.com/lllypuk/teams-up/internal/domain/chat"
-    "github.com/lllypuk/teams-up/internal/domain/event"
-    domainNotification "github.com/lllypuk/teams-up/internal/domain/notification"
+    "github.com/flowra/flowra/internal/application/notification"
+    "github.com/flowra/flowra/internal/domain/chat"
+    "github.com/flowra/flowra/internal/domain/event"
+    domainNotification "github.com/flowra/flowra/internal/domain/notification"
 )
 
 type NotificationEventHandler struct {

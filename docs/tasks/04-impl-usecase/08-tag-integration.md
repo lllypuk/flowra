@@ -68,8 +68,8 @@ import (
     "strings"
 
     "github.com/google/uuid"
-    chatApp "github.com/lllypuk/teams-up/internal/application/chat"
-    "github.com/lllypuk/teams-up/internal/domain/user"
+    chatApp "github.com/flowra/flowra/internal/application/chat"
+    "github.com/flowra/flowra/internal/domain/user"
 )
 
 // CommandExecutor выполняет tag команды через UseCases
@@ -333,12 +333,12 @@ import (
     "context"
     "fmt"
 
-    "github.com/lllypuk/teams-up/internal/application/shared"
-    "github.com/lllypuk/teams-up/internal/domain/chat"
-    "github.com/lllypuk/teams-up/internal/domain/event"
-    "github.com/lllypuk/teams-up/internal/domain/message"
-    "github.com/lllypuk/teams-up/internal/domain/tag"
-    domainUUID "github.com/lllypuk/teams-up/internal/domain/uuid"
+    "github.com/flowra/flowra/internal/application/shared"
+    "github.com/flowra/flowra/internal/domain/chat"
+    "github.com/flowra/flowra/internal/domain/event"
+    "github.com/flowra/flowra/internal/domain/message"
+    "github.com/flowra/flowra/internal/domain/tag"
+    domainUUID "github.com/flowra/flowra/internal/domain/uuid"
 )
 
 type SendMessageUseCase struct {
@@ -419,9 +419,9 @@ func (uc *SendMessageUseCase) processTagsAsync(
 package main
 
 import (
-    chatApp "github.com/lllypuk/teams-up/internal/application/chat"
-    messageApp "github.com/lllypuk/teams-up/internal/application/message"
-    "github.com/lllypuk/teams-up/internal/domain/tag"
+    chatApp "github.com/flowra/flowra/internal/application/chat"
+    messageApp "github.com/flowra/flowra/internal/application/message"
+    "github.com/flowra/flowra/internal/domain/tag"
 )
 
 func setupApplication() {
@@ -503,7 +503,7 @@ func TestTagExecutor_CreateTask(t *testing.T) {
 // internal/domain/tag/chat_usecases.go
 package tag
 
-import chatApp "github.com/lllypuk/teams-up/internal/application/chat"
+import chatApp "github.com/flowra/flowra/internal/application/chat"
 
 type ChatUseCases struct {
     ConvertToTask  *chatApp.ConvertToTaskUseCase
@@ -541,8 +541,8 @@ import (
     "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/mock"
 
-    "github.com/lllypuk/teams-up/internal/domain/tag"
-    "github.com/lllypuk/teams-up/tests/mocks"
+    "github.com/flowra/flowra/internal/domain/tag"
+    "github.com/flowra/flowra/tests/mocks"
 )
 
 func TestCommandExecutor_CreateTask_CallsUseCase(t *testing.T) {

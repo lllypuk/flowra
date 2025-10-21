@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/flowra/flowra/internal/domain/tag"
 	"github.com/google/uuid"
-	"github.com/lllypuk/teams-up/internal/domain/tag"
 	"github.com/stretchr/testify/assert"
 )
 

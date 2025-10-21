@@ -19,8 +19,8 @@ redis:
 
 keycloak:
   url: "http://localhost:8090"
-  realm: "teams-up"
-  client_id: "teams-up-backend"
+  realm: "flowra"
+  client_id: "flowra-backend"
   client_secret: "your-client-secret"
   admin_username: "admin"
   admin_password: "admin123"

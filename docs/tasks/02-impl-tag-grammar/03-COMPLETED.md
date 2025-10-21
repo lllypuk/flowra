@@ -137,10 +137,10 @@ $ go test ./internal/domain/tag/... -v -run "TestValidateEntityCreation|TestProc
 --- PASS: TestValidateEntityCreation (0.00s)
     [12/12 sub-tests passed]
 PASS
-ok      github.com/lllypuk/teams-up/internal/domain/tag       0.005s
+ok      github.com/flowra/flowra/internal/domain/tag       0.005s
 
 $ go test ./internal/domain/tag/... -cover
-ok      github.com/lllypuk/teams-up/internal/domain/tag       0.010s  coverage: 91.9% of statements
+ok      github.com/flowra/flowra/internal/domain/tag       0.010s  coverage: 91.9% of statements
 ```
 
 ## Файловая структура

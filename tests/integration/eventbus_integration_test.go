@@ -9,12 +9,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	chatapp "github.com/lllypuk/teams-up/internal/application/chat"
-	"github.com/lllypuk/teams-up/internal/domain/chat"
-	"github.com/lllypuk/teams-up/internal/domain/uuid"
-	"github.com/lllypuk/teams-up/tests/fixtures"
-	"github.com/lllypuk/teams-up/tests/mocks"
-	"github.com/lllypuk/teams-up/tests/testutil"
+	chatapp "github.com/flowra/flowra/internal/application/chat"
+	"github.com/flowra/flowra/internal/domain/chat"
+	"github.com/flowra/flowra/internal/domain/uuid"
+	"github.com/flowra/flowra/tests/fixtures"
+	"github.com/flowra/flowra/tests/mocks"
+	"github.com/flowra/flowra/tests/testutil"
 )
 
 // TestEventBusIntegration_ChatCreated_PublishesEvent проверяет, что событие ChatCreated опубликовано

@@ -3,10 +3,10 @@ package message
 import (
 	"context"
 
-	"github.com/lllypuk/teams-up/internal/domain/chat"
-	"github.com/lllypuk/teams-up/internal/domain/event"
-	domainMessage "github.com/lllypuk/teams-up/internal/domain/message"
-	"github.com/lllypuk/teams-up/internal/domain/uuid"
+	"github.com/flowra/flowra/internal/domain/chat"
+	"github.com/flowra/flowra/internal/domain/event"
+	domainMessage "github.com/flowra/flowra/internal/domain/message"
+	"github.com/flowra/flowra/internal/domain/uuid"
 )
 
 // MockMessageRepository - мок репозитория сообщений для тестов

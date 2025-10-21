@@ -20,7 +20,7 @@
 ## Project Layout
 
 ```
-new-teams-up/
+new-flowra/
 ├── cmd/                           # Application entry points
 │   ├── api/                      # HTTP API + WebSocket server
 │   │   └── main.go
@@ -185,7 +185,7 @@ package chat
 import (
     "time"
     "github.com/google/uuid"
-    "github.com/yourorg/teams-up/internal/domain/event"
+    "github.com/yourorg/flowra/internal/domain/event"
 )
 
 type ChatType string
@@ -469,10 +469,10 @@ package chat
 import (
     "context"
     "github.com/google/uuid"
-    "github.com/yourorg/teams-up/internal/domain/chat"
-    "github.com/yourorg/teams-up/internal/domain/event"
-    "github.com/yourorg/teams-up/internal/infrastructure/eventbus"
-    "github.com/yourorg/teams-up/internal/infrastructure/eventstore"
+    "github.com/yourorg/flowra/internal/domain/chat"
+    "github.com/yourorg/flowra/internal/domain/event"
+    "github.com/yourorg/flowra/internal/infrastructure/eventbus"
+    "github.com/yourorg/flowra/internal/infrastructure/eventstore"
 )
 
 // Service handles chat use cases
@@ -620,7 +620,7 @@ package chat
 
 import (
     "github.com/google/uuid"
-    "github.com/yourorg/teams-up/internal/domain/chat"
+    "github.com/yourorg/flowra/internal/domain/chat"
 )
 
 // Commands (write operations)
@@ -729,8 +729,8 @@ import (
     "go.mongodb.org/mongo-driver/mongo"
     "go.mongodb.org/mongo-driver/bson"
 
-    "github.com/yourorg/teams-up/internal/domain/chat"
-    "github.com/yourorg/teams-up/internal/infrastructure/eventstore"
+    "github.com/yourorg/flowra/internal/domain/chat"
+    "github.com/yourorg/flowra/internal/infrastructure/eventstore"
 )
 
 type ChatRepository struct {
@@ -852,7 +852,7 @@ import (
     "go.mongodb.org/mongo-driver/mongo"
     "go.mongodb.org/mongo-driver/bson"
 
-    "github.com/yourorg/teams-up/internal/domain/event"
+    "github.com/yourorg/flowra/internal/domain/event"
 )
 
 type MongoDBEventStore struct {
@@ -991,8 +991,8 @@ import (
     "github.com/go-chi/chi/v5"
     "github.com/google/uuid"
 
-    "github.com/yourorg/teams-up/internal/application/chat"
-    "github.com/yourorg/teams-up/pkg/logger"
+    "github.com/yourorg/flowra/internal/application/chat"
+    "github.com/yourorg/flowra/pkg/logger"
 )
 
 type ChatHandler struct {
@@ -1216,14 +1216,14 @@ import (
     "go.mongodb.org/mongo-driver/mongo"
     "go.mongodb.org/mongo-driver/mongo/options"
 
-    "github.com/yourorg/teams-up/internal/application/chat"
-    "github.com/yourorg/teams-up/internal/config"
-    httphandler "github.com/yourorg/teams-up/internal/handler/http"
-    "github.com/yourorg/teams-up/internal/infrastructure/eventbus"
-    "github.com/yourorg/teams-up/internal/infrastructure/eventstore"
-    "github.com/yourorg/teams-up/internal/infrastructure/repository/mongodb"
-    "github.com/yourorg/teams-up/internal/middleware"
-    "github.com/yourorg/teams-up/pkg/logger"
+    "github.com/yourorg/flowra/internal/application/chat"
+    "github.com/yourorg/flowra/internal/config"
+    httphandler "github.com/yourorg/flowra/internal/handler/http"
+    "github.com/yourorg/flowra/internal/infrastructure/eventbus"
+    "github.com/yourorg/flowra/internal/infrastructure/eventstore"
+    "github.com/yourorg/flowra/internal/infrastructure/repository/mongodb"
+    "github.com/yourorg/flowra/internal/middleware"
+    "github.com/yourorg/flowra/pkg/logger"
 )
 
 func main() {
@@ -1338,10 +1338,10 @@ import (
     "os/signal"
     "syscall"
 
-    "github.com/yourorg/teams-up/internal/application/eventhandler"
-    "github.com/yourorg/teams-up/internal/config"
-    "github.com/yourorg/teams-up/internal/infrastructure/eventbus"
-    "github.com/yourorg/teams-up/pkg/logger"
+    "github.com/yourorg/flowra/internal/application/eventhandler"
+    "github.com/yourorg/flowra/internal/config"
+    "github.com/yourorg/flowra/internal/infrastructure/eventbus"
+    "github.com/yourorg/flowra/pkg/logger"
 )
 
 func main() {
@@ -1481,7 +1481,7 @@ import (
     "testing"
     "github.com/google/uuid"
     "github.com/stretchr/testify/assert"
-    "github.com/yourorg/teams-up/internal/domain/chat"
+    "github.com/yourorg/flowra/internal/domain/chat"
 )
 
 func TestNewChat(t *testing.T) {
@@ -1545,8 +1545,8 @@ import (
     "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/require"
 
-    "github.com/yourorg/teams-up/internal/application/chat"
-    "github.com/yourorg/teams-up/internal/domain/chat"
+    "github.com/yourorg/flowra/internal/application/chat"
+    "github.com/yourorg/flowra/internal/domain/chat"
 )
 
 func TestChatService_CreateAndPostMessage(t *testing.T) {

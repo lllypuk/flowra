@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/teams-up/internal/application/shared"
-	"github.com/lllypuk/teams-up/internal/domain/notification"
+	"github.com/flowra/flowra/internal/application/shared"
+	"github.com/flowra/flowra/internal/domain/notification"
 )
 
 // GetNotificationUseCase обрабатывает получение notification по ID

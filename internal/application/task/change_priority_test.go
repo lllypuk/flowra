@@ -7,10 +7,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	taskapp "github.com/lllypuk/teams-up/internal/application/task"
-	"github.com/lllypuk/teams-up/internal/domain/task"
-	"github.com/lllypuk/teams-up/internal/domain/uuid"
-	"github.com/lllypuk/teams-up/internal/infrastructure/eventstore"
+	taskapp "github.com/flowra/flowra/internal/application/task"
+	"github.com/flowra/flowra/internal/domain/task"
+	"github.com/flowra/flowra/internal/domain/uuid"
+	"github.com/flowra/flowra/internal/infrastructure/eventstore"
 )
 
 func TestChangePriorityUseCase_Success(t *testing.T) {

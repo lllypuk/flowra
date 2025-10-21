@@ -71,8 +71,8 @@ import (
     "strings"
 
     "github.com/google/uuid"
-    "teams-up/internal/domain/task"
-    "teams-up/internal/infrastructure/eventstore"
+    "flowra/internal/domain/task"
+    "flowra/internal/infrastructure/eventstore"
 )
 
 // CreateTaskUseCase обрабатывает создание новой задачи
@@ -209,9 +209,9 @@ import (
     "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/require"
 
-    "teams-up/internal/domain/task"
-    "teams-up/internal/infrastructure/eventstore"
-    taskusecase "teams-up/internal/usecase/task"
+    "flowra/internal/domain/task"
+    "flowra/internal/infrastructure/eventstore"
+    taskusecase "flowra/internal/usecase/task"
 )
 
 func TestCreateTaskUseCase_Success(t *testing.T) {
@@ -418,9 +418,9 @@ import (
     "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/require"
 
-    "teams-up/internal/infrastructure/eventstore"
-    taskusecase "teams-up/internal/usecase/task"
-    "teams-up/tests/testutil"
+    "flowra/internal/infrastructure/eventstore"
+    taskusecase "flowra/internal/usecase/task"
+    "flowra/tests/testutil"
 )
 
 func TestCreateTaskUseCase_Integration(t *testing.T) {

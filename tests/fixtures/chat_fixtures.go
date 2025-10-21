@@ -1,9 +1,9 @@
 package fixtures
 
 import (
-	chatapp "github.com/lllypuk/teams-up/internal/application/chat"
-	"github.com/lllypuk/teams-up/internal/domain/chat"
-	domainUUID "github.com/lllypuk/teams-up/internal/domain/uuid"
+	chatapp "github.com/flowra/flowra/internal/application/chat"
+	"github.com/flowra/flowra/internal/domain/chat"
+	domainUUID "github.com/flowra/flowra/internal/domain/uuid"
 )
 
 // CreateChatCommandBuilder создает builder для CreateChatCommand

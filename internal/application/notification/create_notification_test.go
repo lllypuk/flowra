@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/lllypuk/teams-up/internal/application/notification"
-	domainnotification "github.com/lllypuk/teams-up/internal/domain/notification"
-	"github.com/lllypuk/teams-up/internal/domain/uuid"
+	"github.com/flowra/flowra/internal/application/notification"
+	domainnotification "github.com/flowra/flowra/internal/domain/notification"
+	"github.com/flowra/flowra/internal/domain/uuid"
 )
 
 // mockNotificationRepository - мок репозитория для тестирования

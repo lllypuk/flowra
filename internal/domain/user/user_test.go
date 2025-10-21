@@ -7,9 +7,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/lllypuk/teams-up/internal/domain/errs"
-	userDomain "github.com/lllypuk/teams-up/internal/domain/user"
-	"github.com/lllypuk/teams-up/internal/domain/uuid"
+	"github.com/flowra/flowra/internal/domain/errs"
+	userDomain "github.com/flowra/flowra/internal/domain/user"
+	"github.com/flowra/flowra/internal/domain/uuid"
 )
 
 func TestNewUser_Success(t *testing.T) {

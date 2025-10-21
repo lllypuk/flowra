@@ -5,8 +5,8 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/lllypuk/teams-up/internal/domain/message"
-	domainUUID "github.com/lllypuk/teams-up/internal/domain/uuid"
+	"github.com/flowra/flowra/internal/domain/message"
+	domainUUID "github.com/flowra/flowra/internal/domain/uuid"
 )
 
 var ErrMessageNotFound = errors.New("message not found")

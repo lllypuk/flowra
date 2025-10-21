@@ -1,6 +1,6 @@
 # Testing Guide
 
-Эта директория содержит все тестовые утилиты, моки и integration тесты для проекта teams-up.
+Эта директория содержит все тестовые утилиты, моки и integration тесты для проекта flowra.
 
 ## Структура
 
@@ -81,7 +81,7 @@ go tool cover -func=coverage.out
 In-memory реализация EventStore для быстрых unit тестов.
 
 ```go
-import "github.com/lllypuk/teams-up/internal/infrastructure/eventstore"
+import "github.com/flowra/flowra/internal/infrastructure/eventstore"
 
 eventStore := eventstore.NewInMemoryEventStore()
 // Используйте в тестах
@@ -92,7 +92,7 @@ eventStore := eventstore.NewInMemoryEventStore()
 Mock реализация UserRepository для тестирования.
 
 ```go
-import "github.com/lllypuk/teams-up/tests/mocks"
+import "github.com/flowra/flowra/tests/mocks"
 
 repo := mocks.NewMockUserRepository()
 repo.AddUser(userID, "testuser", "Test User")
@@ -104,7 +104,7 @@ exists, _ := repo.Exists(ctx, userID) // true
 Builders для создания тестовых команд с fluent API.
 
 ```go
-import "github.com/lllypuk/teams-up/tests/testutil"
+import "github.com/flowra/flowra/tests/testutil"
 
 // Базовая команда с дефолтными значениями
 cmd := testutil.CreateTaskCommandFixture()
@@ -132,7 +132,7 @@ Helpers для работы с тестовой БД в integration тестах
 ```go
 //go:build integration
 
-import "github.com/lllypuk/teams-up/tests/testutil"
+import "github.com/flowra/flowra/tests/testutil"
 
 func TestSomething_Integration(t *testing.T) {
     db := testutil.SetupTestDatabase(t)

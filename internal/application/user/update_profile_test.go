@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/lllypuk/teams-up/internal/application/user"
-	domainuser "github.com/lllypuk/teams-up/internal/domain/user"
+	"github.com/flowra/flowra/internal/application/user"
+	domainuser "github.com/flowra/flowra/internal/domain/user"
 )
 
 func TestUpdateProfileUseCase_Execute_Success_DisplayName(t *testing.T) {

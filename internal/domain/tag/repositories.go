@@ -3,11 +3,11 @@ package tag
 import (
 	"context"
 
-	"github.com/lllypuk/teams-up/internal/domain/chat"
-	"github.com/lllypuk/teams-up/internal/domain/event"
-	"github.com/lllypuk/teams-up/internal/domain/message"
-	"github.com/lllypuk/teams-up/internal/domain/user"
-	"github.com/lllypuk/teams-up/internal/domain/uuid"
+	"github.com/flowra/flowra/internal/domain/chat"
+	"github.com/flowra/flowra/internal/domain/event"
+	"github.com/flowra/flowra/internal/domain/message"
+	"github.com/flowra/flowra/internal/domain/user"
+	"github.com/flowra/flowra/internal/domain/uuid"
 )
 
 // ChatRepository определяет интерфейс для работы с Chat aggregate.

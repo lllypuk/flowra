@@ -3,7 +3,7 @@ package user
 import (
 	"context"
 
-	"github.com/lllypuk/teams-up/internal/domain/uuid"
+	"github.com/flowra/flowra/internal/domain/uuid"
 )
 
 // Repository определяет интерфейс репозитория пользователей

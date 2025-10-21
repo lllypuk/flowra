@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/teams-up/internal/application/shared"
+	"github.com/flowra/flowra/internal/application/shared"
 )
 
 // ConvertToTaskUseCase обрабатывает конвертацию чата в Task

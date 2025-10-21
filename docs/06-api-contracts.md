@@ -132,7 +132,7 @@ HTTP/1.1 200 OK
 Content-Type: application/json
 
 {
-  "authUrl": "http://localhost:8090/realms/teams-up/protocol/openid-connect/auth?client_id=teams-up-app&redirect_uri=http://localhost:8080/auth/callback&response_type=code&state=random-state"
+  "authUrl": "http://localhost:8090/realms/flowra/protocol/openid-connect/auth?client_id=flowra-app&redirect_uri=http://localhost:8080/auth/callback&response_type=code&state=random-state"
 }
 ```
 

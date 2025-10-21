@@ -266,8 +266,8 @@ import (
     "github.com/jmoiron/sqlx"
     
     // Внутренние пакеты
-    "github.com/your-org/new-teams-up/internal/domain"
-    "github.com/your-org/new-teams-up/pkg/logger"
+    "github.com/your-org/new-flowra/internal/domain"
+    "github.com/your-org/new-flowra/pkg/logger"
 )
 ```
 

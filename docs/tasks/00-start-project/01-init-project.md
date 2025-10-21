@@ -24,7 +24,7 @@
 
 1. Инициализировать Go модуль:
    ```bash
-   go mod init github.com/lllypuk/teams-up
+   go mod init github.com/flowra/flowra
    ```
 
 2. Добавить основные зависимости:
@@ -214,7 +214,7 @@
    services:
      mongodb:
        image: mongo:7
-       container_name: teams-up-mongodb
+       container_name: flowra-mongodb
        ports:
          - "27017:27017"
        environment:
@@ -223,21 +223,21 @@
        volumes:
          - mongodb_data:/data/db
        networks:
-         - teams-up-network
+         - flowra-network
 
      redis:
        image: redis:7-alpine
-       container_name: teams-up-redis
+       container_name: flowra-redis
        ports:
          - "6379:6379"
        volumes:
          - redis_data:/data
        networks:
-         - teams-up-network
+         - flowra-network
 
      keycloak:
        image: quay.io/keycloak/keycloak:23.0
-       container_name: teams-up-keycloak
+       container_name: flowra-keycloak
        environment:
          KEYCLOAK_ADMIN: admin
          KEYCLOAK_ADMIN_PASSWORD: admin123
@@ -247,14 +247,14 @@
        command:
          - start-dev
        networks:
-         - teams-up-network
+         - flowra-network
 
    volumes:
      mongodb_data:
      redis_data:
 
    networks:
-     teams-up-network:
+     flowra-network:
        driver: bridge
    ```
 
@@ -281,8 +281,8 @@
 
    keycloak:
      url: "http://localhost:8090"
-     realm: "teams-up"
-     client_id: "teams-up-backend"
+     realm: "flowra"
+     client_id: "flowra-backend"
      client_secret: "your-client-secret"
      admin_username: "admin"
      admin_password: "admin123"
@@ -394,8 +394,8 @@
 
    # Keycloak
    KEYCLOAK_URL=http://localhost:8090
-   KEYCLOAK_REALM=teams-up
-   KEYCLOAK_CLIENT_ID=teams-up-backend
+   KEYCLOAK_REALM=flowra
+   KEYCLOAK_CLIENT_ID=flowra-backend
    KEYCLOAK_CLIENT_SECRET=your-client-secret
 
    # Auth
@@ -471,7 +471,7 @@
        simplify: true
 
      goimports:
-       local-prefixes: github.com/yourorg/teams-up
+       local-prefixes: github.com/yourorg/flowra
 
      gocritic:
        enabled-tags:
@@ -521,7 +521,7 @@
    ```makefile
    fmt: ## Format code
    	gofmt -s -w .
-   	goimports -w -local github.com/yourorg/teams-up .
+   	goimports -w -local github.com/yourorg/flowra .
 
    fmt-check: ## Check formatting
    	test -z $(shell gofmt -l .)
@@ -815,7 +815,7 @@ make help
 
 ### Выполненные компоненты:
 
-1. **Go Module** - `github.com/lllypuk/teams-up`
+1. **Go Module** - `github.com/flowra/flowra`
    - Echo v4.13.4 (web framework)
    - MongoDB driver v1.17.4
    - Redis v9.14.0
@@ -839,7 +839,7 @@ make help
 
 4. **Инструменты разработки**:
    - `Makefile` - 15+ команд (build, test, lint, docker, fmt)
-   - `.golangci.yml` - configured для github.com/lllypuk/teams-up
+   - `.golangci.yml` - configured для github.com/flowra/flowra
    - `.gitignore` - полный набор правил
 
 5. **Testing Infrastructure**:

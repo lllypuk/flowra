@@ -3,8 +3,8 @@ package chat
 import (
 	"time"
 
-	"github.com/lllypuk/teams-up/internal/domain/chat"
-	"github.com/lllypuk/teams-up/internal/domain/uuid"
+	"github.com/flowra/flowra/internal/domain/chat"
+	"github.com/flowra/flowra/internal/domain/uuid"
 )
 
 // CreateChatCommand содержит данные для создания нового чата

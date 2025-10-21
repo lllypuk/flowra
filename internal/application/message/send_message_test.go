@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/lllypuk/teams-up/internal/application/message"
-	domainMessage "github.com/lllypuk/teams-up/internal/domain/message"
-	"github.com/lllypuk/teams-up/internal/domain/uuid"
+	"github.com/flowra/flowra/internal/application/message"
+	domainMessage "github.com/flowra/flowra/internal/domain/message"
+	"github.com/flowra/flowra/internal/domain/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

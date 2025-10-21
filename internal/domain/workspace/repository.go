@@ -3,7 +3,7 @@ package workspace
 import (
 	"context"
 
-	"github.com/lllypuk/teams-up/internal/domain/uuid"
+	"github.com/flowra/flowra/internal/domain/uuid"
 )
 
 // Repository определяет интерфейс для работы с хранилищем Workspace

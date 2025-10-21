@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/lllypuk/teams-up/internal/application/user"
-	domainuser "github.com/lllypuk/teams-up/internal/domain/user"
+	"github.com/flowra/flowra/internal/application/user"
+	domainuser "github.com/flowra/flowra/internal/domain/user"
 )
 
 func TestListUsersUseCase_Execute_Success(t *testing.T) {

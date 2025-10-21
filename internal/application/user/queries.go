@@ -1,6 +1,6 @@
 package user
 
-import "github.com/lllypuk/teams-up/internal/domain/uuid"
+import "github.com/flowra/flowra/internal/domain/uuid"
 
 // Query базовый интерфейс запросов
 type Query interface {

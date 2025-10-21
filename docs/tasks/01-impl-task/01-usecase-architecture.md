@@ -102,7 +102,7 @@ package task
 
 import (
     "github.com/google/uuid"
-    "teams-up/internal/domain/task"
+    "flowra/internal/domain/task"
 )
 
 // TaskResult — результат выполнения use case
@@ -154,8 +154,8 @@ import (
     "fmt"
 
     "github.com/google/uuid"
-    "teams-up/internal/domain/task"
-    "teams-up/internal/infrastructure/eventstore"
+    "flowra/internal/domain/task"
+    "flowra/internal/infrastructure/eventstore"
 )
 
 // CreateTaskUseCase обрабатывает создание новой задачи

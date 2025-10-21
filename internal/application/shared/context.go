@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/lllypuk/teams-up/internal/domain/uuid"
+	"github.com/flowra/flowra/internal/domain/uuid"
 )
 
 // Context keys

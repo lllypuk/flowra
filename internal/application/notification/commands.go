@@ -1,8 +1,8 @@
 package notification
 
 import (
-	"github.com/lllypuk/teams-up/internal/domain/notification"
-	"github.com/lllypuk/teams-up/internal/domain/uuid"
+	"github.com/flowra/flowra/internal/domain/notification"
+	"github.com/flowra/flowra/internal/domain/uuid"
 )
 
 // Command базовый интерфейс команд

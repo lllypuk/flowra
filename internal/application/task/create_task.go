@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/lllypuk/teams-up/internal/application/shared"
-	"github.com/lllypuk/teams-up/internal/domain/task"
-	"github.com/lllypuk/teams-up/internal/domain/uuid"
+	"github.com/flowra/flowra/internal/application/shared"
+	"github.com/flowra/flowra/internal/domain/task"
+	"github.com/flowra/flowra/internal/domain/uuid"
 )
 
 // CreateTaskUseCase обрабатывает создание новой задачи

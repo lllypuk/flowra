@@ -50,8 +50,8 @@ import (
     "fmt"
 
     "github.com/google/uuid"
-    "teams-up/internal/domain/task"
-    "teams-up/internal/infrastructure/eventstore"
+    "flowra/internal/domain/task"
+    "flowra/internal/infrastructure/eventstore"
 )
 
 // ChangeStatusUseCase обрабатывает изменение статуса задачи
@@ -173,9 +173,9 @@ import (
     "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/require"
 
-    "teams-up/internal/domain/task"
-    "teams-up/internal/infrastructure/eventstore"
-    taskusecase "teams-up/internal/usecase/task"
+    "flowra/internal/domain/task"
+    "flowra/internal/infrastructure/eventstore"
+    taskusecase "flowra/internal/usecase/task"
 )
 
 func TestChangeStatusUseCase_Success(t *testing.T) {

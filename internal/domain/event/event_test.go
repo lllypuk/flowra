@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	eventDomain "github.com/lllypuk/teams-up/internal/domain/event"
+	eventDomain "github.com/flowra/flowra/internal/domain/event"
 )
 
 func TestNewMetadata(t *testing.T) {

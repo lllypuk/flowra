@@ -91,8 +91,8 @@ curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/insta
 ### 1. Клонирование репозитория
 
 ```bash
-git clone https://github.com/lllypuk/new-teams-up.git
-cd new-teams-up
+git clone https://github.com/lllypuk/new-flowra.git
+cd new-flowra
 ```
 
 ### 2. Настройка переменных окружения
@@ -234,7 +234,7 @@ make swagger      # Запуск Swagger UI
 После настройки у вас должна быть следующая структура:
 
 ```
-new-teams-up/
+new-flowra/
 ├── .env                    # Переменные окружения (не коммитится)
 ├── .air.toml              # Конфигурация Air
 ├── docker-compose.yml     # Docker Compose конфигурация
@@ -415,7 +415,7 @@ sudo systemctl restart docker
 Если у вас возникли проблемы:
 
 1. Проверьте [FAQ](../faq.md)
-2. Поищите решение в [Issues](https://github.com/lllypuk/new-teams-up/issues)
+2. Поищите решение в [Issues](https://github.com/lllypuk/new-flowra/issues)
 3. Создайте новый Issue с тегом `setup`
 4. Обратитесь в Slack канал `#development`
 

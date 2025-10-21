@@ -5,8 +5,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/teams-up/internal/application/shared"
-	"github.com/lllypuk/teams-up/internal/domain/user"
+	"github.com/flowra/flowra/internal/application/shared"
+	"github.com/flowra/flowra/internal/domain/user"
 )
 
 // GetUserUseCase обрабатывает получение пользователя по ID

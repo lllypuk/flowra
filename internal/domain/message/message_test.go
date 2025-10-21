@@ -3,9 +3,9 @@ package message_test
 import (
 	"testing"
 
-	"github.com/lllypuk/teams-up/internal/domain/errs"
-	"github.com/lllypuk/teams-up/internal/domain/message"
-	"github.com/lllypuk/teams-up/internal/domain/uuid"
+	"github.com/flowra/flowra/internal/domain/errs"
+	"github.com/flowra/flowra/internal/domain/message"
+	"github.com/flowra/flowra/internal/domain/uuid"
 )
 
 //nolint:gocognit,errorlint // Test complexity is acceptable

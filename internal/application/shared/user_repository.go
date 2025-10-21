@@ -3,7 +3,7 @@ package shared
 import (
 	"context"
 
-	"github.com/lllypuk/teams-up/internal/domain/uuid"
+	"github.com/flowra/flowra/internal/domain/uuid"
 )
 
 // UserRepository предоставляет доступ к информации о пользователях

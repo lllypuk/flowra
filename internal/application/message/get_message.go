@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/teams-up/internal/application/shared"
-	"github.com/lllypuk/teams-up/internal/domain/message"
+	"github.com/flowra/flowra/internal/application/shared"
+	"github.com/flowra/flowra/internal/domain/message"
 )
 
 // GetMessageUseCase обрабатывает получение сообщения по ID

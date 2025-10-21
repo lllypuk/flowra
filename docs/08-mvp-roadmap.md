@@ -26,7 +26,7 @@ Roadmap для реализации MVP chat-based task tracker. Разрабо�
 ### Tasks
 
 - [x] **0.1 Initialize Go module** ✅
-  - `go mod init github.com/lllypuk/teams-up`
+  - `go mod init github.com/flowra/flowra`
   - Добавить базовые зависимости (echo v4.13.4, mongo-driver v1.17.4, redis v9.14.0, uuid v1.6.0, viper v1.21.0, testify v1.11.1)
 
 - [x] **0.2 Setup project structure** ✅

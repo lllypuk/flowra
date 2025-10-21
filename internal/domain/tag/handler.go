@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/flowra/flowra/internal/domain/chat"
+	"github.com/flowra/flowra/internal/domain/message"
+	domainUUID "github.com/flowra/flowra/internal/domain/uuid"
 	"github.com/google/uuid"
-	"github.com/lllypuk/teams-up/internal/domain/chat"
-	"github.com/lllypuk/teams-up/internal/domain/message"
-	domainUUID "github.com/lllypuk/teams-up/internal/domain/uuid"
 )
 
 const (

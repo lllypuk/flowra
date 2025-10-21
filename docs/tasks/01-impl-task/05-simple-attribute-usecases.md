@@ -45,8 +45,8 @@ import (
     "fmt"
 
     "github.com/google/uuid"
-    "teams-up/internal/domain/task"
-    "teams-up/internal/infrastructure/eventstore"
+    "flowra/internal/domain/task"
+    "flowra/internal/infrastructure/eventstore"
 )
 
 // ChangePriorityUseCase обрабатывает изменение приоритета задачи
@@ -148,8 +148,8 @@ import (
     "fmt"
 
     "github.com/google/uuid"
-    "teams-up/internal/domain/task"
-    "teams-up/internal/infrastructure/eventstore"
+    "flowra/internal/domain/task"
+    "flowra/internal/infrastructure/eventstore"
 )
 
 // SetDueDateUseCase обрабатывает установку дедлайна задачи
@@ -266,9 +266,9 @@ import (
     "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/require"
 
-    "teams-up/internal/domain/task"
-    "teams-up/internal/infrastructure/eventstore"
-    taskusecase "teams-up/internal/usecase/task"
+    "flowra/internal/domain/task"
+    "flowra/internal/infrastructure/eventstore"
+    taskusecase "flowra/internal/usecase/task"
 )
 
 func TestChangePriorityUseCase_Success(t *testing.T) {
@@ -447,9 +447,9 @@ import (
     "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/require"
 
-    "teams-up/internal/domain/task"
-    "teams-up/internal/infrastructure/eventstore"
-    taskusecase "teams-up/internal/usecase/task"
+    "flowra/internal/domain/task"
+    "flowra/internal/infrastructure/eventstore"
+    taskusecase "flowra/internal/usecase/task"
 )
 
 func TestSetDueDateUseCase_Success(t *testing.T) {

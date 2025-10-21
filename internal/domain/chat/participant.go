@@ -3,7 +3,7 @@ package chat
 import (
 	"time"
 
-	"github.com/lllypuk/teams-up/internal/domain/uuid"
+	"github.com/flowra/flowra/internal/domain/uuid"
 )
 
 // Role представляет роль участника в чате

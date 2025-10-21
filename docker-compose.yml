@@ -3,7 +3,7 @@ version: '3.8'
 services:
   mongodb:
     image: mongo:8
-    container_name: teams-up-mongodb
+    container_name: flowra-mongodb
     ports:
       - "27017:27017"
     environment:
@@ -12,7 +12,7 @@ services:
     volumes:
       - mongodb_data:/data/db
     networks:
-      - teams-up-network
+      - flowra-network
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
@@ -22,13 +22,13 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: teams-up-redis
+    container_name: flowra-redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
-      - teams-up-network
+      - flowra-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -38,7 +38,7 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:23.0
-    container_name: teams-up-keycloak
+    container_name: flowra-keycloak
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin123
@@ -48,7 +48,7 @@ services:
     command:
       - start-dev
     networks:
-      - teams-up-network
+      - flowra-network
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
       interval: 30s
@@ -62,5 +62,5 @@ volumes:
   redis_data:
 
 networks:
-  teams-up-network:
+  flowra-network:
     driver: bridge

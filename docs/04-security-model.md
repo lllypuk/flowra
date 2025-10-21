@@ -34,19 +34,19 @@ Message Level (Application)
 ### Realm Structure
 
 ```
-Realm: teams-up
+Realm: flowra
 
 Realm Roles:
 ├─ user              — базовая роль (все зарегистрированные пользователи)
 └─ system-admin      — суперадмин (полный доступ ко всему)
 
-Client: teams-up-app
-├─ Client ID: teams-up-app
+Client: flowra-app
+├─ Client ID: flowra-app
 ├─ Protocol: openid-connect
 ├─ Access Type: confidential
 ├─ Valid Redirect URIs:
 │  └─ http://localhost:8080/auth/callback
-│  └─ https://app.teams-up.com/auth/callback
+│  └─ https://app.flowra.com/auth/callback
 │
 └─ Client Roles:
    ├─ workspace-admin   — администратор workspace
@@ -95,12 +95,12 @@ Mappers:
 
   3. Audience Mapper:
      Name: audience
-     Included Client Audience: teams-up-app
+     Included Client Audience: flowra-app
 
   4. Client Roles Mapper:
      Name: client-roles
-     Client ID: teams-up-app
-     Token Claim Name: resource_access.teams-up-app.roles
+     Client ID: flowra-app
+     Token Claim Name: resource_access.flowra-app.roles
      Add to access token: ON
 ```
 
@@ -119,7 +119,7 @@ Mappers:
   },
 
   "resource_access": {
-    "teams-up-app": {
+    "flowra-app": {
       "roles": ["workspace-admin", "workspace-member"]
     }
   },
@@ -129,8 +129,8 @@ Mappers:
     "/Marketing Team"
   ],
 
-  "iss": "http://localhost:8090/realms/teams-up",
-  "aud": "teams-up-app",
+  "iss": "http://localhost:8090/realms/flowra",
+  "aud": "flowra-app",
   "exp": 1727692800,
   "iat": 1727689200
 }
@@ -293,7 +293,7 @@ func IsWorkspaceAdmin(token *jwt.Token, workspaceID UUID) bool {
     workspace := workspaceRepo.FindByID(workspaceID)
 
     // Из токена извлекаем client roles
-    clientRoles := token.Get("resource_access.teams-up-app.roles").([]interface{})
+    clientRoles := token.Get("resource_access.flowra-app.roles").([]interface{})
 
     // Проверяем, что пользователь в нужной группе И имеет роль admin
     // (детальная реализация зависит от Keycloak mapper для group roles)
@@ -469,7 +469,7 @@ InviteLink:
       - token: crypto/rand 32 bytes → base64
       - expiresAt: now + 7 days
    c) Сохраняет в БД
-   d) Возвращает URL: https://app.teams-up.com/invite/{token}
+   d) Возвращает URL: https://app.flowra.com/invite/{token}
 
 4. Frontend: Показывает URL для копирования
 ```
@@ -606,8 +606,8 @@ func CurrentWorkspaceMiddleware(next http.Handler) http.Handler {
 → Всегда работаем в контексте current_workspace_id из cookie
 
 Вариант C: Workspace в subdomain
-engineering-team.teams-up.com/board
-marketing-team.teams-up.com/board
+engineering-team.flowra.com/board
+marketing-team.flowra.com/board
 ```
 
 **Предлагаю Вариант A для MVP:**
@@ -695,8 +695,8 @@ func (s *WorkspaceService) GetUserWorkspaces(userID UUID, token *jwt.Token) ([]W
 ```go
 type KeycloakConfig struct {
     URL          string // http://localhost:8090
-    Realm        string // teams-up
-    ClientID     string // teams-up-app
+    Realm        string // flowra
+    ClientID     string // flowra-app
     ClientSecret string
     AdminUser    string // admin (для service account)
     AdminPass    string
@@ -707,7 +707,7 @@ type KeycloakConfig struct {
 
 ```
 В Keycloak создать отдельный Client для backend:
-Client ID: teams-up-backend
+Client ID: flowra-backend
 Access Type: confidential
 Service Accounts Enabled: ON
 Authorization Enabled: ON
@@ -826,8 +826,8 @@ func (kc *KeycloakClient) RemoveUserFromGroup(userID, groupID string) error {
 1. User opens app → /
    ↓
 2. Not authenticated → redirect to Keycloak
-   GET http://localhost:8090/realms/teams-up/protocol/openid-connect/auth
-     ?client_id=teams-up-app
+   GET http://localhost:8090/realms/flowra/protocol/openid-connect/auth
+     ?client_id=flowra-app
      &redirect_uri=http://localhost:8080/auth/callback
      &response_type=code
      &scope=openid profile email
@@ -838,8 +838,8 @@ func (kc *KeycloakClient) RemoveUserFromGroup(userID, groupID string) error {
    GET http://localhost:8080/auth/callback?code=AUTH_CODE
 
 5. Backend exchanges code for tokens:
-   POST http://localhost:8090/realms/teams-up/protocol/openid-connect/token
-     client_id=teams-up-app
+   POST http://localhost:8090/realms/flowra/protocol/openid-connect/token
+     client_id=flowra-app
      client_secret=SECRET
      code=AUTH_CODE
      grant_type=authorization_code
@@ -939,7 +939,7 @@ POST /auth/logout
 → 1. Удаляем session из Redis
 → 2. Удаляем session cookie
 → 3. Опционально: отзываем токен в Keycloak
-     POST http://localhost:8090/realms/teams-up/protocol/openid-connect/logout
+     POST http://localhost:8090/realms/flowra/protocol/openid-connect/logout
 → 4. Редирект на /
 ```
 
@@ -1054,7 +1054,7 @@ func ValidateJWT(tokenString string, config KeycloakConfig) (*jwt.Token, error) 
     claims := token.Claims.(*CustomClaims)
 
     // Audience
-    if !contains(claims.Audience, "teams-up-app") {
+    if !contains(claims.Audience, "flowra-app") {
         return nil, errors.New("invalid audience")
     }
 
@@ -1077,7 +1077,7 @@ func ValidateJWT(tokenString string, config KeycloakConfig) (*jwt.Token, error) 
 
 ```go
 corsConfig := cors.Config{
-    AllowOrigins:     []string{"http://localhost:3000", "https://teams-up.com"},
+    AllowOrigins:     []string{"http://localhost:3000", "https://flowra.com"},
     AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
     AllowHeaders:     []string{"Authorization", "Content-Type"},
     AllowCredentials: true, // для cookies

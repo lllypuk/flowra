@@ -1,4 +1,4 @@
-module github.com/lllypuk/teams-up
+module github.com/flowra/flowra
 
 go 1.25.1
 

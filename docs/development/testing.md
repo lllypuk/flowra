@@ -502,7 +502,7 @@ package testdata
 
 import (
     "time"
-    "github.com/your-org/new-teams-up/internal/domain"
+    "github.com/your-org/new-flowra/internal/domain"
 )
 
 type UserFactory struct {

@@ -3,7 +3,7 @@ package task
 import (
 	"slices"
 
-	"github.com/lllypuk/teams-up/internal/domain/errs"
+	"github.com/flowra/flowra/internal/domain/errs"
 )
 
 // EntityType представляет тип сущности

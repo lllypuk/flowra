@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lllypuk/teams-up/internal/application/workspace"
-	"github.com/lllypuk/teams-up/internal/domain/uuid"
-	domainworkspace "github.com/lllypuk/teams-up/internal/domain/workspace"
+	"github.com/flowra/flowra/internal/application/workspace"
+	"github.com/flowra/flowra/internal/domain/uuid"
+	domainworkspace "github.com/flowra/flowra/internal/domain/workspace"
 )
 
 func TestAcceptInviteUseCase_Execute_Success(t *testing.T) {

@@ -1,7 +1,7 @@
 package message
 
 import (
-	"github.com/lllypuk/teams-up/internal/domain/uuid"
+	"github.com/flowra/flowra/internal/domain/uuid"
 )
 
 // SendMessageCommand - отправка сообщения
