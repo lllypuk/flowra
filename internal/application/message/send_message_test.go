@@ -21,7 +21,7 @@ func TestSendMessageUseCase_Success(t *testing.T) {
 	authorID := uuid.NewUUID()
 	chatRepo.AddChat(chatID, []uuid.UUID{authorID})
 
-	useCase := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus)
+	useCase := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus, nil, nil)
 
 	cmd := message.SendMessageCommand{
 		ChatID:          chatID,
@@ -60,7 +60,7 @@ func TestSendMessageUseCase_WithParentMessage(t *testing.T) {
 	require.NoError(t, err)
 	messageRepo.Messages[parentMsg.ID()] = parentMsg
 
-	useCase := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus)
+	useCase := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus, nil, nil)
 
 	cmd := message.SendMessageCommand{
 		ChatID:          chatID,
@@ -86,7 +86,7 @@ func TestSendMessageUseCase_NotParticipant(t *testing.T) {
 	otherUserID := uuid.NewUUID()
 	chatRepo.AddChat(chatID, []uuid.UUID{otherUserID}) // Другой пользователь
 
-	useCase := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus)
+	useCase := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus, nil, nil)
 
 	cmd := message.SendMessageCommand{
 		ChatID:          chatID,
@@ -107,7 +107,7 @@ func TestSendMessageUseCase_ChatNotFound(t *testing.T) {
 	chatRepo := message.NewMockChatRepository()
 	eventBus := message.NewMockEventBus()
 
-	useCase := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus)
+	useCase := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus, nil, nil)
 
 	cmd := message.SendMessageCommand{
 		ChatID:          uuid.NewUUID(), // Несуществующий чат
@@ -132,7 +132,7 @@ func TestSendMessageUseCase_EmptyContent(t *testing.T) {
 	authorID := uuid.NewUUID()
 	chatRepo.AddChat(chatID, []uuid.UUID{authorID})
 
-	useCase := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus)
+	useCase := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus, nil, nil)
 
 	cmd := message.SendMessageCommand{
 		ChatID:          chatID,
@@ -157,7 +157,7 @@ func TestSendMessageUseCase_ContentTooLong(t *testing.T) {
 	authorID := uuid.NewUUID()
 	chatRepo.AddChat(chatID, []uuid.UUID{authorID})
 
-	useCase := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus)
+	useCase := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus, nil, nil)
 
 	// Создаем контент > message.MaxContentLength
 	longContent := make([]byte, message.MaxContentLength+1)
@@ -188,7 +188,7 @@ func TestSendMessageUseCase_ParentNotFound(t *testing.T) {
 	authorID := uuid.NewUUID()
 	chatRepo.AddChat(chatID, []uuid.UUID{authorID})
 
-	useCase := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus)
+	useCase := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus, nil, nil)
 
 	cmd := message.SendMessageCommand{
 		ChatID:          chatID,
@@ -220,7 +220,7 @@ func TestSendMessageUseCase_ParentInDifferentChat(t *testing.T) {
 	require.NoError(t, err)
 	messageRepo.Messages[parentMsg.ID()] = parentMsg
 
-	useCase := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus)
+	useCase := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus, nil, nil)
 
 	cmd := message.SendMessageCommand{
 		ChatID:          chatID2, // Другой чат
