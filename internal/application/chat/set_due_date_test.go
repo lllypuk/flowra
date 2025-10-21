@@ -1,8 +1,10 @@
-package chat
+package chat_test
 
 import (
 	"testing"
 	"time"
+
+	"github.com/lllypuk/flowra/internal/application/chat"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,8 +17,8 @@ func TestSetDueDateUseCase_Success_SetFutureDate(t *testing.T) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
 
-	createUseCase := NewCreateChatUseCase(eventStore)
-	createCmd := CreateChatCommand{
+	createUseCase := chat.NewCreateChatUseCase(eventStore)
+	createCmd := chat.CreateChatCommand{
 		WorkspaceID: generateUUID(t),
 		Type:        domainChat.TypeTask,
 		Title:       "Test Task",
@@ -27,8 +29,8 @@ func TestSetDueDateUseCase_Success_SetFutureDate(t *testing.T) {
 	require.NoError(t, err)
 
 	futureDate := time.Now().AddDate(0, 0, 7) // 7 days in future
-	setDueDateUseCase := NewSetDueDateUseCase(eventStore)
-	setDueDateCmd := SetDueDateCommand{
+	setDueDateUseCase := chat.NewSetDueDateUseCase(eventStore)
+	setDueDateCmd := chat.SetDueDateCommand{
 		ChatID:  createResult.Value.ID(),
 		DueDate: &futureDate,
 		SetBy:   creatorID,
@@ -44,8 +46,8 @@ func TestSetDueDateUseCase_Success_ClearDueDate(t *testing.T) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
 
-	createUseCase := NewCreateChatUseCase(eventStore)
-	createCmd := CreateChatCommand{
+	createUseCase := chat.NewCreateChatUseCase(eventStore)
+	createCmd := chat.CreateChatCommand{
 		WorkspaceID: generateUUID(t),
 		Type:        domainChat.TypeTask,
 		Title:       "Test Task",
@@ -57,8 +59,8 @@ func TestSetDueDateUseCase_Success_ClearDueDate(t *testing.T) {
 
 	// First set a due date
 	futureDate := time.Now().AddDate(0, 0, 7)
-	setDueDateUseCase := NewSetDueDateUseCase(eventStore)
-	setDueDateCmd := SetDueDateCommand{
+	setDueDateUseCase := chat.NewSetDueDateUseCase(eventStore)
+	setDueDateCmd := chat.SetDueDateCommand{
 		ChatID:  createResult.Value.ID(),
 		DueDate: &futureDate,
 		SetBy:   creatorID,
@@ -67,7 +69,7 @@ func TestSetDueDateUseCase_Success_ClearDueDate(t *testing.T) {
 	require.NoError(t, err)
 
 	// Then clear it
-	clearCmd := SetDueDateCommand{
+	clearCmd := chat.SetDueDateCommand{
 		ChatID:  createResult.Value.ID(),
 		DueDate: nil,
 		SetBy:   creatorID,
@@ -81,10 +83,10 @@ func TestSetDueDateUseCase_Success_ClearDueDate(t *testing.T) {
 // TestSetDueDateUseCase_ValidationError_InvalidChatID tests validation error
 func TestSetDueDateUseCase_ValidationError_InvalidChatID(t *testing.T) {
 	eventStore := newTestEventStore()
-	setDueDateUseCase := NewSetDueDateUseCase(eventStore)
+	setDueDateUseCase := chat.NewSetDueDateUseCase(eventStore)
 
 	futureDate := time.Now().AddDate(0, 0, 7)
-	setDueDateCmd := SetDueDateCommand{
+	setDueDateCmd := chat.SetDueDateCommand{
 		ChatID:  "",
 		DueDate: &futureDate,
 		SetBy:   generateUUID(t),
@@ -98,10 +100,10 @@ func TestSetDueDateUseCase_ValidationError_InvalidChatID(t *testing.T) {
 // TestSetDueDateUseCase_Error_ChatNotFound tests error when chat not found
 func TestSetDueDateUseCase_Error_ChatNotFound(t *testing.T) {
 	eventStore := newTestEventStore()
-	setDueDateUseCase := NewSetDueDateUseCase(eventStore)
+	setDueDateUseCase := chat.NewSetDueDateUseCase(eventStore)
 
 	futureDate := time.Now().AddDate(0, 0, 7)
-	setDueDateCmd := SetDueDateCommand{
+	setDueDateCmd := chat.SetDueDateCommand{
 		ChatID:  generateUUID(t),
 		DueDate: &futureDate,
 		SetBy:   generateUUID(t),

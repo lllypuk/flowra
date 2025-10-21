@@ -1,4 +1,4 @@
-package chat
+package chat_test
 
 import (
 	"errors"
@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/lllypuk/flowra/internal/application/chat"
 	domainChat "github.com/lllypuk/flowra/internal/domain/chat"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
@@ -15,12 +16,12 @@ import (
 func TestCreateChatUseCase_Success_Discussion(t *testing.T) {
 	// Arrange
 	eventStore := newTestEventStore()
-	useCase := NewCreateChatUseCase(eventStore)
+	useCase := chat.NewCreateChatUseCase(eventStore)
 
 	workspaceID := generateUUID(t)
 	creatorID := generateUUID(t)
 
-	cmd := CreateChatCommand{
+	cmd := chat.CreateChatCommand{
 		WorkspaceID: workspaceID,
 		Type:        domainChat.TypeDiscussion,
 		IsPublic:    true,
@@ -35,7 +36,7 @@ func TestCreateChatUseCase_Success_Discussion(t *testing.T) {
 	require.NotNil(t, result.Value)
 	assertChatType(t, result.Value, domainChat.TypeDiscussion)
 	assert.Equal(t, workspaceID, result.Value.WorkspaceID())
-	assert.Equal(t, true, result.Value.IsPublic())
+	assert.True(t, result.Value.IsPublic())
 	assert.Equal(t, creatorID, result.Value.CreatedBy())
 
 	// Check that events are created for Discussion chats
@@ -48,13 +49,13 @@ func TestCreateChatUseCase_Success_Discussion(t *testing.T) {
 func TestCreateChatUseCase_Success_Task(t *testing.T) {
 	// Arrange
 	eventStore := newTestEventStore()
-	useCase := NewCreateChatUseCase(eventStore)
+	useCase := chat.NewCreateChatUseCase(eventStore)
 
 	workspaceID := generateUUID(t)
 	creatorID := generateUUID(t)
 	title := "Test Task Title"
 
-	cmd := CreateChatCommand{
+	cmd := chat.CreateChatCommand{
 		WorkspaceID: workspaceID,
 		Type:        domainChat.TypeTask,
 		IsPublic:    true,
@@ -83,13 +84,13 @@ func TestCreateChatUseCase_Success_Task(t *testing.T) {
 func TestCreateChatUseCase_Success_Bug(t *testing.T) {
 	// Arrange
 	eventStore := newTestEventStore()
-	useCase := NewCreateChatUseCase(eventStore)
+	useCase := chat.NewCreateChatUseCase(eventStore)
 
 	workspaceID := generateUUID(t)
 	creatorID := generateUUID(t)
 	title := "Critical Bug"
 
-	cmd := CreateChatCommand{
+	cmd := chat.CreateChatCommand{
 		WorkspaceID: workspaceID,
 		Type:        domainChat.TypeBug,
 		IsPublic:    false,
@@ -105,7 +106,7 @@ func TestCreateChatUseCase_Success_Bug(t *testing.T) {
 	require.NotNil(t, result.Value)
 	assertChatType(t, result.Value, domainChat.TypeBug)
 	assertChatTitle(t, result.Value, title)
-	assert.Equal(t, false, result.Value.IsPublic())
+	assert.False(t, result.Value.IsPublic())
 
 	assertEventCount(t, result, 2)
 }
@@ -114,13 +115,13 @@ func TestCreateChatUseCase_Success_Bug(t *testing.T) {
 func TestCreateChatUseCase_Success_Epic(t *testing.T) {
 	// Arrange
 	eventStore := newTestEventStore()
-	useCase := NewCreateChatUseCase(eventStore)
+	useCase := chat.NewCreateChatUseCase(eventStore)
 
 	workspaceID := generateUUID(t)
 	creatorID := generateUUID(t)
 	title := "Q4 Release Epic"
 
-	cmd := CreateChatCommand{
+	cmd := chat.CreateChatCommand{
 		WorkspaceID: workspaceID,
 		Type:        domainChat.TypeEpic,
 		IsPublic:    true,
@@ -144,9 +145,9 @@ func TestCreateChatUseCase_Success_Epic(t *testing.T) {
 func TestCreateChatUseCase_ValidationError_InvalidWorkspaceID(t *testing.T) {
 	// Arrange
 	eventStore := newTestEventStore()
-	useCase := NewCreateChatUseCase(eventStore)
+	useCase := chat.NewCreateChatUseCase(eventStore)
 
-	cmd := CreateChatCommand{
+	cmd := chat.CreateChatCommand{
 		WorkspaceID: uuid.UUID(""),
 		Type:        domainChat.TypeDiscussion,
 		CreatedBy:   generateUUID(t),
@@ -158,7 +159,7 @@ func TestCreateChatUseCase_ValidationError_InvalidWorkspaceID(t *testing.T) {
 	// Assert
 	executeAndAssertError(t, err)
 	assert.Nil(t, result.Value)
-	assert.ErrorContains(t, err, "validation failed")
+	require.ErrorContains(t, err, "validation failed")
 
 	// EventStore should not be called
 	assertEventStoreCallCount(t, eventStore, "SaveEvents", 0)
@@ -168,9 +169,9 @@ func TestCreateChatUseCase_ValidationError_InvalidWorkspaceID(t *testing.T) {
 func TestCreateChatUseCase_ValidationError_InvalidCreatedBy(t *testing.T) {
 	// Arrange
 	eventStore := newTestEventStore()
-	useCase := NewCreateChatUseCase(eventStore)
+	useCase := chat.NewCreateChatUseCase(eventStore)
 
-	cmd := CreateChatCommand{
+	cmd := chat.CreateChatCommand{
 		WorkspaceID: generateUUID(t),
 		Type:        domainChat.TypeDiscussion,
 		CreatedBy:   uuid.UUID(""),
@@ -189,9 +190,9 @@ func TestCreateChatUseCase_ValidationError_InvalidCreatedBy(t *testing.T) {
 func TestCreateChatUseCase_ValidationError_MissingTitleForTypedChat(t *testing.T) {
 	// Arrange
 	eventStore := newTestEventStore()
-	useCase := NewCreateChatUseCase(eventStore)
+	useCase := chat.NewCreateChatUseCase(eventStore)
 
-	cmd := CreateChatCommand{
+	cmd := chat.CreateChatCommand{
 		WorkspaceID: generateUUID(t),
 		Type:        domainChat.TypeTask,
 		IsPublic:    true,
@@ -205,7 +206,7 @@ func TestCreateChatUseCase_ValidationError_MissingTitleForTypedChat(t *testing.T
 	// Assert
 	executeAndAssertError(t, err)
 	assert.Nil(t, result.Value)
-	assert.ErrorContains(t, err, "validation failed")
+	require.ErrorContains(t, err, "validation failed")
 	assertEventStoreCallCount(t, eventStore, "SaveEvents", 0)
 }
 
@@ -213,13 +214,13 @@ func TestCreateChatUseCase_ValidationError_MissingTitleForTypedChat(t *testing.T
 func TestCreateChatUseCase_EventStoreError(t *testing.T) {
 	// Arrange
 	eventStore := newTestEventStore()
-	useCase := NewCreateChatUseCase(eventStore)
+	useCase := chat.NewCreateChatUseCase(eventStore)
 
 	// Setup EventStore to fail
 	storeError := errors.New("database error")
 	setEventStoreError(eventStore, storeError)
 
-	cmd := CreateChatCommand{
+	cmd := chat.CreateChatCommand{
 		WorkspaceID: generateUUID(t),
 		Type:        domainChat.TypeDiscussion,
 		IsPublic:    true,
@@ -231,6 +232,6 @@ func TestCreateChatUseCase_EventStoreError(t *testing.T) {
 
 	// Assert
 	executeAndAssertError(t, err)
-	assert.ErrorContains(t, err, "database error")
+	require.ErrorContains(t, err, "database error")
 	assert.Nil(t, result.Value)
 }

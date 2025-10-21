@@ -1,4 +1,4 @@
-package chat
+package chat_test
 
 import (
 	"testing"
@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/lllypuk/flowra/internal/application/chat"
 	domainChat "github.com/lllypuk/flowra/internal/domain/chat"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
@@ -14,14 +15,14 @@ import (
 func TestAddParticipantUseCase_Success_AddAdmin(t *testing.T) {
 	// Arrange
 	eventStore := newTestEventStore()
-	useCase := NewAddParticipantUseCase(eventStore)
+	useCase := chat.NewAddParticipantUseCase(eventStore)
 
 	workspaceID := generateUUID(t)
 	creatorID := generateUUID(t)
 
 	// Create and save a chat first
-	createUseCase := NewCreateChatUseCase(eventStore)
-	createCmd := CreateChatCommand{
+	createUseCase := chat.NewCreateChatUseCase(eventStore)
+	createCmd := chat.CreateChatCommand{
 		WorkspaceID: workspaceID,
 		Type:        domainChat.TypeDiscussion,
 		IsPublic:    true,
@@ -33,7 +34,7 @@ func TestAddParticipantUseCase_Success_AddAdmin(t *testing.T) {
 
 	userID := generateUUID(t)
 
-	cmd := AddParticipantCommand{
+	cmd := chat.AddParticipantCommand{
 		ChatID:  chatID,
 		UserID:  userID,
 		Role:    domainChat.RoleAdmin,
@@ -57,8 +58,8 @@ func TestAddParticipantUseCase_Error_AlreadyParticipant(t *testing.T) {
 	creatorID := generateUUID(t)
 
 	// Create and save a chat first
-	createUseCase := NewCreateChatUseCase(eventStore)
-	createCmd := CreateChatCommand{
+	createUseCase := chat.NewCreateChatUseCase(eventStore)
+	createCmd := chat.CreateChatCommand{
 		WorkspaceID: workspaceID,
 		Type:        domainChat.TypeDiscussion,
 		IsPublic:    true,
@@ -71,8 +72,8 @@ func TestAddParticipantUseCase_Error_AlreadyParticipant(t *testing.T) {
 	userID := generateUUID(t)
 
 	// Add participant first time
-	addUseCase := NewAddParticipantUseCase(eventStore)
-	cmd1 := AddParticipantCommand{
+	addUseCase := chat.NewAddParticipantUseCase(eventStore)
+	cmd1 := chat.AddParticipantCommand{
 		ChatID:  chatID,
 		UserID:  userID,
 		Role:    domainChat.RoleMember,
@@ -84,8 +85,8 @@ func TestAddParticipantUseCase_Error_AlreadyParticipant(t *testing.T) {
 	assert.True(t, result1.Value.HasParticipant(userID))
 
 	// Try to add same participant again with fresh UseCase instance
-	addUseCase2 := NewAddParticipantUseCase(eventStore)
-	cmd2 := AddParticipantCommand{
+	addUseCase2 := chat.NewAddParticipantUseCase(eventStore)
+	cmd2 := chat.AddParticipantCommand{
 		ChatID:  chatID,
 		UserID:  userID,
 		Role:    domainChat.RoleMember,
@@ -104,9 +105,9 @@ func TestAddParticipantUseCase_Error_AlreadyParticipant(t *testing.T) {
 func TestAddParticipantUseCase_ValidationError_InvalidChatID(t *testing.T) {
 	// Arrange
 	eventStore := newTestEventStore()
-	useCase := NewAddParticipantUseCase(eventStore)
+	useCase := chat.NewAddParticipantUseCase(eventStore)
 
-	cmd := AddParticipantCommand{
+	cmd := chat.AddParticipantCommand{
 		ChatID:  uuid.UUID(""),
 		UserID:  generateUUID(t),
 		Role:    domainChat.RoleMember,
@@ -125,9 +126,9 @@ func TestAddParticipantUseCase_ValidationError_InvalidChatID(t *testing.T) {
 func TestAddParticipantUseCase_ValidationError_InvalidUserID(t *testing.T) {
 	// Arrange
 	eventStore := newTestEventStore()
-	useCase := NewAddParticipantUseCase(eventStore)
+	useCase := chat.NewAddParticipantUseCase(eventStore)
 
-	cmd := AddParticipantCommand{
+	cmd := chat.AddParticipantCommand{
 		ChatID:  generateUUID(t),
 		UserID:  uuid.UUID(""),
 		Role:    domainChat.RoleMember,
@@ -146,9 +147,9 @@ func TestAddParticipantUseCase_ValidationError_InvalidUserID(t *testing.T) {
 func TestAddParticipantUseCase_EventStoreError_LoadFails(t *testing.T) {
 	// Arrange
 	eventStore := newTestEventStore()
-	useCase := NewAddParticipantUseCase(eventStore)
+	useCase := chat.NewAddParticipantUseCase(eventStore)
 
-	cmd := AddParticipantCommand{
+	cmd := chat.AddParticipantCommand{
 		ChatID:  generateUUID(t),
 		UserID:  generateUUID(t),
 		Role:    domainChat.RoleMember,

@@ -1,7 +1,9 @@
-package chat
+package chat_test
 
 import (
 	"testing"
+
+	"github.com/lllypuk/flowra/internal/application/chat"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,8 +35,8 @@ func testSetSeveritySuccess(t *testing.T, severity string) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
 
-	createUseCase := NewCreateChatUseCase(eventStore)
-	createCmd := CreateChatCommand{
+	createUseCase := chat.NewCreateChatUseCase(eventStore)
+	createCmd := chat.CreateChatCommand{
 		WorkspaceID: generateUUID(t),
 		Type:        domainChat.TypeBug,
 		Title:       "Test Bug",
@@ -44,8 +46,8 @@ func testSetSeveritySuccess(t *testing.T, severity string) {
 	createResult, err := createUseCase.Execute(testContext(), createCmd)
 	require.NoError(t, err)
 
-	setSeverityUseCase := NewSetSeverityUseCase(eventStore)
-	setSeverityCmd := SetSeverityCommand{
+	setSeverityUseCase := chat.NewSetSeverityUseCase(eventStore)
+	setSeverityCmd := chat.SetSeverityCommand{
 		ChatID:   createResult.Value.ID(),
 		Severity: severity,
 		SetBy:    creatorID,
@@ -61,8 +63,8 @@ func TestSetSeverityUseCase_Error_OnlyForBugs(t *testing.T) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
 
-	createUseCase := NewCreateChatUseCase(eventStore)
-	createCmd := CreateChatCommand{
+	createUseCase := chat.NewCreateChatUseCase(eventStore)
+	createCmd := chat.CreateChatCommand{
 		WorkspaceID: generateUUID(t),
 		Type:        domainChat.TypeTask,
 		Title:       "Test Task",
@@ -72,8 +74,8 @@ func TestSetSeverityUseCase_Error_OnlyForBugs(t *testing.T) {
 	createResult, err := createUseCase.Execute(testContext(), createCmd)
 	require.NoError(t, err)
 
-	setSeverityUseCase := NewSetSeverityUseCase(eventStore)
-	setSeverityCmd := SetSeverityCommand{
+	setSeverityUseCase := chat.NewSetSeverityUseCase(eventStore)
+	setSeverityCmd := chat.SetSeverityCommand{
 		ChatID:   createResult.Value.ID(),
 		Severity: "Critical",
 		SetBy:    creatorID,
@@ -87,9 +89,9 @@ func TestSetSeverityUseCase_Error_OnlyForBugs(t *testing.T) {
 // TestSetSeverityUseCase_ValidationError_InvalidSeverity tests validation error
 func TestSetSeverityUseCase_ValidationError_InvalidSeverity(t *testing.T) {
 	eventStore := newTestEventStore()
-	setSeverityUseCase := NewSetSeverityUseCase(eventStore)
+	setSeverityUseCase := chat.NewSetSeverityUseCase(eventStore)
 
-	setSeverityCmd := SetSeverityCommand{
+	setSeverityCmd := chat.SetSeverityCommand{
 		ChatID:   generateUUID(t),
 		Severity: "InvalidSeverity",
 		SetBy:    generateUUID(t),

@@ -1,7 +1,9 @@
-package chat
+package chat_test
 
 import (
 	"testing"
+
+	"github.com/lllypuk/flowra/internal/application/chat"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -14,8 +16,8 @@ func TestRenameChatUseCase_Success(t *testing.T) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
 
-	createUseCase := NewCreateChatUseCase(eventStore)
-	createCmd := CreateChatCommand{
+	createUseCase := chat.NewCreateChatUseCase(eventStore)
+	createCmd := chat.CreateChatCommand{
 		WorkspaceID: generateUUID(t),
 		Type:        domainChat.TypeTask,
 		Title:       "Old Title",
@@ -25,8 +27,8 @@ func TestRenameChatUseCase_Success(t *testing.T) {
 	createResult, err := createUseCase.Execute(testContext(), createCmd)
 	require.NoError(t, err)
 
-	renameUseCase := NewRenameChatUseCase(eventStore)
-	renameCmd := RenameChatCommand{
+	renameUseCase := chat.NewRenameChatUseCase(eventStore)
+	renameCmd := chat.RenameChatCommand{
 		ChatID:    createResult.Value.ID(),
 		NewTitle:  "New Title",
 		RenamedBy: creatorID,
@@ -40,9 +42,9 @@ func TestRenameChatUseCase_Success(t *testing.T) {
 // TestRenameChatUseCase_ValidationError_EmptyTitle tests validation error
 func TestRenameChatUseCase_ValidationError_EmptyTitle(t *testing.T) {
 	eventStore := newTestEventStore()
-	renameUseCase := NewRenameChatUseCase(eventStore)
+	renameUseCase := chat.NewRenameChatUseCase(eventStore)
 
-	renameCmd := RenameChatCommand{
+	renameCmd := chat.RenameChatCommand{
 		ChatID:    generateUUID(t),
 		NewTitle:  "",
 		RenamedBy: generateUUID(t),
@@ -56,9 +58,9 @@ func TestRenameChatUseCase_ValidationError_EmptyTitle(t *testing.T) {
 // TestRenameChatUseCase_ValidationError_InvalidChatID tests validation error
 func TestRenameChatUseCase_ValidationError_InvalidChatID(t *testing.T) {
 	eventStore := newTestEventStore()
-	renameUseCase := NewRenameChatUseCase(eventStore)
+	renameUseCase := chat.NewRenameChatUseCase(eventStore)
 
-	renameCmd := RenameChatCommand{
+	renameCmd := chat.RenameChatCommand{
 		ChatID:    "",
 		NewTitle:  "New Title",
 		RenamedBy: generateUUID(t),
@@ -72,9 +74,9 @@ func TestRenameChatUseCase_ValidationError_InvalidChatID(t *testing.T) {
 // TestRenameChatUseCase_Error_ChatNotFound tests error when chat not found
 func TestRenameChatUseCase_Error_ChatNotFound(t *testing.T) {
 	eventStore := newTestEventStore()
-	renameUseCase := NewRenameChatUseCase(eventStore)
+	renameUseCase := chat.NewRenameChatUseCase(eventStore)
 
-	renameCmd := RenameChatCommand{
+	renameCmd := chat.RenameChatCommand{
 		ChatID:    generateUUID(t),
 		NewTitle:  "New Title",
 		RenamedBy: generateUUID(t),

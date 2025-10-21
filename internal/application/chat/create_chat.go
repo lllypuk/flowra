@@ -67,6 +67,8 @@ func (uc *CreateChatUseCase) Execute(ctx context.Context, cmd CreateChatCommand)
 			if convertErr := chatAggregate.ConvertToEpic(cmd.Title, cmd.CreatedBy); convertErr != nil {
 				return Result{}, fmt.Errorf("failed to convert to epic: %w", convertErr)
 			}
+		case chat.TypeDiscussion:
+			// Discussion type is already handled above, no conversion needed
 		}
 	}
 

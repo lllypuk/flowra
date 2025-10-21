@@ -1,7 +1,9 @@
-package chat
+package chat_test
 
 import (
 	"testing"
+
+	"github.com/lllypuk/flowra/internal/application/chat"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -14,8 +16,8 @@ func TestAssignUserUseCase_Success_AssignUser(t *testing.T) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
 
-	createUseCase := NewCreateChatUseCase(eventStore)
-	createCmd := CreateChatCommand{
+	createUseCase := chat.NewCreateChatUseCase(eventStore)
+	createCmd := chat.CreateChatCommand{
 		WorkspaceID: generateUUID(t),
 		Type:        domainChat.TypeTask,
 		Title:       "Test Task",
@@ -26,8 +28,8 @@ func TestAssignUserUseCase_Success_AssignUser(t *testing.T) {
 	require.NoError(t, err)
 
 	assigneeID := generateUUID(t)
-	assignUseCase := NewAssignUserUseCase(eventStore)
-	assignCmd := AssignUserCommand{
+	assignUseCase := chat.NewAssignUserUseCase(eventStore)
+	assignCmd := chat.AssignUserCommand{
 		ChatID:     createResult.Value.ID(),
 		AssigneeID: &assigneeID,
 		AssignedBy: creatorID,
@@ -44,8 +46,8 @@ func TestAssignUserUseCase_Success_UnassignUser(t *testing.T) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
 
-	createUseCase := NewCreateChatUseCase(eventStore)
-	createCmd := CreateChatCommand{
+	createUseCase := chat.NewCreateChatUseCase(eventStore)
+	createCmd := chat.CreateChatCommand{
 		WorkspaceID: generateUUID(t),
 		Type:        domainChat.TypeTask,
 		Title:       "Test Task",
@@ -57,8 +59,8 @@ func TestAssignUserUseCase_Success_UnassignUser(t *testing.T) {
 
 	// First assign
 	assigneeID := generateUUID(t)
-	assignUseCase := NewAssignUserUseCase(eventStore)
-	assignCmd := AssignUserCommand{
+	assignUseCase := chat.NewAssignUserUseCase(eventStore)
+	assignCmd := chat.AssignUserCommand{
 		ChatID:     createResult.Value.ID(),
 		AssigneeID: &assigneeID,
 		AssignedBy: creatorID,
@@ -67,7 +69,7 @@ func TestAssignUserUseCase_Success_UnassignUser(t *testing.T) {
 	require.NoError(t, err)
 
 	// Then unassign
-	unassignCmd := AssignUserCommand{
+	unassignCmd := chat.AssignUserCommand{
 		ChatID:     createResult.Value.ID(),
 		AssigneeID: nil,
 		AssignedBy: creatorID,
@@ -81,10 +83,10 @@ func TestAssignUserUseCase_Success_UnassignUser(t *testing.T) {
 // TestAssignUserUseCase_ValidationError_InvalidChatID tests validation error
 func TestAssignUserUseCase_ValidationError_InvalidChatID(t *testing.T) {
 	eventStore := newTestEventStore()
-	assignUseCase := NewAssignUserUseCase(eventStore)
+	assignUseCase := chat.NewAssignUserUseCase(eventStore)
 
 	assigneeID := generateUUID(t)
-	assignCmd := AssignUserCommand{
+	assignCmd := chat.AssignUserCommand{
 		ChatID:     "",
 		AssigneeID: &assigneeID,
 		AssignedBy: generateUUID(t),
@@ -98,10 +100,10 @@ func TestAssignUserUseCase_ValidationError_InvalidChatID(t *testing.T) {
 // TestAssignUserUseCase_Error_ChatNotFound tests error when chat not found
 func TestAssignUserUseCase_Error_ChatNotFound(t *testing.T) {
 	eventStore := newTestEventStore()
-	assignUseCase := NewAssignUserUseCase(eventStore)
+	assignUseCase := chat.NewAssignUserUseCase(eventStore)
 
 	assigneeID := generateUUID(t)
-	assignCmd := AssignUserCommand{
+	assignCmd := chat.AssignUserCommand{
 		ChatID:     generateUUID(t),
 		AssigneeID: &assigneeID,
 		AssignedBy: generateUUID(t),

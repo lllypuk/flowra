@@ -1,7 +1,9 @@
-package chat
+package chat_test
 
 import (
 	"testing"
+
+	"github.com/lllypuk/flowra/internal/application/chat"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,8 +17,8 @@ func TestRemoveParticipantUseCase_Success(t *testing.T) {
 	eventStore := newTestEventStore()
 
 	// Create chat and add participant
-	createUseCase := NewCreateChatUseCase(eventStore)
-	createCmd := CreateChatCommand{
+	createUseCase := chat.NewCreateChatUseCase(eventStore)
+	createCmd := chat.CreateChatCommand{
 		WorkspaceID: generateUUID(t),
 		Type:        domainChat.TypeDiscussion,
 		IsPublic:    true,
@@ -29,8 +31,8 @@ func TestRemoveParticipantUseCase_Success(t *testing.T) {
 
 	// Add participant
 	userID := generateUUID(t)
-	addUseCase := NewAddParticipantUseCase(eventStore)
-	addCmd := AddParticipantCommand{
+	addUseCase := chat.NewAddParticipantUseCase(eventStore)
+	addCmd := chat.AddParticipantCommand{
 		ChatID:  chatID,
 		UserID:  userID,
 		Role:    domainChat.RoleMember,
@@ -40,8 +42,8 @@ func TestRemoveParticipantUseCase_Success(t *testing.T) {
 	require.NoError(t, err)
 
 	// Act
-	removeUseCase := NewRemoveParticipantUseCase(eventStore)
-	removeCmd := RemoveParticipantCommand{
+	removeUseCase := chat.NewRemoveParticipantUseCase(eventStore)
+	removeCmd := chat.RemoveParticipantCommand{
 		ChatID:    chatID,
 		UserID:    userID,
 		RemovedBy: creatorID,
@@ -57,9 +59,9 @@ func TestRemoveParticipantUseCase_Success(t *testing.T) {
 // TestRemoveParticipantUseCase_ValidationError_InvalidChatID tests validation error
 func TestRemoveParticipantUseCase_ValidationError_InvalidChatID(t *testing.T) {
 	eventStore := newTestEventStore()
-	removeUseCase := NewRemoveParticipantUseCase(eventStore)
+	removeUseCase := chat.NewRemoveParticipantUseCase(eventStore)
 
-	cmd := RemoveParticipantCommand{
+	cmd := chat.RemoveParticipantCommand{
 		ChatID:    "",
 		UserID:    generateUUID(t),
 		RemovedBy: generateUUID(t),
@@ -74,9 +76,9 @@ func TestRemoveParticipantUseCase_ValidationError_InvalidChatID(t *testing.T) {
 // TestRemoveParticipantUseCase_ValidationError_InvalidUserID tests validation error
 func TestRemoveParticipantUseCase_ValidationError_InvalidUserID(t *testing.T) {
 	eventStore := newTestEventStore()
-	removeUseCase := NewRemoveParticipantUseCase(eventStore)
+	removeUseCase := chat.NewRemoveParticipantUseCase(eventStore)
 
-	cmd := RemoveParticipantCommand{
+	cmd := chat.RemoveParticipantCommand{
 		ChatID:    generateUUID(t),
 		UserID:    "",
 		RemovedBy: generateUUID(t),
@@ -93,8 +95,8 @@ func TestRemoveParticipantUseCase_Error_NotParticipant(t *testing.T) {
 	eventStore := newTestEventStore()
 
 	// Create chat
-	createUseCase := NewCreateChatUseCase(eventStore)
-	createCmd := CreateChatCommand{
+	createUseCase := chat.NewCreateChatUseCase(eventStore)
+	createCmd := chat.CreateChatCommand{
 		WorkspaceID: generateUUID(t),
 		Type:        domainChat.TypeDiscussion,
 		IsPublic:    true,
@@ -104,8 +106,8 @@ func TestRemoveParticipantUseCase_Error_NotParticipant(t *testing.T) {
 	require.NoError(t, err)
 	chatID := createResult.Value.ID()
 
-	removeUseCase := NewRemoveParticipantUseCase(eventStore)
-	cmd := RemoveParticipantCommand{
+	removeUseCase := chat.NewRemoveParticipantUseCase(eventStore)
+	cmd := chat.RemoveParticipantCommand{
 		ChatID:    chatID,
 		UserID:    generateUUID(t),
 		RemovedBy: createResult.Value.CreatedBy(),

@@ -1,7 +1,9 @@
-package chat
+package chat_test
 
 import (
 	"testing"
+
+	"github.com/lllypuk/flowra/internal/application/chat"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -14,8 +16,8 @@ func TestConvertToBugUseCase_Success(t *testing.T) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
 
-	createUseCase := NewCreateChatUseCase(eventStore)
-	createCmd := CreateChatCommand{
+	createUseCase := chat.NewCreateChatUseCase(eventStore)
+	createCmd := chat.CreateChatCommand{
 		WorkspaceID: generateUUID(t),
 		Type:        domainChat.TypeDiscussion,
 		IsPublic:    true,
@@ -24,8 +26,8 @@ func TestConvertToBugUseCase_Success(t *testing.T) {
 	createResult, err := createUseCase.Execute(testContext(), createCmd)
 	require.NoError(t, err)
 
-	convertUseCase := NewConvertToBugUseCase(eventStore)
-	convertCmd := ConvertToBugCommand{
+	convertUseCase := chat.NewConvertToBugUseCase(eventStore)
+	convertCmd := chat.ConvertToBugCommand{
 		ChatID:      createResult.Value.ID(),
 		Title:       "Critical Bug",
 		ConvertedBy: creatorID,
@@ -42,8 +44,8 @@ func TestConvertToBugUseCase_Error_AlreadyBug(t *testing.T) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
 
-	createUseCase := NewCreateChatUseCase(eventStore)
-	createCmd := CreateChatCommand{
+	createUseCase := chat.NewCreateChatUseCase(eventStore)
+	createCmd := chat.CreateChatCommand{
 		WorkspaceID: generateUUID(t),
 		Type:        domainChat.TypeBug,
 		Title:       "Existing Bug",
@@ -53,8 +55,8 @@ func TestConvertToBugUseCase_Error_AlreadyBug(t *testing.T) {
 	createResult, err := createUseCase.Execute(testContext(), createCmd)
 	require.NoError(t, err)
 
-	convertUseCase := NewConvertToBugUseCase(eventStore)
-	convertCmd := ConvertToBugCommand{
+	convertUseCase := chat.NewConvertToBugUseCase(eventStore)
+	convertCmd := chat.ConvertToBugCommand{
 		ChatID:      createResult.Value.ID(),
 		Title:       "Another Bug",
 		ConvertedBy: creatorID,
@@ -68,9 +70,9 @@ func TestConvertToBugUseCase_Error_AlreadyBug(t *testing.T) {
 // TestConvertToBugUseCase_ValidationError_EmptyTitle tests validation error
 func TestConvertToBugUseCase_ValidationError_EmptyTitle(t *testing.T) {
 	eventStore := newTestEventStore()
-	convertUseCase := NewConvertToBugUseCase(eventStore)
+	convertUseCase := chat.NewConvertToBugUseCase(eventStore)
 
-	convertCmd := ConvertToBugCommand{
+	convertCmd := chat.ConvertToBugCommand{
 		ChatID:      generateUUID(t),
 		Title:       "",
 		ConvertedBy: generateUUID(t),
@@ -84,9 +86,9 @@ func TestConvertToBugUseCase_ValidationError_EmptyTitle(t *testing.T) {
 // TestConvertToBugUseCase_Error_ChatNotFound tests error when chat not found
 func TestConvertToBugUseCase_Error_ChatNotFound(t *testing.T) {
 	eventStore := newTestEventStore()
-	convertUseCase := NewConvertToBugUseCase(eventStore)
+	convertUseCase := chat.NewConvertToBugUseCase(eventStore)
 
-	convertCmd := ConvertToBugCommand{
+	convertCmd := chat.ConvertToBugCommand{
 		ChatID:      generateUUID(t),
 		Title:       "Bug Title",
 		ConvertedBy: generateUUID(t),

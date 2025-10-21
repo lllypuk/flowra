@@ -1,7 +1,9 @@
-package chat
+package chat_test
 
 import (
 	"testing"
+
+	"github.com/lllypuk/flowra/internal/application/chat"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,8 +35,8 @@ func testSetPrioritySuccess(t *testing.T, priority string) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
 
-	createUseCase := NewCreateChatUseCase(eventStore)
-	createCmd := CreateChatCommand{
+	createUseCase := chat.NewCreateChatUseCase(eventStore)
+	createCmd := chat.CreateChatCommand{
 		WorkspaceID: generateUUID(t),
 		Type:        domainChat.TypeTask,
 		Title:       "Test Task",
@@ -44,8 +46,8 @@ func testSetPrioritySuccess(t *testing.T, priority string) {
 	createResult, err := createUseCase.Execute(testContext(), createCmd)
 	require.NoError(t, err)
 
-	setPriorityUseCase := NewSetPriorityUseCase(eventStore)
-	setPriorityCmd := SetPriorityCommand{
+	setPriorityUseCase := chat.NewSetPriorityUseCase(eventStore)
+	setPriorityCmd := chat.SetPriorityCommand{
 		ChatID:   createResult.Value.ID(),
 		Priority: priority,
 		SetBy:    creatorID,
@@ -59,9 +61,9 @@ func testSetPrioritySuccess(t *testing.T, priority string) {
 // TestSetPriorityUseCase_ValidationError_InvalidPriority tests validation error
 func TestSetPriorityUseCase_ValidationError_InvalidPriority(t *testing.T) {
 	eventStore := newTestEventStore()
-	setPriorityUseCase := NewSetPriorityUseCase(eventStore)
+	setPriorityUseCase := chat.NewSetPriorityUseCase(eventStore)
 
-	setPriorityCmd := SetPriorityCommand{
+	setPriorityCmd := chat.SetPriorityCommand{
 		ChatID:   generateUUID(t),
 		Priority: "InvalidPriority",
 		SetBy:    generateUUID(t),
@@ -75,9 +77,9 @@ func TestSetPriorityUseCase_ValidationError_InvalidPriority(t *testing.T) {
 // TestSetPriorityUseCase_ValidationError_InvalidChatID tests validation error
 func TestSetPriorityUseCase_ValidationError_InvalidChatID(t *testing.T) {
 	eventStore := newTestEventStore()
-	setPriorityUseCase := NewSetPriorityUseCase(eventStore)
+	setPriorityUseCase := chat.NewSetPriorityUseCase(eventStore)
 
-	setPriorityCmd := SetPriorityCommand{
+	setPriorityCmd := chat.SetPriorityCommand{
 		ChatID:   "",
 		Priority: "High",
 		SetBy:    generateUUID(t),

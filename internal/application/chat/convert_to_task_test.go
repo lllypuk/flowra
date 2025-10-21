@@ -1,7 +1,9 @@
-package chat
+package chat_test
 
 import (
 	"testing"
+
+	"github.com/lllypuk/flowra/internal/application/chat"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,8 +17,8 @@ func TestConvertToTaskUseCase_Success_FromDiscussion(t *testing.T) {
 	creatorID := generateUUID(t)
 
 	// Create Discussion chat
-	createUseCase := NewCreateChatUseCase(eventStore)
-	createCmd := CreateChatCommand{
+	createUseCase := chat.NewCreateChatUseCase(eventStore)
+	createCmd := chat.CreateChatCommand{
 		WorkspaceID: generateUUID(t),
 		Type:        domainChat.TypeDiscussion,
 		IsPublic:    true,
@@ -27,8 +29,8 @@ func TestConvertToTaskUseCase_Success_FromDiscussion(t *testing.T) {
 	chatID := createResult.Value.ID()
 
 	// Act
-	convertUseCase := NewConvertToTaskUseCase(eventStore)
-	convertCmd := ConvertToTaskCommand{
+	convertUseCase := chat.NewConvertToTaskUseCase(eventStore)
+	convertCmd := chat.ConvertToTaskCommand{
 		ChatID:      chatID,
 		Title:       "New Task Title",
 		ConvertedBy: creatorID,
@@ -48,8 +50,8 @@ func TestConvertToTaskUseCase_Error_AlreadyTask(t *testing.T) {
 	creatorID := generateUUID(t)
 
 	// Create Task chat
-	createUseCase := NewCreateChatUseCase(eventStore)
-	createCmd := CreateChatCommand{
+	createUseCase := chat.NewCreateChatUseCase(eventStore)
+	createCmd := chat.CreateChatCommand{
 		WorkspaceID: generateUUID(t),
 		Type:        domainChat.TypeTask,
 		Title:       "Existing Task",
@@ -61,8 +63,8 @@ func TestConvertToTaskUseCase_Error_AlreadyTask(t *testing.T) {
 	chatID := createResult.Value.ID()
 
 	// Try to convert to Task again
-	convertUseCase := NewConvertToTaskUseCase(eventStore)
-	convertCmd := ConvertToTaskCommand{
+	convertUseCase := chat.NewConvertToTaskUseCase(eventStore)
+	convertCmd := chat.ConvertToTaskCommand{
 		ChatID:      chatID,
 		Title:       "Another Title",
 		ConvertedBy: creatorID,
@@ -76,9 +78,9 @@ func TestConvertToTaskUseCase_Error_AlreadyTask(t *testing.T) {
 // TestConvertToTaskUseCase_ValidationError_EmptyTitle tests validation error
 func TestConvertToTaskUseCase_ValidationError_EmptyTitle(t *testing.T) {
 	eventStore := newTestEventStore()
-	convertUseCase := NewConvertToTaskUseCase(eventStore)
+	convertUseCase := chat.NewConvertToTaskUseCase(eventStore)
 
-	convertCmd := ConvertToTaskCommand{
+	convertCmd := chat.ConvertToTaskCommand{
 		ChatID:      generateUUID(t),
 		Title:       "",
 		ConvertedBy: generateUUID(t),
@@ -92,9 +94,9 @@ func TestConvertToTaskUseCase_ValidationError_EmptyTitle(t *testing.T) {
 // TestConvertToTaskUseCase_ValidationError_InvalidChatID tests validation error
 func TestConvertToTaskUseCase_ValidationError_InvalidChatID(t *testing.T) {
 	eventStore := newTestEventStore()
-	convertUseCase := NewConvertToTaskUseCase(eventStore)
+	convertUseCase := chat.NewConvertToTaskUseCase(eventStore)
 
-	convertCmd := ConvertToTaskCommand{
+	convertCmd := chat.ConvertToTaskCommand{
 		ChatID:      "",
 		Title:       "Task Title",
 		ConvertedBy: generateUUID(t),

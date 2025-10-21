@@ -1,7 +1,9 @@
-package chat
+package chat_test
 
 import (
 	"testing"
+
+	"github.com/lllypuk/flowra/internal/application/chat"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -14,8 +16,8 @@ func TestConvertToEpicUseCase_Success(t *testing.T) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
 
-	createUseCase := NewCreateChatUseCase(eventStore)
-	createCmd := CreateChatCommand{
+	createUseCase := chat.NewCreateChatUseCase(eventStore)
+	createCmd := chat.CreateChatCommand{
 		WorkspaceID: generateUUID(t),
 		Type:        domainChat.TypeDiscussion,
 		IsPublic:    true,
@@ -24,8 +26,8 @@ func TestConvertToEpicUseCase_Success(t *testing.T) {
 	createResult, err := createUseCase.Execute(testContext(), createCmd)
 	require.NoError(t, err)
 
-	convertUseCase := NewConvertToEpicUseCase(eventStore)
-	convertCmd := ConvertToEpicCommand{
+	convertUseCase := chat.NewConvertToEpicUseCase(eventStore)
+	convertCmd := chat.ConvertToEpicCommand{
 		ChatID:      createResult.Value.ID(),
 		Title:       "Q4 Epic",
 		ConvertedBy: creatorID,
@@ -42,8 +44,8 @@ func TestConvertToEpicUseCase_Error_AlreadyEpic(t *testing.T) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
 
-	createUseCase := NewCreateChatUseCase(eventStore)
-	createCmd := CreateChatCommand{
+	createUseCase := chat.NewCreateChatUseCase(eventStore)
+	createCmd := chat.CreateChatCommand{
 		WorkspaceID: generateUUID(t),
 		Type:        domainChat.TypeEpic,
 		Title:       "Existing Epic",
@@ -53,8 +55,8 @@ func TestConvertToEpicUseCase_Error_AlreadyEpic(t *testing.T) {
 	createResult, err := createUseCase.Execute(testContext(), createCmd)
 	require.NoError(t, err)
 
-	convertUseCase := NewConvertToEpicUseCase(eventStore)
-	convertCmd := ConvertToEpicCommand{
+	convertUseCase := chat.NewConvertToEpicUseCase(eventStore)
+	convertCmd := chat.ConvertToEpicCommand{
 		ChatID:      createResult.Value.ID(),
 		Title:       "Another Epic",
 		ConvertedBy: creatorID,
@@ -68,9 +70,9 @@ func TestConvertToEpicUseCase_Error_AlreadyEpic(t *testing.T) {
 // TestConvertToEpicUseCase_ValidationError_EmptyTitle tests validation error
 func TestConvertToEpicUseCase_ValidationError_EmptyTitle(t *testing.T) {
 	eventStore := newTestEventStore()
-	convertUseCase := NewConvertToEpicUseCase(eventStore)
+	convertUseCase := chat.NewConvertToEpicUseCase(eventStore)
 
-	convertCmd := ConvertToEpicCommand{
+	convertCmd := chat.ConvertToEpicCommand{
 		ChatID:      generateUUID(t),
 		Title:       "",
 		ConvertedBy: generateUUID(t),

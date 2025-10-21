@@ -2,6 +2,7 @@ package chat
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -36,7 +37,7 @@ func (uc *AddParticipantUseCase) Execute(ctx context.Context, cmd AddParticipant
 
 	// Проверка перед добавлением
 	if chatAggregate.HasParticipant(cmd.UserID) {
-		return Result{}, fmt.Errorf("failed to add participant: %w", fmt.Errorf("user already a participant"))
+		return Result{}, fmt.Errorf("failed to add participant: %w", errors.New("user already a participant"))
 	}
 
 	// Создание события ParticipantAdded для сохранения в event sourcing
