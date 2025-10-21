@@ -134,7 +134,7 @@ func TestTagIntegration_DisabledTagProcessing(t *testing.T) {
 
 type MockUserRepositoryForTags struct{}
 
-func (m *MockUserRepositoryForTags) FindByUsername(ctx context.Context, username string) (*user.User, error) {
-	// Mock implementation - just return nil for testing
-	return nil, nil
+func (m *MockUserRepositoryForTags) FindByUsername(_ context.Context, _ string) (*user.User, error) {
+	// Mock implementation - return error to indicate user not found
+	return nil, context.Canceled
 }

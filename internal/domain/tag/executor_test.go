@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/lllypuk/flowra/internal/domain/tag"
 	"github.com/lllypuk/flowra/internal/domain/user"
@@ -54,7 +55,7 @@ func TestCommandExecutor_AssignUser_UserNotFound(t *testing.T) {
 	err := executor.Execute(ctx, cmd, actorID)
 
 	// Assert
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "user @nonexistent not found")
 	mockUserRepo.AssertCalled(t, "FindByUsername", ctx, "nonexistent")
 }
@@ -86,7 +87,7 @@ func TestCommandExecutor_AssignUser_TrimPrefix(t *testing.T) {
 	err := executor.Execute(ctx, cmd, actorID)
 
 	// Assert - User resolution should be called with trimmed username
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "@testuser not found")
 	mockUserRepo.AssertCalled(t, "FindByUsername", ctx, "testuser")
 }
@@ -116,6 +117,6 @@ func TestCommandExecutor_UnknownCommand(t *testing.T) {
 	err := executor.Execute(ctx, cmd, actorID)
 
 	// Assert
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown command type")
 }

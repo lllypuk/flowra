@@ -19,11 +19,11 @@ type ChatRepository interface {
 
 // SendMessageUseCase обрабатывает отправку сообщения
 type SendMessageUseCase struct {
-	messageRepo    message.Repository
-	chatRepo       ChatRepository
-	eventBus       event.Bus
-	tagProcessor   *tag.Processor       // Tag processor for parsing tags from message content
-	tagExecutor    *tag.CommandExecutor // Tag executor for executing tag commands
+	messageRepo  message.Repository
+	chatRepo     ChatRepository
+	eventBus     event.Bus
+	tagProcessor *tag.Processor       // Tag processor for parsing tags from message content
+	tagExecutor  *tag.CommandExecutor // Tag executor for executing tag commands
 }
 
 // NewSendMessageUseCase создает новый SendMessageUseCase
@@ -174,16 +174,9 @@ func (uc *SendMessageUseCase) processTagsAsync(
 
 	// Выполняем команды
 	for _, tagApp := range processingResult.AppliedTags {
-		cmd, ok := tagApp.Command.(tag.Command)
-		if !ok {
-			// Не команда или неизвестный тип - пропускаем
-			continue
-		}
-
-		if execErr := uc.tagExecutor.Execute(ctx, cmd, authorIDGoogle); execErr != nil {
-			// TODO: отправить notification об ошибке или создать reply с ботом
-			// Для теперь просто логируем ошибку (или игнорируем)
-		}
+		_ = uc.tagExecutor.Execute(ctx, tagApp.Command, authorIDGoogle)
+		// TODO: отправить notification об ошибке или создать reply с ботом
+		// Для теперь просто игнорируем ошибку
 	}
 
 	// TODO: форматирование результатов через tag.Formatter и отправка reply
