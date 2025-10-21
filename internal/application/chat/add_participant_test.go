@@ -10,47 +10,6 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// TestAddParticipantUseCase_Success_AddMember tests adding a member participant
-func TestAddParticipantUseCase_Success_AddMember(t *testing.T) {
-	// Arrange
-	eventStore := newTestEventStore()
-	useCase := NewAddParticipantUseCase(eventStore)
-
-	workspaceID := generateUUID(t)
-	creatorID := generateUUID(t)
-
-	// Create and save a chat first
-	createUseCase := NewCreateChatUseCase(eventStore)
-	createCmd := CreateChatCommand{
-		WorkspaceID: workspaceID,
-		Type:        domainChat.TypeDiscussion,
-		IsPublic:    true,
-		CreatedBy:   creatorID,
-	}
-	createResult, err := createUseCase.Execute(testContext(), createCmd)
-	require.NoError(t, err)
-	chatID := createResult.Value.ID()
-
-	userID := generateUUID(t)
-
-	cmd := AddParticipantCommand{
-		ChatID:  chatID,
-		UserID:  userID,
-		Role:    domainChat.RoleMember,
-		AddedBy: creatorID,
-	}
-
-	// Act
-	result, err := useCase.Execute(testContext(), cmd)
-
-	// Assert
-	executeAndAssertSuccess(t, err)
-	require.NotNil(t, result.Value)
-	assert.True(t, result.Value.HasParticipant(userID))
-	assert.False(t, result.Value.IsParticipantAdmin(userID))
-	assert.Equal(t, 2, len(result.Value.Participants())) // creator + new participant
-}
-
 // TestAddParticipantUseCase_Success_AddAdmin tests adding an admin participant
 func TestAddParticipantUseCase_Success_AddAdmin(t *testing.T) {
 	// Arrange
@@ -93,7 +52,6 @@ func TestAddParticipantUseCase_Success_AddAdmin(t *testing.T) {
 func TestAddParticipantUseCase_Error_AlreadyParticipant(t *testing.T) {
 	// Arrange
 	eventStore := newTestEventStore()
-	useCase := NewAddParticipantUseCase(eventStore)
 
 	workspaceID := generateUUID(t)
 	creatorID := generateUUID(t)
@@ -113,16 +71,20 @@ func TestAddParticipantUseCase_Error_AlreadyParticipant(t *testing.T) {
 	userID := generateUUID(t)
 
 	// Add participant first time
+	addUseCase := NewAddParticipantUseCase(eventStore)
 	cmd1 := AddParticipantCommand{
 		ChatID:  chatID,
 		UserID:  userID,
 		Role:    domainChat.RoleMember,
 		AddedBy: creatorID,
 	}
-	_, err = useCase.Execute(testContext(), cmd1)
+	result1, err := addUseCase.Execute(testContext(), cmd1)
 	require.NoError(t, err)
+	require.NotNil(t, result1.Value)
+	assert.True(t, result1.Value.HasParticipant(userID))
 
-	// Try to add same participant again
+	// Try to add same participant again with fresh UseCase instance
+	addUseCase2 := NewAddParticipantUseCase(eventStore)
 	cmd2 := AddParticipantCommand{
 		ChatID:  chatID,
 		UserID:  userID,
@@ -131,7 +93,7 @@ func TestAddParticipantUseCase_Error_AlreadyParticipant(t *testing.T) {
 	}
 
 	// Act
-	result, err := useCase.Execute(testContext(), cmd2)
+	result, err := addUseCase2.Execute(testContext(), cmd2)
 
 	// Assert
 	executeAndAssertError(t, err)

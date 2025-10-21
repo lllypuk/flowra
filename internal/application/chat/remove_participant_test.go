@@ -1,0 +1,118 @@
+package chat
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	domainChat "github.com/lllypuk/flowra/internal/domain/chat"
+)
+
+// TestRemoveParticipantUseCase_Success tests successful participant removal
+func TestRemoveParticipantUseCase_Success(t *testing.T) {
+	// Arrange
+	eventStore := newTestEventStore()
+
+	// Create chat and add participant
+	createUseCase := NewCreateChatUseCase(eventStore)
+	createCmd := CreateChatCommand{
+		WorkspaceID: generateUUID(t),
+		Type:        domainChat.TypeDiscussion,
+		IsPublic:    true,
+		CreatedBy:   generateUUID(t),
+	}
+	createResult, err := createUseCase.Execute(testContext(), createCmd)
+	require.NoError(t, err)
+	chatID := createResult.Value.ID()
+	creatorID := createResult.Value.CreatedBy()
+
+	// Add participant
+	userID := generateUUID(t)
+	addUseCase := NewAddParticipantUseCase(eventStore)
+	addCmd := AddParticipantCommand{
+		ChatID:  chatID,
+		UserID:  userID,
+		Role:    domainChat.RoleMember,
+		AddedBy: creatorID,
+	}
+	_, err = addUseCase.Execute(testContext(), addCmd)
+	require.NoError(t, err)
+
+	// Act
+	removeUseCase := NewRemoveParticipantUseCase(eventStore)
+	removeCmd := RemoveParticipantCommand{
+		ChatID:    chatID,
+		UserID:    userID,
+		RemovedBy: creatorID,
+	}
+	result, err := removeUseCase.Execute(testContext(), removeCmd)
+
+	// Assert
+	executeAndAssertSuccess(t, err)
+	require.NotNil(t, result.Value)
+	assert.False(t, result.Value.HasParticipant(userID))
+}
+
+// TestRemoveParticipantUseCase_ValidationError_InvalidChatID tests validation error
+func TestRemoveParticipantUseCase_ValidationError_InvalidChatID(t *testing.T) {
+	eventStore := newTestEventStore()
+	removeUseCase := NewRemoveParticipantUseCase(eventStore)
+
+	cmd := RemoveParticipantCommand{
+		ChatID:    "",
+		UserID:    generateUUID(t),
+		RemovedBy: generateUUID(t),
+	}
+
+	result, err := removeUseCase.Execute(testContext(), cmd)
+
+	executeAndAssertError(t, err)
+	assert.Nil(t, result.Value)
+}
+
+// TestRemoveParticipantUseCase_ValidationError_InvalidUserID tests validation error
+func TestRemoveParticipantUseCase_ValidationError_InvalidUserID(t *testing.T) {
+	eventStore := newTestEventStore()
+	removeUseCase := NewRemoveParticipantUseCase(eventStore)
+
+	cmd := RemoveParticipantCommand{
+		ChatID:    generateUUID(t),
+		UserID:    "",
+		RemovedBy: generateUUID(t),
+	}
+
+	result, err := removeUseCase.Execute(testContext(), cmd)
+
+	executeAndAssertError(t, err)
+	assert.Nil(t, result.Value)
+}
+
+// TestRemoveParticipantUseCase_Error_NotParticipant tests error for non-existent participant
+func TestRemoveParticipantUseCase_Error_NotParticipant(t *testing.T) {
+	eventStore := newTestEventStore()
+
+	// Create chat
+	createUseCase := NewCreateChatUseCase(eventStore)
+	createCmd := CreateChatCommand{
+		WorkspaceID: generateUUID(t),
+		Type:        domainChat.TypeDiscussion,
+		IsPublic:    true,
+		CreatedBy:   generateUUID(t),
+	}
+	createResult, err := createUseCase.Execute(testContext(), createCmd)
+	require.NoError(t, err)
+	chatID := createResult.Value.ID()
+
+	removeUseCase := NewRemoveParticipantUseCase(eventStore)
+	cmd := RemoveParticipantCommand{
+		ChatID:    chatID,
+		UserID:    generateUUID(t),
+		RemovedBy: createResult.Value.CreatedBy(),
+	}
+
+	result, err := removeUseCase.Execute(testContext(), cmd)
+
+	executeAndAssertError(t, err)
+	assert.Nil(t, result.Value)
+}
