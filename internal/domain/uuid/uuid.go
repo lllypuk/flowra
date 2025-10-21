@@ -44,3 +44,8 @@ func (u UUID) IsZero() bool {
 func FromGoogleUUID(id uuid.UUID) UUID {
 	return UUID(id.String())
 }
+
+// ToGoogleUUID конвертирует domain UUID в google/uuid
+func (u UUID) ToGoogleUUID() (uuid.UUID, error) {
+	return uuid.Parse(string(u))
+}
