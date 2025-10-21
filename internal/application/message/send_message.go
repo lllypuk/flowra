@@ -8,6 +8,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/chat"
 	"github.com/lllypuk/flowra/internal/domain/event"
 	"github.com/lllypuk/flowra/internal/domain/message"
+	"github.com/lllypuk/flowra/internal/domain/tag"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
@@ -18,9 +19,11 @@ type ChatRepository interface {
 
 // SendMessageUseCase обрабатывает отправку сообщения
 type SendMessageUseCase struct {
-	messageRepo message.Repository
-	chatRepo    ChatRepository
-	eventBus    event.Bus
+	messageRepo    message.Repository
+	chatRepo       ChatRepository
+	eventBus       event.Bus
+	tagProcessor   *tag.Processor       // Tag processor for parsing tags from message content
+	tagExecutor    *tag.CommandExecutor // Tag executor for executing tag commands
 }
 
 // NewSendMessageUseCase создает новый SendMessageUseCase
@@ -28,11 +31,15 @@ func NewSendMessageUseCase(
 	messageRepo message.Repository,
 	chatRepo ChatRepository,
 	eventBus event.Bus,
+	tagProcessor *tag.Processor,
+	tagExecutor *tag.CommandExecutor,
 ) *SendMessageUseCase {
 	return &SendMessageUseCase{
-		messageRepo: messageRepo,
-		chatRepo:    chatRepo,
-		eventBus:    eventBus,
+		messageRepo:  messageRepo,
+		chatRepo:     chatRepo,
+		eventBus:     eventBus,
+		tagProcessor: tagProcessor,
+		tagExecutor:  tagExecutor,
 	}
 }
 
@@ -101,6 +108,11 @@ func (uc *SendMessageUseCase) Execute(
 	// TODO: log error
 	_ = uc.eventBus.Publish(ctx, evt)
 
+	// 7. Асинхронная обработка тегов (не блокируем ответ)
+	if uc.tagProcessor != nil && uc.tagExecutor != nil {
+		go uc.processTagsAsync(ctx, msg, cmd.AuthorID)
+	}
+
 	return Result{
 		Value: msg,
 	}, nil
@@ -129,4 +141,50 @@ func (uc *SendMessageUseCase) isParticipant(chatReadModel *chat.ReadModel, userI
 		}
 	}
 	return false
+}
+
+// processTagsAsync обрабатывает теги в содержимом сообщения асинхронно
+// Выполняется в горутине для того чтобы не блокировать основной ответ
+func (uc *SendMessageUseCase) processTagsAsync(
+	ctx context.Context,
+	msg *message.Message,
+	authorID uuid.UUID,
+) {
+	// Конвертируем domain UUID в google UUID для processor
+	chatIDGoogle, err := msg.ChatID().ToGoogleUUID()
+	if err != nil {
+		// Ошибка конвертации UUID - игнорируем
+		return
+	}
+
+	// Парсинг и обработка тегов из содержимого сообщения
+	// currentEntityType пустой, т.к. это сообщение, а не сущность
+	processingResult := uc.tagProcessor.ProcessMessage(chatIDGoogle, msg.Content(), "")
+	if len(processingResult.AppliedTags) == 0 {
+		// Нет успешно применённых тегов - выходим
+		return
+	}
+
+	// Конвертируем domain UUID в google UUID для executor
+	authorIDGoogle, convErr := authorID.ToGoogleUUID()
+	if convErr != nil {
+		// Ошибка конвертации UUID - выходим
+		return
+	}
+
+	// Выполняем команды
+	for _, tagApp := range processingResult.AppliedTags {
+		cmd, ok := tagApp.Command.(tag.Command)
+		if !ok {
+			// Не команда или неизвестный тип - пропускаем
+			continue
+		}
+
+		if execErr := uc.tagExecutor.Execute(ctx, cmd, authorIDGoogle); execErr != nil {
+			// TODO: отправить notification об ошибке или создать reply с ботом
+			// Для теперь просто логируем ошибку (или игнорируем)
+		}
+	}
+
+	// TODO: форматирование результатов через tag.Formatter и отправка reply
 }
