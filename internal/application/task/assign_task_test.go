@@ -7,11 +7,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	taskapp "github.com/flowra/flowra/internal/application/task"
-	"github.com/flowra/flowra/internal/domain/task"
-	"github.com/flowra/flowra/internal/domain/uuid"
-	"github.com/flowra/flowra/internal/infrastructure/eventstore"
-	"github.com/flowra/flowra/tests/mocks"
+	taskapp "github.com/lllypuk/flowra/internal/application/task"
+	"github.com/lllypuk/flowra/internal/domain/task"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/infrastructure/eventstore"
+	"github.com/lllypuk/flowra/tests/mocks"
 )
 
 func TestAssignTaskUseCase_Success(t *testing.T) {

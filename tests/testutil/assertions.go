@@ -3,7 +3,7 @@ package testutil
 import (
 	"testing"
 
-	"github.com/flowra/flowra/internal/domain/event"
+	"github.com/lllypuk/flowra/internal/domain/event"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

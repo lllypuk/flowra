@@ -3,7 +3,7 @@ package chat
 import (
 	"time"
 
-	"github.com/flowra/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 // Command представляет команду для Chat aggregate

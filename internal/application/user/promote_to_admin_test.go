@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/flowra/flowra/internal/application/user"
-	domainuser "github.com/flowra/flowra/internal/domain/user"
-	"github.com/flowra/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/application/user"
+	domainuser "github.com/lllypuk/flowra/internal/domain/user"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 func TestPromoteToAdminUseCase_Execute_Success(t *testing.T) {

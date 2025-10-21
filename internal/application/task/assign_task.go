@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/flowra/flowra/internal/application/shared"
-	"github.com/flowra/flowra/internal/domain/task"
+	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/domain/task"
 )
 
 // AssignTaskUseCase обрабатывает назначение исполнителя задачи

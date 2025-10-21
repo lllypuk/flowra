@@ -5,8 +5,8 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/flowra/flowra/internal/domain/chat"
-	domainUUID "github.com/flowra/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/domain/chat"
+	domainUUID "github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 var ErrChatNotFound = errors.New("chat not found")

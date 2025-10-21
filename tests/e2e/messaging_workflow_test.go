@@ -9,10 +9,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	messageapp "github.com/flowra/flowra/internal/application/message"
-	"github.com/flowra/flowra/internal/domain/uuid"
-	"github.com/flowra/flowra/tests/fixtures"
-	"github.com/flowra/flowra/tests/testutil"
+	messageapp "github.com/lllypuk/flowra/internal/application/message"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/tests/fixtures"
+	"github.com/lllypuk/flowra/tests/testutil"
 )
 
 // TestE2E_Messaging_SendReceive проверяет отправку и получение сообщений

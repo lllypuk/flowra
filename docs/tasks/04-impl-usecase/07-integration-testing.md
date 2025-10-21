@@ -88,8 +88,8 @@ import (
     "context"
     "sync"
 
-    "github.com/flowra/flowra/internal/domain/chat"
-    "github.com/flowra/flowra/internal/domain/uuid"
+    "github.com/lllypuk/flowra/internal/domain/chat"
+    "github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 type ChatRepository struct {
@@ -152,7 +152,7 @@ import (
     "context"
     "sync"
 
-    "github.com/flowra/flowra/internal/domain/event"
+    "github.com/lllypuk/flowra/internal/domain/event"
 )
 
 type EventBus struct {
@@ -212,8 +212,8 @@ package fixtures
 
 import (
     "github.com/google/uuid"
-    "github.com/flowra/flowra/internal/domain/chat"
-    domainUUID "github.com/flowra/flowra/internal/domain/uuid"
+    "github.com/lllypuk/flowra/internal/domain/chat"
+    domainUUID "github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 type ChatBuilder struct {
@@ -279,11 +279,11 @@ import (
     "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/require"
 
-    "github.com/flowra/flowra/internal/application/chat"
-    "github.com/flowra/flowra/internal/application/notification"
-    "github.com/flowra/flowra/internal/application/eventhandlers"
-    domainChat "github.com/flowra/flowra/internal/domain/chat"
-    "github.com/flowra/flowra/tests/mocks"
+    "github.com/lllypuk/flowra/internal/application/chat"
+    "github.com/lllypuk/flowra/internal/application/notification"
+    "github.com/lllypuk/flowra/internal/application/eventhandlers"
+    domainChat "github.com/lllypuk/flowra/internal/domain/chat"
+    "github.com/lllypuk/flowra/tests/mocks"
 )
 
 func TestEventBusIntegration_ChatCreated_CreatesNotification(t *testing.T) {
@@ -335,10 +335,10 @@ import (
     "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/require"
 
-    chatApp "github.com/flowra/flowra/internal/application/chat"
-    messageApp "github.com/flowra/flowra/internal/application/message"
-    "github.com/flowra/flowra/internal/domain/chat"
-    "github.com/flowra/flowra/tests/mocks"
+    chatApp "github.com/lllypuk/flowra/internal/application/chat"
+    messageApp "github.com/lllypuk/flowra/internal/application/message"
+    "github.com/lllypuk/flowra/internal/domain/chat"
+    "github.com/lllypuk/flowra/tests/mocks"
 )
 
 func TestChatMessageIntegration_SendMessage_RequiresParticipation(t *testing.T) {
@@ -418,13 +418,13 @@ import (
     "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/require"
 
-    chatApp "github.com/flowra/flowra/internal/application/chat"
-    messageApp "github.com/flowra/flowra/internal/application/message"
-    notificationApp "github.com/flowra/flowra/internal/application/notification"
-    "github.com/flowra/flowra/internal/domain/chat"
-    "github.com/flowra/flowra/tests/fixtures"
-    "github.com/flowra/flowra/tests/mocks"
-    "github.com/flowra/flowra/tests/testutil"
+    chatApp "github.com/lllypuk/flowra/internal/application/chat"
+    messageApp "github.com/lllypuk/flowra/internal/application/message"
+    notificationApp "github.com/lllypuk/flowra/internal/application/notification"
+    "github.com/lllypuk/flowra/internal/domain/chat"
+    "github.com/lllypuk/flowra/tests/fixtures"
+    "github.com/lllypuk/flowra/tests/mocks"
+    "github.com/lllypuk/flowra/tests/testutil"
 )
 
 func TestE2E_TaskWorkflow(t *testing.T) {
@@ -556,12 +556,12 @@ package testutil
 import (
     "testing"
 
-    chatApp "github.com/flowra/flowra/internal/application/chat"
-    messageApp "github.com/flowra/flowra/internal/application/message"
-    notificationApp "github.com/flowra/flowra/internal/application/notification"
-    userApp "github.com/flowra/flowra/internal/application/user"
-    workspaceApp "github.com/flowra/flowra/internal/application/workspace"
-    "github.com/flowra/flowra/tests/mocks"
+    chatApp "github.com/lllypuk/flowra/internal/application/chat"
+    messageApp "github.com/lllypuk/flowra/internal/application/message"
+    notificationApp "github.com/lllypuk/flowra/internal/application/notification"
+    userApp "github.com/lllypuk/flowra/internal/application/user"
+    workspaceApp "github.com/lllypuk/flowra/internal/application/workspace"
+    "github.com/lllypuk/flowra/tests/mocks"
 )
 
 type TestSuite struct {

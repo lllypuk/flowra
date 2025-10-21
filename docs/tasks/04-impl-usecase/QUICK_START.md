@@ -58,7 +58,7 @@ package chat
 
 import (
     "github.com/google/uuid"
-    "github.com/flowra/flowra/internal/domain/chat"
+    "github.com/lllypuk/flowra/internal/domain/chat"
 )
 
 type CreateChatCommand struct {
@@ -83,9 +83,9 @@ import (
     "context"
     "fmt"
 
-    "github.com/flowra/flowra/internal/application/shared"
-    "github.com/flowra/flowra/internal/domain/chat"
-    "github.com/flowra/flowra/internal/domain/event"
+    "github.com/lllypuk/flowra/internal/application/shared"
+    "github.com/lllypuk/flowra/internal/domain/chat"
+    "github.com/lllypuk/flowra/internal/domain/event"
 )
 
 type CreateChatUseCase struct {
@@ -162,9 +162,9 @@ import (
     "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/require"
 
-    "github.com/flowra/flowra/internal/application/chat"
-    domainChat "github.com/flowra/flowra/internal/domain/chat"
-    "github.com/flowra/flowra/tests/mocks"
+    "github.com/lllypuk/flowra/internal/application/chat"
+    domainChat "github.com/lllypuk/flowra/internal/domain/chat"
+    "github.com/lllypuk/flowra/tests/mocks"
 )
 
 func TestCreateChatUseCase_Success(t *testing.T) {
@@ -206,8 +206,8 @@ import (
     "context"
     "sync"
 
-    "github.com/flowra/flowra/internal/domain/chat"
-    "github.com/flowra/flowra/internal/domain/uuid"
+    "github.com/lllypuk/flowra/internal/domain/chat"
+    "github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 type ChatRepository struct {

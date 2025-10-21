@@ -3,7 +3,7 @@ package notification
 import (
 	"context"
 
-	"github.com/flowra/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 // Repository определяет интерфейс для работы с хранилищем Notification

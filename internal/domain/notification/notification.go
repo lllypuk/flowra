@@ -3,8 +3,8 @@ package notification
 import (
 	"time"
 
-	"github.com/flowra/flowra/internal/domain/errs"
-	"github.com/flowra/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/domain/errs"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 // Type представляет тип уведомления

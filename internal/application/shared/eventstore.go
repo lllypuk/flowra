@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/flowra/flowra/internal/domain/event"
+	"github.com/lllypuk/flowra/internal/domain/event"
 )
 
 var (

@@ -235,7 +235,7 @@ package user
 import (
     "time"
 
-    "github.com/flowra/flowra/internal/domain/common"
+    "github.com/lllypuk/flowra/internal/domain/common"
 )
 
 // User представляет пользователя системы
@@ -313,7 +313,7 @@ package user
 import (
     "context"
 
-    "github.com/flowra/flowra/internal/domain/common"
+    "github.com/lllypuk/flowra/internal/domain/common"
 )
 
 // Repository определяет интерфейс репозитория пользователей
@@ -351,8 +351,8 @@ type Repository interface {
 package user
 
 import (
-    "github.com/flowra/flowra/internal/domain/common"
-    "github.com/flowra/flowra/internal/domain/event"
+    "github.com/lllypuk/flowra/internal/domain/common"
+    "github.com/lllypuk/flowra/internal/domain/event"
 )
 
 const (

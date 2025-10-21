@@ -111,10 +111,10 @@ $ go test ./internal/domain/tag/... -v
     [5/5 sub-tests passed]
 
 PASS
-ok      github.com/flowra/flowra/internal/domain/tag       0.007s
+ok      github.com/lllypuk/flowra/internal/domain/tag       0.007s
 
 $ go test ./internal/domain/tag/... -cover
-ok      github.com/flowra/flowra/internal/domain/tag       0.007s  coverage: 92.7% of statements
+ok      github.com/lllypuk/flowra/internal/domain/tag       0.007s  coverage: 92.7% of statements
 ```
 
 ## Acceptance Criteria

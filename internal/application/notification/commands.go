@@ -1,8 +1,8 @@
 package notification
 
 import (
-	"github.com/flowra/flowra/internal/domain/notification"
-	"github.com/flowra/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/domain/notification"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 // Command базовый интерфейс команд

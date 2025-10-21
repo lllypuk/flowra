@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/flowra/flowra/internal/application/shared"
-	"github.com/flowra/flowra/internal/domain/workspace"
+	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/domain/workspace"
 )
 
 // CreateInviteUseCase - use case для создания инвайта

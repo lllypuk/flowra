@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/flowra/flowra/internal/application/shared"
-	"github.com/flowra/flowra/internal/domain/task"
+	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/domain/task"
 )
 
 // ChangePriorityUseCase обрабатывает изменение приоритета задачи

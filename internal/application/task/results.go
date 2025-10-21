@@ -1,8 +1,8 @@
 package task
 
 import (
-	"github.com/flowra/flowra/internal/domain/event"
-	"github.com/flowra/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/domain/event"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 // TaskResult — результат выполнения use case для Task

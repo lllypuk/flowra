@@ -1,8 +1,8 @@
 package chat
 
 import (
-	"github.com/flowra/flowra/internal/application/shared"
-	"github.com/flowra/flowra/internal/domain/chat"
+	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/domain/chat"
 )
 
 // Result представляет результат command UseCase с event sourcing

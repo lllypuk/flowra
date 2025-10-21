@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/flowra/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/shared"
 )
 
 // SetDueDateUseCase обрабатывает установку дедлайна

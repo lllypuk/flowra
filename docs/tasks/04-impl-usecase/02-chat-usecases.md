@@ -86,7 +86,7 @@ import (
     "time"
 
     "github.com/google/uuid"
-    "github.com/flowra/flowra/internal/domain/chat"
+    "github.com/lllypuk/flowra/internal/domain/chat"
 )
 
 // CreateChatCommand - создание нового чата
@@ -241,8 +241,8 @@ func (q ListParticipantsQuery) QueryName() string { return "ListParticipants" }
 package chat
 
 import (
-    "github.com/flowra/flowra/internal/application/shared"
-    "github.com/flowra/flowra/internal/domain/chat"
+    "github.com/lllypuk/flowra/internal/application/shared"
+    "github.com/lllypuk/flowra/internal/domain/chat"
 )
 
 // ChatResult - результат command UseCase
@@ -266,7 +266,7 @@ package chat
 import (
     "errors"
 
-    "github.com/flowra/flowra/internal/application/shared"
+    "github.com/lllypuk/flowra/internal/application/shared"
 )
 
 var (
@@ -301,10 +301,10 @@ import (
     "context"
     "fmt"
 
-    "github.com/flowra/flowra/internal/application/shared"
-    "github.com/flowra/flowra/internal/domain/chat"
-    "github.com/flowra/flowra/internal/domain/event"
-    domainUUID "github.com/flowra/flowra/internal/domain/uuid"
+    "github.com/lllypuk/flowra/internal/application/shared"
+    "github.com/lllypuk/flowra/internal/domain/chat"
+    "github.com/lllypuk/flowra/internal/domain/event"
+    domainUUID "github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 type CreateChatUseCase struct {
@@ -406,9 +406,9 @@ import (
     "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/require"
 
-    "github.com/flowra/flowra/internal/application/chat"
-    domainChat "github.com/flowra/flowra/internal/domain/chat"
-    "github.com/flowra/flowra/tests/mocks"
+    "github.com/lllypuk/flowra/internal/application/chat"
+    domainChat "github.com/lllypuk/flowra/internal/domain/chat"
+    "github.com/lllypuk/flowra/tests/mocks"
 )
 
 func TestCreateChatUseCase_Success(t *testing.T) {

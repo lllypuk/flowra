@@ -1,8 +1,8 @@
 package user
 
 import (
-	"github.com/flowra/flowra/internal/application/shared"
-	"github.com/flowra/flowra/internal/domain/user"
+	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/domain/user"
 )
 
 // Result - результат операции с одним пользователем

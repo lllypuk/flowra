@@ -3,7 +3,7 @@ package message
 import (
 	"time"
 
-	"github.com/flowra/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 // GetMessageQuery - получение сообщения по ID

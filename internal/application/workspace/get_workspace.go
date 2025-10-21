@@ -3,8 +3,8 @@ package workspace
 import (
 	"context"
 
-	"github.com/flowra/flowra/internal/application/shared"
-	"github.com/flowra/flowra/internal/domain/workspace"
+	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/domain/workspace"
 )
 
 // GetWorkspaceUseCase - use case для получения workspace по ID

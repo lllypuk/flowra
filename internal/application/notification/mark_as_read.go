@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/flowra/flowra/internal/application/shared"
-	"github.com/flowra/flowra/internal/domain/errs"
-	"github.com/flowra/flowra/internal/domain/notification"
+	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/domain/errs"
+	"github.com/lllypuk/flowra/internal/domain/notification"
 )
 
 // MarkAsReadUseCase обрабатывает пометку notification как прочитанного

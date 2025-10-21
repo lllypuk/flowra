@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/flowra/flowra/internal/domain/event"
+	"github.com/lllypuk/flowra/internal/domain/event"
 )
 
 // MockEventBus реализует event.Bus для тестирования

@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/flowra/flowra/internal/domain/chat"
-	"github.com/flowra/flowra/internal/domain/event"
-	"github.com/flowra/flowra/internal/domain/user"
-	domainUUID "github.com/flowra/flowra/internal/domain/uuid"
 	"github.com/google/uuid"
+	"github.com/lllypuk/flowra/internal/domain/chat"
+	"github.com/lllypuk/flowra/internal/domain/event"
+	"github.com/lllypuk/flowra/internal/domain/user"
+	domainUUID "github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 const (

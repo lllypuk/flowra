@@ -24,7 +24,7 @@
 
 1. Инициализировать Go модуль:
    ```bash
-   go mod init github.com/flowra/flowra
+   go mod init github.com/lllypuk/flowra
    ```
 
 2. Добавить основные зависимости:
@@ -815,7 +815,7 @@ make help
 
 ### Выполненные компоненты:
 
-1. **Go Module** - `github.com/flowra/flowra`
+1. **Go Module** - `github.com/lllypuk/flowra`
    - Echo v4.13.4 (web framework)
    - MongoDB driver v1.17.4
    - Redis v9.14.0
@@ -839,7 +839,7 @@ make help
 
 4. **Инструменты разработки**:
    - `Makefile` - 15+ команд (build, test, lint, docker, fmt)
-   - `.golangci.yml` - configured для github.com/flowra/flowra
+   - `.golangci.yml` - configured для github.com/lllypuk/flowra
    - `.gitignore` - полный набор правил
 
 5. **Testing Infrastructure**:

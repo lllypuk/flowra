@@ -198,7 +198,7 @@ type ChatRepository interface {
 // ✅ CORRECT: Infrastructure implements interfaces, doesn't declare them
 package eventstore
 
-import "github.com/flowra/flowra/internal/application/shared"
+import "github.com/lllypuk/flowra/internal/application/shared"
 
 type InMemoryEventStore struct { ... }
 
@@ -217,7 +217,7 @@ type EventStore interface { ... }  // ❌ Wrong location!
 ❌ **DON'T import repository interfaces across domains**
 ```go
 // BAD: domain/tag/executor.go
-import "github.com/flowra/flowra/internal/domain/chat"
+import "github.com/lllypuk/flowra/internal/domain/chat"
 
 type Executor struct {
     chatRepo chat.Repository  // ❌ Cross-domain interface dependency!

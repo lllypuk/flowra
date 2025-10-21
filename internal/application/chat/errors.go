@@ -3,7 +3,7 @@ package chat
 import (
 	"errors"
 
-	"github.com/flowra/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/shared"
 )
 
 // Validation errors

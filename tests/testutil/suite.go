@@ -3,8 +3,8 @@ package testutil
 import (
 	"testing"
 
-	chatapp "github.com/flowra/flowra/internal/application/chat"
-	"github.com/flowra/flowra/tests/mocks"
+	chatapp "github.com/lllypuk/flowra/internal/application/chat"
+	"github.com/lllypuk/flowra/tests/mocks"
 )
 
 // TestSuite представляет полный набор для интеграционного тестирования

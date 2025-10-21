@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/flowra/flowra/internal/domain/errs"
-	"github.com/flowra/flowra/internal/domain/uuid"
-	"github.com/flowra/flowra/internal/domain/workspace"
+	"github.com/lllypuk/flowra/internal/domain/errs"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/domain/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

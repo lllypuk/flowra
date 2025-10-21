@@ -75,7 +75,7 @@ package message
 
 import (
     "github.com/google/uuid"
-    "github.com/flowra/flowra/internal/application/shared"
+    "github.com/lllypuk/flowra/internal/application/shared"
 )
 
 // SendMessageCommand - отправка сообщения
@@ -180,11 +180,11 @@ import (
     "context"
     "fmt"
 
-    "github.com/flowra/flowra/internal/application/shared"
-    "github.com/flowra/flowra/internal/domain/chat"
-    "github.com/flowra/flowra/internal/domain/event"
-    "github.com/flowra/flowra/internal/domain/message"
-    domainUUID "github.com/flowra/flowra/internal/domain/uuid"
+    "github.com/lllypuk/flowra/internal/application/shared"
+    "github.com/lllypuk/flowra/internal/domain/chat"
+    "github.com/lllypuk/flowra/internal/domain/event"
+    "github.com/lllypuk/flowra/internal/domain/message"
+    domainUUID "github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 type SendMessageUseCase struct {
@@ -303,10 +303,10 @@ import (
     "context"
     "fmt"
 
-    "github.com/flowra/flowra/internal/application/shared"
-    "github.com/flowra/flowra/internal/domain/event"
-    "github.com/flowra/flowra/internal/domain/message"
-    domainUUID "github.com/flowra/flowra/internal/domain/uuid"
+    "github.com/lllypuk/flowra/internal/application/shared"
+    "github.com/lllypuk/flowra/internal/domain/event"
+    "github.com/lllypuk/flowra/internal/domain/message"
+    domainUUID "github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 type EditMessageUseCase struct {

@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/flowra/flowra/internal/application/shared"
-	"github.com/flowra/flowra/internal/domain/event"
+	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/domain/event"
 )
 
 // MockEventStore реализует shared.EventStore для тестирования

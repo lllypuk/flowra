@@ -3,9 +3,9 @@ package notification_test
 import (
 	"testing"
 
-	"github.com/flowra/flowra/internal/domain/errs"
-	"github.com/flowra/flowra/internal/domain/notification"
-	"github.com/flowra/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/domain/errs"
+	"github.com/lllypuk/flowra/internal/domain/notification"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

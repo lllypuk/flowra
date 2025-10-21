@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/flowra/flowra/internal/application/shared"
-	"github.com/flowra/flowra/internal/domain/chat"
-	"github.com/flowra/flowra/internal/domain/event"
-	"github.com/flowra/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/domain/chat"
+	"github.com/lllypuk/flowra/internal/domain/event"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 // loadAggregate загружает Chat агрегат из event store

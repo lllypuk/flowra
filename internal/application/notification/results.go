@@ -1,8 +1,8 @@
 package notification
 
 import (
-	"github.com/flowra/flowra/internal/application/shared"
-	"github.com/flowra/flowra/internal/domain/notification"
+	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/domain/notification"
 )
 
 // Result - результат операции с notification

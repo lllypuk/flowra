@@ -214,10 +214,10 @@ $ go test ./internal/domain/tag/... -v -run "TestValidateStatus|TestValidateDueD
 --- PASS: TestProcessTags_EntityManagement (0.00s)
     [21/21 sub-tests passed]
 PASS
-ok      github.com/flowra/flowra/internal/domain/tag       0.007s
+ok      github.com/lllypuk/flowra/internal/domain/tag       0.007s
 
 $ go test ./internal/domain/tag/... -cover
-ok      github.com/flowra/flowra/internal/domain/tag       0.011s  coverage: 91.2% of statements
+ok      github.com/lllypuk/flowra/internal/domain/tag       0.011s  coverage: 91.2% of statements
 
 $ make lint
 Running linter...

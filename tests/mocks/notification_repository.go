@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/flowra/flowra/internal/domain/errs"
 	"github.com/google/uuid"
+	"github.com/lllypuk/flowra/internal/domain/errs"
 )
 
 // NotificationData представляет данные уведомления для тестов

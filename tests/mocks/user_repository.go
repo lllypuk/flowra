@@ -3,9 +3,9 @@ package mocks
 import (
 	"context"
 
-	"github.com/flowra/flowra/internal/application/shared"
-	"github.com/flowra/flowra/internal/domain/errs"
-	"github.com/flowra/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/domain/errs"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 // MockUserRepository реализует shared.UserRepository для тестирования

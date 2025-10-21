@@ -1,8 +1,8 @@
 package message
 
 import (
-	"github.com/flowra/flowra/internal/domain/errs"
-	"github.com/flowra/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/domain/errs"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 // Attachment представляет файловое вложение к сообщению

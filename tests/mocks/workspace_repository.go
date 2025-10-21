@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/flowra/flowra/internal/domain/errs"
 	"github.com/google/uuid"
+	"github.com/lllypuk/flowra/internal/domain/errs"
 )
 
 // WorkspaceData представляет данные workspace для тестов

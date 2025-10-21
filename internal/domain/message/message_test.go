@@ -3,9 +3,9 @@ package message_test
 import (
 	"testing"
 
-	"github.com/flowra/flowra/internal/domain/errs"
-	"github.com/flowra/flowra/internal/domain/message"
-	"github.com/flowra/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/domain/errs"
+	"github.com/lllypuk/flowra/internal/domain/message"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 //nolint:gocognit,errorlint // Test complexity is acceptable

@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/flowra/flowra/internal/domain/task"
-	"github.com/flowra/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/domain/task"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/flowra/flowra/internal/domain/event"
-	"github.com/flowra/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/domain/event"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 // Repository определяет интерфейс для работы с Chat aggregate (Event Sourcing)

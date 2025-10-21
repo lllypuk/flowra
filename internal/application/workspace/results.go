@@ -1,8 +1,8 @@
 package workspace
 
 import (
-	"github.com/flowra/flowra/internal/application/shared"
-	"github.com/flowra/flowra/internal/domain/workspace"
+	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/domain/workspace"
 )
 
 // Result - результат операции с workspace

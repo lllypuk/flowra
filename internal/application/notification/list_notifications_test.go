@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/flowra/flowra/internal/application/notification"
-	domainnotification "github.com/flowra/flowra/internal/domain/notification"
-	"github.com/flowra/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/application/notification"
+	domainnotification "github.com/lllypuk/flowra/internal/domain/notification"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 func TestListNotificationsUseCase_Execute_Success(t *testing.T) {

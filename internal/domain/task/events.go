@@ -3,8 +3,8 @@ package task
 import (
 	"time"
 
-	"github.com/flowra/flowra/internal/domain/event"
-	"github.com/flowra/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/domain/event"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 // Event types

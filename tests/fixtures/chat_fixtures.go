@@ -1,9 +1,9 @@
 package fixtures
 
 import (
-	chatapp "github.com/flowra/flowra/internal/application/chat"
-	"github.com/flowra/flowra/internal/domain/chat"
-	domainUUID "github.com/flowra/flowra/internal/domain/uuid"
+	chatapp "github.com/lllypuk/flowra/internal/application/chat"
+	"github.com/lllypuk/flowra/internal/domain/chat"
+	domainUUID "github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 // CreateChatCommandBuilder создает builder для CreateChatCommand

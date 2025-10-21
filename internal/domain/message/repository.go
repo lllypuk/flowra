@@ -3,7 +3,7 @@ package message
 import (
 	"context"
 
-	"github.com/flowra/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 // Pagination параметры пагинации для списка сообщений

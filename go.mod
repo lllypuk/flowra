@@ -1,4 +1,4 @@
-module github.com/flowra/flowra
+module github.com/lllypuk/flowra
 
 go 1.25.1
 

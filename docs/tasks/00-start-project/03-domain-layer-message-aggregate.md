@@ -42,8 +42,8 @@
 package message
 
 import (
-	"github.com/flowra/flowra/internal/domain/errs"
-	"github.com/flowra/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/domain/errs"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 // Attachment представляет файловое вложение к сообщению
@@ -95,8 +95,8 @@ package message
 import (
 	"time"
 
-	"github.com/flowra/flowra/internal/domain/errs"
-	"github.com/flowra/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/domain/errs"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 // Reaction представляет эмоджи реакцию на сообщение
@@ -146,8 +146,8 @@ package message
 import (
 	"time"
 
-	"github.com/flowra/flowra/internal/domain/errs"
-	"github.com/flowra/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/domain/errs"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 // Message представляет сообщение в чате
@@ -349,7 +349,7 @@ package message
 import (
 	"context"
 
-	"github.com/flowra/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 // Pagination параметры пагинации
@@ -400,8 +400,8 @@ package message
 import (
 	"time"
 
-	"github.com/flowra/flowra/internal/domain/event"
-	"github.com/flowra/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/domain/event"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 const (
