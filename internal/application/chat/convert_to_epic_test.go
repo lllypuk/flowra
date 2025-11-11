@@ -82,3 +82,19 @@ func TestConvertToEpicUseCase_ValidationError_EmptyTitle(t *testing.T) {
 	executeAndAssertError(t, err)
 	assert.Nil(t, result.Value)
 }
+
+// TestConvertToEpicUseCase_ValidationError_InvalidConvertedBy tests validation error for invalid ConvertedBy
+func TestConvertToEpicUseCase_ValidationError_InvalidConvertedBy(t *testing.T) {
+	eventStore := newTestEventStore()
+	convertUseCase := chat.NewConvertToEpicUseCase(eventStore)
+
+	convertCmd := chat.ConvertToEpicCommand{
+		ChatID:      generateUUID(t),
+		Title:       "Epic Title",
+		ConvertedBy: "", // Invalid
+	}
+	result, err := convertUseCase.Execute(testContext(), convertCmd)
+
+	executeAndAssertError(t, err)
+	assert.Nil(t, result.Value)
+}
