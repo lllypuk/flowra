@@ -68,7 +68,7 @@ func setEventStoreError(es *mocks.MockEventStore, err error) {
 }
 
 // GetEventByType retrieves first event of specific type from result
-func getEventByType(t *testing.T, result chat.Result, typeName string) interface{} {
+func getEventByType(t *testing.T, result chat.Result, typeName string) any {
 	for _, evt := range result.Events {
 		switch typeName {
 		case "ChatCreated":

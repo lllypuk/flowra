@@ -65,10 +65,7 @@ func (uc *ListChatsUseCase) Execute(ctx context.Context, query ListChatsQuery) (
 		limit = maxLimit
 	}
 
-	offset := query.Offset
-	if offset < 0 {
-		offset = 0
-	}
+	offset := max(query.Offset, 0)
 
 	// 3. Find chat IDs from read model
 	chatIDs, err := uc.chatRepo.FindByWorkspace(ctx, query.WorkspaceID, query.Type, limit+1, offset)

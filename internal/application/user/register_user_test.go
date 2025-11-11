@@ -91,10 +91,7 @@ func (m *mockUserRepository) List(_ context.Context, offset, limit int) ([]*doma
 	}
 
 	// Применяем limit
-	end := offset + limit
-	if end > len(allUsers) {
-		end = len(allUsers)
-	}
+	end := min(offset+limit, len(allUsers))
 
 	return allUsers[offset:end], nil
 }

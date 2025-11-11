@@ -80,10 +80,7 @@ func (m *mockWorkspaceRepository) List(_ context.Context, offset, limit int) ([]
 		return []*domainworkspace.Workspace{}, nil
 	}
 
-	end := offset + limit
-	if end > len(allWorkspaces) {
-		end = len(allWorkspaces)
-	}
+	end := min(offset+limit, len(allWorkspaces))
 
 	return allWorkspaces[offset:end], nil
 }

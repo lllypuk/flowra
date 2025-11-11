@@ -42,10 +42,7 @@ func (m *MockChatQueryRepository) FindByWorkspace(
 		return []uuid.UUID{}, nil
 	}
 
-	end := offset + limit
-	if end > len(chatIDs) {
-		end = len(chatIDs)
-	}
+	end := min(offset+limit, len(chatIDs))
 
 	return chatIDs[offset:end], nil
 }
