@@ -138,7 +138,7 @@ new-teams-up/
 
 ## 🚦 Quick Start
 
-### Требования
+### Prerequisites
 
 - Go 1.25+
 - Docker & Docker Compose
@@ -146,50 +146,118 @@ new-teams-up/
 - Redis 7+
 - golangci-lint (для проверки кода)
 
-### Локальная разработка
+### Setup (Локальная разработка)
 
-1. Клонировать репозиторий:
+1. **Clone the repository:**
 ```bash
-git clone https://github.com/yourorg/new-teams-up.git
-cd new-teams-up
+git clone https://github.com/lllypuk/flowra.git
+cd flowra
 ```
 
-2. Скопировать конфигурацию:
+2. **Copy configuration:**
 ```bash
 cp .env.example .env
-# Отредактировать .env файл
+# Edit .env if needed
 ```
 
-3. Запустить инфраструктуру:
+3. **Start infrastructure:**
 ```bash
 make docker-up
-# или
-docker-compose up -d
+# or
+docker-compose up -d mongodb redis keycloak
 ```
 
-4. Запустить тесты (убедиться, что все работает):
+4. **Run tests to verify everything works:**
 ```bash
-make test                    # Все тесты
-make test-unit              # Только unit-тесты
-make test-integration       # Integration тесты (требуется MongoDB)
-make test-coverage          # Coverage report (HTML)
+# Run all tests with coverage
+go test ./...
+
+# Run specific domain tests
+go test ./internal/domain/chat/...
+go test ./internal/application/chat/...
+
+# Run with coverage percentage
+go test -cover ./internal/application/...
+
+# Integration tests (requires running MongoDB)
+go test -tags=integration ./tests/integration/...
+
+# Using make
+make test                    # All tests
+make test-unit              # Unit tests only
+make test-integration       # Integration tests (requires MongoDB)
+make test-coverage          # HTML coverage report
+make test-coverage-check    # Check if coverage >= 80%
 ```
 
-5. Проверить код:
+5. **Check code quality:**
 ```bash
-make lint                   # Запустить golangci-lint
+make lint                   # Run golangci-lint
+make fmt                    # Format code
+make vet                    # Run go vet
 ```
 
-6. Собрать приложение:
+6. **Build application:**
 ```bash
-make build                  # Собрать все бинарные файлы (api, worker, migrator)
+make build                  # Build all binaries (api, worker, migrator)
 ```
 
-7. Запустить приложение (когда реализовано):
+7. **Example: Using Chat Domain with Tag Processing**
+
+```go
+package main
+
+import (
+    "context"
+    "github.com/google/uuid"
+
+    "github.com/lllypuk/flowra/internal/application/chat"
+    "github.com/lllypuk/flowra/internal/application/message"
+    chatdomain "github.com/lllypuk/flowra/internal/domain/chat"
+)
+
+func main() {
+    ctx := context.Background()
+
+    // Setup (repositories, event store, etc.)
+    // eventStore := eventstore.NewInMemoryEventStore()
+    // userRepo := &MockUserRepository{}
+    // chatRepo := &MockChatRepository{}
+    // tagProcessor := setupTagProcessor()
+
+    // 1. Create a chat
+    createChatUC := chat.NewCreateChatUseCase(eventStore, userRepo, workspaceRepo)
+    chatResult, _ := createChatUC.Execute(ctx, chat.CreateChatCommand{
+        WorkspaceID: workspaceID,
+        Type:        chatdomain.ChatTypeDiscussion,
+        Title:       "Project Planning",
+        IsPublic:    true,
+        CreatedBy:   userID,
+    })
+
+    // 2. Send message with task command (Tag Processing)
+    sendMsgUC := message.NewSendMessageUseCase(msgRepo, chatRepo, eventStore, tagProcessor)
+    msgResult, _ := sendMsgUC.Execute(ctx, message.SendMessageCommand{
+        ChatID:    chatResult.ChatID,
+        Content:   "We need to implement authentication #createTask #setPriority high",
+        SentBy:    userID,
+    })
+
+    // Result:
+    // 1. Message created
+    // 2. Chat converted to Task
+    // 3. Priority set to High
+    // 4. TaskCreated and PriorityChanged events published
+}
+```
+
+### Running the Application (When Implemented)
+
 ```bash
-make dev                    # Development mode с hot reload
-# или
-go run cmd/api/main.go
+make dev                    # Development mode with hot reload
+# or
+go run cmd/api/main.go      # API server
+go run cmd/worker/main.go   # Worker service
 ```
 
 Приложение будет доступно на http://localhost:8080 (после реализации handlers)
@@ -253,16 +321,21 @@ make run-worker             # Запустить background worker
 
 ### Статистика реализации
 
-- **Всего Go файлов**: 187
-- **Строк кода**: ~22,000 LOC
-  - Application layer: 12,684 LOC (80 файлов)
-  - Domain layer: 9,242 LOC (50 файлов)
-  - Infrastructure: частично реализовано
-- **Интерфейсов**: 64 (следуя idiomatic Go паттернам)
-- **Use Cases**: 40+
+**Version:** 0.4.0-alpha
+**Status:** Active Development (Phase 0 Complete, 82% Overall)
+
+- **Строк кода:** ~23,000 LOC
+  - Application layer: 13,000+ LOC (86 файлов)
+  - Domain layer: 9,500+ LOC (52 файлов)
+  - Infrastructure: 500+ LOC (partial)
+- **Go файлов**: 190+
+- **Интерфейсов**: 68 (следуя idiomatic Go паттернам)
+- **Use Cases**: 40+ реализовано
 - **Domain Events**: 30+ типов событий
-- **Test Files**: 56 (fixtures, mocks, utilities, integration tests)
-- **Test Coverage**: 80%+ (порог проверки в CI)
+- **Test Coverage:**
+  - Domain Layer: 90%+ ✅
+  - Application Layer: 75%+ ✅
+- **Test Files**: 60+ (fixtures, mocks, utilities, integration tests)
 
 ### Архитектурные достижения
 
@@ -299,6 +372,55 @@ make run-worker             # Запустить background worker
 - Integration test utilities (MongoDB v2, Redis)
 - E2E workflow tests
 - Custom assertions
+
+## 📈 Current Status
+
+### ✅ Completed (Phase 0 Final)
+
+**Domain Layer (90%+ complete)**
+- 6 Event-Sourced aggregates fully functional:
+  - Chat (с типами: Discussion, Task, Help Desk Ticket, Direct Message)
+  - Message (с поддержкой threads, reactions, attachments)
+  - Task (с state machine: Pending → InProgress → Done/OnHold/Cancelled)
+  - Notification (с типами: MessageNotif, TaskNotif, MentionNotif)
+  - User & Workspace (entities с полной функциональностью)
+- 30+ domain events с валидацией и сериализацией
+- Полная бизнес-логика для всех операций
+
+**Application Layer (75%+ complete)**
+- 40+ use cases реализовано:
+  - Chat: 12 commands + 3 queries
+  - Message: 8 use cases (send, edit, delete, reply в threads)
+  - Task Management: Полное управление статусами, приоритетами, due dates
+  - Notification: Создание, чтение, удаление, mark as read
+  - User & Workspace: Приглашения, управление участниками
+- Tag Processing System - полностью интегрирована в SendMessageUseCase
+- CQRS pattern реализован для всех доменов
+
+**Testing Infrastructure (85%+ complete)**
+- 60+ тестовых файлов с примерами
+- Fixtures API для создания test data
+- Mock repositories для всех доменов
+- MongoDB v2 и Redis интеграционные тесты
+- E2E workflow tests для Chat → Message → Task
+
+### 🚧 In Progress (Phase 1)
+
+**Infrastructure Layer (30%)**
+- ✅ In-memory Event Store (функциональный для тестирования)
+- ✅ MongoDB v2 connection и конфигурация
+- ✅ Redis client setup
+- ⏳ MongoDB repositories (not yet implemented)
+- ⏳ Event Bus (Redis Pub/Sub, not yet implemented)
+
+### 📋 Next Steps (Phase 2-3)
+
+- **Interface Layer (0%)** - HTTP handlers, middleware, WebSocket
+- **Entry Points (0%)** - API server (cmd/api/main.go), Worker service
+- **Frontend** - HTMX templates и Pico CSS компоненты
+- **Deployment** - Docker образы, K8s манифесты
+
+**Current Focus:** Infrastructure Layer → Interface Layer → Entry Points
 
 ## 🔐 Безопасность
 

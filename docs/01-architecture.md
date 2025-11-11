@@ -43,25 +43,155 @@ Background обработка задач:
 - Выполнение действий
 - Event generation
 
-## Слои приложения
+## Architecture Layers (Updated 2025-11-11)
 
 ```
-┌─────────────────────────────────────────┐
-│           Presentation Layer             │
-│         (HTMX Templates, API)           │
-├─────────────────────────────────────────┤
-│           Application Layer              │
-│      (Handlers, Commands, Events)       │
-├─────────────────────────────────────────┤
-│            Domain Layer                  │
-│    (Business Logic, Entities, Rules)    │
-├─────────────────────────────────────────┤
-│         Infrastructure Layer             │
-│    (Repository, External Services)      │
-├─────────────────────────────────────────┤
-│            Data Layer                    │
-│       (MongoDB, Redis, S3)              │
-└─────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                    Interface Layer                          │
+│  (Echo HTTP handlers, WebSocket, Middleware)                │
+│                  [NOT IMPLEMENTED]                          │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+┌────────────────────┴────────────────────────────────────────┐
+│                 Application Layer ✅ 75%                    │
+│  ┌──────────────┬──────────────┬───────────────────────┐   │
+│  │ Chat         │ Message      │ Task/User/Workspace   │   │
+│  │ UseCases     │ UseCases     │ Notification UseCases │   │
+│  │ (12 cmd + 3q)│ (8 total)    │ (20 total)            │   │
+│  └──────────────┴──────────────┴───────────────────────┘   │
+│                                                              │
+│  ┌────────────────────────────────────────────────────┐    │
+│  │ Tag Processing System ✅                           │    │
+│  │ (Integrated with Message UseCases)                 │    │
+│  └────────────────────────────────────────────────────┘    │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+┌────────────────────┴────────────────────────────────────────┐
+│                   Domain Layer ✅ 90%                       │
+│  ┌──────────┬─────────┬──────┬──────────────┬──────────┐   │
+│  │ Chat     │ Message │ Task │ Notification │ User     │   │
+│  │ Aggregate│ Entity  │ Agg  │ Aggregate    │ Workspace│   │
+│  └──────────┴─────────┴──────┴──────────────┴──────────┘   │
+│                                                              │
+│  30+ Domain Events (ChatCreated, StatusChanged, etc.)       │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+┌────────────────────┴────────────────────────────────────────┐
+│              Infrastructure Layer ⏳ 30%                    │
+│  ┌────────────────────────────────────────────────────┐    │
+│  │ Event Store:  ✅ In-Memory (testing)               │    │
+│  │               ⏳ MongoDB (not impl)                │    │
+│  └────────────────────────────────────────────────────┘    │
+│  ┌────────────────────────────────────────────────────┐    │
+│  │ Repositories: ⏳ MongoDB (not impl)                │    │
+│  │               ⏳ Redis (not impl)                  │    │
+│  └────────────────────────────────────────────────────┘    │
+│  ┌────────────────────────────────────────────────────┐    │
+│  │ Event Bus:    ⏳ Redis Pub/Sub (not impl)         │    │
+│  └────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Legend:** ✅ Implemented | ⏳ In Progress | [NOT IMPLEMENTED] = Planned for Phase 2-3
+
+## Tag Processing System
+
+**Status:** ✅ Implemented and integrated
+
+The Tag Processing System enables chat commands via hashtags in messages. It's fully integrated into the Message domain's SendMessageUseCase.
+
+### How It Works
+
+1. **User sends message** with tag: `"Fix the bug #createTask priority:high"`
+2. **SendMessageUseCase** validates and saves message
+3. **PublishMessagePostedEvent** triggers tag processing
+4. **TagProcessorHandler** listens to event, parses tags (format: `#tagName value:param`)
+5. **CommandExecutor** executes the corresponding tag command
+6. **Domain events generated** (e.g., TaskCreated, PriorityChanged)
+
+### Supported Tags
+
+| Tag | Command | Description |
+|-----|---------|-------------|
+| `#createTask` | ConvertToTask | Convert chat to Task |
+| `#createBug` | ConvertToBug | Convert chat to Bug with severity |
+| `#createEpic` | ConvertToEpic | Convert chat to Epic |
+| `#setStatus <status>` | ChangeStatus | Update task status |
+| `#assign @user` | AssignUser | Assign task to user |
+| `#setPriority <p>` | SetPriority | Set task priority |
+| `#setDueDate <date>` | SetDueDate | Set task due date |
+| `#setSeverity <s>` | SetSeverity | Set bug severity |
+
+### Integration Points
+
+- **Domain:** `internal/domain/tag/` (parser, executor, validators)
+- **Application:** Integrated into `SendMessageUseCase`
+- **Event Flow:** `MessagePosted` → `TagProcessorHandler` → Command execution → Domain events
+
+### Example Flow
+
+```
+User Message: "Critical login issue #createBug severity:critical #setPriority high"
+                    │
+                    ▼
+         ┌──────────────────────┐
+         │   SendMessageUseCase │
+         └──────────┬───────────┘
+                    │
+                    ▼
+         ┌──────────────────────┐
+         │ Validate & Save Msg  │
+         └──────────┬───────────┘
+                    │
+                    ▼
+         ┌──────────────────────┐
+         │ Publish MessagePosted│
+         │      Event           │
+         └──────────┬───────────┘
+                    │
+                    ▼
+         ┌──────────────────────┐
+         │ TagProcessorHandler  │
+         │  (Event Listener)    │
+         └──────────┬───────────┘
+                    │
+         ┌──────────┴──────────┐
+         ▼                     ▼
+    ┌────────────┐      ┌──────────────┐
+    │Parse Tags  │      │Validate Refs │
+    └─────┬──────┘      └──────┬───────┘
+          │                    │
+          └─────────┬──────────┘
+                    ▼
+         ┌──────────────────────┐
+         │ CommandExecutor      │
+         │ - ConvertToBug       │
+         │ - SetPriority High   │
+         └──────────┬───────────┘
+                    │
+         ┌──────────┴──────────┐
+         ▼                     ▼
+    ┌────────────┐      ┌──────────────┐
+    │BugCreated  │      │PriorityChanged│
+    │  Event     │      │    Event     │
+    └────────────┘      └──────────────┘
+```
+
+### Code Example
+
+```go
+// Tag parser extracts tags from message
+tags := parser.Parse("Fix login #createBug severity:critical #setPriority high")
+// Result: []Tag{
+//   {Name: "createBug", Params: map[string]string{"severity": "critical"}},
+//   {Name: "setPriority", Params: map[string]string{"value": "high"}},
+// }
+
+// Command executor processes each tag
+executor.Execute(ctx, chatID, tags)
+// Executes:
+// 1. ConvertToBugCommand with severity=critical
+// 2. SetPriorityCommand with priority=high
 ```
 
 ## Потоки данных

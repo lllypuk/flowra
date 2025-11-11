@@ -73,8 +73,8 @@ func saveAggregate(
 }
 
 // convertToInterfaceSlice конвертирует []event.DomainEvent в []interface{}
-func convertToInterfaceSlice(events []event.DomainEvent) []interface{} {
-	result := make([]interface{}, len(events))
+func convertToInterfaceSlice(events []event.DomainEvent) []any {
+	result := make([]any, len(events))
 	for i, evt := range events {
 		result[i] = evt
 	}

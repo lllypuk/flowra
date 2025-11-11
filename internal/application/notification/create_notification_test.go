@@ -55,10 +55,7 @@ func (m *mockNotificationRepository) FindByUserID(
 		return []*domainnotification.Notification{}, nil
 	}
 
-	end := offset + limit
-	if end > len(result) {
-		end = len(result)
-	}
+	end := min(offset+limit, len(result))
 
 	return result[offset:end], nil
 }

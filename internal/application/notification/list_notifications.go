@@ -38,10 +38,7 @@ func (uc *ListNotificationsUseCase) Execute(
 		limit = 50
 	}
 
-	offset := query.Offset
-	if offset < 0 {
-		offset = 0
-	}
+	offset := max(query.Offset, 0)
 
 	// Получение notifications
 	var notifications []*notification.Notification

@@ -54,7 +54,7 @@ func (r Result[T]) IsFailure() bool {
 type EventSourcedResult[T any] struct {
 	Result[T]
 
-	Events []interface{} // domain events
+	Events []any // domain events
 }
 
 // UnitOfWork — интерфейс для транзакционности

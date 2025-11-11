@@ -2,6 +2,7 @@ package shared
 
 import (
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/lllypuk/flowra/internal/domain/uuid"
@@ -46,10 +47,8 @@ func ValidateMinLength(field, value string, minLength int) error {
 
 // ValidateEnum проверяет, что значение находится в списке допустимых
 func ValidateEnum(field, value string, allowedValues []string) error {
-	for _, allowed := range allowedValues {
-		if value == allowed {
-			return nil
-		}
+	if slices.Contains(allowedValues, value) {
+		return nil
 	}
 	return NewValidationError(field, fmt.Sprintf("must be one of: %v", allowedValues))
 }
