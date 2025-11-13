@@ -11,6 +11,7 @@ import (
 	"github.com/lllypuk/flowra/internal/application/chat"
 	domainChat "github.com/lllypuk/flowra/internal/domain/chat"
 	"github.com/lllypuk/flowra/internal/domain/event"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 // TestListParticipantsUseCase_Success tests listing all participants
@@ -31,7 +32,7 @@ func TestListParticipantsUseCase_Success(t *testing.T) {
 	require.NoError(t, testChat.AddParticipant(member2ID, domainChat.RoleMember))
 
 	// Save chat with participants to event store
-	saveTestChat(t, eventStore, testChat, creatorID, true)
+	saveTestChat(t, eventStore, testChat, creatorID)
 
 	query := chat.ListParticipantsQuery{
 		ChatID:      testChat.ID(),
@@ -133,7 +134,7 @@ func TestListParticipantsUseCase_Success_IncludesRoles(t *testing.T) {
 	require.NoError(t, testChat.AddParticipant(memberID, domainChat.RoleMember))
 
 	// Save chat
-	saveTestChat(t, eventStore, testChat, creatorID, true)
+	saveTestChat(t, eventStore, testChat, creatorID)
 
 	query := chat.ListParticipantsQuery{
 		ChatID:      testChat.ID(),
@@ -189,7 +190,7 @@ func TestListParticipantsUseCase_Success_SortedByJoinDate(t *testing.T) {
 	require.NoError(t, testChat.AddParticipant(member3ID, domainChat.RoleMember))
 
 	// Save chat
-	saveTestChat(t, eventStore, testChat, creatorID, true)
+	saveTestChat(t, eventStore, testChat, creatorID)
 
 	query := chat.ListParticipantsQuery{
 		ChatID:      testChat.ID(),
@@ -229,7 +230,7 @@ func TestListParticipantsUseCase_Success_PublicChatNonParticipant(t *testing.T) 
 	require.NoError(t, testChat.AddParticipant(memberID, domainChat.RoleMember))
 
 	// Save chat
-	saveTestChat(t, eventStore, testChat, creatorID, true)
+	saveTestChat(t, eventStore, testChat, creatorID)
 
 	query := chat.ListParticipantsQuery{
 		ChatID:      testChat.ID(),
@@ -287,4 +288,53 @@ func TestListParticipantsUseCase_ValidationError_InvalidRequestedBy(t *testing.T
 	require.Error(t, err)
 	require.Nil(t, result)
 	assert.Contains(t, err.Error(), "validation failed")
+}
+
+// Helper function to save test chat with events to event store
+func saveTestChat(t *testing.T, eventStore interface {
+	SaveEvents(context.Context, string, []event.DomainEvent, int) error
+}, testChat *domainChat.Chat, creatorID uuid.UUID) {
+	chatCreatedEvent := domainChat.NewChatCreated(
+		testChat.ID(),
+		testChat.WorkspaceID(),
+		testChat.Type(),
+		true,
+		creatorID,
+		testChat.CreatedAt(),
+		event.Metadata{
+			CorrelationID: testChat.ID().String(),
+			CausationID:   testChat.ID().String(),
+			UserID:        creatorID.String(),
+		},
+	)
+	require.NoError(
+		t,
+		eventStore.SaveEvents(context.Background(), testChat.ID().String(), []event.DomainEvent{chatCreatedEvent}, 0),
+	)
+
+	// Save participant events - including the creator
+	version := 1
+	for _, participant := range testChat.Participants() {
+		participantAddedEvent := domainChat.NewParticipantAdded(
+			testChat.ID(),
+			participant.UserID(),
+			participant.Role(),
+			participant.JoinedAt(),
+			event.Metadata{
+				CorrelationID: testChat.ID().String(),
+				CausationID:   testChat.ID().String(),
+				UserID:        creatorID.String(),
+			},
+		)
+		require.NoError(
+			t,
+			eventStore.SaveEvents(
+				context.Background(),
+				testChat.ID().String(),
+				[]event.DomainEvent{participantAddedEvent},
+				version,
+			),
+		)
+		version++
+	}
 }

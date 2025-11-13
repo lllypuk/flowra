@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/lllypuk/flowra/internal/application/shared"
-	"github.com/lllypuk/flowra/internal/domain/user"
 )
 
 const (
@@ -15,11 +14,11 @@ const (
 
 // ListUsersUseCase обрабатывает получение списка пользователей
 type ListUsersUseCase struct {
-	userRepo user.Repository
+	userRepo Repository
 }
 
 // NewListUsersUseCase создает новый ListUsersUseCase
-func NewListUsersUseCase(userRepo user.Repository) *ListUsersUseCase {
+func NewListUsersUseCase(userRepo Repository) *ListUsersUseCase {
 	return &ListUsersUseCase{userRepo: userRepo}
 }
 

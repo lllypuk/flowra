@@ -5,16 +5,15 @@ import (
 	"fmt"
 
 	"github.com/lllypuk/flowra/internal/application/shared"
-	"github.com/lllypuk/flowra/internal/domain/message"
 )
 
 // GetThreadUseCase обрабатывает получение треда (ответов на сообщение)
 type GetThreadUseCase struct {
-	messageRepo message.Repository
+	messageRepo Repository
 }
 
 // NewGetThreadUseCase создает новый GetThreadUseCase
-func NewGetThreadUseCase(messageRepo message.Repository) *GetThreadUseCase {
+func NewGetThreadUseCase(messageRepo Repository) *GetThreadUseCase {
 	return &GetThreadUseCase{
 		messageRepo: messageRepo,
 	}

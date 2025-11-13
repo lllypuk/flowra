@@ -12,11 +12,11 @@ import (
 type CreateInviteUseCase struct {
 	shared.BaseUseCase
 
-	workspaceRepo workspace.Repository
+	workspaceRepo Repository
 }
 
 // NewCreateInviteUseCase создает новый CreateInviteUseCase
-func NewCreateInviteUseCase(workspaceRepo workspace.Repository) *CreateInviteUseCase {
+func NewCreateInviteUseCase(workspaceRepo Repository) *CreateInviteUseCase {
 	return &CreateInviteUseCase{
 		workspaceRepo: workspaceRepo,
 	}

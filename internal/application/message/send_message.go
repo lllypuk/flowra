@@ -4,22 +4,22 @@ import (
 	"context"
 	"fmt"
 
+	chatapp "github.com/lllypuk/flowra/internal/application/chat"
 	"github.com/lllypuk/flowra/internal/application/shared"
-	"github.com/lllypuk/flowra/internal/domain/chat"
 	"github.com/lllypuk/flowra/internal/domain/event"
-	"github.com/lllypuk/flowra/internal/domain/message"
+	messagedomain "github.com/lllypuk/flowra/internal/domain/message"
 	"github.com/lllypuk/flowra/internal/domain/tag"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 // ChatRepository определяет интерфейс для доступа к чатам (consumer-side interface)
 type ChatRepository interface {
-	FindByID(ctx context.Context, chatID string) (*chat.ReadModel, error)
+	FindByID(ctx context.Context, chatID uuid.UUID) (*chatapp.ReadModel, error)
 }
 
 // SendMessageUseCase обрабатывает отправку сообщения
 type SendMessageUseCase struct {
-	messageRepo  message.Repository
+	messageRepo  Repository
 	chatRepo     ChatRepository
 	eventBus     event.Bus
 	tagProcessor *tag.Processor       // Tag processor for parsing tags from message content
@@ -28,7 +28,7 @@ type SendMessageUseCase struct {
 
 // NewSendMessageUseCase создает новый SendMessageUseCase
 func NewSendMessageUseCase(
-	messageRepo message.Repository,
+	messageRepo Repository,
 	chatRepo ChatRepository,
 	eventBus event.Bus,
 	tagProcessor *tag.Processor,
@@ -54,7 +54,7 @@ func (uc *SendMessageUseCase) Execute(
 	}
 
 	// 2. Проверка доступа к чату
-	chatReadModel, err := uc.chatRepo.FindByID(ctx, cmd.ChatID.String())
+	chatReadModel, err := uc.chatRepo.FindByID(ctx, cmd.ChatID)
 	if err != nil {
 		return Result{}, ErrChatNotFound
 	}
@@ -77,7 +77,8 @@ func (uc *SendMessageUseCase) Execute(
 	}
 
 	// 4. Создание сообщения
-	msg, err := message.NewMessage(
+	// 2. Создаем сообщение
+	msg, err := messagedomain.NewMessage(
 		cmd.ChatID,
 		cmd.AuthorID,
 		cmd.Content,
@@ -93,7 +94,7 @@ func (uc *SendMessageUseCase) Execute(
 	}
 
 	// 6. Публикация события (для WebSocket broadcast)
-	evt := message.NewCreated(
+	evt := messagedomain.NewCreated(
 		msg.ID(),
 		cmd.ChatID,
 		cmd.AuthorID,
@@ -134,7 +135,7 @@ func (uc *SendMessageUseCase) validate(cmd SendMessageCommand) error {
 	return nil
 }
 
-func (uc *SendMessageUseCase) isParticipant(chatReadModel *chat.ReadModel, userID uuid.UUID) bool {
+func (uc *SendMessageUseCase) isParticipant(chatReadModel *chatapp.ReadModel, userID uuid.UUID) bool {
 	for _, p := range chatReadModel.Participants {
 		if p.UserID() == userID {
 			return true
@@ -147,7 +148,7 @@ func (uc *SendMessageUseCase) isParticipant(chatReadModel *chat.ReadModel, userI
 // Выполняется в горутине для того чтобы не блокировать основной ответ
 func (uc *SendMessageUseCase) processTagsAsync(
 	ctx context.Context,
-	msg *message.Message,
+	msg *messagedomain.Message,
 	authorID uuid.UUID,
 ) {
 	// Конвертируем domain UUID в google UUID для processor

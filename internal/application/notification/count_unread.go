@@ -5,17 +5,16 @@ import (
 	"fmt"
 
 	"github.com/lllypuk/flowra/internal/application/shared"
-	"github.com/lllypuk/flowra/internal/domain/notification"
 )
 
 // CountUnreadUseCase обрабатывает подсчет непрочитанных notifications пользователя
 type CountUnreadUseCase struct {
-	notificationRepo notification.Repository
+	notificationRepo Repository
 }
 
 // NewCountUnreadUseCase создает новый use case для подсчета непрочитанных notifications
 func NewCountUnreadUseCase(
-	notificationRepo notification.Repository,
+	notificationRepo Repository,
 ) *CountUnreadUseCase {
 	return &CountUnreadUseCase{
 		notificationRepo: notificationRepo,

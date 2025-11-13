@@ -10,11 +10,11 @@ import (
 
 // PromoteToAdminUseCase обрабатывает повышение пользователя до администратора
 type PromoteToAdminUseCase struct {
-	userRepo user.Repository
+	userRepo Repository
 }
 
 // NewPromoteToAdminUseCase создает новый PromoteToAdminUseCase
-func NewPromoteToAdminUseCase(userRepo user.Repository) *PromoteToAdminUseCase {
+func NewPromoteToAdminUseCase(userRepo Repository) *PromoteToAdminUseCase {
 	return &PromoteToAdminUseCase{userRepo: userRepo}
 }
 

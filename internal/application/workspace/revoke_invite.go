@@ -12,11 +12,11 @@ import (
 type RevokeInviteUseCase struct {
 	shared.BaseUseCase
 
-	workspaceRepo workspace.Repository
+	workspaceRepo Repository
 }
 
 // NewRevokeInviteUseCase создает новый RevokeInviteUseCase
-func NewRevokeInviteUseCase(workspaceRepo workspace.Repository) *RevokeInviteUseCase {
+func NewRevokeInviteUseCase(workspaceRepo Repository) *RevokeInviteUseCase {
 	return &RevokeInviteUseCase{
 		workspaceRepo: workspaceRepo,
 	}

@@ -3,6 +3,7 @@ package message
 import (
 	"context"
 
+	chatapp "github.com/lllypuk/flowra/internal/application/chat"
 	"github.com/lllypuk/flowra/internal/domain/chat"
 	"github.com/lllypuk/flowra/internal/domain/event"
 	domainMessage "github.com/lllypuk/flowra/internal/domain/message"
@@ -35,7 +36,7 @@ func (m *MockMessageRepository) FindByID(_ context.Context, id uuid.UUID) (*doma
 func (m *MockMessageRepository) FindByChatID(
 	_ context.Context,
 	chatID uuid.UUID,
-	pagination domainMessage.Pagination,
+	pagination Pagination,
 ) ([]*domainMessage.Message, error) {
 	var result []*domainMessage.Message
 	for _, msg := range m.Messages {
@@ -100,19 +101,19 @@ func (m *MockMessageRepository) Delete(_ context.Context, id uuid.UUID) error {
 
 // MockChatRepository - мок репозитория чатов для тестов
 type MockChatRepository struct {
-	Chats map[string]*chat.ReadModel
+	Chats map[string]*chatapp.ReadModel
 }
 
 // NewMockChatRepository создает новый мок репозитория чатов
 func NewMockChatRepository() *MockChatRepository {
 	return &MockChatRepository{
-		Chats: make(map[string]*chat.ReadModel),
+		Chats: make(map[string]*chatapp.ReadModel),
 	}
 }
 
 // FindByID находит чат по ID
-func (m *MockChatRepository) FindByID(_ context.Context, chatID string) (*chat.ReadModel, error) {
-	c, ok := m.Chats[chatID]
+func (m *MockChatRepository) FindByID(_ context.Context, chatID uuid.UUID) (*chatapp.ReadModel, error) {
+	c, ok := m.Chats[chatID.String()]
 	if !ok {
 		return nil, ErrChatNotFound
 	}
@@ -125,7 +126,7 @@ func (m *MockChatRepository) AddChat(id uuid.UUID, participants []uuid.UUID) {
 	for _, pID := range participants {
 		parts = append(parts, chat.NewParticipant(pID, chat.RoleMember))
 	}
-	m.Chats[id.String()] = &chat.ReadModel{
+	m.Chats[id.String()] = &chatapp.ReadModel{
 		ID:           id,
 		Participants: parts,
 	}

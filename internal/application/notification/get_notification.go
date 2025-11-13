@@ -10,12 +10,12 @@ import (
 
 // GetNotificationUseCase обрабатывает получение notification по ID
 type GetNotificationUseCase struct {
-	notificationRepo notification.Repository
+	notificationRepo Repository
 }
 
 // NewGetNotificationUseCase создает новый use case для получения notification
 func NewGetNotificationUseCase(
-	notificationRepo notification.Repository,
+	notificationRepo Repository,
 ) *GetNotificationUseCase {
 	return &GetNotificationUseCase{
 		notificationRepo: notificationRepo,

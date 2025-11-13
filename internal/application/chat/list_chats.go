@@ -5,30 +5,7 @@ import (
 	"fmt"
 
 	"github.com/lllypuk/flowra/internal/application/shared"
-	"github.com/lllypuk/flowra/internal/domain/chat"
-	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
-
-// QueryRepository - repository interface for query operations on chats
-// Note: This interface is defined by the consumer (application layer) as per idiomatic Go patterns
-// Implementation will be provided by the infrastructure layer (e.g., MongoDB read model)
-type QueryRepository interface {
-	// FindByWorkspace retrieves chats for a workspace with optional type filtering
-	FindByWorkspace(
-		ctx context.Context,
-		workspaceID uuid.UUID,
-		chatType *chat.Type,
-		limit int,
-		offset int,
-	) ([]uuid.UUID, error)
-
-	// CountByWorkspace returns total count of chats for a workspace with optional type filtering
-	CountByWorkspace(
-		ctx context.Context,
-		workspaceID uuid.UUID,
-		chatType *chat.Type,
-	) (int, error)
-}
 
 // ListChatsUseCase - use case для получения списка чатов
 type ListChatsUseCase struct {
@@ -67,38 +44,53 @@ func (uc *ListChatsUseCase) Execute(ctx context.Context, query ListChatsQuery) (
 
 	offset := max(query.Offset, 0)
 
-	// 3. Find chat IDs from read model
-	chatIDs, err := uc.chatRepo.FindByWorkspace(ctx, query.WorkspaceID, query.Type, limit+1, offset)
+	// 3. Find chats from read model
+	filters := Filters{
+		Type:   query.Type,
+		Offset: offset,
+		Limit:  limit + 1,
+	}
+	readModels, err := uc.chatRepo.FindByWorkspace(ctx, query.WorkspaceID, filters)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find chats: %w", err)
 	}
 
-	// 4. Load chats from event store and filter by access
-	accessibleChats := make([]Chat, 0, len(chatIDs))
-	for _, chatID := range chatIDs {
-		chatAggregate, loadErr := loadAggregate(ctx, uc.eventStore, chatID)
-		if loadErr != nil {
-			// Skip chats that can't be loaded (might be deleted or corrupted)
-			continue
-		}
-
+	// 4. Filter by access and convert to DTO
+	accessibleChats := make([]Chat, 0, len(readModels))
+	for _, rm := range readModels {
 		// Check access: public chats or where user is participant
-		if !chatAggregate.IsPublic() && !chatAggregate.HasParticipant(query.RequestedBy) {
-			continue
+		if !rm.IsPublic {
+			hasAccess := false
+			for _, p := range rm.Participants {
+				if p.UserID() == query.RequestedBy {
+					hasAccess = true
+					break
+				}
+			}
+			if !hasAccess {
+				continue
+			}
 		}
 
-		// Add to result
-		accessibleChats = append(accessibleChats, *mapChatToDTO(chatAggregate))
+		// Convert read model to DTO
+		accessibleChats = append(accessibleChats, Chat{
+			ID:          rm.ID,
+			WorkspaceID: rm.WorkspaceID,
+			Type:        rm.Type,
+			IsPublic:    rm.IsPublic,
+			CreatedBy:   rm.CreatedBy,
+			CreatedAt:   rm.CreatedAt,
+		})
 	}
 
 	// 5. Check if has more
-	hasMore := len(chatIDs) > limit
+	hasMore := len(readModels) > limit
 	if hasMore && len(accessibleChats) > limit {
 		accessibleChats = accessibleChats[:limit]
 	}
 
 	// 6. Count total (for pagination info)
-	total, err := uc.chatRepo.CountByWorkspace(ctx, query.WorkspaceID, query.Type)
+	total, err := uc.chatRepo.Count(ctx, query.WorkspaceID)
 	if err != nil {
 		total = len(accessibleChats) // fallback
 	}

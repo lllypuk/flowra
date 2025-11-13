@@ -103,10 +103,17 @@ func (m *mockNotificationRepository) Delete(_ context.Context, id uuid.UUID) err
 	return nil
 }
 
-func (m *mockNotificationRepository) DeleteByUserID(_ context.Context, userID uuid.UUID) error {
-	for id, notif := range m.notifications {
+func (m *mockNotificationRepository) MarkAsRead(_ context.Context, id uuid.UUID) error {
+	if notif, ok := m.notifications[id]; ok {
+		notif.MarkAsRead()
+	}
+	return nil
+}
+
+func (m *mockNotificationRepository) MarkAllAsRead(_ context.Context, userID uuid.UUID) error {
+	for _, notif := range m.notifications {
 		if notif.UserID() == userID {
-			delete(m.notifications, id)
+			notif.MarkAsRead()
 		}
 	}
 	return nil

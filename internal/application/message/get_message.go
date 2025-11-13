@@ -5,16 +5,15 @@ import (
 	"fmt"
 
 	"github.com/lllypuk/flowra/internal/application/shared"
-	"github.com/lllypuk/flowra/internal/domain/message"
 )
 
 // GetMessageUseCase обрабатывает получение сообщения по ID
 type GetMessageUseCase struct {
-	messageRepo message.Repository
+	messageRepo Repository
 }
 
 // NewGetMessageUseCase создает новый GetMessageUseCase
-func NewGetMessageUseCase(messageRepo message.Repository) *GetMessageUseCase {
+func NewGetMessageUseCase(messageRepo Repository) *GetMessageUseCase {
 	return &GetMessageUseCase{
 		messageRepo: messageRepo,
 	}

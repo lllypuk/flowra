@@ -10,12 +10,12 @@ import (
 
 // ListNotificationsUseCase обрабатывает получение списка notifications пользователя
 type ListNotificationsUseCase struct {
-	notificationRepo notification.Repository
+	notificationRepo Repository
 }
 
 // NewListNotificationsUseCase создает новый use case для получения списка notifications
 func NewListNotificationsUseCase(
-	notificationRepo notification.Repository,
+	notificationRepo Repository,
 ) *ListNotificationsUseCase {
 	return &ListNotificationsUseCase{
 		notificationRepo: notificationRepo,

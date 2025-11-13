@@ -11,13 +11,13 @@ import (
 
 // EditMessageUseCase обрабатывает редактирование сообщения
 type EditMessageUseCase struct {
-	messageRepo message.Repository
+	messageRepo Repository
 	eventBus    event.Bus
 }
 
 // NewEditMessageUseCase создает новый EditMessageUseCase
 func NewEditMessageUseCase(
-	messageRepo message.Repository,
+	messageRepo Repository,
 	eventBus event.Bus,
 ) *EditMessageUseCase {
 	return &EditMessageUseCase{
