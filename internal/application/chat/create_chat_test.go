@@ -40,9 +40,12 @@ func TestCreateChatUseCase_Success_Discussion(t *testing.T) {
 	assert.Equal(t, creatorID, result.Value.CreatedBy())
 
 	// Check that events are created for Discussion chats
-	assertEventCount(t, result, 1)
-	createdEvent := getEventByType(t, result, "ChatCreated")
-	require.NotNil(t, createdEvent)
+	// NewChat() generates: ChatCreated + ParticipantAdded
+	assertEventCount(t, result, 2)
+	_, isChatCreated := result.Events[0].(*domainChat.Created)
+	assert.True(t, isChatCreated, "First event should be ChatCreated")
+	_, isParticipantAdded := result.Events[1].(*domainChat.ParticipantAdded)
+	assert.True(t, isParticipantAdded, "Second event should be ParticipantAdded")
 }
 
 // TestCreateChatUseCase_Success_Task tests creating a Task chat with title
@@ -72,12 +75,14 @@ func TestCreateChatUseCase_Success_Task(t *testing.T) {
 	assertChatType(t, result.Value, domainChat.TypeTask)
 	assertChatTitle(t, result.Value, title)
 
-	// Check events: ChatCreated + TypeChanged
-	assertEventCount(t, result, 2)
+	// Check events: ChatCreated + ParticipantAdded + TypeChanged
+	assertEventCount(t, result, 3)
 	_, isChatCreated := result.Events[0].(*domainChat.Created)
-	assert.True(t, isChatCreated)
-	_, isTypeChanged := result.Events[1].(*domainChat.TypeChanged)
-	assert.True(t, isTypeChanged)
+	assert.True(t, isChatCreated, "First event should be ChatCreated")
+	_, isParticipantAdded := result.Events[1].(*domainChat.ParticipantAdded)
+	assert.True(t, isParticipantAdded, "Second event should be ParticipantAdded")
+	_, isTypeChanged := result.Events[2].(*domainChat.TypeChanged)
+	assert.True(t, isTypeChanged, "Third event should be TypeChanged")
 }
 
 // TestCreateChatUseCase_Success_Bug tests creating a Bug chat
@@ -108,7 +113,14 @@ func TestCreateChatUseCase_Success_Bug(t *testing.T) {
 	assertChatTitle(t, result.Value, title)
 	assert.False(t, result.Value.IsPublic())
 
-	assertEventCount(t, result, 2)
+	// Check events: ChatCreated + ParticipantAdded + TypeChanged
+	assertEventCount(t, result, 3)
+	_, isChatCreated := result.Events[0].(*domainChat.Created)
+	assert.True(t, isChatCreated, "First event should be ChatCreated")
+	_, isParticipantAdded := result.Events[1].(*domainChat.ParticipantAdded)
+	assert.True(t, isParticipantAdded, "Second event should be ParticipantAdded")
+	_, isTypeChanged := result.Events[2].(*domainChat.TypeChanged)
+	assert.True(t, isTypeChanged, "Third event should be TypeChanged")
 }
 
 // TestCreateChatUseCase_Success_Epic tests creating an Epic chat
@@ -138,7 +150,14 @@ func TestCreateChatUseCase_Success_Epic(t *testing.T) {
 	assertChatType(t, result.Value, domainChat.TypeEpic)
 	assertChatTitle(t, result.Value, title)
 
-	assertEventCount(t, result, 2)
+	// Check events: ChatCreated + ParticipantAdded + TypeChanged
+	assertEventCount(t, result, 3)
+	_, isChatCreated := result.Events[0].(*domainChat.Created)
+	assert.True(t, isChatCreated, "First event should be ChatCreated")
+	_, isParticipantAdded := result.Events[1].(*domainChat.ParticipantAdded)
+	assert.True(t, isParticipantAdded, "Second event should be ParticipantAdded")
+	_, isTypeChanged := result.Events[2].(*domainChat.TypeChanged)
+	assert.True(t, isTypeChanged, "Third event should be TypeChanged")
 }
 
 // TestCreateChatUseCase_ValidationError_InvalidWorkspaceID tests validation error for invalid workspace ID

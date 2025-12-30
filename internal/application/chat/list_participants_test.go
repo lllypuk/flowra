@@ -315,11 +315,13 @@ func saveTestChat(t *testing.T, eventStore interface {
 	// Save participant events - including the creator
 	version := 1
 	for _, participant := range testChat.Participants() {
+		version++
 		participantAddedEvent := domainChat.NewParticipantAdded(
 			testChat.ID(),
 			participant.UserID(),
 			participant.Role(),
 			participant.JoinedAt(),
+			version,
 			event.Metadata{
 				CorrelationID: testChat.ID().String(),
 				CausationID:   testChat.ID().String(),
@@ -332,9 +334,8 @@ func saveTestChat(t *testing.T, eventStore interface {
 				context.Background(),
 				testChat.ID().String(),
 				[]event.DomainEvent{participantAddedEvent},
-				version,
+				version-1,
 			),
 		)
-		version++
 	}
 }

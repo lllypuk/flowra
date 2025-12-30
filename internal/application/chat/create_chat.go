@@ -6,7 +6,6 @@ import (
 
 	"github.com/lllypuk/flowra/internal/application/shared"
 	"github.com/lllypuk/flowra/internal/domain/chat"
-	"github.com/lllypuk/flowra/internal/domain/event"
 )
 
 // CreateChatUseCase обрабатывает создание нового чата
@@ -29,27 +28,10 @@ func (uc *CreateChatUseCase) Execute(ctx context.Context, cmd CreateChatCommand)
 	}
 
 	// Создание агрегата как Discussion для сохранения трейла событий конверсии
+	// NewChat() автоматически генерирует события ChatCreated и ParticipantAdded
 	chatAggregate, err := chat.NewChat(cmd.WorkspaceID, chat.TypeDiscussion, cmd.IsPublic, cmd.CreatedBy)
 	if err != nil {
 		return Result{}, fmt.Errorf("failed to create chat: %w", err)
-	}
-
-	// Создание события ChatCreated для отслеживания создания в event sourcing
-	chatCreatedEvent := chat.NewChatCreated(
-		chatAggregate.ID(),
-		cmd.WorkspaceID,
-		chat.TypeDiscussion,
-		cmd.IsPublic,
-		cmd.CreatedBy,
-		chatAggregate.CreatedAt(),
-		event.Metadata{
-			CorrelationID: chatAggregate.ID().String(),
-			CausationID:   chatAggregate.ID().String(),
-			UserID:        cmd.CreatedBy.String(),
-		},
-	)
-	if applyErr := chatAggregate.ApplyAndTrack(chatCreatedEvent); applyErr != nil {
-		return Result{}, fmt.Errorf("failed to apply ChatCreated event: %w", applyErr)
 	}
 
 	// Для typed чатов (Task/Bug/Epic) конвертируем и устанавливаем title

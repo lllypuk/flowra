@@ -27,7 +27,8 @@ func TestNewChat(t *testing.T) {
 		assert.True(t, c.IsPublic())
 		assert.Equal(t, createdBy, c.CreatedBy())
 		assert.False(t, c.CreatedAt().IsZero())
-		assert.Equal(t, 0, c.Version())
+		// NewChat() applies 2 events: ChatCreated (v1) + ParticipantAdded (v2)
+		assert.Equal(t, 2, c.Version())
 		assert.Len(t, c.Participants(), 1)
 		assert.True(t, c.IsParticipantAdmin(createdBy))
 	})
@@ -265,6 +266,7 @@ func TestChat_EventSourcing_Apply(t *testing.T) {
 			userID,
 			chat.RoleMember,
 			time.Now(),
+			3,
 			event.NewMetadata("", "", ""),
 		)
 
@@ -294,10 +296,15 @@ func TestChat_EventSourcing_Apply(t *testing.T) {
 }
 
 func TestChat_EventSourcing_UncommittedEvents(t *testing.T) {
-	t.Run("no uncommitted events initially", func(t *testing.T) {
+	t.Run("has creation events after new", func(t *testing.T) {
+		// NewChat() generates 2 events: ChatCreated + ParticipantAdded
 		c, _ := chat.NewChat(uuid.NewUUID(), chat.TypeDiscussion, true, uuid.NewUUID())
 		events := c.GetUncommittedEvents()
-		assert.Empty(t, events)
+		assert.Len(t, events, 2)
+		_, isChatCreated := events[0].(*chat.Created)
+		assert.True(t, isChatCreated, "First event should be ChatCreated")
+		_, isParticipantAdded := events[1].(*chat.ParticipantAdded)
+		assert.True(t, isParticipantAdded, "Second event should be ParticipantAdded")
 	})
 
 	t.Run("mark events as committed", func(t *testing.T) {

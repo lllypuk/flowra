@@ -52,6 +52,7 @@ func TestGetChatUseCase_Success(t *testing.T) {
 		requestedBy,
 		domainChat.RoleMember,
 		testChat.CreatedAt(),
+		2,
 		event.Metadata{
 			CorrelationID: testChat.ID().String(),
 			CausationID:   testChat.ID().String(),
@@ -247,6 +248,7 @@ func TestGetChatUseCase_Success_CreatorHasManagePermissions(t *testing.T) {
 		creatorID,
 		domainChat.RoleAdmin,
 		testChat.CreatedAt(),
+		2,
 		event.Metadata{
 			CorrelationID: testChat.ID().String(),
 			CausationID:   testChat.ID().String(),

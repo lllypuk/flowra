@@ -69,8 +69,8 @@ func (s *MockEventStore) LoadEvents(ctx context.Context, aggregateID string) ([]
 	s.calls["LoadEvents"]++
 
 	events, ok := s.events[aggregateID]
-	if !ok {
-		return []event.DomainEvent{}, nil
+	if !ok || len(events) == 0 {
+		return nil, shared.ErrAggregateNotFound
 	}
 
 	// Возвращаем копию

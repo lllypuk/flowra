@@ -64,20 +64,38 @@ func NewChat(
 		return nil, errs.ErrInvalidInput
 	}
 
+	chatID := uuid.NewUUID()
+	now := time.Now()
+
 	chat := &Chat{
-		id:                uuid.NewUUID(),
-		workspaceID:       workspaceID,
-		chatType:          chatType,
-		isPublic:          isPublic,
-		createdBy:         createdBy,
-		createdAt:         time.Now(),
 		participants:      make([]Participant, 0),
-		version:           0,
 		uncommittedEvents: make([]event.DomainEvent, 0),
+		version:           0,
 	}
 
-	// Создатель автоматически становится admin
-	chat.addParticipantInternal(createdBy, RoleAdmin)
+	// Raise ChatCreated event (version 1)
+	createdEvent := NewChatCreated(
+		chatID,
+		workspaceID,
+		chatType,
+		isPublic,
+		createdBy,
+		now,
+		event.Metadata{},
+	)
+	chat.applyEvent(createdEvent)
+
+	// Создатель автоматически становится admin - raise ParticipantAdded event
+	// После ChatCreated version = 1, следующая версия = 2
+	participantEvent := NewParticipantAdded(
+		chatID,
+		createdBy,
+		RoleAdmin,
+		now,
+		chat.version+1,
+		event.Metadata{},
+	)
+	chat.applyEvent(participantEvent)
 
 	return chat, nil
 }
@@ -91,7 +109,16 @@ func (c *Chat) AddParticipant(userID uuid.UUID, role Role) error {
 		return errs.ErrAlreadyExists
 	}
 
-	c.addParticipantInternal(userID, role)
+	// Raise ParticipantAdded event with correct version
+	evt := NewParticipantAdded(
+		c.id,
+		userID,
+		role,
+		time.Now(),
+		c.version+1,
+		event.Metadata{},
+	)
+	c.applyEvent(evt)
 	return nil
 }
 
@@ -112,13 +139,15 @@ func (c *Chat) RemoveParticipant(userID uuid.UUID) error {
 		return errs.ErrInvalidInput // Создатель не может покинуть чат
 	}
 
-	newParticipants := make([]Participant, 0, len(c.participants)-1)
-	for _, p := range c.participants {
-		if p.UserID() != userID {
-			newParticipants = append(newParticipants, p)
-		}
-	}
-	c.participants = newParticipants
+	// Raise ParticipantRemoved event
+	evt := NewParticipantRemoved(
+		c.id,
+		userID,
+		c.version+1,
+		event.Metadata{},
+	)
+	c.applyEvent(evt)
+
 	return nil
 }
 
@@ -500,68 +529,116 @@ func (c *Chat) GetTaskEntityType() (task.EntityType, error) {
 
 // Event Sourcing methods
 
-// Apply применяет событие для восстановления состояния
+// Apply применяет событие для восстановления состояния.
+// Метод идемпотентен: безопасно применять одно событие несколько раз
+// (например, при replay событий).
 func (c *Chat) Apply(e event.DomainEvent) error {
 	switch evt := e.(type) {
 	case *Created:
-		c.id = uuid.UUID(evt.AggregateID())
-		c.workspaceID = evt.WorkspaceID
-		c.chatType = evt.Type
-		c.isPublic = evt.IsPublic
-		c.createdBy = evt.CreatedBy
-		c.createdAt = evt.CreatedAt
-		c.version = evt.Version()
-
+		c.applyCreated(evt)
 	case *ParticipantAdded:
-		c.addParticipantInternal(evt.UserID, evt.Role)
-		c.version = evt.Version()
-
+		c.applyParticipantAdded(evt)
+	case *ParticipantRemoved:
+		c.applyParticipantRemoved(evt)
 	case *TypeChanged:
-		c.chatType = evt.NewType
-		c.title = evt.Title
-		// Устанавливаем дефолтный статус
-		c.status = c.getDefaultStatus()
-		c.version = evt.Version()
-
+		c.applyTypeChanged(evt)
 	case *StatusChanged:
-		c.status = evt.NewStatus
-		c.version = evt.Version()
-
+		c.applyStatusChanged(evt)
 	case *UserAssigned:
-		assigneeID := evt.AssigneeID
-		c.assigneeID = &assigneeID
-		c.version = evt.Version()
-
+		c.applyUserAssigned(evt)
 	case *AssigneeRemoved:
-		c.assigneeID = nil
-		c.version = evt.Version()
-
+		c.applyAssigneeRemoved(evt)
 	case *PrioritySet:
-		c.priority = evt.NewPriority
-		c.version = evt.Version()
-
+		c.applyPrioritySet(evt)
 	case *DueDateSet:
-		dueDate := evt.NewDueDate
-		c.dueDate = &dueDate
-		c.version = evt.Version()
-
+		c.applyDueDateSet(evt)
 	case *DueDateRemoved:
-		c.dueDate = nil
-		c.version = evt.Version()
-
+		c.applyDueDateRemoved(evt)
 	case *Renamed:
-		c.title = evt.NewTitle
-		c.version = evt.Version()
-
+		c.applyRenamed(evt)
 	case *SeveritySet:
-		c.severity = evt.NewSeverity
-		c.version = evt.Version()
-
+		c.applySeveritySet(evt)
 	default:
 		// Неизвестные события игнорируем (forward compatibility)
-		return nil
 	}
 	return nil
+}
+
+func (c *Chat) applyCreated(evt *Created) {
+	c.id = uuid.UUID(evt.AggregateID())
+	c.workspaceID = evt.WorkspaceID
+	c.chatType = evt.Type
+	c.isPublic = evt.IsPublic
+	c.createdBy = evt.CreatedBy
+	c.createdAt = evt.CreatedAt
+	c.version = evt.Version()
+}
+
+func (c *Chat) applyParticipantAdded(evt *ParticipantAdded) {
+	c.addParticipantInternal(evt.UserID, evt.Role)
+	c.version = evt.Version()
+}
+
+// applyParticipantRemoved удаляет участника.
+// Идемпотентно: если участника нет, ничего не происходит.
+func (c *Chat) applyParticipantRemoved(evt *ParticipantRemoved) {
+	newParticipants := make([]Participant, 0, len(c.participants))
+	for _, p := range c.participants {
+		if p.UserID() != evt.UserID {
+			newParticipants = append(newParticipants, p)
+		}
+	}
+	c.participants = newParticipants
+	c.version = evt.Version()
+}
+
+func (c *Chat) applyTypeChanged(evt *TypeChanged) {
+	c.chatType = evt.NewType
+	c.title = evt.Title
+	c.status = c.getDefaultStatus()
+	c.version = evt.Version()
+}
+
+func (c *Chat) applyStatusChanged(evt *StatusChanged) {
+	c.status = evt.NewStatus
+	c.version = evt.Version()
+}
+
+func (c *Chat) applyUserAssigned(evt *UserAssigned) {
+	assigneeID := evt.AssigneeID
+	c.assigneeID = &assigneeID
+	c.version = evt.Version()
+}
+
+func (c *Chat) applyAssigneeRemoved(evt *AssigneeRemoved) {
+	c.assigneeID = nil
+	c.version = evt.Version()
+}
+
+func (c *Chat) applyPrioritySet(evt *PrioritySet) {
+	c.priority = evt.NewPriority
+	c.version = evt.Version()
+}
+
+func (c *Chat) applyDueDateSet(evt *DueDateSet) {
+	dueDate := evt.NewDueDate
+	c.dueDate = &dueDate
+	c.version = evt.Version()
+}
+
+func (c *Chat) applyDueDateRemoved(evt *DueDateRemoved) {
+	c.dueDate = nil
+	c.version = evt.Version()
+}
+
+func (c *Chat) applyRenamed(evt *Renamed) {
+	c.title = evt.NewTitle
+	c.version = evt.Version()
+}
+
+func (c *Chat) applySeveritySet(evt *SeveritySet) {
+	c.severity = evt.NewSeverity
+	c.version = evt.Version()
 }
 
 // getDefaultStatus возвращает дефолтный статус для типа чата

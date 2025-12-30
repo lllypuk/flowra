@@ -2,14 +2,10 @@ package chat
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"time"
 
 	"github.com/lllypuk/flowra/internal/application/shared"
 	"github.com/lllypuk/flowra/internal/domain/chat"
-	"github.com/lllypuk/flowra/internal/domain/event"
-	domainUUID "github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 // AddParticipantUseCase обрабатывает добавление участника в чат
@@ -35,25 +31,9 @@ func (uc *AddParticipantUseCase) Execute(ctx context.Context, cmd AddParticipant
 		return Result{}, err
 	}
 
-	// Проверка перед добавлением
-	if chatAggregate.HasParticipant(cmd.UserID) {
-		return Result{}, fmt.Errorf("failed to add participant: %w", errors.New("user already a participant"))
-	}
-
-	// Создание события ParticipantAdded для сохранения в event sourcing
-	participantAddedEvent := chat.NewParticipantAdded(
-		cmd.ChatID,
-		cmd.UserID,
-		cmd.Role,
-		time.Now(),
-		event.Metadata{
-			CorrelationID: domainUUID.NewUUID().String(),
-			CausationID:   domainUUID.NewUUID().String(),
-			UserID:        cmd.AddedBy.String(),
-		},
-	)
-	if applyErr := chatAggregate.ApplyAndTrack(participantAddedEvent); applyErr != nil {
-		return Result{}, fmt.Errorf("failed to apply ParticipantAdded event: %w", applyErr)
+	// Domain layer сам управляет событиями
+	if addErr := chatAggregate.AddParticipant(cmd.UserID, cmd.Role); addErr != nil {
+		return Result{}, fmt.Errorf("failed to add participant: %w", addErr)
 	}
 
 	return saveAggregate(ctx, uc.eventStore, chatAggregate, cmd.ChatID.String())
