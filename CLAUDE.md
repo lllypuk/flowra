@@ -273,3 +273,28 @@ func (r *MongoUserRepository) Exists(...) (bool, error) { ... }
 - **Flexibility**: Change implementations without affecting consumers
 - **Idiomatic Go**: Follows community best practices
 - **Clear ownership**: Interface changes driven by consumer needs
+
+## Task Documentation Guidelines
+
+When creating or updating task documentation in markdown files:
+
+### No Time Estimates
+
+**DO NOT include time estimates in task files.** This includes:
+- ❌ "Оценка: 3-4 часа"
+- ❌ "Time spent: ~4 hours"
+- ❌ "Estimated time: 2h"
+- ❌ Any form of time prediction or tracking
+
+**Why:**
+- Time estimates are often inaccurate and become outdated
+- They create unnecessary pressure and false expectations
+- Focus should be on task completion, not time tracking
+- Actual time spent varies significantly based on context
+
+**Instead, focus on:**
+- ✅ Clear task description
+- ✅ Checklist of deliverables
+- ✅ Dependencies between tasks
+- ✅ Status (Pending, In Progress, Complete)
+- ✅ Priority when relevant

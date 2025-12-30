@@ -620,11 +620,11 @@ func NewTestSuite(t *testing.T) *TestSuite {
 
 ## Checklist
 
-- [ ] Создать все mock implementations
-- [ ] Создать fixture builders для всех доменов
-- [ ] Создать test utilities (context, assertions, suite)
+- [x] Создать все mock implementations
+- [x] Создать fixture builders для всех доменов
+- [x] Создать test utilities (context, assertions, suite)
 - [ ] Написать integration tests для Event Bus
-- [ ] Написать integration tests для cross-domain interactions
+- [x] Написать integration tests для cross-domain interactions
 - [ ] Написать E2E test: Task workflow
 - [ ] Написать E2E test: Messaging workflow
 - [ ] Написать E2E test: Workspace workflow

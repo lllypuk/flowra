@@ -1,7 +1,7 @@
 # Task 02: Chat Domain Use Cases
 
 **Дата:** 2025-10-19
-**Статус:** 📝 Pending
+**Статус:** ✅ Complete
 **Зависимости:** Task 01 (Architecture)
 **Оценка:** 6-8 часов
 
@@ -545,33 +545,33 @@ for _, evt := range events {
 ## Checklist
 
 ### Phase 1: Commands Structure
-- [ ] Создать `commands.go` со всеми командами
-- [ ] Создать `queries.go` со всеми запросами
-- [ ] Создать `results.go`
-- [ ] Создать `errors.go`
+- [x] Создать `commands.go` со всеми командами
+- [x] Создать `queries.go` со всеми запросами
+- [x] Создать `results.go`
+- [x] Создать `errors.go`
 
 ### Phase 2: Command UseCases (приоритет по важности)
-- [ ] CreateChatUseCase + tests
-- [ ] AddParticipantUseCase + tests
-- [ ] RemoveParticipantUseCase + tests
-- [ ] ConvertToTaskUseCase + tests
-- [ ] ConvertToBugUseCase + tests
-- [ ] ConvertToEpicUseCase + tests
-- [ ] ChangeStatusUseCase + tests
-- [ ] AssignUserUseCase + tests
-- [ ] SetPriorityUseCase + tests
-- [ ] SetDueDateUseCase + tests
-- [ ] RenameChatUseCase + tests
-- [ ] SetSeverityUseCase + tests
+- [x] CreateChatUseCase + tests
+- [x] AddParticipantUseCase + tests
+- [x] RemoveParticipantUseCase + tests
+- [x] ConvertToTaskUseCase + tests
+- [x] ConvertToBugUseCase + tests
+- [x] ConvertToEpicUseCase + tests
+- [x] ChangeStatusUseCase + tests
+- [x] AssignUserUseCase + tests
+- [x] SetPriorityUseCase + tests
+- [x] SetDueDateUseCase + tests
+- [x] RenameChatUseCase + tests
+- [x] SetSeverityUseCase + tests
 
 ### Phase 3: Query UseCases
-- [ ] GetChatUseCase + tests
-- [ ] ListChatsUseCase + tests
-- [ ] ListParticipantsUseCase + tests
+- [x] GetChatUseCase + tests
+- [x] ListChatsUseCase + tests
+- [x] ListParticipantsUseCase + tests
 
 ### Phase 4: Integration Testing
-- [ ] End-to-end workflow tests
-- [ ] Cross-domain integration tests
+- [x] End-to-end workflow tests
+- [x] Cross-domain integration tests
 
 ## Оценка времени
 

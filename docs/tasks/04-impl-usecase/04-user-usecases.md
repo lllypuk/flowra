@@ -1,7 +1,7 @@
 # Task 04: User Domain Use Cases
 
 **Дата:** 2025-10-19
-**Статус:** 📝 Pending
+**Статус:** ✅ Complete
 **Зависимости:** Task 01 (Architecture)
 **Оценка:** 3-4 часа
 
@@ -200,14 +200,14 @@ func (m *AuthMiddleware) Handle(next echo.HandlerFunc) echo.HandlerFunc {
 
 ## Checklist
 
-- [ ] Создать `commands.go`, `queries.go`, `results.go`, `errors.go`
-- [ ] RegisterUserUseCase + tests
-- [ ] UpdateProfileUseCase + tests
-- [ ] PromoteToAdminUseCase + tests
-- [ ] GetUserUseCase + tests
-- [ ] GetUserByUsernameUseCase + tests
-- [ ] ListUsersUseCase + tests
-- [ ] Integration с Keycloak middleware
+- [x] Создать `commands.go`, `queries.go`, `results.go`, `errors.go`
+- [x] RegisterUserUseCase + tests
+- [x] UpdateProfileUseCase + tests
+- [x] PromoteToAdminUseCase + tests
+- [x] GetUserUseCase + tests
+- [x] GetUserByUsernameUseCase + tests
+- [x] ListUsersUseCase + tests
+- [ ] Integration с Keycloak middleware (будет в infrastructure phase)
 
 ## Следующие шаги
 

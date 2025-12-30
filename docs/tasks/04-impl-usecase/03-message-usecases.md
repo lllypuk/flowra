@@ -1,7 +1,7 @@
 # Task 03: Message Domain Use Cases
 
 **Дата:** 2025-10-19
-**Статус:** 📝 Pending
+**Статус:** ✅ Complete
 **Зависимости:** Task 01 (Architecture), Task 02 (Chat UseCases)
 **Оценка:** 5-7 часов
 
@@ -484,17 +484,17 @@ func TestSendMessageUseCase_NotParticipant(t *testing.T) {
 
 ## Checklist
 
-- [ ] Создать `commands.go`, `queries.go`, `results.go`, `errors.go`
-- [ ] SendMessageUseCase + tests
-- [ ] EditMessageUseCase + tests
-- [ ] DeleteMessageUseCase + tests
-- [ ] AddReactionUseCase + tests
-- [ ] RemoveReactionUseCase + tests
-- [ ] AddAttachmentUseCase + tests
-- [ ] GetMessageUseCase + tests
-- [ ] ListMessagesUseCase + tests (с pagination)
-- [ ] GetThreadUseCase + tests
-- [ ] Integration tests (message lifecycle)
+- [x] Создать `commands.go`, `queries.go`, `results.go`, `errors.go`
+- [x] SendMessageUseCase + tests
+- [x] EditMessageUseCase + tests
+- [x] DeleteMessageUseCase + tests
+- [x] AddReactionUseCase + tests
+- [x] RemoveReactionUseCase + tests
+- [x] AddAttachmentUseCase + tests
+- [x] GetMessageUseCase + tests
+- [x] ListMessagesUseCase + tests (с pagination)
+- [x] GetThreadUseCase + tests
+- [x] Integration tests (message lifecycle)
 
 ## Следующие шаги
 
