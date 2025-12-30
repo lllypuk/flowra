@@ -11,13 +11,13 @@ import (
 
 // AddAttachmentUseCase обрабатывает добавление вложения к сообщению
 type AddAttachmentUseCase struct {
-	messageRepo message.Repository
+	messageRepo Repository
 	eventBus    event.Bus
 }
 
 // NewAddAttachmentUseCase создает новый AddAttachmentUseCase
 func NewAddAttachmentUseCase(
-	messageRepo message.Repository,
+	messageRepo Repository,
 	eventBus event.Bus,
 ) *AddAttachmentUseCase {
 	return &AddAttachmentUseCase{

@@ -11,11 +11,11 @@ import (
 
 // UpdateProfileUseCase обрабатывает обновление профиля пользователя
 type UpdateProfileUseCase struct {
-	userRepo user.Repository
+	userRepo Repository
 }
 
 // NewUpdateProfileUseCase создает новый UpdateProfileUseCase
-func NewUpdateProfileUseCase(userRepo user.Repository) *UpdateProfileUseCase {
+func NewUpdateProfileUseCase(userRepo Repository) *UpdateProfileUseCase {
 	return &UpdateProfileUseCase{userRepo: userRepo}
 }
 

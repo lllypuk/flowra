@@ -5,17 +5,16 @@ import (
 	"fmt"
 
 	"github.com/lllypuk/flowra/internal/application/shared"
-	"github.com/lllypuk/flowra/internal/domain/notification"
 )
 
 // DeleteNotificationUseCase обрабатывает удаление notification
 type DeleteNotificationUseCase struct {
-	notificationRepo notification.Repository
+	notificationRepo Repository
 }
 
 // NewDeleteNotificationUseCase создает новый use case для удаления notification
 func NewDeleteNotificationUseCase(
-	notificationRepo notification.Repository,
+	notificationRepo Repository,
 ) *DeleteNotificationUseCase {
 	return &DeleteNotificationUseCase{
 		notificationRepo: notificationRepo,

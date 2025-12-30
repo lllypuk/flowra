@@ -11,11 +11,11 @@ import (
 type UpdateWorkspaceUseCase struct {
 	shared.BaseUseCase
 
-	workspaceRepo workspace.Repository
+	workspaceRepo Repository
 }
 
 // NewUpdateWorkspaceUseCase создает новый UpdateWorkspaceUseCase
-func NewUpdateWorkspaceUseCase(workspaceRepo workspace.Repository) *UpdateWorkspaceUseCase {
+func NewUpdateWorkspaceUseCase(workspaceRepo Repository) *UpdateWorkspaceUseCase {
 	return &UpdateWorkspaceUseCase{
 		workspaceRepo: workspaceRepo,
 	}

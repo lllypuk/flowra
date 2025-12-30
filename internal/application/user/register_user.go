@@ -10,11 +10,11 @@ import (
 
 // RegisterUserUseCase обрабатывает регистрацию нового пользователя
 type RegisterUserUseCase struct {
-	userRepo user.Repository
+	userRepo Repository
 }
 
 // NewRegisterUserUseCase создает новый RegisterUserUseCase
-func NewRegisterUserUseCase(userRepo user.Repository) *RegisterUserUseCase {
+func NewRegisterUserUseCase(userRepo Repository) *RegisterUserUseCase {
 	return &RegisterUserUseCase{userRepo: userRepo}
 }
 

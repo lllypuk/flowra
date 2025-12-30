@@ -11,13 +11,13 @@ import (
 
 // AddReactionUseCase обрабатывает добавление реакции к сообщению
 type AddReactionUseCase struct {
-	messageRepo message.Repository
+	messageRepo Repository
 	eventBus    event.Bus
 }
 
 // NewAddReactionUseCase создает новый AddReactionUseCase
 func NewAddReactionUseCase(
-	messageRepo message.Repository,
+	messageRepo Repository,
 	eventBus event.Bus,
 ) *AddReactionUseCase {
 	return &AddReactionUseCase{

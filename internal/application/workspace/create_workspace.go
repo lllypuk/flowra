@@ -12,13 +12,13 @@ import (
 type CreateWorkspaceUseCase struct {
 	shared.BaseUseCase
 
-	workspaceRepo  workspace.Repository
+	workspaceRepo  Repository
 	keycloakClient KeycloakClient
 }
 
 // NewCreateWorkspaceUseCase создает новый CreateWorkspaceUseCase
 func NewCreateWorkspaceUseCase(
-	workspaceRepo workspace.Repository,
+	workspaceRepo Repository,
 	keycloakClient KeycloakClient,
 ) *CreateWorkspaceUseCase {
 	return &CreateWorkspaceUseCase{

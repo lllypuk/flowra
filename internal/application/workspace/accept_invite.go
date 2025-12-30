@@ -11,13 +11,13 @@ import (
 type AcceptInviteUseCase struct {
 	shared.BaseUseCase
 
-	workspaceRepo  workspace.Repository
+	workspaceRepo  Repository
 	keycloakClient KeycloakClient
 }
 
 // NewAcceptInviteUseCase создает новый AcceptInviteUseCase
 func NewAcceptInviteUseCase(
-	workspaceRepo workspace.Repository,
+	workspaceRepo Repository,
 	keycloakClient KeycloakClient,
 ) *AcceptInviteUseCase {
 	return &AcceptInviteUseCase{

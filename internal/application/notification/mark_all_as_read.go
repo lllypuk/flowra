@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/lllypuk/flowra/internal/application/shared"
-	"github.com/lllypuk/flowra/internal/domain/notification"
 )
 
 const (
@@ -15,12 +14,12 @@ const (
 
 // MarkAllAsReadUseCase обрабатывает пометку всех notifications пользователя как прочитанных
 type MarkAllAsReadUseCase struct {
-	notificationRepo notification.Repository
+	notificationRepo Repository
 }
 
 // NewMarkAllAsReadUseCase создает новый use case для пометки всех notifications как прочитанных
 func NewMarkAllAsReadUseCase(
-	notificationRepo notification.Repository,
+	notificationRepo Repository,
 ) *MarkAllAsReadUseCase {
 	return &MarkAllAsReadUseCase{
 		notificationRepo: notificationRepo,

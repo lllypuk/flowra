@@ -12,12 +12,12 @@ import (
 
 // MarkAsReadUseCase обрабатывает пометку notification как прочитанного
 type MarkAsReadUseCase struct {
-	notificationRepo notification.Repository
+	notificationRepo Repository
 }
 
 // NewMarkAsReadUseCase создает новый use case для пометки notification как прочитанного
 func NewMarkAsReadUseCase(
-	notificationRepo notification.Repository,
+	notificationRepo Repository,
 ) *MarkAsReadUseCase {
 	return &MarkAsReadUseCase{
 		notificationRepo: notificationRepo,

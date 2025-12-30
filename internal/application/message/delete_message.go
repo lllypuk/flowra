@@ -11,13 +11,13 @@ import (
 
 // DeleteMessageUseCase обрабатывает удаление сообщения (soft delete)
 type DeleteMessageUseCase struct {
-	messageRepo message.Repository
+	messageRepo Repository
 	eventBus    event.Bus
 }
 
 // NewDeleteMessageUseCase создает новый DeleteMessageUseCase
 func NewDeleteMessageUseCase(
-	messageRepo message.Repository,
+	messageRepo Repository,
 	eventBus event.Bus,
 ) *DeleteMessageUseCase {
 	return &DeleteMessageUseCase{

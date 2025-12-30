@@ -5,16 +5,15 @@ import (
 	"fmt"
 
 	"github.com/lllypuk/flowra/internal/application/shared"
-	"github.com/lllypuk/flowra/internal/domain/message"
 )
 
 // ListMessagesUseCase обрабатывает получение списка сообщений в чате
 type ListMessagesUseCase struct {
-	messageRepo message.Repository
+	messageRepo Repository
 }
 
 // NewListMessagesUseCase создает новый ListMessagesUseCase
-func NewListMessagesUseCase(messageRepo message.Repository) *ListMessagesUseCase {
+func NewListMessagesUseCase(messageRepo Repository) *ListMessagesUseCase {
 	return &ListMessagesUseCase{
 		messageRepo: messageRepo,
 	}
@@ -31,7 +30,7 @@ func (uc *ListMessagesUseCase) Execute(
 	}
 
 	// Подготовка пагинации
-	pagination := message.Pagination{
+	pagination := Pagination{
 		Limit:  query.Limit,
 		Offset: query.Offset,
 	}

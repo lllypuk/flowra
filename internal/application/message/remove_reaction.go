@@ -11,13 +11,13 @@ import (
 
 // RemoveReactionUseCase обрабатывает удаление реакции с сообщения
 type RemoveReactionUseCase struct {
-	messageRepo message.Repository
+	messageRepo Repository
 	eventBus    event.Bus
 }
 
 // NewRemoveReactionUseCase создает новый RemoveReactionUseCase
 func NewRemoveReactionUseCase(
-	messageRepo message.Repository,
+	messageRepo Repository,
 	eventBus event.Bus,
 ) *RemoveReactionUseCase {
 	return &RemoveReactionUseCase{

@@ -1,4 +1,3 @@
-//nolint:dupl // Separate use case with different query parameters
 package user
 
 import (
@@ -11,11 +10,11 @@ import (
 
 // GetUserUseCase обрабатывает получение пользователя по ID
 type GetUserUseCase struct {
-	userRepo user.Repository
+	userRepo Repository
 }
 
 // NewGetUserUseCase создает новый GetUserUseCase
-func NewGetUserUseCase(userRepo user.Repository) *GetUserUseCase {
+func NewGetUserUseCase(userRepo Repository) *GetUserUseCase {
 	return &GetUserUseCase{userRepo: userRepo}
 }
 
