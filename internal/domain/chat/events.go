@@ -67,10 +67,11 @@ func NewParticipantAdded(
 	chatID, userID uuid.UUID,
 	role Role,
 	joinedAt time.Time,
+	version int,
 	metadata event.Metadata,
 ) *ParticipantAdded {
 	return &ParticipantAdded{
-		BaseEvent: event.NewBaseEvent(EventTypeParticipantAdded, chatID.String(), "Chat", 1, metadata),
+		BaseEvent: event.NewBaseEvent(EventTypeParticipantAdded, chatID.String(), "Chat", version, metadata),
 		UserID:    userID,
 		Role:      role,
 		JoinedAt:  joinedAt,
@@ -87,10 +88,11 @@ type ParticipantRemoved struct {
 // NewParticipantRemoved создает новое событие ParticipantRemoved
 func NewParticipantRemoved(
 	chatID, userID uuid.UUID,
+	version int,
 	metadata event.Metadata,
 ) *ParticipantRemoved {
 	return &ParticipantRemoved{
-		BaseEvent: event.NewBaseEvent(EventTypeParticipantRemoved, chatID.String(), "Chat", 1, metadata),
+		BaseEvent: event.NewBaseEvent(EventTypeParticipantRemoved, chatID.String(), "Chat", version, metadata),
 		UserID:    userID,
 	}
 }

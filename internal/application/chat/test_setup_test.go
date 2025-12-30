@@ -66,33 +66,3 @@ func generateUUID(_ *testing.T) uuid.UUID {
 func setEventStoreError(es *mocks.MockEventStore, err error) {
 	es.SetFailureNext(err)
 }
-
-// GetEventByType retrieves first event of specific type from result
-func getEventByType(t *testing.T, result chat.Result, typeName string) any {
-	for _, evt := range result.Events {
-		switch typeName {
-		case "ChatCreated":
-			if _, ok := evt.(*domainChat.Created); ok {
-				return evt
-			}
-		case "TypeChanged":
-			if _, ok := evt.(*domainChat.TypeChanged); ok {
-				return evt
-			}
-		case "StatusChanged":
-			if _, ok := evt.(*domainChat.StatusChanged); ok {
-				return evt
-			}
-		case "ParticipantAdded":
-			if _, ok := evt.(*domainChat.ParticipantAdded); ok {
-				return evt
-			}
-		case "ParticipantRemoved":
-			if _, ok := evt.(*domainChat.ParticipantRemoved); ok {
-				return evt
-			}
-		}
-	}
-	t.Fatalf("Event of type %s not found in result", typeName)
-	return nil
-}
