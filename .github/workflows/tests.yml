@@ -31,7 +31,7 @@ jobs:
         uses: golangci/golangci-lint-action@v7
         with:
           version: latest
-          args: --timeout=5m
+          args: --timeout=5m ./internal/... ./tests/... ./pkg/...
 
   unit-tests:
     name: Unit Tests
