@@ -6,12 +6,23 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-// listDocuments выполняет общую логику получения списка документов с пагинацией
+// listDocuments выполняет общую логику получения списка документов с пагинацией.
 // T - тип документа для декодирования
 // R - тип результата (domain объект)
+//
+// Параметры:
+//   - ctx: контекст выполнения
+//   - collection: MongoDB коллекция
+//   - offset: смещение для пагинации
+//   - limit: лимит документов (если 0, используется DefaultPaginationLimit)
+//   - decoder: функция преобразования документа в domain объект
+//   - collectionName: название коллекции для сообщений об ошибках
+//
+// Возвращает:
+//   - срез domain объектов (никогда не nil)
+//   - ошибку при проблемах с запросом
 func listDocuments[T any, R any](
 	ctx context.Context,
 	collection *mongo.Collection,
@@ -19,14 +30,9 @@ func listDocuments[T any, R any](
 	decoder func(*T) (R, error),
 	collectionName string,
 ) ([]R, error) {
-	if limit == 0 {
-		limit = 50
-	}
+	limit = DefaultLimit(limit, DefaultPaginationLimit)
 
-	opts := options.Find().
-		SetSort(bson.D{{Key: "created_at", Value: -1}}).
-		SetLimit(int64(limit)).
-		SetSkip(int64(offset))
+	opts := FindWithPaginationDesc(offset, limit)
 
 	cursor, err := collection.Find(ctx, bson.M{}, opts)
 	if err != nil {
@@ -38,12 +44,12 @@ func listDocuments[T any, R any](
 	for cursor.Next(ctx) {
 		var doc T
 		if decodeErr := cursor.Decode(&doc); decodeErr != nil {
-			continue
+			continue // пропускаем некорректные документы
 		}
 
 		item, docErr := decoder(&doc)
 		if docErr != nil {
-			continue
+			continue // пропускаем документы, которые не удалось преобразовать
 		}
 
 		results = append(results, item)
@@ -53,6 +59,7 @@ func listDocuments[T any, R any](
 		return nil, fmt.Errorf("cursor error: %w", err)
 	}
 
+	// Гарантируем возврат пустого среза вместо nil
 	if results == nil {
 		results = make([]R, 0)
 	}

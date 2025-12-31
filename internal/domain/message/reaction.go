@@ -44,3 +44,13 @@ func (r Reaction) EmojiCode() string {
 func (r Reaction) AddedAt() time.Time {
 	return r.addedAt
 }
+
+// ReconstructReaction восстанавливает реакцию из хранилища.
+// Используется репозиториями для гидрации объекта без валидации бизнес-правил.
+func ReconstructReaction(userID uuid.UUID, emojiCode string, addedAt time.Time) Reaction {
+	return Reaction{
+		userID:    userID,
+		emojiCode: emojiCode,
+		addedAt:   addedAt,
+	}
+}

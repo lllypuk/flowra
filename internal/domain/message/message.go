@@ -52,6 +52,44 @@ func NewMessage(
 	}, nil
 }
 
+// Reconstruct восстанавливает сообщение из хранилища.
+// Используется репозиториями для гидрации объекта без валидации бизнес-правил.
+// Все параметры должны быть валидными значениями из хранилища.
+func Reconstruct(
+	id uuid.UUID,
+	chatID uuid.UUID,
+	authorID uuid.UUID,
+	content string,
+	parentMessageID uuid.UUID,
+	createdAt time.Time,
+	editedAt *time.Time,
+	isDeleted bool,
+	deletedAt *time.Time,
+	attachments []Attachment,
+	reactions []Reaction,
+) *Message {
+	if attachments == nil {
+		attachments = make([]Attachment, 0)
+	}
+	if reactions == nil {
+		reactions = make([]Reaction, 0)
+	}
+
+	return &Message{
+		id:              id,
+		chatID:          chatID,
+		authorID:        authorID,
+		content:         content,
+		parentMessageID: parentMessageID,
+		createdAt:       createdAt,
+		editedAt:        editedAt,
+		isDeleted:       isDeleted,
+		deletedAt:       deletedAt,
+		attachments:     attachments,
+		reactions:       reactions,
+	}
+}
+
 // EditContent редактирует содержимое сообщения
 func (m *Message) EditContent(newContent string, editorID uuid.UUID) error {
 	if m.isDeleted {

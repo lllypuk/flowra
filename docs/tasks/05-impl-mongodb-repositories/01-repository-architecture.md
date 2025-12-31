@@ -417,24 +417,39 @@ func (r *MongoWorkspaceRepository) Delete(ctx context.Context, id uuid.UUID) err
 
 ### Общие компоненты
 
-- [ ] Расширить `common.go` новыми helper-функциями
-- [ ] Добавить `BaseDocument` структуру
-- [ ] Добавить `UpsertOptions()` helper
-- [ ] Добавить `FindWithPagination()` helper
+- [x] Расширить `common.go` новыми helper-функциями
+- [x] Добавить `BaseDocument` структуру
+- [x] Добавить `UpsertOptions()` helper
+- [x] Добавить `FindWithPagination()` helper
+- [x] Добавить `DefaultPaginationLimit` и `MaxPaginationLimit` константы
+- [x] Добавить `DefaultLimit()` и `DefaultLimitWithMax()` helpers
+- [x] Добавить `StringPtr()` и `StringValue()` helpers
+- [x] Добавить `CountAll()` helper
 
 ### Domain restore функции
 
 Для корректной десериализации нужны `Restore` функции в domain:
 
-- [ ] `user.Restore()` — восстановление User из полей
-- [ ] `workspace.Restore()` — восстановление Workspace из полей
-- [ ] `message.Restore()` — восстановление Message из полей
-- [ ] `notification.Restore()` — восстановление Notification из полей
+- [x] `user.Reconstruct()` — восстановление User из полей (уже существовал)
+- [x] `workspace.Reconstruct()` — восстановление Workspace из полей
+- [x] `workspace.ReconstructInvite()` — восстановление Invite из полей
+- [x] `message.Reconstruct()` — восстановление Message из полей
+- [x] `message.ReconstructAttachment()` — восстановление Attachment из полей
+- [x] `message.ReconstructReaction()` — восстановление Reaction из полей
+- [x] `notification.Reconstruct()` — восстановление Notification из полей
+
+### Обновление репозиториев
+
+- [x] `user_repository.go` — использует `Reconstruct` и helper-функции
+- [x] `workspace_repository.go` — использует `Reconstruct` и helper-функции
+- [x] `message_repository.go` — использует `Reconstruct` и helper-функции
+- [x] `notification_repository.go` — использует `Reconstruct` и helper-функции
+- [x] `list_helper.go` — рефакторинг для использования общих helpers
 
 ### Документация
 
-- [ ] Добавить комментарии ко всем публичным функциям
-- [ ] Документировать правила маппинга ошибок
+- [x] Добавить комментарии ко всем публичным функциям
+- [x] Документировать правила маппинга ошибок
 
 ## Следующие шаги
 

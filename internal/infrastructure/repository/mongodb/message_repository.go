@@ -2,7 +2,6 @@ package mongodb
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -54,15 +53,10 @@ func (r *MongoMessageRepository) FindByChatID(
 		return nil, errs.ErrInvalidInput
 	}
 
-	if pagination.Limit == 0 {
-		pagination.Limit = 50 // default
-	}
+	pagination.Limit = DefaultLimit(pagination.Limit, DefaultPaginationLimit)
 
 	filter := bson.M{"chat_id": chatID.String()}
-	opts := options.Find().
-		SetSort(bson.D{{Key: "created_at", Value: -1}}).
-		SetLimit(int64(pagination.Limit)).
-		SetSkip(int64(pagination.Offset))
+	opts := FindWithPaginationDesc(pagination.Offset, pagination.Limit)
 
 	cursor, err := r.collection.Find(ctx, filter, opts)
 	if err != nil {
@@ -168,9 +162,7 @@ func (r *MongoMessageRepository) Save(ctx context.Context, message *messagedomai
 
 	filter := bson.M{"message_id": message.ID().String()}
 	update := bson.M{"$set": doc}
-	opts := options.UpdateOne().SetUpsert(true)
-
-	_, err := r.collection.UpdateOne(ctx, filter, update, opts)
+	_, err := r.collection.UpdateOne(ctx, filter, update, UpsertOptions())
 	return HandleMongoError(err, "message")
 }
 
@@ -195,50 +187,77 @@ func (r *MongoMessageRepository) Delete(ctx context.Context, id uuid.UUID) error
 
 // messageDocument представляет структуру документа в MongoDB
 type messageDocument struct {
-	MessageID   string     `bson:"message_id"`
-	ChatID      string     `bson:"chat_id"`
-	AuthorID    string     `bson:"sent_by"`
-	Content     string     `bson:"content"`
-	ParentID    *string    `bson:"parent_id,omitempty"`
-	CreatedAt   time.Time  `bson:"created_at"`
-	EditedAt    *time.Time `bson:"edited_at,omitempty"`
-	IsDeleted   bool       `bson:"is_deleted"`
-	DeletedAt   *time.Time `bson:"deleted_at,omitempty"`
-	Attachments []string   `bson:"attachments"`
-	Reactions   bson.M     `bson:"reactions,omitempty"`
+	MessageID   string               `bson:"message_id"`
+	ChatID      string               `bson:"chat_id"`
+	AuthorID    string               `bson:"sent_by"`
+	Content     string               `bson:"content"`
+	ParentID    *string              `bson:"parent_id,omitempty"`
+	CreatedAt   time.Time            `bson:"created_at"`
+	EditedAt    *time.Time           `bson:"edited_at,omitempty"`
+	IsDeleted   bool                 `bson:"is_deleted"`
+	DeletedAt   *time.Time           `bson:"deleted_at,omitempty"`
+	Attachments []attachmentDocument `bson:"attachments"`
+	Reactions   []reactionDocument   `bson:"reactions"`
+}
+
+// attachmentDocument представляет вложение в документе
+type attachmentDocument struct {
+	FileID   string `bson:"file_id"`
+	FileName string `bson:"file_name"`
+	FileSize int64  `bson:"file_size"`
+	MimeType string `bson:"mime_type"`
+}
+
+// reactionDocument представляет реакцию в документе
+type reactionDocument struct {
+	UserID    string    `bson:"user_id"`
+	EmojiCode string    `bson:"emoji_code"`
+	AddedAt   time.Time `bson:"added_at"`
 }
 
 // messageToDocument преобразует Message в Document
 func (r *MongoMessageRepository) messageToDocument(msg *messagedomain.Message) messageDocument {
-	doc := messageDocument{
+	// Преобразуем вложения
+	attachments := make([]attachmentDocument, 0, len(msg.Attachments()))
+	for _, a := range msg.Attachments() {
+		attachments = append(attachments, attachmentDocument{
+			FileID:   a.FileID().String(),
+			FileName: a.FileName(),
+			FileSize: a.FileSize(),
+			MimeType: a.MimeType(),
+		})
+	}
+
+	// Преобразуем реакции
+	reactions := make([]reactionDocument, 0, len(msg.Reactions()))
+	for _, r := range msg.Reactions() {
+		reactions = append(reactions, reactionDocument{
+			UserID:    r.UserID().String(),
+			EmojiCode: r.EmojiCode(),
+			AddedAt:   r.AddedAt(),
+		})
+	}
+
+	// Обрабатываем parent ID
+	var parentID *string
+	if !msg.ParentMessageID().IsZero() {
+		parentIDStr := msg.ParentMessageID().String()
+		parentID = &parentIDStr
+	}
+
+	return messageDocument{
 		MessageID:   msg.ID().String(),
 		ChatID:      msg.ChatID().String(),
 		AuthorID:    msg.AuthorID().String(),
 		Content:     msg.Content(),
+		ParentID:    parentID,
 		CreatedAt:   msg.CreatedAt(),
+		EditedAt:    msg.EditedAt(),
 		IsDeleted:   msg.IsDeleted(),
-		Attachments: make([]string, 0),
-		Reactions:   bson.M{},
+		DeletedAt:   msg.DeletedAt(),
+		Attachments: attachments,
+		Reactions:   reactions,
 	}
-
-	parentID := msg.ParentMessageID()
-	if !parentID.IsZero() {
-		parentIDStr := parentID.String()
-		doc.ParentID = &parentIDStr
-	}
-
-	if msg.EditedAt() != nil {
-		doc.EditedAt = msg.EditedAt()
-	}
-
-	if msg.DeletedAt() != nil {
-		doc.DeletedAt = msg.DeletedAt()
-	}
-
-	// Преобразуем вложения (если есть)
-	// Это требует знания структуры Attachment в domain/message
-
-	return doc
 }
 
 // documentToMessage преобразует Document в Message
@@ -247,13 +266,69 @@ func (r *MongoMessageRepository) documentToMessage(doc *messageDocument) (*messa
 		return nil, errs.ErrInvalidInput
 	}
 
-	// TODO: Полная реализация требует наличия setter методов или factory method в domain/message
-	// Сейчас возвращаем nil с сообщением о необходимости полной реализации
-	// При полной реализации нужно:
-	// 1. Распарсить doc.ChatID, doc.AuthorID, doc.ParentID в UUID
-	// 2. Создать сообщение через NewMessage()
-	// 3. Установить дополнительные поля (editedAt, deletedAt, isDeleted) через setter методы
-	// 4. Вернуть полное сообщение
+	id, err := uuid.ParseUUID(doc.MessageID)
+	if err != nil {
+		return nil, errs.ErrInvalidInput
+	}
 
-	return nil, errors.New("documentToMessage requires domain setter methods - not yet implemented")
+	chatID, err := uuid.ParseUUID(doc.ChatID)
+	if err != nil {
+		return nil, errs.ErrInvalidInput
+	}
+
+	authorID, err := uuid.ParseUUID(doc.AuthorID)
+	if err != nil {
+		return nil, errs.ErrInvalidInput
+	}
+
+	var parentMessageID uuid.UUID
+	if doc.ParentID != nil {
+		parentMessageID, err = uuid.ParseUUID(*doc.ParentID)
+		if err != nil {
+			return nil, errs.ErrInvalidInput
+		}
+	}
+
+	// Восстанавливаем вложения
+	attachments := make([]messagedomain.Attachment, 0, len(doc.Attachments))
+	for _, a := range doc.Attachments {
+		fileID, parseErr := uuid.ParseUUID(a.FileID)
+		if parseErr != nil {
+			continue // пропускаем некорректные вложения
+		}
+		attachments = append(attachments, messagedomain.ReconstructAttachment(
+			fileID,
+			a.FileName,
+			a.FileSize,
+			a.MimeType,
+		))
+	}
+
+	// Восстанавливаем реакции
+	reactions := make([]messagedomain.Reaction, 0, len(doc.Reactions))
+	for _, r := range doc.Reactions {
+		userID, parseErr := uuid.ParseUUID(r.UserID)
+		if parseErr != nil {
+			continue // пропускаем некорректные реакции
+		}
+		reactions = append(reactions, messagedomain.ReconstructReaction(
+			userID,
+			r.EmojiCode,
+			r.AddedAt,
+		))
+	}
+
+	return messagedomain.Reconstruct(
+		id,
+		chatID,
+		authorID,
+		doc.Content,
+		parentMessageID,
+		doc.CreatedAt,
+		doc.EditedAt,
+		doc.IsDeleted,
+		doc.DeletedAt,
+		attachments,
+		reactions,
+	), nil
 }

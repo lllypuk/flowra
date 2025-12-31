@@ -2,13 +2,11 @@ package mongodb
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
 	"github.com/lllypuk/flowra/internal/domain/errs"
 	notificationdomain "github.com/lllypuk/flowra/internal/domain/notification"
@@ -56,15 +54,10 @@ func (r *MongoNotificationRepository) FindByUserID(
 		return nil, errs.ErrInvalidInput
 	}
 
-	if limit == 0 {
-		limit = 50
-	}
+	limit = DefaultLimit(limit, DefaultPaginationLimit)
 
 	filter := bson.M{"user_id": userID.String()}
-	opts := options.Find().
-		SetSort(bson.D{{Key: "created_at", Value: -1}}).
-		SetLimit(int64(limit)).
-		SetSkip(int64(offset))
+	opts := FindWithPaginationDesc(offset, limit)
 
 	cursor, err := r.collection.Find(ctx, filter, opts)
 	if err != nil {
@@ -108,17 +101,13 @@ func (r *MongoNotificationRepository) FindUnreadByUserID(
 		return nil, errs.ErrInvalidInput
 	}
 
-	if limit == 0 {
-		limit = 50
-	}
+	limit = DefaultLimit(limit, DefaultPaginationLimit)
 
 	filter := bson.M{
 		"user_id": userID.String(),
 		"read_at": nil,
 	}
-	opts := options.Find().
-		SetSort(bson.D{{Key: "created_at", Value: -1}}).
-		SetLimit(int64(limit))
+	opts := FindWithPaginationDesc(0, limit)
 
 	cursor, err := r.collection.Find(ctx, filter, opts)
 	if err != nil {
@@ -179,9 +168,8 @@ func (r *MongoNotificationRepository) Save(ctx context.Context, notification *no
 	doc := r.notificationToDocument(notification)
 	filter := bson.M{"notification_id": notification.ID().String()}
 	update := bson.M{"$set": doc}
-	opts := options.UpdateOne().SetUpsert(true)
 
-	_, err := r.collection.UpdateOne(ctx, filter, update, opts)
+	_, err := r.collection.UpdateOne(ctx, filter, update, UpsertOptions())
 	return HandleMongoError(err, "notification")
 }
 
@@ -231,25 +219,16 @@ type notificationDocument struct {
 func (r *MongoNotificationRepository) notificationToDocument(
 	notif *notificationdomain.Notification,
 ) notificationDocument {
-	doc := notificationDocument{
+	return notificationDocument{
 		NotificationID: notif.ID().String(),
 		UserID:         notif.UserID().String(),
 		Type:           string(notif.Type()),
 		Title:          notif.Title(),
 		Message:        notif.Message(),
+		ResourceID:     StringPtr(notif.ResourceID()),
+		ReadAt:         notif.ReadAt(),
 		CreatedAt:      notif.CreatedAt(),
 	}
-
-	// ResourceID это строка
-	if resourceID := notif.ResourceID(); resourceID != "" {
-		doc.ResourceID = &resourceID
-	}
-
-	if readAt := notif.ReadAt(); readAt != nil {
-		doc.ReadAt = readAt
-	}
-
-	return doc
 }
 
 // documentToNotification преобразует Document в Notification
@@ -260,7 +239,24 @@ func (r *MongoNotificationRepository) documentToNotification(
 		return nil, errs.ErrInvalidInput
 	}
 
-	// TODO: Полная реализация требует наличия constructor или setter методов в domain/notification
-	// Сейчас возвращаем nil с сообщением о необходимости полной реализации
-	return nil, errors.New("documentToNotification requires domain setter methods - not yet implemented")
+	id, err := uuid.ParseUUID(doc.NotificationID)
+	if err != nil {
+		return nil, errs.ErrInvalidInput
+	}
+
+	userID, err := uuid.ParseUUID(doc.UserID)
+	if err != nil {
+		return nil, errs.ErrInvalidInput
+	}
+
+	return notificationdomain.Reconstruct(
+		id,
+		userID,
+		notificationdomain.Type(doc.Type),
+		doc.Title,
+		doc.Message,
+		StringValue(doc.ResourceID),
+		doc.ReadAt,
+		doc.CreatedAt,
+	), nil
 }

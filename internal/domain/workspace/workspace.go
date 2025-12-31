@@ -41,6 +41,30 @@ func NewWorkspace(name, keycloakGroupID string, createdBy uuid.UUID) (*Workspace
 	}, nil
 }
 
+// Reconstruct восстанавливает рабочее пространство из хранилища.
+// Используется репозиториями для гидрации объекта без валидации бизнес-правил.
+// Все параметры должны быть валидными значениями из хранилища.
+func Reconstruct(
+	id uuid.UUID,
+	name, keycloakGroupID string,
+	createdBy uuid.UUID,
+	createdAt, updatedAt time.Time,
+	invites []*Invite,
+) *Workspace {
+	if invites == nil {
+		invites = make([]*Invite, 0)
+	}
+	return &Workspace{
+		id:              id,
+		name:            name,
+		keycloakGroupID: keycloakGroupID,
+		createdBy:       createdBy,
+		createdAt:       createdAt,
+		updatedAt:       updatedAt,
+		invites:         invites,
+	}
+}
+
 // UpdateName обновляет название рабочего пространства
 func (w *Workspace) UpdateName(name string) error {
 	if name == "" {
@@ -210,3 +234,28 @@ func (i *Invite) UsedCount() int { return i.usedCount }
 
 // IsRevoked возвращает true если приглашение отменено
 func (i *Invite) IsRevoked() bool { return i.isRevoked }
+
+// ReconstructInvite восстанавливает приглашение из хранилища.
+// Используется репозиториями для гидрации объекта без валидации бизнес-правил.
+// Все параметры должны быть валидными значениями из хранилища.
+func ReconstructInvite(
+	id uuid.UUID,
+	workspaceID uuid.UUID,
+	token string,
+	createdBy uuid.UUID,
+	createdAt, expiresAt time.Time,
+	maxUses, usedCount int,
+	isRevoked bool,
+) *Invite {
+	return &Invite{
+		id:          id,
+		workspaceID: workspaceID,
+		token:       token,
+		createdBy:   createdBy,
+		createdAt:   createdAt,
+		expiresAt:   expiresAt,
+		maxUses:     maxUses,
+		usedCount:   usedCount,
+		isRevoked:   isRevoked,
+	}
+}

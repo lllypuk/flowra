@@ -2,13 +2,11 @@ package mongodb
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
 	"github.com/lllypuk/flowra/internal/domain/errs"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
@@ -80,17 +78,9 @@ func (r *MongoWorkspaceRepository) Save(ctx context.Context, workspace *workspac
 	doc := r.workspaceToDocument(workspace)
 	filter := bson.M{"workspace_id": workspace.ID().String()}
 	update := bson.M{"$set": doc}
-	opts := options.UpdateOne().SetUpsert(true)
 
-	_, err := r.collection.UpdateOne(ctx, filter, update, opts)
-	if err != nil {
-		if mongo.IsDuplicateKeyError(err) {
-			return errs.ErrAlreadyExists
-		}
-		return HandleMongoError(err, "workspace")
-	}
-
-	return nil
+	_, err := r.collection.UpdateOne(ctx, filter, update, UpsertOptions())
+	return HandleMongoError(err, "workspace")
 }
 
 // Delete удаляет рабочее пространство
@@ -137,12 +127,11 @@ func (r *MongoWorkspaceRepository) List(ctx context.Context, offset, limit int) 
 
 // Count возвращает общее количество рабочих пространств
 func (r *MongoWorkspaceRepository) Count(ctx context.Context) (int, error) {
-	count, err := r.collection.CountDocuments(ctx, bson.M{})
+	count, err := CountAll(ctx, r.collection)
 	if err != nil {
 		return 0, HandleMongoError(err, "workspaces")
 	}
-
-	return int(count), nil
+	return count, nil
 }
 
 // FindInviteByToken находит приглашение по токену
@@ -155,10 +144,9 @@ func (r *MongoWorkspaceRepository) FindInviteByToken(
 	}
 
 	filter := bson.M{"invites.token": token}
-	opts := options.FindOne()
 
 	var doc workspaceDocument
-	err := r.collection.FindOne(ctx, filter, opts).Decode(&doc)
+	err := r.collection.FindOne(ctx, filter).Decode(&doc)
 	if err != nil {
 		return nil, HandleMongoError(err, "invite")
 	}
@@ -166,10 +154,7 @@ func (r *MongoWorkspaceRepository) FindInviteByToken(
 	// Находим конкретное приглашение в массиве
 	for _, inv := range doc.Invites {
 		if inv.Token == token {
-			// Преобразуем в domain модель
-			return &workspacedomain.Invite{
-				// Нужны setter методы или конструктор
-			}, nil
+			return r.documentToInvite(&inv)
 		}
 	}
 
@@ -180,7 +165,7 @@ func (r *MongoWorkspaceRepository) FindInviteByToken(
 type workspaceDocument struct {
 	WorkspaceID     string           `bson:"workspace_id"`
 	Name            string           `bson:"name"`
-	KeycloakGroupID *string          `bson:"keycloak_group_id,omitempty"`
+	KeycloakGroupID string           `bson:"keycloak_group_id"`
 	CreatedBy       string           `bson:"created_by"`
 	CreatedAt       time.Time        `bson:"created_at"`
 	UpdatedAt       time.Time        `bson:"updated_at"`
@@ -189,27 +174,44 @@ type workspaceDocument struct {
 
 // inviteDocument представляет приглашение в документе
 type inviteDocument struct {
-	Token     string    `bson:"token"`
-	Email     string    `bson:"email"`
-	ExpiresAt time.Time `bson:"expires_at"`
-	CreatedAt time.Time `bson:"created_at"`
+	InviteID    string    `bson:"invite_id"`
+	WorkspaceID string    `bson:"workspace_id"`
+	Token       string    `bson:"token"`
+	CreatedBy   string    `bson:"created_by"`
+	CreatedAt   time.Time `bson:"created_at"`
+	ExpiresAt   time.Time `bson:"expires_at"`
+	MaxUses     int       `bson:"max_uses"`
+	UsedCount   int       `bson:"used_count"`
+	IsRevoked   bool      `bson:"is_revoked"`
 }
 
 // workspaceToDocument преобразует Workspace в Document
 func (r *MongoWorkspaceRepository) workspaceToDocument(ws *workspacedomain.Workspace) workspaceDocument {
-	doc := workspaceDocument{
-		WorkspaceID: ws.ID().String(),
-		Name:        ws.Name(),
-		CreatedBy:   ws.CreatedBy().String(),
-		CreatedAt:   ws.CreatedAt(),
-		UpdatedAt:   ws.UpdatedAt(),
-		Invites:     make([]inviteDocument, 0),
+	// Преобразуем приглашения
+	invites := make([]inviteDocument, 0, len(ws.Invites()))
+	for _, inv := range ws.Invites() {
+		invites = append(invites, inviteDocument{
+			InviteID:    inv.ID().String(),
+			WorkspaceID: inv.WorkspaceID().String(),
+			Token:       inv.Token(),
+			CreatedBy:   inv.CreatedBy().String(),
+			CreatedAt:   inv.CreatedAt(),
+			ExpiresAt:   inv.ExpiresAt(),
+			MaxUses:     inv.MaxUses(),
+			UsedCount:   inv.UsedCount(),
+			IsRevoked:   inv.IsRevoked(),
+		})
 	}
 
-	// Добавляем приглашения (если они есть)
-	// Это требует знания методов для получения приглашений из Workspace
-
-	return doc
+	return workspaceDocument{
+		WorkspaceID:     ws.ID().String(),
+		Name:            ws.Name(),
+		KeycloakGroupID: ws.KeycloakGroupID(),
+		CreatedBy:       ws.CreatedBy().String(),
+		CreatedAt:       ws.CreatedAt(),
+		UpdatedAt:       ws.UpdatedAt(),
+		Invites:         invites,
+	}
 }
 
 // documentToWorkspace преобразует Document в Workspace
@@ -218,7 +220,67 @@ func (r *MongoWorkspaceRepository) documentToWorkspace(doc *workspaceDocument) (
 		return nil, errs.ErrInvalidInput
 	}
 
-	// TODO: Полная реализация требует наличия constructor или setter методов в domain/workspace
-	// Сейчас возвращаем nil с сообщением о необходимости полной реализации
-	return nil, errors.New("documentToWorkspace requires domain setter methods - not yet implemented")
+	id, err := uuid.ParseUUID(doc.WorkspaceID)
+	if err != nil {
+		return nil, errs.ErrInvalidInput
+	}
+
+	createdBy, err := uuid.ParseUUID(doc.CreatedBy)
+	if err != nil {
+		return nil, errs.ErrInvalidInput
+	}
+
+	// Восстанавливаем приглашения
+	invites := make([]*workspacedomain.Invite, 0, len(doc.Invites))
+	for _, inv := range doc.Invites {
+		invite, invErr := r.documentToInvite(&inv)
+		if invErr != nil {
+			continue // пропускаем некорректные приглашения
+		}
+		invites = append(invites, invite)
+	}
+
+	return workspacedomain.Reconstruct(
+		id,
+		doc.Name,
+		doc.KeycloakGroupID,
+		createdBy,
+		doc.CreatedAt,
+		doc.UpdatedAt,
+		invites,
+	), nil
+}
+
+// documentToInvite преобразует inviteDocument в Invite
+func (r *MongoWorkspaceRepository) documentToInvite(doc *inviteDocument) (*workspacedomain.Invite, error) {
+	if doc == nil {
+		return nil, errs.ErrInvalidInput
+	}
+
+	id, err := uuid.ParseUUID(doc.InviteID)
+	if err != nil {
+		return nil, errs.ErrInvalidInput
+	}
+
+	workspaceID, err := uuid.ParseUUID(doc.WorkspaceID)
+	if err != nil {
+		return nil, errs.ErrInvalidInput
+	}
+
+	createdBy, err := uuid.ParseUUID(doc.CreatedBy)
+	if err != nil {
+		return nil, errs.ErrInvalidInput
+	}
+
+	return workspacedomain.ReconstructInvite(
+		id,
+		workspaceID,
+		doc.Token,
+		createdBy,
+		doc.CreatedAt,
+		doc.ExpiresAt,
+		doc.MaxUses,
+		doc.UsedCount,
+		doc.IsRevoked,
+	), nil
 }
