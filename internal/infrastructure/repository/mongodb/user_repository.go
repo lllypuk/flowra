@@ -6,6 +6,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
 	"github.com/lllypuk/flowra/internal/domain/errs"
 	userdomain "github.com/lllypuk/flowra/internal/domain/user"
@@ -86,6 +87,51 @@ func (r *MongoUserRepository) FindByUsername(ctx context.Context, username strin
 	}
 
 	return r.documentToUser(&doc)
+}
+
+// Exists проверяет, существует ли пользователь с заданным ID
+func (r *MongoUserRepository) Exists(ctx context.Context, userID uuid.UUID) (bool, error) {
+	if userID.IsZero() {
+		return false, errs.ErrInvalidInput
+	}
+
+	filter := bson.M{"user_id": userID.String()}
+	count, err := r.collection.CountDocuments(ctx, filter, options.Count().SetLimit(1))
+	if err != nil {
+		return false, HandleMongoError(err, "user")
+	}
+
+	return count > 0, nil
+}
+
+// ExistsByUsername проверяет, существует ли пользователь с заданным username
+func (r *MongoUserRepository) ExistsByUsername(ctx context.Context, username string) (bool, error) {
+	if username == "" {
+		return false, errs.ErrInvalidInput
+	}
+
+	filter := bson.M{"username": username}
+	count, err := r.collection.CountDocuments(ctx, filter, options.Count().SetLimit(1))
+	if err != nil {
+		return false, HandleMongoError(err, "user")
+	}
+
+	return count > 0, nil
+}
+
+// ExistsByEmail проверяет, существует ли пользователь с заданным email
+func (r *MongoUserRepository) ExistsByEmail(ctx context.Context, email string) (bool, error) {
+	if email == "" {
+		return false, errs.ErrInvalidInput
+	}
+
+	filter := bson.M{"email": email}
+	count, err := r.collection.CountDocuments(ctx, filter, options.Count().SetLimit(1))
+	if err != nil {
+		return false, HandleMongoError(err, "user")
+	}
+
+	return count > 0, nil
 }
 
 // Save сохраняет пользователя

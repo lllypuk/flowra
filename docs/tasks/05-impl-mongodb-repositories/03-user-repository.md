@@ -510,30 +510,34 @@ func TestMongoUserRepository_FindByID_And_DocumentToUser(t *testing.T) {
 
 ### Phase 1: Domain layer
 
-- [ ] Добавить функцию `Restore` в `internal/domain/user/user.go`
-- [ ] Убедиться, что `Restore` принимает все необходимые поля
-- [ ] Добавить комментарий о назначении функции
+- [x] Добавить функцию `Restore` в `internal/domain/user/user.go`
+- [x] Убедиться, что `Restore` принимает все необходимые поля
+- [x] Добавить комментарий о назначении функции
+
+> **Note**: Функция уже существует как `Reconstruct` в `internal/domain/user/user.go`
 
 ### Phase 2: Repository layer
 
-- [ ] Реализовать `documentToUser` с использованием `Restore`
-- [ ] Добавить метод `Exists`
-- [ ] Добавить метод `ExistsByUsername`
-- [ ] Добавить метод `ExistsByEmail`
-- [ ] Добавить необходимые импорты (`fmt`, `time`)
+- [x] Реализовать `documentToUser` с использованием `Restore`
+- [x] Добавить метод `Exists`
+- [x] Добавить метод `ExistsByUsername`
+- [x] Добавить метод `ExistsByEmail`
+- [x] Добавить необходимые импорты (`fmt`, `time`)
 
 ### Phase 3: Тестирование
 
-- [ ] Обновить существующие тесты для работы с `documentToUser`
-- [ ] Добавить тесты для `Exists`
-- [ ] Добавить тесты для `ExistsByUsername`
-- [ ] Добавить тесты для `ExistsByEmail`
-- [ ] Проверить, что все тесты проходят
+- [x] Обновить существующие тесты для работы с `documentToUser`
+- [x] Добавить тесты для `Exists`
+- [x] Добавить тесты для `ExistsByUsername`
+- [x] Добавить тесты для `ExistsByEmail`
+- [x] Проверить, что все тесты проходят
 
 ### Phase 4: Проверка интерфейсов
 
-- [ ] Убедиться, что `MongoUserRepository` реализует `userapp.Repository`
-- [ ] Убедиться, что `MongoUserRepository` реализует `shared.UserRepository`
+- [x] Убедиться, что `MongoUserRepository` реализует `userapp.Repository`
+- [x] Убедиться, что `MongoUserRepository` реализует `shared.UserRepository`
+
+> **Note**: `appcore.UserRepository` требует `GetByUsername` который возвращает `*appcore.User` — это отдельный интерфейс для других consumers
 
 ## Следующие шаги
 
