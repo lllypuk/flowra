@@ -25,6 +25,15 @@ const pingRetryDelay = 500 * time.Millisecond
 // containerStartupTimeout is the timeout for starting a new MongoDB container.
 const containerStartupTimeout = 120 * time.Second
 
+// MongoDB container resource limits
+const (
+	containerMemoryLimit = 512 * 1024 * 1024 // 512MB
+	clientPingTimeout    = 2 * time.Second
+	maxPoolSize          = 100
+	minPoolSize          = 5
+	indexCreationTimeout = 30 * time.Second
+)
+
 // sharedMongoContainer holds the singleton MongoDB container and client
 var (
 	sharedContainer   *SharedMongoContainer
@@ -50,26 +59,9 @@ func GetSharedMongoContainer(ctx context.Context) (*SharedMongoContainer, error)
 	// Check if we need to create or recreate the container
 	needsCreation := sharedContainer == nil
 
-	if !needsCreation {
-		// Check if container is still running
-		running, err := isContainerRunning(ctx, sharedContainer.Container)
-		if err != nil || !running {
-			// Container has crashed, need to recreate it
-			// First, try to terminate the old container gracefully
-			if sharedContainer.Container != nil {
-				terminateCtx, cancel := context.WithTimeout(context.Background(), mongoContainerTerminateTimeout)
-				_ = sharedContainer.Container.Terminate(terminateCtx)
-				cancel()
-			}
-			// Disconnect old client if exists
-			if sharedContainer.client != nil {
-				disconnectCtx, cancel := context.WithTimeout(context.Background(), mongoCtxTimeout)
-				_ = sharedContainer.client.Disconnect(disconnectCtx)
-				cancel()
-			}
-			sharedContainer = nil
-			needsCreation = true
-		}
+	if !needsCreation && needsContainerRecreation(ctx) {
+		cleanupCrashedContainer()
+		needsCreation = true
 	}
 
 	if needsCreation {
@@ -85,6 +77,27 @@ func GetSharedMongoContainer(ctx context.Context) (*SharedMongoContainer, error)
 	}
 
 	return sharedContainer, nil
+}
+
+// needsContainerRecreation checks if the existing container needs to be recreated
+func needsContainerRecreation(ctx context.Context) bool {
+	running, err := isContainerRunning(ctx, sharedContainer.Container)
+	return err != nil || !running
+}
+
+// cleanupCrashedContainer terminates a crashed container and disconnects the client
+func cleanupCrashedContainer() {
+	if sharedContainer.Container != nil {
+		terminateCtx, cancel := context.WithTimeout(context.Background(), mongoContainerTerminateTimeout)
+		_ = sharedContainer.Container.Terminate(terminateCtx)
+		cancel()
+	}
+	if sharedContainer.client != nil {
+		disconnectCtx, cancel := context.WithTimeout(context.Background(), mongoCtxTimeout)
+		_ = sharedContainer.client.Disconnect(disconnectCtx)
+		cancel()
+	}
+	sharedContainer = nil
 }
 
 // isContainerRunning checks if the container is still running
@@ -112,8 +125,8 @@ func startMongoContainer(ctx context.Context) (*SharedMongoContainer, error) {
 		},
 		// Limit memory to prevent OOM and crashes
 		HostConfigModifier: func(hc *container.HostConfig) {
-			hc.Memory = 512 * 1024 * 1024 // 512MB
-			hc.MemorySwap = 512 * 1024 * 1024
+			hc.Memory = containerMemoryLimit
+			hc.MemorySwap = containerMemoryLimit
 		},
 		// Use wiredTiger with limited cache size for stability
 		Cmd: []string{"--wiredTigerCacheSizeGB=0.25"},
@@ -160,7 +173,7 @@ func (c *SharedMongoContainer) GetClient(ctx context.Context) (*mongo.Client, er
 	// If client already exists and is connected, return it
 	if c.client != nil {
 		// Quick ping to verify connection
-		pingCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		pingCtx, cancel := context.WithTimeout(ctx, clientPingTimeout)
 		err := c.client.Ping(pingCtx, nil)
 		cancel()
 		if err == nil {
@@ -174,8 +187,8 @@ func (c *SharedMongoContainer) GetClient(ctx context.Context) (*mongo.Client, er
 	// Create new client with connection pool settings
 	clientOpts := options.Client().
 		ApplyURI(c.URI).
-		SetMaxPoolSize(100).
-		SetMinPoolSize(5)
+		SetMaxPoolSize(maxPoolSize).
+		SetMinPoolSize(minPoolSize)
 
 	client, err := mongo.Connect(clientOpts)
 	if err != nil {
@@ -240,7 +253,7 @@ func SetupSharedTestMongoDBWithOptions(t *testing.T, createIndexes bool) *mongo.
 
 	// Create indexes for production-like testing environment (if requested)
 	if createIndexes {
-		indexCtx, indexCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		indexCtx, indexCancel := context.WithTimeout(context.Background(), indexCreationTimeout)
 		if err := mongodb.CreateAllIndexes(indexCtx, db); err != nil {
 			indexCancel()
 			t.Fatalf("Failed to create indexes: %v", err)
@@ -291,7 +304,7 @@ func SetupSharedTestMongoDBWithClientOptions(t *testing.T, createIndexes bool) (
 
 	// Create indexes for production-like testing environment (if requested)
 	if createIndexes {
-		indexCtx, indexCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		indexCtx, indexCancel := context.WithTimeout(context.Background(), indexCreationTimeout)
 		if err := mongodb.CreateAllIndexes(indexCtx, db); err != nil {
 			indexCancel()
 			t.Fatalf("Failed to create indexes: %v", err)

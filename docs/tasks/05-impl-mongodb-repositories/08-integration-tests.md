@@ -882,56 +882,57 @@ tests/
 
 ### Phase 1: Test Utilities
 
-- [ ] Создать `tests/testutil/mongodb.go`
-- [ ] Реализовать `SetupMongoDB`
-- [ ] Реализовать `SetupMongoDBShared`
-- [ ] Реализовать `CreateTestDatabase`
-- [ ] Реализовать `CleanDatabase`
+- [x] Создать `tests/testutil/mongodb.go`
+- [x] Реализовать `SetupMongoDB` (`SetupTestMongoDB`, `SetupMongoContainer`)
+- [x] Реализовать `SetupMongoDBShared` (`GetSharedMongoContainer`, `SetupSharedTestMongoDB`)
+- [x] Реализовать `CreateTestDatabase` (implicit via `generateTestDBName`)
+- [x] Реализовать `CleanDatabase` (implicit via `t.Cleanup` with `db.Drop()`)
 
 ### Phase 2: Fixtures
 
-- [ ] Создать `tests/testutil/fixtures.go`
-- [ ] Реализовать `UserFixture`
-- [ ] Реализовать `WorkspaceFixture`
-- [ ] Реализовать `MessageFixture`
-- [ ] Реализовать `NotificationFixture`
-- [ ] Реализовать `TaskFixture`
+- [x] Создать `tests/testutil/fixtures.go` (Task command fixtures)
+- [x] Реализовать `UserFixture` (via `createTestUser` in repository tests)
+- [x] Реализовать `WorkspaceFixture` (via `createTestWorkspace` in repository tests)
+- [x] Реализовать `MessageFixture` (`tests/fixtures/message_fixtures.go`)
+- [x] Реализовать `NotificationFixture` (`tests/fixtures/notification_fixtures.go`)
+- [x] Реализовать `TaskFixture` (`tests/testutil/fixtures.go`)
 
 ### Phase 3: Assertions
 
-- [ ] Создать `tests/testutil/assertions.go`
-- [ ] Реализовать UUID assertions
-- [ ] Реализовать time assertions
+- [x] Создать `tests/testutil/assertions.go`
+- [x] Реализовать UUID assertions (`AssertUUIDEqual`, `RequireUUIDEqual`, `AssertNotZeroUUID`, `RequireNotZeroUUID`)
+- [x] Реализовать time assertions (`AssertTimeApproximatelyEqual`, `RequireTimeApproximatelyEqual`, `AssertTimeNotZero`)
 
 ### Phase 4: User Repository Tests
 
-- [ ] Save and FindByID
-- [ ] FindByUsername
-- [ ] FindByEmail
-- [ ] Exists
-- [ ] Delete
-- [ ] Duplicate handling
-- [ ] List with pagination
+- [x] Save and FindByID
+- [x] FindByUsername
+- [x] FindByEmail
+- [x] Exists
+- [x] Delete
+- [x] Duplicate handling (via input validation tests)
+- [x] List with pagination
 
 ### Phase 5: Task Repository Tests
 
-- [ ] Save and Load
-- [ ] Concurrency conflict
-- [ ] FindByID (read model)
-- [ ] FindByAssignee
-- [ ] FindByStatus
-- [ ] GetEvents
+- [x] Save and Load
+- [x] Concurrency conflict
+- [x] FindByID (read model)
+- [x] FindByAssignee
+- [x] FindByStatus
+- [x] GetEvents
 
 ### Phase 6: Other Repository Tests
 
-- [ ] Workspace Repository tests
-- [ ] Message Repository tests
-- [ ] Notification Repository tests
+- [x] Workspace Repository tests (`workspace_repository_test.go`)
+- [x] Message Repository tests (`message_repository_test.go`)
+- [x] Notification Repository tests (`notification_repository_test.go`)
+- [x] Chat Repository tests (`chat_repository_test.go`)
 
 ### Phase 7: CI/CD
 
-- [ ] Обновить Makefile
-- [ ] Создать GitHub Actions workflow
+- [x] Обновить Makefile (`test-integration`, `test-integration-short`, `test-all`, `test-repository`)
+- [x] Создать GitHub Actions workflow (`.github/workflows/tests.yml`)
 - [ ] Протестировать в CI
 
 ## Советы по отладке
