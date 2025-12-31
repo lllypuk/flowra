@@ -1,8 +1,8 @@
-# План развития проекта new-teams-up (2025)
+# План развития проекта new-teams-up (2026)
 
-**Дата составления:** 2025-11-11
-**Версия:** 1.0
-**Текущий статус:** Active Development (Phase 2-3, 82% Complete)
+**Дата составления:** 2025-12-31
+**Версия:** 1.1 (Updated)
+**Текущий статус:** Active Development (Phase 1-2, ~62% Complete)
 **Горизонт планирования:** 6 месяцев
 
 ---
@@ -12,258 +12,295 @@
 ### Текущее состояние проекта
 
 **Версия:** 0.4.0-alpha
-**Прогресс:** 82% от Phase 4 (UseCase Implementation)
-**Строк кода:** ~23,000 LOC
-**Test Coverage:** Domain 90%+, Application 64.7% (критическая проблема: Chat 0%)
+**Прогресс:** ~62% общего прогресса (Phase 1-2 в разработке)
+**Строк кода:** ~25,000+ LOC (Domain: 48 файлов, Application: 139 файлов, Infrastructure: 21 файл)
+**Test Coverage:** Domain 90%+, Application 79% average (улучшено!)
 
 #### ✅ Что реализовано (сильные стороны)
 
-1. **Domain Layer (90%+)** - полностью функционален
+1. **Domain Layer (95%)** - почти завершен ✅
    - 6 Event-Sourced агрегатов (Chat, Message, Task, Notification, User, Workspace)
    - 30+ типов domain events
    - Tag Processing System для команд из чата
    - Comprehensive business logic
+   - 48 Go файлов, полностью протестировано
 
-2. **Application Layer (64.7%)** - частично готов
-   - 40+ use cases реализовано
-   - Message/User/Workspace/Notification: 78-86% coverage ✅
+2. **Application Layer (79%)** - значительно улучшен ✅
+   - 40+ use cases реализовано (139 Go файлов)
+   - **Chat: 81.0% coverage** ✅ (было 0%!)
    - Task: 84.9% coverage ✅
-   - **КРИТИЧНО:** Chat: 0% coverage ❌
+   - Workspace: 85.9% coverage ✅
+   - Notification: 85.4% coverage ✅
+   - User: 85.7% coverage ✅
+   - Message: 63.9% coverage ⚠️
+   - Appcore: 72.5% coverage ✅
 
-3. **Infrastructure (30%)**
-   - In-memory Event Store ✅
-   - MongoDB v2 connection setup ✅
-   - Redis client setup ✅
-   - Остальное в разработке
+3. **Infrastructure (45%)** - активная разработка ⚠️
+   - ✅ In-memory Event Store
+   - ✅ MongoDB Event Store (production-ready)
+   - ✅ MongoDB v2 connection setup
+   - ✅ Redis client setup
+   - ✅ Chat Repository (Event Sourcing + Read Model)
+   - ✅ User Repository (полностью реализован)
+   - ✅ Workspace Repository (полностью реализован)
+   - ✅ Message Repository (полностью реализован)
+   - ✅ Notification Repository (полностью реализован)
+   - ❌ Task Repository (требуется)
+   - ❌ Event Bus (отсутствует)
+   - ❌ HTTP/WebSocket handlers (отсутствуют)
 
-4. **Testing Infrastructure (85%)** - отличная база
+4. **Testing Infrastructure (90%)** - отличная база ✅
    - Mocks, Fixtures, Test Utilities
    - Integration test helpers
    - MongoDB v2/Redis test setup
+   - testcontainers-go integration
+   - ~7347 строк кода в MongoDB repositories
 
-#### ❌ Критические проблемы
+#### ❌ Критические проблемы (обновлено 2024-12-31)
 
-1. **Chat UseCases Testing Gap** 🔴 БЛОКЕР
-   - 12 command use cases без единого теста
-   - 3 query use cases не реализованы
-   - Риск: нестабильность ключевой функциональности
+1. **Task Repository отсутствует** 🔴 БЛОКЕР
+   - Последний недостающий MongoDB репозиторий
+   - Критично для запуска приложения
+   - Event Sourcing требует Event Store (уже есть ✅)
 
-2. **Infrastructure Layer отсутствует** 🟡 HIGH
-   - MongoDB/Redis repositories не реализованы
-   - Event Bus отсутствует
+2. **Interface Layer полностью отсутствует** 🔴 КРИТИЧНО
    - HTTP/WebSocket handlers не созданы
+   - Echo router не настроен
+   - Middleware отсутствуют (Auth, CORS, Rate Limiting)
+   - Невозможно взаимодействовать с приложением
 
-3. **No Entry Points** 🟡 HIGH
-   - Невозможно запустить приложение
-   - cmd/api/main.go, cmd/worker/main.go отсутствуют
+3. **Entry Points отсутствуют** 🔴 КРИТИЧНО
+   - Приложение нельзя запустить
+   - cmd/api/main.go, cmd/worker/main.go, cmd/migrator/main.go — только .gitkeep
+   - Dependency Injection не настроена
+   - Configuration management отсутствует
 
-4. **Frontend отсутствует** 🟡 MEDIUM
+4. **Event Bus не реализован** 🟡 HIGH
+   - Redis Pub/Sub не настроен
+   - Асинхронная обработка событий недоступна
+   - Notification delivery не работает
+
+5. **Frontend отсутствует** 🟡 MEDIUM
    - HTMX templates не созданы
    - UI нельзя протестировать
+   - web/templates/, web/static/ пусты
 
-### Рекомендуемая стратегия
+### Рекомендуемая стратегия (обновлено 2024-12-31)
 
-**Принцип:** Завершить текущую фазу → Минимальный рабочий MVP → Итеративное развитие
+**Принцип:** Завершить Infrastructure → Interface Layer → Entry Points → MVP
 
-1. **Неделя 1-2:** Завершить Application Layer (Chat tests + queries)
-2. **Неделя 3-6:** Infrastructure Layer (repositories, handlers)
-3. **Неделя 7-10:** Entry Points + Базовый Frontend
-4. **Неделя 11-12:** Testing, Bugfixing, MVP Release
-5. **Месяц 4-6:** Оптимизация, расширение функциональности
+**Реалистичная оценка MVP:** 6-8 недель (середина февраля 2025)
+
+1. **Неделя 1 (январь 2025):** Завершить Infrastructure Layer
+   - Task Repository (2-3 дня)
+   - MongoDB Indexes (1 день)
+   - Event Bus основы (2-3 дня)
+
+2. **Недели 2-4:** Interface Layer (HTTP/WebSocket)
+   - HTTP Infrastructure + Middleware (4-5 дней)
+   - HTTP Handlers (8-10 дней)
+   - WebSocket Server (5-6 дней)
+
+3. **Неделя 5:** Entry Points & Configuration
+   - cmd/api/main.go (2-3 дня)
+   - Configuration management (1 день)
+   - Dependency Injection (1-2 дня)
+
+4. **Недели 6-8:** Frontend & Testing
+   - Minimal HTMX Frontend (2-3 недели)
+   - Integration testing
+   - Bug fixing
+
+5. **Месяц 4-6:** Post-MVP оптимизация
 
 ---
 
-## 🎯 Фаза 0: КРИТИЧЕСКИЕ ИСПРАВЛЕНИЯ (0-2 недели)
+## 🎯 Фаза 0: ЗАВЕРШЕНИЕ INFRASTRUCTURE (Неделя 1)
 
 ### Приоритет: 🔴 КРИТИЧЕСКИЙ
-### Цель: Устранить блокеры, завершить Application Layer
-### Оценка: 6-8 часов работы
+### Цель: Завершить MongoDB repositories, подготовить к Interface Layer
+### Оценка: 1 неделя работы
 
 ---
 
-### Task 0.1: Chat UseCases Testing (БЛОКЕР) 🔴
+### Task 0.1: Task Repository Implementation 🔴 КРИТИЧНЫЙ
+
+**Статус:** ✅ Chat UseCases Testing ЗАВЕРШЕНО (81% coverage)
+
+**Новая задача:**
 
 **Проблема:**
-Chat domain имеет 0% test coverage при 12 реализованных use cases. Это наибольший риск проекта - ключевая функциональность может содержать критические баги.
+Task Repository — последний недостающий MongoDB репозиторий. Без него невозможно сохранять задачи в БД.
 
 **Решение:**
-Создать comprehensive test suite для всех Chat use cases.
+Реализовать Task Repository с Event Sourcing (аналогично Chat Repository).
 
 **Детали реализации:**
 
 ```
 Файлы для создания:
-├── internal/application/chat/
-│   ├── create_chat_test.go          (8 тестов)
-│   ├── participants_test.go         (12 тестов: Add/Remove)
-│   ├── convert_test.go              (12 тестов: Task/Bug/Epic)
-│   ├── management_test.go           (15 тестов: Status/Assign/Priority/DueDate)
-│   ├── rename_severity_test.go      (10 тестов)
-│   └── test_setup.go                (mocks setup)
+├── internal/infrastructure/repository/mongodb/
+│   ├── task_repository.go           (Event Sourcing repository)
+│   └── task_repository_test.go      (Integration tests)
 
-Итого: ~60 unit tests
+Референс: chat_repository.go (аналогичная структура)
 ```
 
-**Тестовое покрытие:**
-- Happy path для всех операций
-- Error cases (validation, authorization, not found)
-- Edge cases (duplicate participants, invalid status transitions)
-- Event publishing verification
+**Функциональность:**
+- Использовать MongoEventStore для событий
+- Read Model для быстрых запросов
+- Проекции для списков задач
+- Фильтрация по workspace, assignee, status
 
 **Критерии успеха:**
-- ✅ Coverage Chat domain: 0% → 85%+
-- ✅ Application Layer overall: 64.7% → 75%+
-- ✅ Все тесты проходят
-- ✅ No regressions в других доменах
+- ✅ Task Repository реализован с Event Sourcing
+- ✅ Integration tests проходят
+- ✅ Индексы созданы
+- ✅ Все CRUD операции работают
 
-**Время:** 3-4 часа
-**Референс:** `internal/application/message/*_test.go` (аналогичная структура)
+**Время:** 2-3 дня
+**Руководство:** `docs/tasks/05-impl-mongodb-repositories/02-task-repository.md`
 
 ---
 
-### Task 0.2: Chat Query UseCases Implementation 🔴
+### Task 0.2: MongoDB Indexes Implementation 🔴
+
+**Статус:** ✅ Chat Query UseCases УЖЕ РЕАЛИЗОВАНЫ (GetChat, ListChats, ListParticipants - все с тестами)
+
+**Новая задача:**
 
 **Проблема:**
-Query use cases для Chat не реализованы. Невозможно получить данные чата для UI.
+MongoDB коллекции работают без индексов. Это критично для production performance.
 
 **Решение:**
-Реализовать 3 query use cases с полным тестированием.
+Создать индексы для всех коллекций с учетом паттернов запросов.
 
-**Use Cases:**
+**Коллекции и индексы:**
 
-1. **GetChatUseCase**
-   ```go
-   type GetChatQuery struct {
-       ChatID      uuid.UUID
-       RequestedBy uuid.UUID  // для проверки доступа
-   }
-
-   type GetChatResult struct {
-       Chat        *ChatDTO
-       Permissions ChatPermissions  // read/write/admin
-   }
+1. **events** (Event Store)
+   ```javascript
+   // Уникальный индекс для optimistic locking
+   { aggregate_id: 1, version: 1 } - unique
+   
+   // Индекс для загрузки событий
+   { aggregate_id: 1, created_at: 1 }
+   
+   // Индекс для поиска по типу события
+   { event_type: 1, created_at: -1 }
    ```
 
-   Тесты (4):
-   - ✅ Success case
-   - ❌ Chat not found
-   - ❌ User not participant (no access)
-   - ✅ Public chat access
-
-2. **ListChatsUseCase**
-   ```go
-   type ListChatsQuery struct {
-       WorkspaceID uuid.UUID
-       Type        *ChatType      // optional filter
-       Limit       int
-       Offset      int
-       RequestedBy uuid.UUID
-   }
-
-   type ListChatsResult struct {
-       Chats      []ChatDTO
-       Total      int
-       HasMore    bool
-   }
+2. **chats** (Read Model)
+   ```javascript
+   { workspace_id: 1, type: 1, created_at: -1 }
+   { workspace_id: 1, status: 1 }
+   { parent_id: 1, created_at: 1 }
    ```
 
-   Тесты (6):
-   - ✅ List all chats
-   - ✅ Filter by type (Task/Bug/Epic)
-   - ✅ Pagination works
-   - ✅ Only user's chats returned
-   - ✅ Public chats included
-   - ❌ Invalid workspace
-
-3. **ListParticipantsUseCase**
-   ```go
-   type ListParticipantsQuery struct {
-       ChatID      uuid.UUID
-       RequestedBy uuid.UUID
-   }
-
-   type ListParticipantsResult struct {
-       Participants []ParticipantDTO
-   }
+3. **messages**
+   ```javascript
+   { chat_id: 1, created_at: -1 }
+   { chat_id: 1, user_id: 1 }
    ```
 
-   Тесты (5):
-   - ✅ Success case
-   - ❌ Chat not found
-   - ❌ Not a participant
-   - ✅ Includes roles and join dates
-   - ✅ Sorted by join date
+4. **users**
+   ```javascript
+   { email: 1 } - unique
+   { username: 1 } - unique
+   { keycloak_id: 1 } - unique, sparse
+   ```
+
+5. **workspaces**
+   ```javascript
+   { keycloak_group_id: 1 } - unique
+   ```
+
+6. **notifications**
+   ```javascript
+   { user_id: 1, read_at: 1, created_at: -1 }
+   { workspace_id: 1, created_at: -1 }
+   ```
 
 **Файлы:**
 ```
-internal/application/chat/
-├── queries.go           (new - query definitions)
-├── get_chat.go          (new)
-├── list_chats.go        (new)
-├── list_participants.go (new)
-├── get_chat_test.go     (new)
-├── list_chats_test.go   (new)
-└── list_participants_test.go (new)
+internal/infrastructure/mongodb/
+├── indexes.go           (new - index definitions)
+└── indexes_test.go      (new - verification tests)
 ```
 
 **Критерии успеха:**
-- ✅ 3 query use cases реализованы
-- ✅ 15 unit tests покрывают все сценарии
-- ✅ Coverage >85%
-- ✅ Pagination протестирована
-- ✅ Authorization checks на месте
+- ✅ Все индексы созданы
+- ✅ Уникальные индексы защищают от дубликатов
+- ✅ Compound индексы покрывают частые запросы
+- ✅ Migration скрипт готов
 
-**Время:** 1.5-2 часа
-**Референс:** `internal/application/message/query*.go`
+**Время:** 1 день
+**Руководство:** `docs/tasks/05-impl-mongodb-repositories/07-mongodb-indexes.md`
 
 ---
 
-### Task 0.3: Documentation Sync 🟡
+### Task 0.3: Event Bus Basic Implementation 🟡
 
 **Проблема:**
-README и архитектурная документация устарели.
+Event Bus не реализован, асинхронная обработка событий недоступна.
 
 **Решение:**
-Синхронизировать документацию с текущим состоянием кода.
+Реализовать базовый Redis Event Bus для MVP.
 
-**Что обновить:**
+**Функциональность:**
 
-1. **README.md**
-   - Обновить метрики (23,000 LOC, 40+ use cases)
-   - Добавить секцию "Current Status" с прогрессом
-   - Обновить Quick Start (добавить примеры тестов)
+1. **EventBus Interface** (уже определен в application layer)
+   ```go
+   type EventBus interface {
+       Publish(ctx context.Context, event event.DomainEvent) error
+       Subscribe(eventType string, handler EventHandler) error
+       Start(ctx context.Context) error
+       Shutdown() error
+   }
+   ```
 
-2. **docs/01-architecture.md**
-   - Добавить актуальную диаграмму слоев
-   - Документировать Tag Processing integration
-   - Обновить Event Flow примеры
+2. **RedisEventBus Implementation**
+   - Pub/Sub через Redis channels
+   - Event serialization/deserialization
+   - Error handling и retry logic
+   - Graceful shutdown
 
-3. **Создать API_USAGE.md**
-   - Примеры использования каждого use case
-   - Code snippets для типичных сценариев
-   - Integration примеры (Tag + Chat + Message)
+3. **Basic Event Handlers**
+   - NotificationHandler (создание уведомлений)
+   - LoggingHandler (audit log)
+
+**Файлы:**
+```
+internal/infrastructure/eventbus/
+├── redis_eventbus.go           (реализация)
+├── redis_eventbus_test.go      (тесты)
+├── handlers.go                 (event handlers)
+└── handlers_test.go
+```
 
 **Критерии успеха:**
-- ✅ Документация отражает реальность
-- ✅ Новый разработчик может разобраться за 30 минут
-- ✅ Примеры кода работают
+- ✅ Redis Pub/Sub работает
+- ✅ События публикуются асинхронно
+- ✅ NotificationHandler создает уведомления
+- ✅ Integration tests проходят
 
-**Время:** 1 час
+**Время:** 2-3 дня
+**Руководство:** `docs/roadmap/phase-1/task-1.2.1-redis-event-bus.md`
 
 ---
 
 ### Итоговый результат Phase 0:
 
 **После завершения:**
-- ✅ Application Layer: 100% реализован и протестирован
-- ✅ Test Coverage Application: 75%+ overall
-- ✅ Нет критических блокеров
-- ✅ Готовность к Infrastructure Layer: 100%
+- ✅ Task Repository реализован с Event Sourcing
+- ✅ MongoDB Indexes созданы для всех коллекций
+- ✅ Event Bus базовая реализация работает
+- ✅ Infrastructure Layer: готов к Interface Layer
+- ✅ Все MongoDB repositories завершены
 
-**Оценка времени:** 6-8 часов активной работы
-**Календарное время:** 1-2 дня (учитывая code review)
+**Оценка времени:** 1 неделя активной работы (5-6 дней)
+**Календарное время:** 1-1.5 недели
 
-**Следующий шаг:** → Фаза 1 (Infrastructure Layer)
+**Следующий шаг:** → Фаза 1 (Interface Layer - HTTP/WebSocket)
 
 ---
 
