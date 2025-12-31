@@ -1,6 +1,6 @@
 module github.com/lllypuk/flowra
 
-go 1.24
+go 1.24.0
 
 require (
 	github.com/docker/docker v28.5.1+incompatible
