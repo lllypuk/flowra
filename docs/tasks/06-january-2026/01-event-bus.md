@@ -2,7 +2,7 @@
 
 **Приоритет:** 🔴 Critical  
 **Неделя:** 1 (1-3 января)  
-**Статус:** ⏳ Не начато
+**Статус:** ✅ Завершено
 
 ---
 
@@ -69,33 +69,33 @@ func (b *RedisEventBus) Shutdown() error
 ## Чеклист
 
 ### Реализация
-- [ ] Создать `redis_eventbus.go`
-- [ ] Реализовать `NewRedisEventBus`
-- [ ] Реализовать `Publish` с JSON serialization
-- [ ] Реализовать `Subscribe` для регистрации handlers
-- [ ] Реализовать `Start` для запуска listener loop
-- [ ] Реализовать `Shutdown` для graceful stop
-- [ ] Добавить retry logic
+- [x] Создать `redis_eventbus.go`
+- [x] Реализовать `NewRedisEventBus`
+- [x] Реализовать `Publish` с JSON serialization
+- [x] Реализовать `Subscribe` для регистрации handlers
+- [x] Реализовать `Start` для запуска listener loop
+- [x] Реализовать `Shutdown` для graceful stop
+- [x] Добавить retry logic
 
 ### Тестирование
-- [ ] Unit tests для serialization
-- [ ] Integration tests с Redis testcontainer
-- [ ] Test graceful shutdown
-- [ ] Test multiple handlers
+- [x] Unit tests для serialization
+- [x] Integration tests с Redis testcontainer
+- [x] Test graceful shutdown
+- [x] Test multiple handlers
 
 ### Документация
-- [ ] GoDoc комментарии
+- [x] GoDoc комментарии
 - [ ] Примеры использования в README
 
 ---
 
 ## Критерии приёмки
 
-- [ ] Redis Pub/Sub работает
-- [ ] События публикуются асинхронно
-- [ ] Multiple handlers получают события
-- [ ] Graceful shutdown корректен
-- [ ] Integration tests проходят
+- [x] Redis Pub/Sub работает
+- [x] События публикуются асинхронно
+- [x] Multiple handlers получают события
+- [x] Graceful shutdown корректен
+- [x] Integration tests проходят
 
 ---
 
@@ -116,3 +116,15 @@ func (b *RedisEventBus) Shutdown() error
 - [Redis Pub/Sub Documentation](https://redis.io/topics/pubsub)
 - [go-redis Client](https://redis.uptrace.dev/)
 - `internal/domain/event/event.go` — базовый интерфейс событий
+
+---
+
+## Дополнительные возможности реализации
+
+Реализованные фичи сверх базовых требований:
+
+- **Configurable Options**: `WithLogger`, `WithRetryConfig`, `WithChannelPrefix`
+- **Channel Prefix**: изоляция событий между разными инстансами
+- **RetryConfig**: настраиваемый exponential backoff (MaxRetries, InitialBackoff, MaxBackoff, BackoffFactor)
+- **Testcontainers**: автоматический запуск Redis в Docker для тестов
+- **Shared Container**: переиспользование контейнера между тестами для быстрого выполнения
