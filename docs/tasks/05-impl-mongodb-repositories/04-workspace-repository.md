@@ -583,42 +583,48 @@ db.workspaces.createIndex({ "invites.email": 1 })
 
 ### Phase 1: Domain layer
 
-- [ ] Добавить функцию `Restore` в `internal/domain/workspace/workspace.go`
-- [ ] Добавить функцию `RestoreMember` 
-- [ ] Добавить функцию `RestoreInvite`
-- [ ] Убедиться, что Workspace имеет getter для invites (`Invites()`)
+- [x] Добавить функцию `Restore` в `internal/domain/workspace/workspace.go` (уже есть как `Reconstruct`)
+- [x] Добавить функцию `RestoreMember` (создан `internal/domain/workspace/member.go` с `ReconstructMember`)
+- [x] Добавить функцию `RestoreInvite` (уже есть как `ReconstructInvite`)
+- [x] Убедиться, что Workspace имеет getter для invites (`Invites()`)
 
 ### Phase 2: Document structures
 
-- [ ] Обновить `memberDocument` структуру
-- [ ] Обновить `inviteDocument` структуру  
-- [ ] Обновить `workspaceDocument` с members и invites
+- [x] Обновить `memberDocument` структуру (добавлена в workspace_repository.go)
+- [x] Обновить `inviteDocument` структуру (уже была реализована)
+- [x] Обновить `workspaceDocument` с members и invites (члены хранятся в отдельной коллекции)
 
 ### Phase 3: Core methods
 
-- [ ] Реализовать `documentToWorkspace` с использованием `Restore`
-- [ ] Обновить `workspaceToDocument` для сохранения members и invites
-- [ ] Реализовать `FindInviteByToken` полностью
+- [x] Реализовать `documentToWorkspace` с использованием `Restore` (использует `Reconstruct`)
+- [x] Обновить `workspaceToDocument` для сохранения members и invites
+- [x] Реализовать `FindInviteByToken` полностью
 
 ### Phase 4: Member methods
 
-- [ ] Добавить метод `GetMember`
-- [ ] Добавить метод `IsMember`
-- [ ] Добавить метод `ListWorkspacesByUser`
-- [ ] Добавить метод `CountWorkspacesByUser`
+- [x] Добавить метод `GetMember`
+- [x] Добавить метод `IsMember`
+- [x] Добавить метод `ListWorkspacesByUser`
+- [x] Добавить метод `CountWorkspacesByUser`
+- [x] Добавить метод `AddMember`
+- [x] Добавить метод `RemoveMember`
+- [x] Добавить метод `ListMembers`
+- [x] Добавить метод `CountMembers`
 
 ### Phase 5: Interface update
 
-- [ ] Обновить `QueryRepository` интерфейс
-- [ ] Убедиться, что `MongoWorkspaceRepository` реализует все методы
+- [x] Обновить `QueryRepository` интерфейс
+- [x] Обновить `CommandRepository` интерфейс (добавлены AddMember, RemoveMember)
+- [x] Убедиться, что `MongoWorkspaceRepository` реализует все методы
 
 ### Phase 6: Тестирование
 
-- [ ] Добавить тест `FindByID_And_DocumentToWorkspace`
-- [ ] Добавить тест `IsMember`
-- [ ] Добавить тест `FindInviteByToken`
-- [ ] Добавить тест `ListWorkspacesByUser`
-- [ ] Проверить, что все тесты проходят
+- [x] Добавить тест `FindByID_And_DocumentToWorkspace` (как `DocToWorkspace`)
+- [x] Добавить тест `IsMember`
+- [x] Добавить тест `FindInviteByToken`
+- [x] Добавить тест `ListWorkspacesByUser` (как `ListByUser`)
+- [x] Добавить тесты для Member domain model
+- [x] Проверить, что все тесты проходят
 
 ## Следующие шаги
 

@@ -7,6 +7,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
 	"github.com/lllypuk/flowra/internal/domain/errs"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
@@ -83,41 +84,32 @@ func (r *MongoWorkspaceRepository) Save(ctx context.Context, workspace *workspac
 	return HandleMongoError(err, "workspace")
 }
 
-// Delete удаляет рабочее пространство
-func (r *MongoWorkspaceRepository) Delete(_ context.Context, id uuid.UUID) error {
+// Delete удаляет рабочее пространство и всех его членов
+func (r *MongoWorkspaceRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	if id.IsZero() {
 		return errs.ErrInvalidInput
 	}
 
-	session, err := r.collection.Database().Client().StartSession()
+	// Удаляем само рабочее пространство
+	filter := bson.M{"workspace_id": id.String()}
+	result, err := r.collection.DeleteOne(ctx, filter)
 	if err != nil {
-		return fmt.Errorf("failed to start session: %w", err)
+		return HandleMongoError(err, "workspace")
 	}
-	defer session.EndSession(context.Background())
 
-	_, err = session.WithTransaction(context.Background(), func(ctx context.Context) (any, error) {
-		// Удаляем само рабочее пространство
-		filter := bson.M{"workspace_id": id.String()}
-		result, deleteErr := r.collection.DeleteOne(ctx, filter)
-		if deleteErr != nil {
-			return nil, HandleMongoError(deleteErr, "workspace")
-		}
+	if result.DeletedCount == 0 {
+		return errs.ErrNotFound
+	}
 
-		if result.DeletedCount == 0 {
-			return nil, errs.ErrNotFound
-		}
+	// Удаляем членов рабочего пространства
+	// Примечание: в production среде рекомендуется использовать транзакции (replica set)
+	memberFilter := bson.M{"workspace_id": id.String()}
+	_, err = r.membersCollection.DeleteMany(ctx, memberFilter)
+	if err != nil {
+		return fmt.Errorf("failed to delete workspace members: %w", err)
+	}
 
-		// Удаляем членов рабочего пространства
-		memberFilter := bson.M{"workspace_id": id.String()}
-		_, deleteErr = r.membersCollection.DeleteMany(ctx, memberFilter)
-		if deleteErr != nil {
-			return nil, fmt.Errorf("failed to delete workspace members: %w", deleteErr)
-		}
-
-		return struct{}{}, nil
-	})
-
-	return err
+	return nil
 }
 
 // List возвращает список рабочих пространств с пагинацией
@@ -283,4 +275,275 @@ func (r *MongoWorkspaceRepository) documentToInvite(doc *inviteDocument) (*works
 		doc.UsedCount,
 		doc.IsRevoked,
 	), nil
+}
+
+// memberDocument представляет члена workspace в отдельной коллекции
+type memberDocument struct {
+	UserID      string    `bson:"user_id"`
+	WorkspaceID string    `bson:"workspace_id"`
+	Role        string    `bson:"role"`
+	JoinedAt    time.Time `bson:"joined_at"`
+}
+
+// GetMember возвращает члена workspace по userID
+func (r *MongoWorkspaceRepository) GetMember(
+	ctx context.Context,
+	workspaceID uuid.UUID,
+	userID uuid.UUID,
+) (*workspacedomain.Member, error) {
+	if workspaceID.IsZero() || userID.IsZero() {
+		return nil, errs.ErrInvalidInput
+	}
+
+	filter := bson.M{
+		"workspace_id": workspaceID.String(),
+		"user_id":      userID.String(),
+	}
+
+	var doc memberDocument
+	err := r.membersCollection.FindOne(ctx, filter).Decode(&doc)
+	if err != nil {
+		return nil, HandleMongoError(err, "member")
+	}
+
+	member := workspacedomain.ReconstructMember(
+		userID,
+		workspaceID,
+		workspacedomain.Role(doc.Role),
+		doc.JoinedAt,
+	)
+	return &member, nil
+}
+
+// IsMember проверяет, является ли пользователь членом workspace
+func (r *MongoWorkspaceRepository) IsMember(
+	ctx context.Context,
+	workspaceID uuid.UUID,
+	userID uuid.UUID,
+) (bool, error) {
+	if workspaceID.IsZero() || userID.IsZero() {
+		return false, errs.ErrInvalidInput
+	}
+
+	filter := bson.M{
+		"workspace_id": workspaceID.String(),
+		"user_id":      userID.String(),
+	}
+
+	count, err := r.membersCollection.CountDocuments(ctx, filter, options.Count().SetLimit(1))
+	if err != nil {
+		return false, HandleMongoError(err, "member")
+	}
+
+	return count > 0, nil
+}
+
+// ListWorkspacesByUser возвращает workspaces, в которых пользователь является членом
+func (r *MongoWorkspaceRepository) ListWorkspacesByUser(
+	ctx context.Context,
+	userID uuid.UUID,
+	offset, limit int,
+) ([]*workspacedomain.Workspace, error) {
+	if userID.IsZero() {
+		return nil, errs.ErrInvalidInput
+	}
+
+	// Находим все workspace_id, где пользователь является членом
+	filter := bson.M{"user_id": userID.String()}
+	opts := options.Find().
+		SetSort(bson.D{{Key: "joined_at", Value: -1}}).
+		SetLimit(int64(limit)).
+		SetSkip(int64(offset))
+
+	cursor, err := r.membersCollection.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, HandleMongoError(err, "members")
+	}
+	defer cursor.Close(ctx)
+
+	var workspaceIDs []string
+	for cursor.Next(ctx) {
+		var doc memberDocument
+		if decodeErr := cursor.Decode(&doc); decodeErr != nil {
+			continue
+		}
+		workspaceIDs = append(workspaceIDs, doc.WorkspaceID)
+	}
+
+	if len(workspaceIDs) == 0 {
+		return make([]*workspacedomain.Workspace, 0), nil
+	}
+
+	// Загружаем workspaces по найденным ID
+	wsFilter := bson.M{"workspace_id": bson.M{"$in": workspaceIDs}}
+	wsCursor, err := r.collection.Find(ctx, wsFilter)
+	if err != nil {
+		return nil, HandleMongoError(err, "workspaces")
+	}
+	defer wsCursor.Close(ctx)
+
+	// Создаём map для сохранения порядка
+	workspaceMap := make(map[string]*workspacedomain.Workspace)
+	for wsCursor.Next(ctx) {
+		var doc workspaceDocument
+		if decodeErr := wsCursor.Decode(&doc); decodeErr != nil {
+			continue
+		}
+
+		ws, docErr := r.documentToWorkspace(&doc)
+		if docErr != nil {
+			continue
+		}
+
+		workspaceMap[doc.WorkspaceID] = ws
+	}
+
+	// Собираем результат в порядке workspaceIDs
+	workspaces := make([]*workspacedomain.Workspace, 0, len(workspaceIDs))
+	for _, wsID := range workspaceIDs {
+		if ws, ok := workspaceMap[wsID]; ok {
+			workspaces = append(workspaces, ws)
+		}
+	}
+
+	return workspaces, nil
+}
+
+// CountWorkspacesByUser возвращает количество workspaces пользователя
+func (r *MongoWorkspaceRepository) CountWorkspacesByUser(ctx context.Context, userID uuid.UUID) (int, error) {
+	if userID.IsZero() {
+		return 0, errs.ErrInvalidInput
+	}
+
+	filter := bson.M{"user_id": userID.String()}
+	count, err := r.membersCollection.CountDocuments(ctx, filter)
+	if err != nil {
+		return 0, HandleMongoError(err, "members")
+	}
+
+	return int(count), nil
+}
+
+// AddMember добавляет члена в workspace
+func (r *MongoWorkspaceRepository) AddMember(ctx context.Context, member *workspacedomain.Member) error {
+	if member == nil {
+		return errs.ErrInvalidInput
+	}
+
+	if member.UserID().IsZero() || member.WorkspaceID().IsZero() {
+		return errs.ErrInvalidInput
+	}
+
+	doc := memberDocument{
+		UserID:      member.UserID().String(),
+		WorkspaceID: member.WorkspaceID().String(),
+		Role:        member.Role().String(),
+		JoinedAt:    member.JoinedAt(),
+	}
+
+	filter := bson.M{
+		"workspace_id": member.WorkspaceID().String(),
+		"user_id":      member.UserID().String(),
+	}
+	update := bson.M{"$set": doc}
+
+	_, err := r.membersCollection.UpdateOne(ctx, filter, update, UpsertOptions())
+	return HandleMongoError(err, "member")
+}
+
+// RemoveMember удаляет члена из workspace
+func (r *MongoWorkspaceRepository) RemoveMember(
+	ctx context.Context,
+	workspaceID uuid.UUID,
+	userID uuid.UUID,
+) error {
+	if workspaceID.IsZero() || userID.IsZero() {
+		return errs.ErrInvalidInput
+	}
+
+	filter := bson.M{
+		"workspace_id": workspaceID.String(),
+		"user_id":      userID.String(),
+	}
+
+	result, err := r.membersCollection.DeleteOne(ctx, filter)
+	if err != nil {
+		return HandleMongoError(err, "member")
+	}
+
+	if result.DeletedCount == 0 {
+		return errs.ErrNotFound
+	}
+
+	return nil
+}
+
+// ListMembers возвращает всех членов workspace
+func (r *MongoWorkspaceRepository) ListMembers(
+	ctx context.Context,
+	workspaceID uuid.UUID,
+	offset, limit int,
+) ([]*workspacedomain.Member, error) {
+	if workspaceID.IsZero() {
+		return nil, errs.ErrInvalidInput
+	}
+
+	filter := bson.M{"workspace_id": workspaceID.String()}
+	opts := options.Find().
+		SetSort(bson.D{{Key: "joined_at", Value: 1}}).
+		SetLimit(int64(limit)).
+		SetSkip(int64(offset))
+
+	cursor, err := r.membersCollection.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, HandleMongoError(err, "members")
+	}
+	defer cursor.Close(ctx)
+
+	var members []*workspacedomain.Member
+	for cursor.Next(ctx) {
+		var doc memberDocument
+		if decodeErr := cursor.Decode(&doc); decodeErr != nil {
+			continue
+		}
+
+		userID, parseErr := uuid.ParseUUID(doc.UserID)
+		if parseErr != nil {
+			continue
+		}
+
+		wsID, parseErr := uuid.ParseUUID(doc.WorkspaceID)
+		if parseErr != nil {
+			continue
+		}
+
+		member := workspacedomain.ReconstructMember(
+			userID,
+			wsID,
+			workspacedomain.Role(doc.Role),
+			doc.JoinedAt,
+		)
+		members = append(members, &member)
+	}
+
+	if members == nil {
+		members = make([]*workspacedomain.Member, 0)
+	}
+
+	return members, nil
+}
+
+// CountMembers возвращает количество членов workspace
+func (r *MongoWorkspaceRepository) CountMembers(ctx context.Context, workspaceID uuid.UUID) (int, error) {
+	if workspaceID.IsZero() {
+		return 0, errs.ErrInvalidInput
+	}
+
+	filter := bson.M{"workspace_id": workspaceID.String()}
+	count, err := r.membersCollection.CountDocuments(ctx, filter)
+	if err != nil {
+		return 0, HandleMongoError(err, "members")
+	}
+
+	return int(count), nil
 }
