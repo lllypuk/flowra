@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/lllypuk/flowra/internal/application/notification"
 	domainnotification "github.com/lllypuk/flowra/internal/domain/notification"
@@ -117,6 +118,110 @@ func (m *mockNotificationRepository) MarkAllAsRead(_ context.Context, userID uui
 		}
 	}
 	return nil
+}
+
+func (m *mockNotificationRepository) MarkManyAsRead(_ context.Context, ids []uuid.UUID) error {
+	for _, id := range ids {
+		if notif, ok := m.notifications[id]; ok {
+			notif.MarkAsRead()
+		}
+	}
+	return nil
+}
+
+func (m *mockNotificationRepository) SaveBatch(
+	_ context.Context,
+	notifications []*domainnotification.Notification,
+) error {
+	if m.saveError != nil {
+		return m.saveError
+	}
+	for _, notif := range notifications {
+		m.notifications[notif.ID()] = notif
+	}
+	return nil
+}
+
+func (m *mockNotificationRepository) DeleteByUserID(_ context.Context, userID uuid.UUID) error {
+	for id, notif := range m.notifications {
+		if notif.UserID() == userID {
+			delete(m.notifications, id)
+		}
+	}
+	return nil
+}
+
+func (m *mockNotificationRepository) DeleteOlderThan(_ context.Context, before time.Time) (int, error) {
+	count := 0
+	for id, notif := range m.notifications {
+		if notif.CreatedAt().Before(before) {
+			delete(m.notifications, id)
+			count++
+		}
+	}
+	return count, nil
+}
+
+func (m *mockNotificationRepository) DeleteReadOlderThan(_ context.Context, before time.Time) (int, error) {
+	count := 0
+	for id, notif := range m.notifications {
+		if notif.IsRead() && notif.CreatedAt().Before(before) {
+			delete(m.notifications, id)
+			count++
+		}
+	}
+	return count, nil
+}
+
+func (m *mockNotificationRepository) FindByType(
+	_ context.Context,
+	userID uuid.UUID,
+	notificationType domainnotification.Type,
+	offset, limit int,
+) ([]*domainnotification.Notification, error) {
+	if m.findError != nil {
+		return nil, m.findError
+	}
+	var result []*domainnotification.Notification
+	for _, notif := range m.notifications {
+		if notif.UserID() == userID && notif.Type() == notificationType {
+			result = append(result, notif)
+		}
+	}
+	if offset >= len(result) {
+		return []*domainnotification.Notification{}, nil
+	}
+	end := min(offset+limit, len(result))
+	return result[offset:end], nil
+}
+
+func (m *mockNotificationRepository) FindByResourceID(
+	_ context.Context,
+	resourceID string,
+) ([]*domainnotification.Notification, error) {
+	if m.findError != nil {
+		return nil, m.findError
+	}
+	var result []*domainnotification.Notification
+	for _, notif := range m.notifications {
+		if notif.ResourceID() == resourceID {
+			result = append(result, notif)
+		}
+	}
+	return result, nil
+}
+
+func (m *mockNotificationRepository) CountByType(
+	_ context.Context,
+	userID uuid.UUID,
+) (map[domainnotification.Type]int, error) {
+	result := make(map[domainnotification.Type]int)
+	for _, notif := range m.notifications {
+		if notif.UserID() == userID {
+			result[notif.Type()]++
+		}
+	}
+	return result, nil
 }
 
 func TestCreateNotificationUseCase_Execute_Success(t *testing.T) {

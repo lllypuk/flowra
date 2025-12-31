@@ -727,59 +727,59 @@ db.notifications.createIndex({ "user_id": 1, "is_read": 1, "created_at": -1 })
 
 ### Phase 1: Domain layer
 
-- [ ] Проверить существование функции `Restore` в `notification.go`
-- [ ] Добавить `Restore` если отсутствует
-- [ ] Проверить наличие всех необходимых getters
-- [ ] Проверить/добавить notification types (Type enum)
+- [x] Проверить существование функции `Restore` в `notification.go`
+- [x] Добавить `Restore` если отсутствует (уже есть как `Reconstruct`)
+- [x] Проверить наличие всех необходимых getters
+- [x] Проверить/добавить notification types (Type enum)
 
 ### Phase 2: Document structure
 
-- [ ] Проверить/создать `notificationDocument` структуру
-- [ ] Убедиться в корректности BSON тегов
+- [x] Проверить/создать `notificationDocument` структуру
+- [x] Убедиться в корректности BSON тегов
 
 ### Phase 3: Core methods
 
-- [ ] Реализовать/исправить `documentToNotification`
-- [ ] Реализовать/исправить `notificationToDocument`
-- [ ] Проверить метод `Save`
-- [ ] Проверить метод `FindByID`
-- [ ] Проверить метод `FindByUserID`
-- [ ] Проверить метод `FindUnreadByUserID`
+- [x] Реализовать/исправить `documentToNotification`
+- [x] Реализовать/исправить `notificationToDocument`
+- [x] Проверить метод `Save`
+- [x] Проверить метод `FindByID`
+- [x] Проверить метод `FindByUserID`
+- [x] Проверить метод `FindUnreadByUserID`
 
 ### Phase 4: Batch methods
 
-- [ ] Добавить метод `SaveBatch`
-- [ ] Добавить метод `DeleteByUser`
-- [ ] Добавить метод `DeleteOlderThan`
-- [ ] Добавить метод `DeleteReadOlderThan`
+- [x] Добавить метод `SaveBatch`
+- [x] Добавить метод `DeleteByUser` (как `DeleteByUserID`)
+- [x] Добавить метод `DeleteOlderThan`
+- [x] Добавить метод `DeleteReadOlderThan`
 
 ### Phase 5: Grouping methods
 
-- [ ] Добавить метод `CountByType`
-- [ ] Добавить метод `FindByType`
-- [ ] Добавить метод `FindByResource`
+- [x] Добавить метод `CountByType`
+- [x] Добавить метод `FindByType`
+- [x] Добавить метод `FindByResource` (как `FindByResourceID`)
 
 ### Phase 6: Read status methods
 
-- [ ] Проверить/улучшить метод `MarkAsRead`
-- [ ] Проверить/улучшить метод `MarkAllAsRead`
-- [ ] Добавить метод `MarkManyAsRead`
+- [x] Проверить/улучшить метод `MarkAsRead`
+- [x] Проверить/улучшить метод `MarkAllAsRead`
+- [x] Добавить метод `MarkManyAsRead`
 
 ### Phase 7: Interface update
 
-- [ ] Обновить `CommandRepository` интерфейс с batch методами
-- [ ] Обновить `QueryRepository` интерфейс с grouping методами
-- [ ] Убедиться, что `MongoNotificationRepository` реализует все методы
+- [x] Обновить `CommandRepository` интерфейс с batch методами
+- [x] Обновить `QueryRepository` интерфейс с grouping методами
+- [x] Убедиться, что `MongoNotificationRepository` реализует все методы
 
 ### Phase 8: Тестирование
 
-- [ ] Добавить тест `Save_And_FindByID`
-- [ ] Добавить тест `MarkAsRead`
-- [ ] Добавить тест `MarkAllAsRead`
-- [ ] Добавить тест `CountUnreadByUserID`
-- [ ] Добавить тест `DeleteOlderThan`
-- [ ] Добавить тест `CountByType`
-- [ ] Проверить, что все существующие тесты проходят
+- [x] Добавить тест `Save_And_FindByID`
+- [x] Добавить тест `MarkAsRead`
+- [x] Добавить тест `MarkAllAsRead`
+- [x] Добавить тест `CountUnreadByUserID`
+- [x] Добавить тест `DeleteOlderThan`
+- [x] Добавить тест `CountByType`
+- [x] Проверить, что все существующие тесты проходят (28 тестов пройдено)
 
 ## Следующие шаги
 
