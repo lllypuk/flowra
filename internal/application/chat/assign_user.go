@@ -4,16 +4,16 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
 // AssignUserUseCase обрабатывает назначение пользователя на чат
 type AssignUserUseCase struct {
-	eventStore shared.EventStore
+	eventStore appcore.EventStore
 }
 
 // NewAssignUserUseCase создает новый AssignUserUseCase
-func NewAssignUserUseCase(eventStore shared.EventStore) *AssignUserUseCase {
+func NewAssignUserUseCase(eventStore appcore.EventStore) *AssignUserUseCase {
 	return &AssignUserUseCase{
 		eventStore: eventStore,
 	}
@@ -38,15 +38,15 @@ func (uc *AssignUserUseCase) Execute(ctx context.Context, cmd AssignUserCommand)
 }
 
 func (uc *AssignUserUseCase) validate(cmd AssignUserCommand) error {
-	if err := shared.ValidateUUID("chatID", cmd.ChatID); err != nil {
+	if err := appcore.ValidateUUID("chatID", cmd.ChatID); err != nil {
 		return err
 	}
 	if cmd.AssigneeID != nil {
-		if err := shared.ValidateUUID("assigneeID", *cmd.AssigneeID); err != nil {
+		if err := appcore.ValidateUUID("assigneeID", *cmd.AssigneeID); err != nil {
 			return err
 		}
 	}
-	if err := shared.ValidateUUID("assignedBy", cmd.AssignedBy); err != nil {
+	if err := appcore.ValidateUUID("assignedBy", cmd.AssignedBy); err != nil {
 		return err
 	}
 	return nil

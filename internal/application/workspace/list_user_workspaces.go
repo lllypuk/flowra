@@ -3,13 +3,13 @@ package workspace
 import (
 	"context"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/workspace"
 )
 
 // ListUserWorkspacesUseCase - use case для получения списка workspace пользователя
 type ListUserWorkspacesUseCase struct {
-	shared.BaseUseCase
+	appcore.BaseUseCase
 
 	keycloakClient KeycloakClient
 	// Для получения workspaces пользователя нужно:
@@ -62,20 +62,20 @@ func (uc *ListUserWorkspacesUseCase) Execute(
 
 // validate проверяет валидность запроса
 func (uc *ListUserWorkspacesUseCase) validate(query ListUserWorkspacesQuery) error {
-	if err := shared.ValidateUUID("userID", query.UserID); err != nil {
+	if err := appcore.ValidateUUID("userID", query.UserID); err != nil {
 		return err
 	}
-	if err := shared.ValidateNonNegative("offset", query.Offset); err != nil {
+	if err := appcore.ValidateNonNegative("offset", query.Offset); err != nil {
 		return err
 	}
-	if err := shared.ValidatePositive("limit", query.Limit); err != nil {
+	if err := appcore.ValidatePositive("limit", query.Limit); err != nil {
 		return err
 	}
 	const (
 		minLimit = 1
 		maxLimit = 100
 	)
-	if err := shared.ValidateRange("limit", query.Limit, minLimit, maxLimit); err != nil {
+	if err := appcore.ValidateRange("limit", query.Limit, minLimit, maxLimit); err != nil {
 		return err
 	}
 	return nil

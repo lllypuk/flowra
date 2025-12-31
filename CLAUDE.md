@@ -8,7 +8,7 @@ This is a **Chat System with Task Management** built in Go. It's a comprehensive
 
 **Key Technologies:**
 - **Backend**: Go 1.25+ with Echo v4 framework
-- **Database**: MongoDB 8+ (main with Go Driver v2), Redis (cache/pub-sub)
+- **Database**: MongoDB 6+ (main with Go Driver v2), Redis (cache/pub-sub)
 - **Frontend**: HTMX 2+ for dynamic updates, Pico CSS v2 for styling
 - **Auth**: Keycloak for SSO and user management
 - **Infrastructure**: Docker Compose for development
@@ -95,7 +95,7 @@ configs/              # Configuration files
 
 ## Database
 
-- **Primary**: MongoDB 8+ (document store)
+- **Primary**: MongoDB 6+ (document store)
 - **Cache**: Redis for sessions, pub/sub, caching
 - Main collections: Users, Chats, Messages, Tasks, Chat_members, Audit_log
 - Schema versioning handled through application code
@@ -273,3 +273,28 @@ func (r *MongoUserRepository) Exists(...) (bool, error) { ... }
 - **Flexibility**: Change implementations without affecting consumers
 - **Idiomatic Go**: Follows community best practices
 - **Clear ownership**: Interface changes driven by consumer needs
+
+## Task Documentation Guidelines
+
+When creating or updating task documentation in markdown files:
+
+### No Time Estimates
+
+**DO NOT include time estimates in task files.** This includes:
+- ❌ "Оценка: 3-4 часа"
+- ❌ "Time spent: ~4 hours"
+- ❌ "Estimated time: 2h"
+- ❌ Any form of time prediction or tracking
+
+**Why:**
+- Time estimates are often inaccurate and become outdated
+- They create unnecessary pressure and false expectations
+- Focus should be on task completion, not time tracking
+- Actual time spent varies significantly based on context
+
+**Instead, focus on:**
+- ✅ Clear task description
+- ✅ Checklist of deliverables
+- ✅ Dependencies between tasks
+- ✅ Status (Pending, In Progress, Complete)
+- ✅ Priority when relevant

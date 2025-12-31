@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/event"
 	"github.com/lllypuk/flowra/internal/domain/message"
 )
@@ -65,10 +65,10 @@ func (uc *DeleteMessageUseCase) Execute(
 }
 
 func (uc *DeleteMessageUseCase) validate(cmd DeleteMessageCommand) error {
-	if err := shared.ValidateUUID("messageID", cmd.MessageID); err != nil {
+	if err := appcore.ValidateUUID("messageID", cmd.MessageID); err != nil {
 		return err
 	}
-	if err := shared.ValidateUUID("deletedBy", cmd.DeletedBy); err != nil {
+	if err := appcore.ValidateUUID("deletedBy", cmd.DeletedBy); err != nil {
 		return err
 	}
 	return nil

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
 // GetThreadUseCase обрабатывает получение треда (ответов на сообщение)
@@ -47,7 +47,7 @@ func (uc *GetThreadUseCase) Execute(
 }
 
 func (uc *GetThreadUseCase) validate(query GetThreadQuery) error {
-	if err := shared.ValidateUUID("parentMessageID", query.ParentMessageID); err != nil {
+	if err := appcore.ValidateUUID("parentMessageID", query.ParentMessageID); err != nil {
 		return err
 	}
 	return nil

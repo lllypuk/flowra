@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/event"
 	"github.com/lllypuk/flowra/internal/domain/message"
 )
@@ -82,16 +82,16 @@ func (uc *AddAttachmentUseCase) Execute(
 }
 
 func (uc *AddAttachmentUseCase) validate(cmd AddAttachmentCommand) error {
-	if err := shared.ValidateUUID("messageID", cmd.MessageID); err != nil {
+	if err := appcore.ValidateUUID("messageID", cmd.MessageID); err != nil {
 		return err
 	}
-	if err := shared.ValidateUUID("fileID", cmd.FileID); err != nil {
+	if err := appcore.ValidateUUID("fileID", cmd.FileID); err != nil {
 		return err
 	}
-	if err := shared.ValidateRequired("fileName", cmd.FileName); err != nil {
+	if err := appcore.ValidateRequired("fileName", cmd.FileName); err != nil {
 		return ErrInvalidFileName
 	}
-	if err := shared.ValidateRequired("mimeType", cmd.MimeType); err != nil {
+	if err := appcore.ValidateRequired("mimeType", cmd.MimeType); err != nil {
 		return ErrInvalidMimeType
 	}
 	if cmd.FileSize <= 0 {
@@ -100,7 +100,7 @@ func (uc *AddAttachmentUseCase) validate(cmd AddAttachmentCommand) error {
 	if cmd.FileSize > MaxFileSize {
 		return ErrInvalidFileSize
 	}
-	if err := shared.ValidateUUID("userID", cmd.UserID); err != nil {
+	if err := appcore.ValidateUUID("userID", cmd.UserID); err != nil {
 		return err
 	}
 	return nil

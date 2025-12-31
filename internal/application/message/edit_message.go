@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/event"
 	"github.com/lllypuk/flowra/internal/domain/message"
 )
@@ -70,16 +70,16 @@ func (uc *EditMessageUseCase) Execute(
 }
 
 func (uc *EditMessageUseCase) validate(cmd EditMessageCommand) error {
-	if err := shared.ValidateUUID("messageID", cmd.MessageID); err != nil {
+	if err := appcore.ValidateUUID("messageID", cmd.MessageID); err != nil {
 		return err
 	}
-	if err := shared.ValidateRequired("content", cmd.Content); err != nil {
+	if err := appcore.ValidateRequired("content", cmd.Content); err != nil {
 		return ErrEmptyContent
 	}
 	if len(cmd.Content) > MaxContentLength {
 		return ErrContentTooLong
 	}
-	if err := shared.ValidateUUID("editorID", cmd.EditorID); err != nil {
+	if err := appcore.ValidateUUID("editorID", cmd.EditorID); err != nil {
 		return err
 	}
 	return nil

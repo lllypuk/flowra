@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
 // ListMessagesUseCase обрабатывает получение списка сообщений в чате
@@ -47,7 +47,7 @@ func (uc *ListMessagesUseCase) Execute(
 }
 
 func (uc *ListMessagesUseCase) validate(query *ListMessagesQuery) error {
-	if err := shared.ValidateUUID("chatID", query.ChatID); err != nil {
+	if err := appcore.ValidateUUID("chatID", query.ChatID); err != nil {
 		return err
 	}
 

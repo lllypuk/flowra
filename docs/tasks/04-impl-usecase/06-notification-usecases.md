@@ -1,7 +1,7 @@
 # Task 06: Notification Domain Use Cases
 
 **Дата:** 2025-10-19
-**Статус:** 📝 Pending
+**Статус:** 🟡 Partial (UseCases complete, Event Handlers pending)
 **Зависимости:** Task 01 (Architecture)
 **Оценка:** 3-4 часа
 
@@ -411,17 +411,17 @@ func ptr[T any](v T) *T { return &v }
 
 ## Checklist
 
-- [ ] Создать `commands.go`, `queries.go`, `results.go`, `errors.go`
-- [ ] CreateNotificationUseCase + tests
-- [ ] MarkAsReadUseCase + tests
-- [ ] MarkAllAsReadUseCase + tests
-- [ ] DeleteNotificationUseCase + tests
-- [ ] GetNotificationUseCase + tests
-- [ ] ListNotificationsUseCase + tests (с pagination и unread filter)
-- [ ] CountUnreadUseCase + tests
-- [ ] Event handlers (NotificationEventHandler)
-- [ ] Event bus subscription setup
-- [ ] Integration tests (event → notification workflow)
+- [x] Создать `commands.go`, `queries.go`, `results.go`, `errors.go`
+- [x] CreateNotificationUseCase + tests
+- [x] MarkAsReadUseCase + tests
+- [x] MarkAllAsReadUseCase + tests
+- [x] DeleteNotificationUseCase + tests
+- [x] GetNotificationUseCase + tests
+- [x] ListNotificationsUseCase + tests (с pagination и unread filter)
+- [x] CountUnreadUseCase + tests
+- [ ] Event handlers (NotificationEventHandler) ❌ NOT IMPLEMENTED
+- [ ] Event bus subscription setup ❌ NOT IMPLEMENTED
+- [ ] Integration tests (event → notification workflow) ❌ NOT IMPLEMENTED
 
 ## Следующие шаги
 

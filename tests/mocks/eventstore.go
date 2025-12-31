@@ -4,11 +4,11 @@ import (
 	"context"
 	"sync"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/event"
 )
 
-// MockEventStore реализует shared.EventStore для тестирования
+// MockEventStore реализует appcore.EventStore для тестирования
 type MockEventStore struct {
 	mu        sync.RWMutex
 	events    map[string][]event.DomainEvent
@@ -48,7 +48,7 @@ func (s *MockEventStore) SaveEvents(
 	// Проверка версии (optimistic locking)
 	currentVersion, exists := s.versions[aggregateID]
 	if exists && currentVersion != expectedVersion {
-		return shared.ErrConcurrencyConflict
+		return appcore.ErrConcurrencyConflict
 	}
 
 	// Сохранение событий
@@ -70,7 +70,7 @@ func (s *MockEventStore) LoadEvents(ctx context.Context, aggregateID string) ([]
 
 	events, ok := s.events[aggregateID]
 	if !ok || len(events) == 0 {
-		return nil, shared.ErrAggregateNotFound
+		return nil, appcore.ErrAggregateNotFound
 	}
 
 	// Возвращаем копию

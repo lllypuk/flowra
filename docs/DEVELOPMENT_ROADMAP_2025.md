@@ -2320,7 +2320,7 @@ services:
     restart: unless-stopped
 
   mongodb:
-    image: mongo:8
+    image: mongo:6.0
     volumes:
       - mongo_data:/data/db
     restart: unless-stopped
@@ -2364,7 +2364,7 @@ jobs:
 
     services:
       mongodb:
-        image: mongo:8
+        image: mongo:6.0
         ports:
           - 27017:27017
       redis:

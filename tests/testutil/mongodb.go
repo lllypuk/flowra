@@ -30,12 +30,15 @@ type MongoContainer struct {
 	URI       string
 }
 
-// SetupMongoContainer запускает MongoDB 8 в testcontainer
+// SetupMongoContainer запускает MongoDB 6 в testcontainer.
+// This function creates a new container for each call which is slow.
+//
+// Deprecated: Use GetSharedMongoContainer for better performance.
 func SetupMongoContainer(ctx context.Context, t *testing.T) *MongoContainer {
 	t.Helper()
 
 	req := testcontainers.ContainerRequest{
-		Image:        "mongo:8",
+		Image:        "mongo:6.0",
 		ExposedPorts: []string{"27017/tcp"},
 		Env: map[string]string{
 			"MONGO_INITDB_ROOT_USERNAME": "admin",
@@ -80,8 +83,28 @@ func SetupMongoContainer(ctx context.Context, t *testing.T) *MongoContainer {
 	}
 }
 
-// SetupTestMongoDB создает подключение к тестовой MongoDB с использованием testcontainers
+// SetupTestMongoDB создает подключение к тестовой MongoDB с использованием shared контейнера.
+// Каждый тест получает свою изолированную БД для безопасного параллельного выполнения.
 func SetupTestMongoDB(t *testing.T) *mongo.Database {
+	t.Helper()
+
+	// Use shared container for much faster test execution
+	return SetupSharedTestMongoDB(t)
+}
+
+// SetupTestMongoDBWithClient создает подключение к тестовой MongoDB и возвращает клиент и БД.
+// Использует shared контейнер для ускорения тестов.
+func SetupTestMongoDBWithClient(t *testing.T) (*mongo.Client, *mongo.Database) {
+	t.Helper()
+
+	// Use shared container for much faster test execution
+	return SetupSharedTestMongoDBWithClient(t)
+}
+
+// SetupTestMongoDBIsolated создает НОВЫЙ контейнер MongoDB для полной изоляции.
+// Используйте эту функцию только когда нужна полная изоляция контейнера.
+// В большинстве случаев SetupTestMongoDB достаточно (изоляция на уровне БД).
+func SetupTestMongoDBIsolated(t *testing.T) *mongo.Database {
 	t.Helper()
 
 	ctx, cancel := context.WithTimeout(context.Background(), mongoCtxTimeout)
@@ -128,8 +151,9 @@ func SetupTestMongoDB(t *testing.T) *mongo.Database {
 	return db
 }
 
-// SetupTestMongoDBWithClient создает подключение к тестовой MongoDB и возвращает клиент и БД
-func SetupTestMongoDBWithClient(t *testing.T) (*mongo.Client, *mongo.Database) {
+// SetupTestMongoDBWithClientIsolated создает НОВЫЙ контейнер и возвращает клиент и БД.
+// Используйте только когда нужна полная изоляция контейнера.
+func SetupTestMongoDBWithClientIsolated(t *testing.T) (*mongo.Client, *mongo.Database) {
 	t.Helper()
 
 	ctx, cancel := context.WithTimeout(context.Background(), mongoCtxTimeout)

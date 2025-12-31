@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/notification"
 )
 
@@ -50,7 +50,7 @@ func (uc *CreateNotificationUseCase) Execute(
 	}
 
 	return Result{
-		Result: shared.Result[*notification.Notification]{
+		Result: appcore.Result[*notification.Notification]{
 			Value: notif,
 		},
 	}, nil
@@ -58,10 +58,10 @@ func (uc *CreateNotificationUseCase) Execute(
 
 // validate проверяет валидность команды
 func (uc *CreateNotificationUseCase) validate(cmd CreateNotificationCommand) error {
-	if err := shared.ValidateUUID("userID", cmd.UserID); err != nil {
+	if err := appcore.ValidateUUID("userID", cmd.UserID); err != nil {
 		return err
 	}
-	if err := shared.ValidateEnum("type", string(cmd.Type), []string{
+	if err := appcore.ValidateEnum("type", string(cmd.Type), []string{
 		string(notification.TypeTaskStatusChanged),
 		string(notification.TypeTaskAssigned),
 		string(notification.TypeTaskCreated),
@@ -72,10 +72,10 @@ func (uc *CreateNotificationUseCase) validate(cmd CreateNotificationCommand) err
 	}); err != nil {
 		return err
 	}
-	if err := shared.ValidateRequired("title", cmd.Title); err != nil {
+	if err := appcore.ValidateRequired("title", cmd.Title); err != nil {
 		return err
 	}
-	if err := shared.ValidateRequired("message", cmd.Message); err != nil {
+	if err := appcore.ValidateRequired("message", cmd.Message); err != nil {
 		return err
 	}
 	return nil

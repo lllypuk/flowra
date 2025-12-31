@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/user"
 )
 
@@ -35,14 +35,14 @@ func (uc *GetUserByUsernameUseCase) Execute(
 	}
 
 	return Result{
-		Result: shared.Result[*user.User]{
+		Result: appcore.Result[*user.User]{
 			Value: usr,
 		},
 	}, nil
 }
 
 func (uc *GetUserByUsernameUseCase) validate(query GetUserByUsernameQuery) error {
-	if err := shared.ValidateRequired("username", query.Username); err != nil {
+	if err := appcore.ValidateRequired("username", query.Username); err != nil {
 		return err
 	}
 	return nil

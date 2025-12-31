@@ -5,16 +5,16 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
 // ConvertToTaskUseCase обрабатывает конвертацию чата в Task
 type ConvertToTaskUseCase struct {
-	eventStore shared.EventStore
+	eventStore appcore.EventStore
 }
 
 // NewConvertToTaskUseCase создает новый ConvertToTaskUseCase
-func NewConvertToTaskUseCase(eventStore shared.EventStore) *ConvertToTaskUseCase {
+func NewConvertToTaskUseCase(eventStore appcore.EventStore) *ConvertToTaskUseCase {
 	return &ConvertToTaskUseCase{
 		eventStore: eventStore,
 	}
@@ -40,16 +40,16 @@ func (uc *ConvertToTaskUseCase) Execute(ctx context.Context, cmd ConvertToTaskCo
 }
 
 func (uc *ConvertToTaskUseCase) validate(cmd ConvertToTaskCommand) error {
-	if err := shared.ValidateUUID("chatID", cmd.ChatID); err != nil {
+	if err := appcore.ValidateUUID("chatID", cmd.ChatID); err != nil {
 		return err
 	}
-	if err := shared.ValidateRequired("title", cmd.Title); err != nil {
+	if err := appcore.ValidateRequired("title", cmd.Title); err != nil {
 		return err
 	}
-	if err := shared.ValidateMaxLength("title", cmd.Title, shared.MaxTitleLength); err != nil {
+	if err := appcore.ValidateMaxLength("title", cmd.Title, appcore.MaxTitleLength); err != nil {
 		return err
 	}
-	if err := shared.ValidateUUID("convertedBy", cmd.ConvertedBy); err != nil {
+	if err := appcore.ValidateUUID("convertedBy", cmd.ConvertedBy); err != nil {
 		return err
 	}
 	return nil

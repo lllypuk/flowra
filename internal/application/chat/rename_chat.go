@@ -5,16 +5,16 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
 // RenameChatUseCase обрабатывает переименование чата
 type RenameChatUseCase struct {
-	eventStore shared.EventStore
+	eventStore appcore.EventStore
 }
 
 // NewRenameChatUseCase создает новый RenameChatUseCase
-func NewRenameChatUseCase(eventStore shared.EventStore) *RenameChatUseCase {
+func NewRenameChatUseCase(eventStore appcore.EventStore) *RenameChatUseCase {
 	return &RenameChatUseCase{eventStore: eventStore}
 }
 
@@ -37,16 +37,16 @@ func (uc *RenameChatUseCase) Execute(ctx context.Context, cmd RenameChatCommand)
 }
 
 func (uc *RenameChatUseCase) validate(cmd RenameChatCommand) error {
-	if err := shared.ValidateUUID("chatID", cmd.ChatID); err != nil {
+	if err := appcore.ValidateUUID("chatID", cmd.ChatID); err != nil {
 		return err
 	}
-	if err := shared.ValidateRequired("newTitle", cmd.NewTitle); err != nil {
+	if err := appcore.ValidateRequired("newTitle", cmd.NewTitle); err != nil {
 		return err
 	}
-	if err := shared.ValidateMaxLength("newTitle", cmd.NewTitle, shared.MaxTitleLength); err != nil {
+	if err := appcore.ValidateMaxLength("newTitle", cmd.NewTitle, appcore.MaxTitleLength); err != nil {
 		return err
 	}
-	if err := shared.ValidateUUID("renamedBy", cmd.RenamedBy); err != nil {
+	if err := appcore.ValidateUUID("renamedBy", cmd.RenamedBy); err != nil {
 		return err
 	}
 	return nil

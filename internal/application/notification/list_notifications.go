@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/notification"
 )
 
@@ -87,14 +87,14 @@ func (uc *ListNotificationsUseCase) Execute(
 
 // validate проверяет валидность запроса
 func (uc *ListNotificationsUseCase) validate(query ListNotificationsQuery) error {
-	if err := shared.ValidateUUID("userID", query.UserID); err != nil {
+	if err := appcore.ValidateUUID("userID", query.UserID); err != nil {
 		return err
 	}
 	if query.Limit < 0 {
-		return shared.NewValidationError("limit", "must be non-negative")
+		return appcore.NewValidationError("limit", "must be non-negative")
 	}
 	if query.Offset < 0 {
-		return shared.NewValidationError("offset", "must be non-negative")
+		return appcore.NewValidationError("offset", "must be non-negative")
 	}
 	return nil
 }

@@ -21,6 +21,12 @@ type CommandRepository interface {
 
 	// Delete физически удаляет сообщение
 	Delete(ctx context.Context, id uuid.UUID) error
+
+	// AddReaction добавляет реакцию к сообщению
+	AddReaction(ctx context.Context, messageID uuid.UUID, emojiCode string, userID uuid.UUID) error
+
+	// RemoveReaction удаляет реакцию с сообщения
+	RemoveReaction(ctx context.Context, messageID uuid.UUID, emojiCode string, userID uuid.UUID) error
 }
 
 // QueryRepository определяет интерфейс для запросов (только чтение) сообщений
@@ -39,6 +45,23 @@ type QueryRepository interface {
 
 	// CountByChatID возвращает количество сообщений в чате
 	CountByChatID(ctx context.Context, chatID uuid.UUID) (int, error)
+
+	// CountThreadReplies возвращает количество ответов в треде
+	CountThreadReplies(ctx context.Context, parentMessageID uuid.UUID) (int, error)
+
+	// GetReactionUsers возвращает пользователей, поставивших определенную реакцию
+	GetReactionUsers(ctx context.Context, messageID uuid.UUID, emojiCode string) ([]uuid.UUID, error)
+
+	// SearchInChat ищет сообщения в чате по тексту
+	SearchInChat(ctx context.Context, chatID uuid.UUID, query string, offset, limit int) ([]*message.Message, error)
+
+	// FindByAuthor находит сообщения автора в чате
+	FindByAuthor(
+		ctx context.Context,
+		chatID uuid.UUID,
+		authorID uuid.UUID,
+		offset, limit int,
+	) ([]*message.Message, error)
 }
 
 // Repository объединяет Command и Query интерфейсы для удобства

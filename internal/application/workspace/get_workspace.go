@@ -3,13 +3,13 @@ package workspace
 import (
 	"context"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/workspace"
 )
 
 // GetWorkspaceUseCase - use case для получения workspace по ID
 type GetWorkspaceUseCase struct {
-	shared.BaseUseCase
+	appcore.BaseUseCase
 
 	workspaceRepo Repository
 }
@@ -43,7 +43,7 @@ func (uc *GetWorkspaceUseCase) Execute(
 	}
 
 	return Result{
-		Result: shared.Result[*workspace.Workspace]{
+		Result: appcore.Result[*workspace.Workspace]{
 			Value: ws,
 		},
 	}, nil
@@ -51,7 +51,7 @@ func (uc *GetWorkspaceUseCase) Execute(
 
 // validate проверяет валидность запроса
 func (uc *GetWorkspaceUseCase) validate(query GetWorkspaceQuery) error {
-	if err := shared.ValidateUUID("workspaceID", query.WorkspaceID); err != nil {
+	if err := appcore.ValidateUUID("workspaceID", query.WorkspaceID); err != nil {
 		return err
 	}
 	return nil

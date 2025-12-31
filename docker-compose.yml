@@ -1,8 +1,8 @@
-version: '3.8'
+version: "3.8"
 
 services:
   mongodb:
-    image: mongo:8
+    image: mongo:6.0
     container_name: flowra-mongodb
     ports:
       - "27017:27017"
@@ -50,7 +50,8 @@ services:
     networks:
       - flowra-network
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5

@@ -2,7 +2,6 @@ package mongodb
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -90,6 +89,51 @@ func (r *MongoUserRepository) FindByUsername(ctx context.Context, username strin
 	return r.documentToUser(&doc)
 }
 
+// Exists проверяет, существует ли пользователь с заданным ID
+func (r *MongoUserRepository) Exists(ctx context.Context, userID uuid.UUID) (bool, error) {
+	if userID.IsZero() {
+		return false, errs.ErrInvalidInput
+	}
+
+	filter := bson.M{"user_id": userID.String()}
+	count, err := r.collection.CountDocuments(ctx, filter, options.Count().SetLimit(1))
+	if err != nil {
+		return false, HandleMongoError(err, "user")
+	}
+
+	return count > 0, nil
+}
+
+// ExistsByUsername проверяет, существует ли пользователь с заданным username
+func (r *MongoUserRepository) ExistsByUsername(ctx context.Context, username string) (bool, error) {
+	if username == "" {
+		return false, errs.ErrInvalidInput
+	}
+
+	filter := bson.M{"username": username}
+	count, err := r.collection.CountDocuments(ctx, filter, options.Count().SetLimit(1))
+	if err != nil {
+		return false, HandleMongoError(err, "user")
+	}
+
+	return count > 0, nil
+}
+
+// ExistsByEmail проверяет, существует ли пользователь с заданным email
+func (r *MongoUserRepository) ExistsByEmail(ctx context.Context, email string) (bool, error) {
+	if email == "" {
+		return false, errs.ErrInvalidInput
+	}
+
+	filter := bson.M{"email": email}
+	count, err := r.collection.CountDocuments(ctx, filter, options.Count().SetLimit(1))
+	if err != nil {
+		return false, HandleMongoError(err, "user")
+	}
+
+	return count > 0, nil
+}
+
 // Save сохраняет пользователя
 func (r *MongoUserRepository) Save(ctx context.Context, user *userdomain.User) error {
 	if user == nil {
@@ -103,17 +147,9 @@ func (r *MongoUserRepository) Save(ctx context.Context, user *userdomain.User) e
 	doc := r.userToDocument(user)
 	filter := bson.M{"user_id": user.ID().String()}
 	update := bson.M{"$set": doc}
-	opts := options.UpdateOne().SetUpsert(true)
 
-	_, err := r.collection.UpdateOne(ctx, filter, update, opts)
-	if err != nil {
-		if mongo.IsDuplicateKeyError(err) {
-			return errs.ErrAlreadyExists
-		}
-		return HandleMongoError(err, "user")
-	}
-
-	return nil
+	_, err := r.collection.UpdateOne(ctx, filter, update, UpsertOptions())
+	return HandleMongoError(err, "user")
 }
 
 // Delete удаляет пользователя
@@ -142,12 +178,11 @@ func (r *MongoUserRepository) List(ctx context.Context, offset, limit int) ([]*u
 
 // Count возвращает общее количество пользователей
 func (r *MongoUserRepository) Count(ctx context.Context) (int, error) {
-	count, err := r.collection.CountDocuments(ctx, bson.M{})
+	count, err := CountAll(ctx, r.collection)
 	if err != nil {
 		return 0, HandleMongoError(err, "users")
 	}
-
-	return int(count), nil
+	return count, nil
 }
 
 // userDocument представляет структуру документа в MongoDB
@@ -174,9 +209,7 @@ func (r *MongoUserRepository) userToDocument(user *userdomain.User) userDocument
 		UpdatedAt:     user.UpdatedAt(),
 	}
 
-	if externalID := user.ExternalID(); externalID != "" {
-		doc.KeycloakID = &externalID
-	}
+	doc.KeycloakID = StringPtr(user.ExternalID())
 
 	return doc
 }
@@ -187,7 +220,21 @@ func (r *MongoUserRepository) documentToUser(doc *userDocument) (*userdomain.Use
 		return nil, errs.ErrInvalidInput
 	}
 
-	// TODO: Полная реализация требует наличия constructor или setter методов в domain/user
-	// Сейчас возвращаем nil с сообщением о необходимости полной реализации
-	return nil, errors.New("documentToUser requires domain setter methods - not yet implemented")
+	id, err := uuid.ParseUUID(doc.UserID)
+	if err != nil {
+		return nil, errs.ErrInvalidInput
+	}
+
+	externalID := StringValue(doc.KeycloakID)
+
+	return userdomain.Reconstruct(
+		id,
+		externalID,
+		doc.Username,
+		doc.Email,
+		doc.DisplayName,
+		doc.IsSystemAdmin,
+		doc.CreatedAt,
+		doc.UpdatedAt,
+	), nil
 }

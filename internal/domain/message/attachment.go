@@ -55,3 +55,14 @@ func (a Attachment) FileSize() int64 {
 func (a Attachment) MimeType() string {
 	return a.mimeType
 }
+
+// ReconstructAttachment восстанавливает вложение из хранилища.
+// Используется репозиториями для гидрации объекта без валидации бизнес-правил.
+func ReconstructAttachment(fileID uuid.UUID, fileName string, fileSize int64, mimeType string) Attachment {
+	return Attachment{
+		fileID:   fileID,
+		fileName: fileName,
+		fileSize: fileSize,
+		mimeType: mimeType,
+	}
+}

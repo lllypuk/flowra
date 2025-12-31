@@ -15,6 +15,7 @@ type mockWorkspaceRepository struct {
 	workspaces           map[uuid.UUID]*domainworkspace.Workspace
 	workspacesByKeycloak map[string]*domainworkspace.Workspace
 	invitesByToken       map[string]*domainworkspace.Invite
+	members              map[string]*domainworkspace.Member // key: "workspaceID:userID"
 	saveError            error
 	findError            error
 }
@@ -24,6 +25,7 @@ func newMockWorkspaceRepository() *mockWorkspaceRepository {
 		workspaces:           make(map[uuid.UUID]*domainworkspace.Workspace),
 		workspacesByKeycloak: make(map[string]*domainworkspace.Workspace),
 		invitesByToken:       make(map[string]*domainworkspace.Invite),
+		members:              make(map[string]*domainworkspace.Member),
 	}
 }
 
@@ -94,6 +96,117 @@ func (m *mockWorkspaceRepository) FindInviteByToken(_ context.Context, token str
 		return invite, nil
 	}
 	return nil, errors.New("not found")
+}
+
+func (m *mockWorkspaceRepository) GetMember(
+	_ context.Context,
+	workspaceID, userID uuid.UUID,
+) (*domainworkspace.Member, error) {
+	key := workspaceID.String() + ":" + userID.String()
+	if member, ok := m.members[key]; ok {
+		return member, nil
+	}
+	return nil, errors.New("not found")
+}
+
+func (m *mockWorkspaceRepository) IsMember(
+	_ context.Context,
+	workspaceID, userID uuid.UUID,
+) (bool, error) {
+	key := workspaceID.String() + ":" + userID.String()
+	_, ok := m.members[key]
+	return ok, nil
+}
+
+func (m *mockWorkspaceRepository) ListWorkspacesByUser(
+	_ context.Context,
+	userID uuid.UUID,
+	offset, limit int,
+) ([]*domainworkspace.Workspace, error) {
+	var result []*domainworkspace.Workspace
+	for key, member := range m.members {
+		if member.UserID() == userID {
+			// Extract workspaceID from key
+			wsIDStr := key[:len(key)-len(userID.String())-1]
+			wsID := uuid.UUID(wsIDStr)
+			if ws, ok := m.workspaces[wsID]; ok {
+				result = append(result, ws)
+			}
+		}
+	}
+	if offset >= len(result) {
+		return []*domainworkspace.Workspace{}, nil
+	}
+	end := min(offset+limit, len(result))
+	return result[offset:end], nil
+}
+
+func (m *mockWorkspaceRepository) CountWorkspacesByUser(
+	_ context.Context,
+	userID uuid.UUID,
+) (int, error) {
+	count := 0
+	for _, member := range m.members {
+		if member.UserID() == userID {
+			count++
+		}
+	}
+	return count, nil
+}
+
+func (m *mockWorkspaceRepository) ListMembers(
+	_ context.Context,
+	workspaceID uuid.UUID,
+	offset, limit int,
+) ([]*domainworkspace.Member, error) {
+	var result []*domainworkspace.Member
+	for _, member := range m.members {
+		if member.WorkspaceID() == workspaceID {
+			result = append(result, member)
+		}
+	}
+	if offset >= len(result) {
+		return []*domainworkspace.Member{}, nil
+	}
+	end := min(offset+limit, len(result))
+	return result[offset:end], nil
+}
+
+func (m *mockWorkspaceRepository) CountMembers(
+	_ context.Context,
+	workspaceID uuid.UUID,
+) (int, error) {
+	count := 0
+	for _, member := range m.members {
+		if member.WorkspaceID() == workspaceID {
+			count++
+		}
+	}
+	return count, nil
+}
+
+func (m *mockWorkspaceRepository) AddMember(
+	_ context.Context,
+	member *domainworkspace.Member,
+) error {
+	if m.saveError != nil {
+		return m.saveError
+	}
+	key := member.WorkspaceID().String() + ":" + member.UserID().String()
+	m.members[key] = member
+	return nil
+}
+
+func (m *mockWorkspaceRepository) RemoveMember(
+	_ context.Context,
+	workspaceID, userID uuid.UUID,
+) error {
+	key := workspaceID.String() + ":" + userID.String()
+	if _, ok := m.members[key]; !ok {
+		return errors.New("not found")
+	}
+	delete(m.members, key)
+	return nil
 }
 
 // mockKeycloakClient - мок клиента Keycloak для тестирования

@@ -5,18 +5,18 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/errs"
 	"github.com/lllypuk/flowra/internal/domain/task"
 )
 
 // ChangeStatusUseCase обрабатывает изменение статуса задачи
 type ChangeStatusUseCase struct {
-	eventStore shared.EventStore
+	eventStore appcore.EventStore
 }
 
 // NewChangeStatusUseCase создает новый use case для изменения статуса
-func NewChangeStatusUseCase(eventStore shared.EventStore) *ChangeStatusUseCase {
+func NewChangeStatusUseCase(eventStore appcore.EventStore) *ChangeStatusUseCase {
 	return &ChangeStatusUseCase{
 		eventStore: eventStore,
 	}
@@ -32,7 +32,7 @@ func (uc *ChangeStatusUseCase) Execute(ctx context.Context, cmd ChangeStatusComm
 	// 2. Загрузка событий из Event Store
 	events, err := uc.eventStore.LoadEvents(ctx, cmd.TaskID.String())
 	if err != nil {
-		if errors.Is(err, shared.ErrAggregateNotFound) {
+		if errors.Is(err, appcore.ErrAggregateNotFound) {
 			return TaskResult{}, ErrTaskNotFound
 		}
 		return TaskResult{}, fmt.Errorf("failed to load events: %w", err)
@@ -72,7 +72,7 @@ func (uc *ChangeStatusUseCase) Execute(ctx context.Context, cmd ChangeStatusComm
 	// 6. Сохранение новых событий
 	expectedVersion := len(events)
 	if saveErr := uc.eventStore.SaveEvents(ctx, cmd.TaskID.String(), newEvents, expectedVersion); saveErr != nil {
-		if errors.Is(saveErr, shared.ErrConcurrencyConflict) {
+		if errors.Is(saveErr, appcore.ErrConcurrencyConflict) {
 			return TaskResult{}, ErrConcurrentUpdate
 		}
 		return TaskResult{}, fmt.Errorf("failed to save events: %w", saveErr)

@@ -10,6 +10,8 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
+
+	"github.com/lllypuk/flowra/internal/infrastructure/mongodb"
 )
 
 // SetupTestDatabase создает тестовое подключение к MongoDB
@@ -22,7 +24,7 @@ func SetupTestDatabase(t *testing.T) *mongo.Database {
 	}
 
 	ctx := context.Background()
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURI))
+	client, err := mongo.Connect(options.Client().ApplyURI(mongoURI))
 	if err != nil {
 		t.Fatalf("Failed to connect to test database: %v", err)
 	}
@@ -36,8 +38,8 @@ func SetupTestDatabase(t *testing.T) *mongo.Database {
 	dbName := fmt.Sprintf("test_%s", sanitizeDatabaseName(t.Name()))
 	db := client.Database(dbName)
 
-	// Создаем индексы для event store
-	if err := createIndexes(ctx, db); err != nil {
+	// Создаем все индексы для production-like тестирования
+	if err := mongodb.CreateAllIndexes(ctx, db); err != nil {
 		t.Fatalf("Failed to create indexes: %v", err)
 	}
 
@@ -70,44 +72,4 @@ func sanitizeDatabaseName(name string) string {
 		}
 	}
 	return result
-}
-
-// createIndexes создает необходимые индексы для event store
-func createIndexes(ctx context.Context, db *mongo.Database) error {
-	eventsCollection := db.Collection("events")
-
-	// Уникальный индекс для aggregate_id + version
-	_, err := eventsCollection.Indexes().CreateOne(ctx, mongo.IndexModel{
-		Keys:    map[string]interface{}{"aggregate_id": 1, "version": 1},
-		Options: options.Index().SetUnique(true),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create unique index: %w", err)
-	}
-
-	// Индекс для aggregate_id
-	_, err = eventsCollection.Indexes().CreateOne(ctx, mongo.IndexModel{
-		Keys: map[string]interface{}{"aggregate_id": 1},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create aggregate_id index: %w", err)
-	}
-
-	// Индекс для aggregate_type
-	_, err = eventsCollection.Indexes().CreateOne(ctx, mongo.IndexModel{
-		Keys: map[string]interface{}{"aggregate_type": 1},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create aggregate_type index: %w", err)
-	}
-
-	// Индекс для occurred_at
-	_, err = eventsCollection.Indexes().CreateOne(ctx, mongo.IndexModel{
-		Keys: map[string]interface{}{"occurred_at": 1},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create occurred_at index: %w", err)
-	}
-
-	return nil
 }

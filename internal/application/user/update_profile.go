@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/user"
 )
 
@@ -54,14 +54,14 @@ func (uc *UpdateProfileUseCase) Execute(
 	}
 
 	return Result{
-		Result: shared.Result[*user.User]{
+		Result: appcore.Result[*user.User]{
 			Value: usr,
 		},
 	}, nil
 }
 
 func (uc *UpdateProfileUseCase) validate(cmd UpdateProfileCommand) error {
-	if err := shared.ValidateUUID("userID", cmd.UserID); err != nil {
+	if err := appcore.ValidateUUID("userID", cmd.UserID); err != nil {
 		return err
 	}
 
@@ -72,14 +72,14 @@ func (uc *UpdateProfileUseCase) validate(cmd UpdateProfileCommand) error {
 
 	// Валидация email если он предоставлен
 	if cmd.Email != nil {
-		if err := shared.ValidateEmail("email", *cmd.Email); err != nil {
+		if err := appcore.ValidateEmail("email", *cmd.Email); err != nil {
 			return err
 		}
 	}
 
 	// Валидация displayName если он предоставлен
 	if cmd.DisplayName != nil && *cmd.DisplayName == "" {
-		return shared.NewValidationError("displayName", "cannot be empty")
+		return appcore.NewValidationError("displayName", "cannot be empty")
 	}
 
 	return nil

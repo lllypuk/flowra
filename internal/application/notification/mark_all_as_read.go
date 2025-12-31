@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
 const (
@@ -63,7 +63,7 @@ func (uc *MarkAllAsReadUseCase) Execute(
 
 // validate проверяет валидность команды
 func (uc *MarkAllAsReadUseCase) validate(cmd MarkAllAsReadCommand) error {
-	if err := shared.ValidateUUID("userID", cmd.UserID); err != nil {
+	if err := appcore.ValidateUUID("userID", cmd.UserID); err != nil {
 		return err
 	}
 	return nil

@@ -3,13 +3,13 @@ package workspace
 import (
 	"context"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/workspace"
 )
 
 // AcceptInviteUseCase - use case для принятия инвайта
 type AcceptInviteUseCase struct {
-	shared.BaseUseCase
+	appcore.BaseUseCase
 
 	workspaceRepo  Repository
 	keycloakClient KeycloakClient
@@ -80,7 +80,7 @@ func (uc *AcceptInviteUseCase) Execute(
 	}
 
 	return Result{
-		Result: shared.Result[*workspace.Workspace]{
+		Result: appcore.Result[*workspace.Workspace]{
 			Value: ws,
 		},
 	}, nil
@@ -88,10 +88,10 @@ func (uc *AcceptInviteUseCase) Execute(
 
 // validate проверяет валидность команды
 func (uc *AcceptInviteUseCase) validate(cmd AcceptInviteCommand) error {
-	if err := shared.ValidateRequired("token", cmd.Token); err != nil {
+	if err := appcore.ValidateRequired("token", cmd.Token); err != nil {
 		return err
 	}
-	if err := shared.ValidateUUID("userID", cmd.UserID); err != nil {
+	if err := appcore.ValidateUUID("userID", cmd.UserID); err != nil {
 		return err
 	}
 	return nil

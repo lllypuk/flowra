@@ -213,7 +213,7 @@
 
    services:
      mongodb:
-       image: mongo:7
+       image: mongo:6.0
        container_name: flowra-mongodb
        ports:
          - "27017:27017"

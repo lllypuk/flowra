@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/task"
 )
 
@@ -14,7 +14,7 @@ type ChangePriorityUseCase struct {
 }
 
 // NewChangePriorityUseCase создает новый use case для изменения приоритета
-func NewChangePriorityUseCase(eventStore shared.EventStore) *ChangePriorityUseCase {
+func NewChangePriorityUseCase(eventStore appcore.EventStore) *ChangePriorityUseCase {
 	return &ChangePriorityUseCase{
 		baseExecutor: NewBaseExecutor(eventStore),
 	}

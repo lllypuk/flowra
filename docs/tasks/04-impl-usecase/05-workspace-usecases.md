@@ -1,7 +1,7 @@
 # Task 05: Workspace Domain Use Cases
 
 **Дата:** 2025-10-19
-**Статус:** 📝 Pending
+**Статус:** ✅ Complete
 **Зависимости:** Task 01 (Architecture), Task 04 (User UseCases)
 **Оценка:** 4-5 часов
 
@@ -368,15 +368,15 @@ func TestAcceptInviteUseCase_InviteExpired(t *testing.T) {
 
 ## Checklist
 
-- [ ] Создать `commands.go`, `queries.go`, `results.go`, `errors.go`
-- [ ] CreateWorkspaceUseCase + tests
-- [ ] UpdateWorkspaceUseCase + tests
-- [ ] CreateInviteUseCase + tests
-- [ ] AcceptInviteUseCase + tests
-- [ ] RevokeInviteUseCase + tests
-- [ ] GetWorkspaceUseCase + tests
-- [ ] ListUserWorkspacesUseCase + tests
-- [ ] Keycloak client implementation
+- [x] Создать `commands.go`, `queries.go`, `results.go`, `errors.go`
+- [x] CreateWorkspaceUseCase + tests
+- [x] UpdateWorkspaceUseCase + tests
+- [x] CreateInviteUseCase + tests
+- [x] AcceptInviteUseCase + tests
+- [x] RevokeInviteUseCase + tests
+- [x] GetWorkspaceUseCase + tests
+- [x] ListUserWorkspacesUseCase + tests
+- [x] Keycloak client implementation
 - [ ] Integration tests (workspace lifecycle)
 
 ## Следующие шаги

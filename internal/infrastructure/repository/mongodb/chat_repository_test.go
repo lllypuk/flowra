@@ -32,7 +32,7 @@ func setupTestRepository(t *testing.T) (
 
 	eventStore := mocks.NewMockEventStore()
 
-	// Используем testcontainers для MongoDB 8
+	// Используем testcontainers для MongoDB 6
 	_, db := testutil.SetupTestMongoDBWithClient(t)
 	readModelColl := db.Collection("chat_read_model")
 

@@ -1,10 +1,10 @@
-package shared_test
+package appcore_test
 
 import (
 	"testing"
 	"time"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,7 +33,7 @@ func TestValidateRequired(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := shared.ValidateRequired(tt.field, tt.value)
+			err := appcore.ValidateRequired(tt.field, tt.value)
 			if tt.wantError {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.field)
@@ -67,7 +67,7 @@ func TestValidateUUID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := shared.ValidateUUID(tt.field, tt.id)
+			err := appcore.ValidateUUID(tt.field, tt.id)
 			if tt.wantError {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.field)
@@ -111,7 +111,7 @@ func TestValidateMaxLength(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := shared.ValidateMaxLength(tt.field, tt.value, tt.maxLength)
+			err := appcore.ValidateMaxLength(tt.field, tt.value, tt.maxLength)
 			if tt.wantError {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.field)
@@ -155,7 +155,7 @@ func TestValidateMinLength(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := shared.ValidateMinLength(tt.field, tt.value, tt.minLength)
+			err := appcore.ValidateMinLength(tt.field, tt.value, tt.minLength)
 			if tt.wantError {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.field)
@@ -191,7 +191,7 @@ func TestValidateEnum(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := shared.ValidateEnum(tt.field, tt.value, allowedValues)
+			err := appcore.ValidateEnum(tt.field, tt.value, allowedValues)
 			if tt.wantError {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.field)
@@ -234,7 +234,7 @@ func TestValidateDateNotPast(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := shared.ValidateDateNotPast(tt.field, tt.date)
+			err := appcore.ValidateDateNotPast(tt.field, tt.date)
 			if tt.wantError {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.field)
@@ -274,7 +274,7 @@ func TestValidatePositive(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := shared.ValidatePositive(tt.field, tt.value)
+			err := appcore.ValidatePositive(tt.field, tt.value)
 			if tt.wantError {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.field)
@@ -314,7 +314,7 @@ func TestValidateNonNegative(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := shared.ValidateNonNegative(tt.field, tt.value)
+			err := appcore.ValidateNonNegative(tt.field, tt.value)
 			if tt.wantError {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.field)
@@ -360,7 +360,7 @@ func TestValidateEmail(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := shared.ValidateEmail(tt.field, tt.value)
+			err := appcore.ValidateEmail(tt.field, tt.value)
 			if tt.wantError {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.field)

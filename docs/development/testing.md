@@ -383,7 +383,7 @@ func setupTestDB(t *testing.T) *mongo.Client {
     ctx := context.Background()
 
     mongoContainer, err := mongodb.RunContainer(ctx,
-        testcontainers.WithImage("mongo:8"),
+        testcontainers.WithImage("mongo:6.0"),
         mongodb.WithUsername("admin"),
         mongodb.WithPassword("admin123"),
     )
@@ -603,7 +603,7 @@ jobs:
     
     services:
       mongodb:
-        image: mongo:8
+        image: mongo:6.0
         env:
           MONGO_INITDB_ROOT_USERNAME: admin
           MONGO_INITDB_ROOT_PASSWORD: admin123

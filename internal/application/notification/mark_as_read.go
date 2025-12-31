@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/errs"
 	"github.com/lllypuk/flowra/internal/domain/notification"
 )
@@ -59,7 +59,7 @@ func (uc *MarkAsReadUseCase) Execute(
 	}
 
 	return Result{
-		Result: shared.Result[*notification.Notification]{
+		Result: appcore.Result[*notification.Notification]{
 			Value: notif,
 		},
 	}, nil
@@ -67,10 +67,10 @@ func (uc *MarkAsReadUseCase) Execute(
 
 // validate проверяет валидность команды
 func (uc *MarkAsReadUseCase) validate(cmd MarkAsReadCommand) error {
-	if err := shared.ValidateUUID("notificationID", cmd.NotificationID); err != nil {
+	if err := appcore.ValidateUUID("notificationID", cmd.NotificationID); err != nil {
 		return err
 	}
-	if err := shared.ValidateUUID("userID", cmd.UserID); err != nil {
+	if err := appcore.ValidateUUID("userID", cmd.UserID); err != nil {
 		return err
 	}
 	return nil

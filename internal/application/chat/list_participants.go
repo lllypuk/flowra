@@ -6,16 +6,16 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
 // ListParticipantsUseCase - use case для получения списка участников
 type ListParticipantsUseCase struct {
-	eventStore shared.EventStore
+	eventStore appcore.EventStore
 }
 
 // NewListParticipantsUseCase - конструктор
-func NewListParticipantsUseCase(eventStore shared.EventStore) *ListParticipantsUseCase {
+func NewListParticipantsUseCase(eventStore appcore.EventStore) *ListParticipantsUseCase {
 	return &ListParticipantsUseCase{
 		eventStore: eventStore,
 	}
@@ -66,10 +66,10 @@ func (uc *ListParticipantsUseCase) Execute(
 }
 
 func (uc *ListParticipantsUseCase) validate(query ListParticipantsQuery) error {
-	if err := shared.ValidateUUID("chatID", query.ChatID); err != nil {
+	if err := appcore.ValidateUUID("chatID", query.ChatID); err != nil {
 		return err
 	}
-	if err := shared.ValidateUUID("requestedBy", query.RequestedBy); err != nil {
+	if err := appcore.ValidateUUID("requestedBy", query.RequestedBy); err != nil {
 		return err
 	}
 	return nil

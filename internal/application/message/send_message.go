@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	chatapp "github.com/lllypuk/flowra/internal/application/chat"
-	"github.com/lllypuk/flowra/internal/application/shared"
 	"github.com/lllypuk/flowra/internal/domain/event"
 	messagedomain "github.com/lllypuk/flowra/internal/domain/message"
 	"github.com/lllypuk/flowra/internal/domain/tag"
@@ -120,16 +120,16 @@ func (uc *SendMessageUseCase) Execute(
 }
 
 func (uc *SendMessageUseCase) validate(cmd SendMessageCommand) error {
-	if err := shared.ValidateUUID("chatID", cmd.ChatID); err != nil {
+	if err := appcore.ValidateUUID("chatID", cmd.ChatID); err != nil {
 		return err
 	}
-	if err := shared.ValidateRequired("content", cmd.Content); err != nil {
+	if err := appcore.ValidateRequired("content", cmd.Content); err != nil {
 		return ErrEmptyContent
 	}
 	if len(cmd.Content) > MaxContentLength {
 		return ErrContentTooLong
 	}
-	if err := shared.ValidateUUID("authorID", cmd.AuthorID); err != nil {
+	if err := appcore.ValidateUUID("authorID", cmd.AuthorID); err != nil {
 		return err
 	}
 	return nil

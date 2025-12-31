@@ -1,7 +1,8 @@
 # Task 08: Tag Integration Refactoring
 
 **Дата:** 2025-10-19
-**Статус:** 📝 Pending
+**Статус:** ✅ Complete
+**Дата завершения:** 2025-10-22
 **Зависимости:** Task 02 (Chat UseCases), Task 03 (Message UseCases)
 **Оценка:** 2-3 часа
 
@@ -580,22 +581,22 @@ func TestCommandExecutor_CreateTask_CallsUseCase(t *testing.T) {
 
 ## Checklist
 
-- [ ] Создать `ChatUseCases` wrapper struct
-- [ ] Рефакторинг `executeCreateTask` для использования UseCase
-- [ ] Рефакторинг `executeCreateBug` для использования UseCase
-- [ ] Рефакторинг `executeCreateEpic` для использования UseCase
-- [ ] Рефакторинг `executeChangeStatus` для использования UseCase
-- [ ] Рефакторинг `executeAssignUser` для использования UseCase (с резолвингом username)
-- [ ] Рефакторинг `executeChangePriority` для использования UseCase
-- [ ] Рефакторинг `executeSetDueDate` для использования UseCase
-- [ ] Рефакторинг `executeChangeTitle` для использования UseCase
-- [ ] Рефакторинг `executeSetSeverity` для использования UseCase
-- [ ] Удалить старый метод `publishAndSave`
-- [ ] Удалить зависимость от `chat.Repository` в executor
-- [ ] Обновить все тесты для использования mock UseCases
-- [ ] Интеграция tag processing в `SendMessageUseCase`
-- [ ] Обновить DI setup в main.go
-- [ ] Integration tests (end-to-end tag workflow)
+- [x] Создать `ChatUseCases` wrapper struct
+- [x] Рефакторинг `executeCreateTask` для использования UseCase
+- [x] Рефакторинг `executeCreateBug` для использования UseCase
+- [x] Рефакторинг `executeCreateEpic` для использования UseCase
+- [x] Рефакторинг `executeChangeStatus` для использования UseCase
+- [x] Рефакторинг `executeAssignUser` для использования UseCase (с резолвингом username)
+- [x] Рефакторинг `executeChangePriority` для использования UseCase
+- [x] Рефакторинг `executeSetDueDate` для использования UseCase
+- [x] Рефакторинг `executeChangeTitle` для использования UseCase
+- [x] Рефакторинг `executeSetSeverity` для использования UseCase
+- [x] Удалить старый метод `publishAndSave`
+- [x] Удалить зависимость от `chat.Repository` в executor
+- [x] Обновить все тесты для использования mock UseCases
+- [x] Интеграция tag processing в `SendMessageUseCase`
+- [ ] Обновить DI setup в main.go *(будет выполнено на этапе инфраструктуры)*
+- [x] Integration tests (end-to-end tag workflow)
 
 ## Следующие шаги
 

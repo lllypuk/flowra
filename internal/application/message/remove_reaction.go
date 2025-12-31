@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/event"
 	"github.com/lllypuk/flowra/internal/domain/message"
 )
@@ -64,13 +64,13 @@ func (uc *RemoveReactionUseCase) Execute(
 }
 
 func (uc *RemoveReactionUseCase) validate(cmd RemoveReactionCommand) error {
-	if err := shared.ValidateUUID("messageID", cmd.MessageID); err != nil {
+	if err := appcore.ValidateUUID("messageID", cmd.MessageID); err != nil {
 		return err
 	}
-	if err := shared.ValidateUUID("userID", cmd.UserID); err != nil {
+	if err := appcore.ValidateUUID("userID", cmd.UserID); err != nil {
 		return err
 	}
-	if err := shared.ValidateRequired("emoji", cmd.Emoji); err != nil {
+	if err := appcore.ValidateRequired("emoji", cmd.Emoji); err != nil {
 		return ErrInvalidEmoji
 	}
 	return nil

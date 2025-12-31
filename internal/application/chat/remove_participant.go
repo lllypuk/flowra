@@ -4,16 +4,16 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
 // RemoveParticipantUseCase обрабатывает удаление участника из чата
 type RemoveParticipantUseCase struct {
-	eventStore shared.EventStore
+	eventStore appcore.EventStore
 }
 
 // NewRemoveParticipantUseCase создает новый RemoveParticipantUseCase
-func NewRemoveParticipantUseCase(eventStore shared.EventStore) *RemoveParticipantUseCase {
+func NewRemoveParticipantUseCase(eventStore appcore.EventStore) *RemoveParticipantUseCase {
 	return &RemoveParticipantUseCase{
 		eventStore: eventStore,
 	}
@@ -38,13 +38,13 @@ func (uc *RemoveParticipantUseCase) Execute(ctx context.Context, cmd RemoveParti
 }
 
 func (uc *RemoveParticipantUseCase) validate(cmd RemoveParticipantCommand) error {
-	if err := shared.ValidateUUID("chatID", cmd.ChatID); err != nil {
+	if err := appcore.ValidateUUID("chatID", cmd.ChatID); err != nil {
 		return err
 	}
-	if err := shared.ValidateUUID("userID", cmd.UserID); err != nil {
+	if err := appcore.ValidateUUID("userID", cmd.UserID); err != nil {
 		return err
 	}
-	if err := shared.ValidateUUID("removedBy", cmd.RemovedBy); err != nil {
+	if err := appcore.ValidateUUID("removedBy", cmd.RemovedBy); err != nil {
 		return err
 	}
 	return nil

@@ -2,8 +2,10 @@ package testutil
 
 import (
 	"testing"
+	"time"
 
 	"github.com/lllypuk/flowra/internal/domain/event"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -120,4 +122,116 @@ func AssertFalse(t *testing.T, value bool, msgAndArgs ...any) {
 	t.Helper()
 
 	require.False(t, value, msgAndArgs...)
+}
+
+// ==================== UUID Assertions ====================
+
+// AssertUUIDEqual проверяет равенство двух UUID
+func AssertUUIDEqual(t *testing.T, expected, actual uuid.UUID, msgAndArgs ...any) {
+	t.Helper()
+
+	assert.Equal(t, expected, actual, msgAndArgs...)
+}
+
+// RequireUUIDEqual проверяет равенство двух UUID и останавливает тест при ошибке
+func RequireUUIDEqual(t *testing.T, expected, actual uuid.UUID, msgAndArgs ...any) {
+	t.Helper()
+
+	require.Equal(t, expected, actual, msgAndArgs...)
+}
+
+// AssertNotZeroUUID проверяет, что UUID не пустой
+func AssertNotZeroUUID(t *testing.T, id uuid.UUID, msgAndArgs ...any) {
+	t.Helper()
+
+	assert.NotEmpty(t, id, msgAndArgs...)
+	assert.NotEqual(t, uuid.UUID(""), id, msgAndArgs...)
+}
+
+// RequireNotZeroUUID проверяет, что UUID не пустой и останавливает тест при ошибке
+func RequireNotZeroUUID(t *testing.T, id uuid.UUID, msgAndArgs ...any) {
+	t.Helper()
+
+	require.NotEmpty(t, id, msgAndArgs...)
+	require.NotEqual(t, uuid.UUID(""), id, msgAndArgs...)
+}
+
+// AssertZeroUUID проверяет, что UUID пустой
+func AssertZeroUUID(t *testing.T, id uuid.UUID, msgAndArgs ...any) {
+	t.Helper()
+
+	assert.Empty(t, id, msgAndArgs...)
+}
+
+// RequireZeroUUID проверяет, что UUID пустой и останавливает тест при ошибке
+func RequireZeroUUID(t *testing.T, id uuid.UUID, msgAndArgs ...any) {
+	t.Helper()
+
+	require.Empty(t, id, msgAndArgs...)
+}
+
+// ==================== Time Assertions ====================
+
+// AssertTimeApproximatelyEqual проверяет, что два времени приблизительно равны
+// с допустимой погрешностью delta (обычно time.Second или time.Millisecond)
+func AssertTimeApproximatelyEqual(t *testing.T, expected, actual time.Time, delta time.Duration, msgAndArgs ...any) {
+	t.Helper()
+
+	diff := expected.Sub(actual)
+	if diff < 0 {
+		diff = -diff
+	}
+
+	assert.LessOrEqual(t, diff, delta, append([]any{
+		"expected time %v to be within %v of %v, but difference was %v",
+		actual, delta, expected, diff,
+	}, msgAndArgs...)...)
+}
+
+// RequireTimeApproximatelyEqual проверяет, что два времени приблизительно равны
+// и останавливает тест при ошибке
+func RequireTimeApproximatelyEqual(t *testing.T, expected, actual time.Time, delta time.Duration, msgAndArgs ...any) {
+	t.Helper()
+
+	diff := expected.Sub(actual)
+	if diff < 0 {
+		diff = -diff
+	}
+
+	require.LessOrEqual(t, diff, delta, append([]any{
+		"expected time %v to be within %v of %v, but difference was %v",
+		actual, delta, expected, diff,
+	}, msgAndArgs...)...)
+}
+
+// AssertTimeNotZero проверяет, что время не нулевое
+func AssertTimeNotZero(t *testing.T, tm time.Time, msgAndArgs ...any) {
+	t.Helper()
+
+	assert.False(t, tm.IsZero(), msgAndArgs...)
+}
+
+// RequireTimeNotZero проверяет, что время не нулевое и останавливает тест при ошибке
+func RequireTimeNotZero(t *testing.T, tm time.Time, msgAndArgs ...any) {
+	t.Helper()
+
+	require.False(t, tm.IsZero(), msgAndArgs...)
+}
+
+// AssertTimeAfter проверяет, что actual время после expected
+func AssertTimeAfter(t *testing.T, actual, expected time.Time, msgAndArgs ...any) {
+	t.Helper()
+
+	assert.True(t, actual.After(expected), append([]any{
+		"expected %v to be after %v", actual, expected,
+	}, msgAndArgs...)...)
+}
+
+// AssertTimeBefore проверяет, что actual время до expected
+func AssertTimeBefore(t *testing.T, actual, expected time.Time, msgAndArgs ...any) {
+	t.Helper()
+
+	assert.True(t, actual.Before(expected), append([]any{
+		"expected %v to be before %v", actual, expected,
+	}, msgAndArgs...)...)
 }

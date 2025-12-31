@@ -5,16 +5,16 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
 // ChangeStatusUseCase обрабатывает изменение статуса чата
 type ChangeStatusUseCase struct {
-	eventStore shared.EventStore
+	eventStore appcore.EventStore
 }
 
 // NewChangeStatusUseCase создает новый ChangeStatusUseCase
-func NewChangeStatusUseCase(eventStore shared.EventStore) *ChangeStatusUseCase {
+func NewChangeStatusUseCase(eventStore appcore.EventStore) *ChangeStatusUseCase {
 	return &ChangeStatusUseCase{
 		eventStore: eventStore,
 	}
@@ -39,13 +39,13 @@ func (uc *ChangeStatusUseCase) Execute(ctx context.Context, cmd ChangeStatusComm
 }
 
 func (uc *ChangeStatusUseCase) validate(cmd ChangeStatusCommand) error {
-	if err := shared.ValidateUUID("chatID", cmd.ChatID); err != nil {
+	if err := appcore.ValidateUUID("chatID", cmd.ChatID); err != nil {
 		return err
 	}
-	if err := shared.ValidateRequired("status", cmd.Status); err != nil {
+	if err := appcore.ValidateRequired("status", cmd.Status); err != nil {
 		return err
 	}
-	if err := shared.ValidateUUID("changedBy", cmd.ChangedBy); err != nil {
+	if err := appcore.ValidateUUID("changedBy", cmd.ChangedBy); err != nil {
 		return err
 	}
 	return nil

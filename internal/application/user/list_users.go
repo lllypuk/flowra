@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
 const (
@@ -53,13 +53,13 @@ func (uc *ListUsersUseCase) Execute(
 }
 
 func (uc *ListUsersUseCase) validate(query ListUsersQuery) error {
-	if err := shared.ValidateNonNegative("offset", query.Offset); err != nil {
+	if err := appcore.ValidateNonNegative("offset", query.Offset); err != nil {
 		return err
 	}
-	if err := shared.ValidatePositive("limit", query.Limit); err != nil {
+	if err := appcore.ValidatePositive("limit", query.Limit); err != nil {
 		return err
 	}
-	if err := shared.ValidateRange("limit", query.Limit, 1, MaxListLimit); err != nil {
+	if err := appcore.ValidateRange("limit", query.Limit, 1, MaxListLimit); err != nil {
 		return err
 	}
 	return nil

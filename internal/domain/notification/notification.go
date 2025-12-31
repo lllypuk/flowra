@@ -71,6 +71,30 @@ func NewNotification(
 	}, nil
 }
 
+// Reconstruct восстанавливает уведомление из хранилища.
+// Используется репозиториями для гидрации объекта без валидации бизнес-правил.
+// Все параметры должны быть валидными значениями из хранилища.
+func Reconstruct(
+	id uuid.UUID,
+	userID uuid.UUID,
+	typ Type,
+	title, message string,
+	resourceID string,
+	readAt *time.Time,
+	createdAt time.Time,
+) *Notification {
+	return &Notification{
+		id:         id,
+		userID:     userID,
+		typ:        typ,
+		title:      title,
+		message:    message,
+		resourceID: resourceID,
+		readAt:     readAt,
+		createdAt:  createdAt,
+	}
+}
+
 // MarkAsRead помечает уведомление как прочитанное
 func (n *Notification) MarkAsRead() error {
 	if n.readAt != nil {

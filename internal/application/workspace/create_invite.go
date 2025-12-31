@@ -4,13 +4,13 @@ import (
 	"context"
 	"time"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/workspace"
 )
 
 // CreateInviteUseCase - use case для создания инвайта
 type CreateInviteUseCase struct {
-	shared.BaseUseCase
+	appcore.BaseUseCase
 
 	workspaceRepo Repository
 }
@@ -59,7 +59,7 @@ func (uc *CreateInviteUseCase) Execute(
 	}
 
 	return InviteResult{
-		Result: shared.Result[*workspace.Invite]{
+		Result: appcore.Result[*workspace.Invite]{
 			Value: invite,
 		},
 	}, nil
@@ -67,19 +67,19 @@ func (uc *CreateInviteUseCase) Execute(
 
 // validate проверяет валидность команды
 func (uc *CreateInviteUseCase) validate(cmd CreateInviteCommand) error {
-	if err := shared.ValidateUUID("workspaceID", cmd.WorkspaceID); err != nil {
+	if err := appcore.ValidateUUID("workspaceID", cmd.WorkspaceID); err != nil {
 		return err
 	}
-	if err := shared.ValidateUUID("createdBy", cmd.CreatedBy); err != nil {
+	if err := appcore.ValidateUUID("createdBy", cmd.CreatedBy); err != nil {
 		return err
 	}
 	if cmd.ExpiresAt != nil {
-		if err := shared.ValidateDateNotPast("expiresAt", cmd.ExpiresAt); err != nil {
+		if err := appcore.ValidateDateNotPast("expiresAt", cmd.ExpiresAt); err != nil {
 			return err
 		}
 	}
 	if cmd.MaxUses != nil {
-		if err := shared.ValidateNonNegative("maxUses", *cmd.MaxUses); err != nil {
+		if err := appcore.ValidateNonNegative("maxUses", *cmd.MaxUses); err != nil {
 			return err
 		}
 	}
