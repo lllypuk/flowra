@@ -508,7 +508,7 @@ func (s *{Service}IntegrationTestSuite) SetupSuite() {
 
     // Start MongoDB container
     mongoContainer, err := mongodb.RunContainer(ctx,
-        testcontainers.WithImage("mongo:8"),
+        testcontainers.WithImage("mongo:6.0"),
         mongodb.WithUsername("admin"),
         mongodb.WithPassword("admin123"),
     )

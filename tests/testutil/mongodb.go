@@ -38,7 +38,7 @@ func SetupMongoContainer(ctx context.Context, t *testing.T) *MongoContainer {
 	t.Helper()
 
 	req := testcontainers.ContainerRequest{
-		Image:        "mongo:8",
+		Image:        "mongo:6.0",
 		ExposedPorts: []string{"27017/tcp"},
 		Env: map[string]string{
 			"MONGO_INITDB_ROOT_USERNAME": "admin",

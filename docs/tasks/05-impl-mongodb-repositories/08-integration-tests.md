@@ -68,7 +68,7 @@ func SetupMongoDB(t *testing.T) (*MongoDBContainer, func()) {
 
     // Создаем контейнер MongoDB
     container, err := mongodb.Run(ctx,
-        "mongo:8",
+        "mongo:6.0",
         mongodb.WithReplicaSet("rs0"),
     )
     if err != nil {
@@ -138,7 +138,7 @@ func SetupMongoDBShared(m *testing.M) (*MongoDBContainer, func(), error) {
     ctx := context.Background()
 
     container, err := mongodb.Run(ctx,
-        "mongo:8",
+        "mongo:6.0",
         mongodb.WithReplicaSet("rs0"),
     )
     if err != nil {
