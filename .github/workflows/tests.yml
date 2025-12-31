@@ -49,8 +49,10 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
-      - name: Run unit tests
-        run: go test -v -race -coverprofile=coverage.out ./internal/...
+      - name: Run unit tests (excluding MongoDB tests)
+        run: |
+          go test -v -race -coverprofile=coverage.out \
+            $(go list ./internal/... | grep -v -E 'infrastructure/mongodb|infrastructure/eventstore|infrastructure/repository/mongodb')
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -59,16 +61,40 @@ jobs:
           flags: unittests
           fail_ci_if_error: false
 
+  integration-tests:
+    name: Integration Tests (MongoDB)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run MongoDB integration tests
+        run: |
+          go test -v -race -timeout=10m \
+            ./internal/infrastructure/mongodb/... \
+            ./internal/infrastructure/eventstore/... \
+            ./internal/infrastructure/repository/mongodb/...
+
   all-tests:
     name: All Tests Summary
     runs-on: ubuntu-latest
-    needs: [lint, unit-tests]
+    needs: [lint, unit-tests, integration-tests]
     if: always()
     steps:
       - name: Check results
         run: |
           if [ "${{ needs.lint.result }}" != "success" ] || \
-             [ "${{ needs.unit-tests.result }}" != "success" ]; then
+             [ "${{ needs.unit-tests.result }}" != "success" ] || \
+             [ "${{ needs.integration-tests.result }}" != "success" ]; then
             echo "One or more jobs failed"
             exit 1
           fi
