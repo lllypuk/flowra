@@ -132,7 +132,7 @@ See [Development Roadmap](docs/DEVELOPMENT_ROADMAP_2025.md) for detailed plan.
 ### Prerequisites
 - Go 1.25+
 - Docker & Docker Compose
-- MongoDB 8+ (via Docker)
+- MongoDB 6+ (via Docker)
 - Redis (via Docker)
 
 ### Setup

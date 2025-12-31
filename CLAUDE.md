@@ -8,7 +8,7 @@ This is a **Chat System with Task Management** built in Go. It's a comprehensive
 
 **Key Technologies:**
 - **Backend**: Go 1.25+ with Echo v4 framework
-- **Database**: MongoDB 8+ (main with Go Driver v2), Redis (cache/pub-sub)
+- **Database**: MongoDB 6+ (main with Go Driver v2), Redis (cache/pub-sub)
 - **Frontend**: HTMX 2+ for dynamic updates, Pico CSS v2 for styling
 - **Auth**: Keycloak for SSO and user management
 - **Infrastructure**: Docker Compose for development
@@ -95,7 +95,7 @@ configs/              # Configuration files
 
 ## Database
 
-- **Primary**: MongoDB 8+ (document store)
+- **Primary**: MongoDB 6+ (document store)
 - **Cache**: Redis for sessions, pub/sub, caching
 - Main collections: Users, Chats, Messages, Tasks, Chat_members, Audit_log
 - Schema versioning handled through application code

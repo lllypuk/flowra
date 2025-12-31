@@ -30,7 +30,7 @@ type MongoContainer struct {
 	URI       string
 }
 
-// SetupMongoContainer запускает MongoDB 8 в testcontainer.
+// SetupMongoContainer запускает MongoDB 6 в testcontainer.
 // This function creates a new container for each call which is slow.
 //
 // Deprecated: Use GetSharedMongoContainer for better performance.

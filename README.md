@@ -71,7 +71,7 @@
 ### Backend
 - **Go 1.25+** - основной язык
 - **Echo v4** - веб-фреймворк
-- **MongoDB 8+** с **Go Driver v2** - основная БД (event sourcing)
+- **MongoDB 6+** с **Go Driver v2** - основная БД (event sourcing)
 - **Redis** - кеш и pub/sub
 - **Keycloak** - SSO и управление пользователями
 
@@ -142,7 +142,7 @@ new-teams-up/
 
 - Go 1.25+
 - Docker & Docker Compose
-- MongoDB 8+ (с Go Driver v2)
+- MongoDB 6+ (с Go Driver v2)
 - Redis 7+
 - golangci-lint (для проверки кода)
 
