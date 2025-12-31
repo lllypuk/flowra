@@ -3,13 +3,13 @@ package workspace
 import (
 	"context"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/workspace"
 )
 
 // UpdateWorkspaceUseCase - use case для обновления workspace
 type UpdateWorkspaceUseCase struct {
-	shared.BaseUseCase
+	appcore.BaseUseCase
 
 	workspaceRepo Repository
 }
@@ -53,7 +53,7 @@ func (uc *UpdateWorkspaceUseCase) Execute(
 	}
 
 	return Result{
-		Result: shared.Result[*workspace.Workspace]{
+		Result: appcore.Result[*workspace.Workspace]{
 			Value: ws,
 		},
 	}, nil
@@ -61,17 +61,17 @@ func (uc *UpdateWorkspaceUseCase) Execute(
 
 // validate проверяет валидность команды
 func (uc *UpdateWorkspaceUseCase) validate(cmd UpdateWorkspaceCommand) error {
-	if err := shared.ValidateUUID("workspaceID", cmd.WorkspaceID); err != nil {
+	if err := appcore.ValidateUUID("workspaceID", cmd.WorkspaceID); err != nil {
 		return err
 	}
-	if err := shared.ValidateRequired("name", cmd.Name); err != nil {
+	if err := appcore.ValidateRequired("name", cmd.Name); err != nil {
 		return err
 	}
 	const maxNameLength = 100
-	if err := shared.ValidateMaxLength("name", cmd.Name, maxNameLength); err != nil {
+	if err := appcore.ValidateMaxLength("name", cmd.Name, maxNameLength); err != nil {
 		return err
 	}
-	if err := shared.ValidateUUID("updatedBy", cmd.UpdatedBy); err != nil {
+	if err := appcore.ValidateUUID("updatedBy", cmd.UpdatedBy); err != nil {
 		return err
 	}
 	return nil

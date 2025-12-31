@@ -4,16 +4,16 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
 // SetDueDateUseCase обрабатывает установку дедлайна
 type SetDueDateUseCase struct {
-	eventStore shared.EventStore
+	eventStore appcore.EventStore
 }
 
 // NewSetDueDateUseCase создает новый SetDueDateUseCase
-func NewSetDueDateUseCase(eventStore shared.EventStore) *SetDueDateUseCase {
+func NewSetDueDateUseCase(eventStore appcore.EventStore) *SetDueDateUseCase {
 	return &SetDueDateUseCase{eventStore: eventStore}
 }
 
@@ -36,10 +36,10 @@ func (uc *SetDueDateUseCase) Execute(ctx context.Context, cmd SetDueDateCommand)
 }
 
 func (uc *SetDueDateUseCase) validate(cmd SetDueDateCommand) error {
-	if err := shared.ValidateUUID("chatID", cmd.ChatID); err != nil {
+	if err := appcore.ValidateUUID("chatID", cmd.ChatID); err != nil {
 		return err
 	}
-	if err := shared.ValidateUUID("setBy", cmd.SetBy); err != nil {
+	if err := appcore.ValidateUUID("setBy", cmd.SetBy); err != nil {
 		return err
 	}
 	return nil

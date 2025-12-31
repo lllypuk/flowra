@@ -1,12 +1,12 @@
 package message
 
 import (
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/message"
 )
 
 // Result представляет результат для одного сообщения
-type Result = shared.Result[*message.Message]
+type Result = appcore.Result[*message.Message]
 
 // ListResult представляет результат для списка сообщений
-type ListResult = shared.Result[[]*message.Message]
+type ListResult = appcore.Result[[]*message.Message]

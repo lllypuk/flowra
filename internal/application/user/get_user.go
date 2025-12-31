@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/user"
 )
 
@@ -35,14 +35,14 @@ func (uc *GetUserUseCase) Execute(
 	}
 
 	return Result{
-		Result: shared.Result[*user.User]{
+		Result: appcore.Result[*user.User]{
 			Value: usr,
 		},
 	}, nil
 }
 
 func (uc *GetUserUseCase) validate(query GetUserQuery) error {
-	if err := shared.ValidateUUID("userID", query.UserID); err != nil {
+	if err := appcore.ValidateUUID("userID", query.UserID); err != nil {
 		return err
 	}
 	return nil

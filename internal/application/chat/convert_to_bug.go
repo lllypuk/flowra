@@ -5,16 +5,16 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
 // ConvertToBugUseCase обрабатывает конвертацию чата в Bug
 type ConvertToBugUseCase struct {
-	eventStore shared.EventStore
+	eventStore appcore.EventStore
 }
 
 // NewConvertToBugUseCase создает новый ConvertToBugUseCase
-func NewConvertToBugUseCase(eventStore shared.EventStore) *ConvertToBugUseCase {
+func NewConvertToBugUseCase(eventStore appcore.EventStore) *ConvertToBugUseCase {
 	return &ConvertToBugUseCase{
 		eventStore: eventStore,
 	}
@@ -40,16 +40,16 @@ func (uc *ConvertToBugUseCase) Execute(ctx context.Context, cmd ConvertToBugComm
 }
 
 func (uc *ConvertToBugUseCase) validate(cmd ConvertToBugCommand) error {
-	if err := shared.ValidateUUID("chatID", cmd.ChatID); err != nil {
+	if err := appcore.ValidateUUID("chatID", cmd.ChatID); err != nil {
 		return err
 	}
-	if err := shared.ValidateRequired("title", cmd.Title); err != nil {
+	if err := appcore.ValidateRequired("title", cmd.Title); err != nil {
 		return err
 	}
-	if err := shared.ValidateMaxLength("title", cmd.Title, shared.MaxTitleLength); err != nil {
+	if err := appcore.ValidateMaxLength("title", cmd.Title, appcore.MaxTitleLength); err != nil {
 		return err
 	}
-	if err := shared.ValidateUUID("convertedBy", cmd.ConvertedBy); err != nil {
+	if err := appcore.ValidateUUID("convertedBy", cmd.ConvertedBy); err != nil {
 		return err
 	}
 	return nil

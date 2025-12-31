@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/workspace"
 )
 
 // CreateWorkspaceUseCase - use case для создания workspace
 type CreateWorkspaceUseCase struct {
-	shared.BaseUseCase
+	appcore.BaseUseCase
 
 	workspaceRepo  Repository
 	keycloakClient KeycloakClient
@@ -71,7 +71,7 @@ func (uc *CreateWorkspaceUseCase) Execute(
 	_ = uc.keycloakClient.AddUserToGroup(ctx, cmd.CreatedBy.String(), keycloakGroupID)
 
 	return Result{
-		Result: shared.Result[*workspace.Workspace]{
+		Result: appcore.Result[*workspace.Workspace]{
 			Value: ws,
 		},
 	}, nil
@@ -79,14 +79,14 @@ func (uc *CreateWorkspaceUseCase) Execute(
 
 // validate проверяет валидность команды
 func (uc *CreateWorkspaceUseCase) validate(cmd CreateWorkspaceCommand) error {
-	if err := shared.ValidateRequired("name", cmd.Name); err != nil {
+	if err := appcore.ValidateRequired("name", cmd.Name); err != nil {
 		return err
 	}
 	const maxNameLength = 100
-	if err := shared.ValidateMaxLength("name", cmd.Name, maxNameLength); err != nil {
+	if err := appcore.ValidateMaxLength("name", cmd.Name, maxNameLength); err != nil {
 		return err
 	}
-	if err := shared.ValidateUUID("createdBy", cmd.CreatedBy); err != nil {
+	if err := appcore.ValidateUUID("createdBy", cmd.CreatedBy); err != nil {
 		return err
 	}
 	return nil

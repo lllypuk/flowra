@@ -3,14 +3,14 @@ package workspace
 import (
 	"context"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 	"github.com/lllypuk/flowra/internal/domain/workspace"
 )
 
 // RevokeInviteUseCase - use case для отзыва инвайта
 type RevokeInviteUseCase struct {
-	shared.BaseUseCase
+	appcore.BaseUseCase
 
 	workspaceRepo Repository
 }
@@ -68,7 +68,7 @@ func (uc *RevokeInviteUseCase) Execute(
 	}
 
 	return InviteResult{
-		Result: shared.Result[*workspace.Invite]{
+		Result: appcore.Result[*workspace.Invite]{
 			Value: invite,
 		},
 	}, nil
@@ -76,10 +76,10 @@ func (uc *RevokeInviteUseCase) Execute(
 
 // validate проверяет валидность команды
 func (uc *RevokeInviteUseCase) validate(cmd RevokeInviteCommand) error {
-	if err := shared.ValidateUUID("inviteID", cmd.InviteID); err != nil {
+	if err := appcore.ValidateUUID("inviteID", cmd.InviteID); err != nil {
 		return err
 	}
-	if err := shared.ValidateUUID("revokedBy", cmd.RevokedBy); err != nil {
+	if err := appcore.ValidateUUID("revokedBy", cmd.RevokedBy); err != nil {
 		return err
 	}
 	return nil

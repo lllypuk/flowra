@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/task"
 )
 
@@ -16,7 +16,7 @@ type SetDueDateUseCase struct {
 }
 
 // NewSetDueDateUseCase создает новый use case для установки дедлайна
-func NewSetDueDateUseCase(eventStore shared.EventStore) *SetDueDateUseCase {
+func NewSetDueDateUseCase(eventStore appcore.EventStore) *SetDueDateUseCase {
 	return &SetDueDateUseCase{
 		baseExecutor: NewBaseExecutor(eventStore),
 	}

@@ -1,13 +1,13 @@
 package notification
 
 import (
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/notification"
 )
 
 // Result - результат операции с notification
 type Result struct {
-	shared.Result[*notification.Notification]
+	appcore.Result[*notification.Notification]
 }
 
 // ListResult - результат операции со списком notifications

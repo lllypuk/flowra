@@ -1,13 +1,13 @@
 package user
 
 import (
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/user"
 )
 
 // Result - результат операции с одним пользователем
 type Result struct {
-	shared.Result[*user.User]
+	appcore.Result[*user.User]
 }
 
 // UsersListResult - результат операции со списком пользователей

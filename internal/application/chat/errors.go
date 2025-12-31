@@ -3,7 +3,7 @@ package chat
 import (
 	"errors"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
 // Validation errors
@@ -47,7 +47,7 @@ var (
 // Authorization errors
 var (
 	// ErrNotAuthorized indicates the user is not authorized
-	ErrNotAuthorized = shared.ErrUnauthorized
+	ErrNotAuthorized = appcore.ErrUnauthorized
 	// ErrForbidden indicates the action is forbidden
-	ErrForbidden = shared.ErrForbidden
+	ErrForbidden = appcore.ErrForbidden
 )

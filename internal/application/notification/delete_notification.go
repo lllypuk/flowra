@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
 // DeleteNotificationUseCase обрабатывает удаление notification
@@ -52,10 +52,10 @@ func (uc *DeleteNotificationUseCase) Execute(
 
 // validate проверяет валидность команды
 func (uc *DeleteNotificationUseCase) validate(cmd DeleteNotificationCommand) error {
-	if err := shared.ValidateUUID("notificationID", cmd.NotificationID); err != nil {
+	if err := appcore.ValidateUUID("notificationID", cmd.NotificationID); err != nil {
 		return err
 	}
-	if err := shared.ValidateUUID("userID", cmd.UserID); err != nil {
+	if err := appcore.ValidateUUID("userID", cmd.UserID); err != nil {
 		return err
 	}
 	return nil

@@ -5,16 +5,16 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
 // SetSeverityUseCase обрабатывает установку severity (только для Bug)
 type SetSeverityUseCase struct {
-	eventStore shared.EventStore
+	eventStore appcore.EventStore
 }
 
 // NewSetSeverityUseCase создает новый SetSeverityUseCase
-func NewSetSeverityUseCase(eventStore shared.EventStore) *SetSeverityUseCase {
+func NewSetSeverityUseCase(eventStore appcore.EventStore) *SetSeverityUseCase {
 	return &SetSeverityUseCase{eventStore: eventStore}
 }
 
@@ -37,13 +37,13 @@ func (uc *SetSeverityUseCase) Execute(ctx context.Context, cmd SetSeverityComman
 }
 
 func (uc *SetSeverityUseCase) validate(cmd SetSeverityCommand) error {
-	if err := shared.ValidateUUID("chatID", cmd.ChatID); err != nil {
+	if err := appcore.ValidateUUID("chatID", cmd.ChatID); err != nil {
 		return err
 	}
-	if err := shared.ValidateRequired("severity", cmd.Severity); err != nil {
+	if err := appcore.ValidateRequired("severity", cmd.Severity); err != nil {
 		return err
 	}
-	if err := shared.ValidateUUID("setBy", cmd.SetBy); err != nil {
+	if err := appcore.ValidateUUID("setBy", cmd.SetBy); err != nil {
 		return err
 	}
 	return nil

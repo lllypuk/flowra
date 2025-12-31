@@ -4,17 +4,17 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/chat"
 )
 
 // CreateChatUseCase обрабатывает создание нового чата
 type CreateChatUseCase struct {
-	eventStore shared.EventStore
+	eventStore appcore.EventStore
 }
 
 // NewCreateChatUseCase создает новый CreateChatUseCase
-func NewCreateChatUseCase(eventStore shared.EventStore) *CreateChatUseCase {
+func NewCreateChatUseCase(eventStore appcore.EventStore) *CreateChatUseCase {
 	return &CreateChatUseCase{
 		eventStore: eventStore,
 	}
@@ -59,13 +59,13 @@ func (uc *CreateChatUseCase) Execute(ctx context.Context, cmd CreateChatCommand)
 }
 
 func (uc *CreateChatUseCase) validate(cmd CreateChatCommand) error {
-	if err := shared.ValidateUUID("workspaceID", cmd.WorkspaceID); err != nil {
+	if err := appcore.ValidateUUID("workspaceID", cmd.WorkspaceID); err != nil {
 		return err
 	}
-	if err := shared.ValidateUUID("createdBy", cmd.CreatedBy); err != nil {
+	if err := appcore.ValidateUUID("createdBy", cmd.CreatedBy); err != nil {
 		return err
 	}
-	if err := shared.ValidateEnum("type", string(cmd.Type), []string{
+	if err := appcore.ValidateEnum("type", string(cmd.Type), []string{
 		string(chat.TypeDiscussion),
 		string(chat.TypeTask),
 		string(chat.TypeBug),
@@ -76,10 +76,10 @@ func (uc *CreateChatUseCase) validate(cmd CreateChatCommand) error {
 
 	// Для typed чатов title обязателен
 	if cmd.Type != chat.TypeDiscussion {
-		if err := shared.ValidateRequired("title", cmd.Title); err != nil {
+		if err := appcore.ValidateRequired("title", cmd.Title); err != nil {
 			return ErrTitleRequired
 		}
-		if err := shared.ValidateMaxLength("title", cmd.Title, shared.MaxTitleLength); err != nil {
+		if err := appcore.ValidateMaxLength("title", cmd.Title, appcore.MaxTitleLength); err != nil {
 			return err
 		}
 	}

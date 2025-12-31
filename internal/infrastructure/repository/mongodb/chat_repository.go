@@ -10,8 +10,8 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	chatapp "github.com/lllypuk/flowra/internal/application/chat"
-	"github.com/lllypuk/flowra/internal/application/shared"
 	chatdomain "github.com/lllypuk/flowra/internal/domain/chat"
 	"github.com/lllypuk/flowra/internal/domain/errs"
 	"github.com/lllypuk/flowra/internal/domain/event"
@@ -21,12 +21,12 @@ import (
 // MongoChatRepository реализует chatapp.CommandRepository (application layer interface)
 // с использованием MongoDB и Event Sourcing
 type MongoChatRepository struct {
-	eventStore    shared.EventStore
+	eventStore    appcore.EventStore
 	readModelColl *mongo.Collection
 }
 
 // NewMongoChatRepository создает новый MongoDB Chat Repository
-func NewMongoChatRepository(eventStore shared.EventStore, readModelColl *mongo.Collection) *MongoChatRepository {
+func NewMongoChatRepository(eventStore appcore.EventStore, readModelColl *mongo.Collection) *MongoChatRepository {
 	return &MongoChatRepository{
 		eventStore:    eventStore,
 		readModelColl: readModelColl,
@@ -42,7 +42,7 @@ func (r *MongoChatRepository) Load(ctx context.Context, chatID uuid.UUID) (*chat
 	// Загружаем события из event store
 	events, err := r.eventStore.LoadEvents(ctx, chatID.String())
 	if err != nil {
-		if errors.Is(err, shared.ErrAggregateNotFound) {
+		if errors.Is(err, appcore.ErrAggregateNotFound) {
 			return nil, errs.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to load events for chat %s: %w", chatID, err)
@@ -81,7 +81,7 @@ func (r *MongoChatRepository) Save(ctx context.Context, chat *chatdomain.Chat) e
 	expectedVersion := chat.Version() - len(uncommittedEvents)
 	err := r.eventStore.SaveEvents(ctx, chat.ID().String(), uncommittedEvents, expectedVersion)
 	if err != nil {
-		if errors.Is(err, shared.ErrConcurrencyConflict) {
+		if errors.Is(err, appcore.ErrConcurrencyConflict) {
 			return errs.ErrConcurrentModification
 		}
 		return fmt.Errorf("failed to save events: %w", err)
@@ -109,7 +109,7 @@ func (r *MongoChatRepository) GetEvents(ctx context.Context, chatID uuid.UUID) (
 
 	events, err := r.eventStore.LoadEvents(ctx, chatID.String())
 	if err != nil {
-		if errors.Is(err, shared.ErrAggregateNotFound) {
+		if errors.Is(err, appcore.ErrAggregateNotFound) {
 			return nil, errs.ErrNotFound
 		}
 		return nil, err
@@ -174,13 +174,13 @@ func (r *MongoChatRepository) updateReadModel(ctx context.Context, chat *chatdom
 // для query операций
 type MongoChatReadModelRepository struct {
 	collection *mongo.Collection
-	eventStore shared.EventStore
+	eventStore appcore.EventStore
 }
 
 // NewMongoChatReadModelRepository создает новый MongoDB Chat Read Model Repository
 func NewMongoChatReadModelRepository(
 	collection *mongo.Collection,
-	eventStore shared.EventStore,
+	eventStore appcore.EventStore,
 ) *MongoChatReadModelRepository {
 	return &MongoChatReadModelRepository{
 		collection: collection,

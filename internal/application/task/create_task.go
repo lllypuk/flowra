@@ -5,18 +5,18 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/task"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 // CreateTaskUseCase обрабатывает создание новой задачи
 type CreateTaskUseCase struct {
-	eventStore shared.EventStore
+	eventStore appcore.EventStore
 }
 
 // NewCreateTaskUseCase создает новый экземпляр CreateTaskUseCase
-func NewCreateTaskUseCase(eventStore shared.EventStore) *CreateTaskUseCase {
+func NewCreateTaskUseCase(eventStore appcore.EventStore) *CreateTaskUseCase {
 	return &CreateTaskUseCase{
 		eventStore: eventStore,
 	}

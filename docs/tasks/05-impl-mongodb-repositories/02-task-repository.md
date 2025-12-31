@@ -678,46 +678,46 @@ db.task_read_model.createIndex({ "status": 1, "priority": 1 })
 
 ### Phase 1: Интерфейсы
 
-- [ ] Создать `internal/application/task/repository.go`
-- [ ] Определить `CommandRepository` интерфейс
-- [ ] Определить `QueryRepository` интерфейс
-- [ ] Определить `Filters` структуру
-- [ ] Определить `ReadModel` структуру
+- [x] Создать `internal/application/task/repository.go`
+- [x] Определить `CommandRepository` интерфейс
+- [x] Определить `QueryRepository` интерфейс
+- [x] Определить `Filters` структуру
+- [x] Определить `ReadModel` структуру
 
 ### Phase 2: Command Repository
 
-- [ ] Создать `MongoTaskRepository` структуру
-- [ ] Реализовать `NewMongoTaskRepository`
-- [ ] Реализовать `Load` метод
-- [ ] Реализовать `Save` метод
-- [ ] Реализовать `GetEvents` метод
-- [ ] Реализовать `updateReadModel` helper
+- [x] Создать `MongoTaskRepository` структуру
+- [x] Реализовать `NewMongoTaskRepository`
+- [x] Реализовать `Load` метод
+- [x] Реализовать `Save` метод
+- [x] Реализовать `GetEvents` метод
+- [x] Реализовать `updateReadModel` helper
 
 ### Phase 3: Query Repository
 
-- [ ] Создать `MongoTaskQueryRepository` структуру
-- [ ] Реализовать `FindByID`
-- [ ] Реализовать `FindByChatID`
-- [ ] Реализовать `FindByAssignee`
-- [ ] Реализовать `FindByStatus`
-- [ ] Реализовать `List`
-- [ ] Реализовать `Count`
-- [ ] Создать `taskReadModelDocument` структуру
-- [ ] Реализовать `documentToReadModel`
+- [x] Создать `MongoTaskQueryRepository` структуру
+- [x] Реализовать `FindByID`
+- [x] Реализовать `FindByChatID`
+- [x] Реализовать `FindByAssignee`
+- [x] Реализовать `FindByStatus`
+- [x] Реализовать `List`
+- [x] Реализовать `Count`
+- [x] Создать `taskReadModelDocument` структуру
+- [x] Реализовать `documentToReadModel`
 
 ### Phase 4: Объединенный репозиторий
 
-- [ ] Создать `MongoTaskFullRepository`
-- [ ] Проверить, что реализует `taskapp.Repository`
+- [x] Создать `MongoTaskFullRepository`
+- [x] Проверить, что реализует `taskapp.Repository`
 
 ### Phase 5: Тестирование
 
-- [ ] Написать тест `Save_And_Load`
-- [ ] Написать тест `ConcurrentModification`
-- [ ] Написать тест `FindByAssignee`
-- [ ] Написать тест `FindByStatus`
-- [ ] Написать тест `List` с фильтрами
-- [ ] Достичь coverage > 80%
+- [x] Написать тест `Save_And_Load`
+- [x] Написать тест `ConcurrentModification`
+- [x] Написать тест `FindByAssignee`
+- [x] Написать тест `FindByStatus`
+- [x] Написать тест `List` с фильтрами
+- [x] Достичь coverage > 80%
 
 ## Следующие шаги
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/notification"
 )
 
@@ -44,7 +44,7 @@ func (uc *GetNotificationUseCase) Execute(
 	}
 
 	return Result{
-		Result: shared.Result[*notification.Notification]{
+		Result: appcore.Result[*notification.Notification]{
 			Value: notif,
 		},
 	}, nil
@@ -52,10 +52,10 @@ func (uc *GetNotificationUseCase) Execute(
 
 // validate проверяет валидность запроса
 func (uc *GetNotificationUseCase) validate(query GetNotificationQuery) error {
-	if err := shared.ValidateUUID("notificationID", query.NotificationID); err != nil {
+	if err := appcore.ValidateUUID("notificationID", query.NotificationID); err != nil {
 		return err
 	}
-	if err := shared.ValidateUUID("userID", query.UserID); err != nil {
+	if err := appcore.ValidateUUID("userID", query.UserID); err != nil {
 		return err
 	}
 	return nil

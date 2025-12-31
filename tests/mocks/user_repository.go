@@ -3,26 +3,26 @@ package mocks
 import (
 	"context"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/errs"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// MockUserRepository реализует shared.UserRepository для тестирования
+// MockUserRepository реализует appcore.UserRepository для тестирования
 type MockUserRepository struct {
-	users map[uuid.UUID]*shared.User
+	users map[uuid.UUID]*appcore.User
 }
 
 // NewMockUserRepository создает новый mock репозиторий
 func NewMockUserRepository() *MockUserRepository {
 	return &MockUserRepository{
-		users: make(map[uuid.UUID]*shared.User),
+		users: make(map[uuid.UUID]*appcore.User),
 	}
 }
 
 // AddUser добавляет пользователя в mock репозиторий
 func (m *MockUserRepository) AddUser(id uuid.UUID, username, fullName string) {
-	m.users[id] = &shared.User{
+	m.users[id] = &appcore.User{
 		ID:       id,
 		Username: username,
 		FullName: fullName,
@@ -36,7 +36,7 @@ func (m *MockUserRepository) Exists(_ context.Context, userID uuid.UUID) (bool, 
 }
 
 // GetByUsername ищет пользователя по username
-func (m *MockUserRepository) GetByUsername(_ context.Context, username string) (*shared.User, error) {
+func (m *MockUserRepository) GetByUsername(_ context.Context, username string) (*appcore.User, error) {
 	for _, user := range m.users {
 		if user.Username == username {
 			return user, nil
@@ -47,12 +47,12 @@ func (m *MockUserRepository) GetByUsername(_ context.Context, username string) (
 
 // Reset очищает все пользователей (для тестов)
 func (m *MockUserRepository) Reset() {
-	m.users = make(map[uuid.UUID]*shared.User)
+	m.users = make(map[uuid.UUID]*appcore.User)
 }
 
 // GetAllUsers возвращает всех пользователей (для тестов)
-func (m *MockUserRepository) GetAllUsers() []*shared.User {
-	users := make([]*shared.User, 0, len(m.users))
+func (m *MockUserRepository) GetAllUsers() []*appcore.User {
+	users := make([]*appcore.User, 0, len(m.users))
 	for _, user := range m.users {
 		users = append(users, user)
 	}

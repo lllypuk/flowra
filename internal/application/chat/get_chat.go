@@ -5,18 +5,18 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/chat"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 // GetChatUseCase - use case для получения чата
 type GetChatUseCase struct {
-	eventStore shared.EventStore
+	eventStore appcore.EventStore
 }
 
 // NewGetChatUseCase - конструктор
-func NewGetChatUseCase(eventStore shared.EventStore) *GetChatUseCase {
+func NewGetChatUseCase(eventStore appcore.EventStore) *GetChatUseCase {
 	return &GetChatUseCase{
 		eventStore: eventStore,
 	}
@@ -53,10 +53,10 @@ func (uc *GetChatUseCase) Execute(ctx context.Context, query GetChatQuery) (*Get
 }
 
 func (uc *GetChatUseCase) validate(query GetChatQuery) error {
-	if err := shared.ValidateUUID("chatID", query.ChatID); err != nil {
+	if err := appcore.ValidateUUID("chatID", query.ChatID); err != nil {
 		return err
 	}
-	if err := shared.ValidateUUID("requestedBy", query.RequestedBy); err != nil {
+	if err := appcore.ValidateUUID("requestedBy", query.RequestedBy); err != nil {
 		return err
 	}
 	return nil

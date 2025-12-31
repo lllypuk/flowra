@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/user"
 )
 
@@ -53,17 +53,17 @@ func (uc *PromoteToAdminUseCase) Execute(
 	}
 
 	return Result{
-		Result: shared.Result[*user.User]{
+		Result: appcore.Result[*user.User]{
 			Value: targetUser,
 		},
 	}, nil
 }
 
 func (uc *PromoteToAdminUseCase) validate(cmd PromoteToAdminCommand) error {
-	if err := shared.ValidateUUID("userID", cmd.UserID); err != nil {
+	if err := appcore.ValidateUUID("userID", cmd.UserID); err != nil {
 		return err
 	}
-	if err := shared.ValidateUUID("promotedBy", cmd.PromotedBy); err != nil {
+	if err := appcore.ValidateUUID("promotedBy", cmd.PromotedBy); err != nil {
 		return err
 	}
 	return nil

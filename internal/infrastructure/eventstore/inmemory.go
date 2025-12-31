@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/event"
 )
 
@@ -38,7 +38,7 @@ func (s *InMemoryEventStore) SaveEvents(
 	// Проверка optimistic locking
 	currentVersion := len(s.events[aggregateID])
 	if currentVersion != expectedVersion {
-		return shared.ErrConcurrencyConflict
+		return appcore.ErrConcurrencyConflict
 	}
 
 	// Сохраняем события
@@ -57,7 +57,7 @@ func (s *InMemoryEventStore) LoadEvents(
 
 	events, exists := s.events[aggregateID]
 	if !exists {
-		return nil, shared.ErrAggregateNotFound
+		return nil, appcore.ErrAggregateNotFound
 	}
 
 	// Возвращаем копию чтобы избежать race conditions

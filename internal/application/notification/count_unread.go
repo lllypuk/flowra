@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
 // CountUnreadUseCase обрабатывает подсчет непрочитанных notifications пользователя
@@ -44,7 +44,7 @@ func (uc *CountUnreadUseCase) Execute(
 
 // validate проверяет валидность запроса
 func (uc *CountUnreadUseCase) validate(query CountUnreadQuery) error {
-	if err := shared.ValidateUUID("userID", query.UserID); err != nil {
+	if err := appcore.ValidateUUID("userID", query.UserID); err != nil {
 		return err
 	}
 	return nil

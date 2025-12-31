@@ -5,16 +5,16 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
 // SetPriorityUseCase обрабатывает установку приоритета
 type SetPriorityUseCase struct {
-	eventStore shared.EventStore
+	eventStore appcore.EventStore
 }
 
 // NewSetPriorityUseCase создает новый SetPriorityUseCase
-func NewSetPriorityUseCase(eventStore shared.EventStore) *SetPriorityUseCase {
+func NewSetPriorityUseCase(eventStore appcore.EventStore) *SetPriorityUseCase {
 	return &SetPriorityUseCase{
 		eventStore: eventStore,
 	}
@@ -39,13 +39,13 @@ func (uc *SetPriorityUseCase) Execute(ctx context.Context, cmd SetPriorityComman
 }
 
 func (uc *SetPriorityUseCase) validate(cmd SetPriorityCommand) error {
-	if err := shared.ValidateUUID("chatID", cmd.ChatID); err != nil {
+	if err := appcore.ValidateUUID("chatID", cmd.ChatID); err != nil {
 		return err
 	}
-	if err := shared.ValidateRequired("priority", cmd.Priority); err != nil {
+	if err := appcore.ValidateRequired("priority", cmd.Priority); err != nil {
 		return err
 	}
-	if err := shared.ValidateUUID("setBy", cmd.SetBy); err != nil {
+	if err := appcore.ValidateUUID("setBy", cmd.SetBy); err != nil {
 		return err
 	}
 	return nil

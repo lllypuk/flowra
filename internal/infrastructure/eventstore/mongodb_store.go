@@ -11,7 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/event"
 )
 
@@ -63,7 +63,7 @@ func (s *MongoEventStore) SaveEvents(
 		}
 
 		if currentVersion != expectedVersion {
-			return nil, shared.ErrConcurrencyConflict
+			return nil, appcore.ErrConcurrencyConflict
 		}
 
 		// 2. Сериализуем события
@@ -83,7 +83,7 @@ func (s *MongoEventStore) SaveEvents(
 		if errInsert != nil {
 			// Проверяем ошибку дублирования ключа (конфликт concurrency)
 			if mongo.IsDuplicateKeyError(errInsert) {
-				return nil, shared.ErrConcurrencyConflict
+				return nil, appcore.ErrConcurrencyConflict
 			}
 			return nil, fmt.Errorf("failed to insert events: %w", errInsert)
 		}
@@ -112,7 +112,7 @@ func (s *MongoEventStore) LoadEvents(ctx context.Context, aggregateID string) ([
 
 	// Если нет документов, возвращаем ошибку
 	if len(docs) == 0 {
-		return nil, shared.ErrAggregateNotFound
+		return nil, appcore.ErrAggregateNotFound
 	}
 
 	// Десериализуем события

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/user"
 )
 
@@ -57,23 +57,23 @@ func (uc *RegisterUserUseCase) Execute(
 	}
 
 	return Result{
-		Result: shared.Result[*user.User]{
+		Result: appcore.Result[*user.User]{
 			Value: usr,
 		},
 	}, nil
 }
 
 func (uc *RegisterUserUseCase) validate(cmd RegisterUserCommand) error {
-	if err := shared.ValidateRequired("externalID", cmd.ExternalID); err != nil {
+	if err := appcore.ValidateRequired("externalID", cmd.ExternalID); err != nil {
 		return err
 	}
-	if err := shared.ValidateRequired("username", cmd.Username); err != nil {
+	if err := appcore.ValidateRequired("username", cmd.Username); err != nil {
 		return err
 	}
-	if err := shared.ValidateEmail("email", cmd.Email); err != nil {
+	if err := appcore.ValidateEmail("email", cmd.Email); err != nil {
 		return err
 	}
-	if err := shared.ValidateRequired("displayName", cmd.DisplayName); err != nil {
+	if err := appcore.ValidateRequired("displayName", cmd.DisplayName); err != nil {
 		return err
 	}
 	return nil

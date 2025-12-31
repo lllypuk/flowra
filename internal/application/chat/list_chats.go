@@ -4,17 +4,17 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
 // ListChatsUseCase - use case для получения списка чатов
 type ListChatsUseCase struct {
 	chatRepo   QueryRepository
-	eventStore shared.EventStore
+	eventStore appcore.EventStore
 }
 
 // NewListChatsUseCase - конструктор
-func NewListChatsUseCase(chatRepo QueryRepository, eventStore shared.EventStore) *ListChatsUseCase {
+func NewListChatsUseCase(chatRepo QueryRepository, eventStore appcore.EventStore) *ListChatsUseCase {
 	return &ListChatsUseCase{
 		chatRepo:   chatRepo,
 		eventStore: eventStore,
@@ -103,10 +103,10 @@ func (uc *ListChatsUseCase) Execute(ctx context.Context, query ListChatsQuery) (
 }
 
 func (uc *ListChatsUseCase) validate(query ListChatsQuery) error {
-	if err := shared.ValidateUUID("workspaceID", query.WorkspaceID); err != nil {
+	if err := appcore.ValidateUUID("workspaceID", query.WorkspaceID); err != nil {
 		return err
 	}
-	if err := shared.ValidateUUID("requestedBy", query.RequestedBy); err != nil {
+	if err := appcore.ValidateUUID("requestedBy", query.RequestedBy); err != nil {
 		return err
 	}
 	// Type filter is optional

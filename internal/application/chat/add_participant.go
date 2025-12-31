@@ -4,17 +4,17 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/chat"
 )
 
 // AddParticipantUseCase обрабатывает добавление участника в чат
 type AddParticipantUseCase struct {
-	eventStore shared.EventStore
+	eventStore appcore.EventStore
 }
 
 // NewAddParticipantUseCase создает новый AddParticipantUseCase
-func NewAddParticipantUseCase(eventStore shared.EventStore) *AddParticipantUseCase {
+func NewAddParticipantUseCase(eventStore appcore.EventStore) *AddParticipantUseCase {
 	return &AddParticipantUseCase{
 		eventStore: eventStore,
 	}
@@ -40,16 +40,16 @@ func (uc *AddParticipantUseCase) Execute(ctx context.Context, cmd AddParticipant
 }
 
 func (uc *AddParticipantUseCase) validate(cmd AddParticipantCommand) error {
-	if err := shared.ValidateUUID("chatID", cmd.ChatID); err != nil {
+	if err := appcore.ValidateUUID("chatID", cmd.ChatID); err != nil {
 		return err
 	}
-	if err := shared.ValidateUUID("userID", cmd.UserID); err != nil {
+	if err := appcore.ValidateUUID("userID", cmd.UserID); err != nil {
 		return err
 	}
-	if err := shared.ValidateUUID("addedBy", cmd.AddedBy); err != nil {
+	if err := appcore.ValidateUUID("addedBy", cmd.AddedBy); err != nil {
 		return err
 	}
-	if err := shared.ValidateEnum("role", string(cmd.Role), []string{
+	if err := appcore.ValidateEnum("role", string(cmd.Role), []string{
 		string(chat.RoleAdmin),
 		string(chat.RoleMember),
 	}); err != nil {

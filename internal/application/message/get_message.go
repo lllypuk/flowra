@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
 // GetMessageUseCase обрабатывает получение сообщения по ID
@@ -41,7 +41,7 @@ func (uc *GetMessageUseCase) Execute(
 }
 
 func (uc *GetMessageUseCase) validate(query GetMessageQuery) error {
-	if err := shared.ValidateUUID("messageID", query.MessageID); err != nil {
+	if err := appcore.ValidateUUID("messageID", query.MessageID); err != nil {
 		return err
 	}
 	return nil

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/task"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
@@ -20,11 +20,11 @@ type AggregateOperation func(aggregate *task.Aggregate) error
 
 // BaseExecutor содержит общую логику для выполнения команд с Event Sourcing
 type BaseExecutor struct {
-	eventStore shared.EventStore
+	eventStore appcore.EventStore
 }
 
 // NewBaseExecutor создает новый базовый executor
-func NewBaseExecutor(eventStore shared.EventStore) *BaseExecutor {
+func NewBaseExecutor(eventStore appcore.EventStore) *BaseExecutor {
 	return &BaseExecutor{
 		eventStore: eventStore,
 	}
@@ -45,7 +45,7 @@ func (e *BaseExecutor) Execute(
 	// 1. Загрузка событий из Event Store
 	events, err := e.eventStore.LoadEvents(ctx, taskID.String())
 	if err != nil {
-		if errors.Is(err, shared.ErrAggregateNotFound) {
+		if errors.Is(err, appcore.ErrAggregateNotFound) {
 			return TaskResult{}, ErrTaskNotFound
 		}
 		return TaskResult{}, fmt.Errorf("failed to load events: %w", err)
@@ -81,7 +81,7 @@ func (e *BaseExecutor) Execute(
 	// 5. Сохранение новых событий
 	expectedVersion := len(events)
 	if saveErr := e.eventStore.SaveEvents(ctx, taskID.String(), newEvents, expectedVersion); saveErr != nil {
-		if errors.Is(saveErr, shared.ErrConcurrencyConflict) {
+		if errors.Is(saveErr, appcore.ErrConcurrencyConflict) {
 			return TaskResult{}, ErrConcurrentUpdate
 		}
 		return TaskResult{}, fmt.Errorf("failed to save events: %w", saveErr)

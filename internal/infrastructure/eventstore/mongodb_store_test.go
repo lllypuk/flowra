@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 
-	"github.com/lllypuk/flowra/internal/application/shared"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/event"
 	"github.com/lllypuk/flowra/internal/infrastructure/eventstore"
 	"github.com/lllypuk/flowra/tests/testutil"
@@ -119,7 +119,7 @@ func TestMongoEventStore_OptimisticLocking_ConflictDetected(t *testing.T) {
 	err = store.SaveEvents(ctx, aggregateID, []event.DomainEvent{testEvent2}, 0)
 
 	// Assert
-	assert.Equal(t, shared.ErrConcurrencyConflict, err)
+	assert.Equal(t, appcore.ErrConcurrencyConflict, err)
 }
 
 func TestMongoEventStore_OptimisticLocking_CorrectExpectedVersion(t *testing.T) {
@@ -215,7 +215,7 @@ func TestMongoEventStore_LoadEvents_NotFound(t *testing.T) {
 	events, err := store.LoadEvents(ctx, "non-existent-agg")
 
 	// Assert
-	assert.Equal(t, shared.ErrAggregateNotFound, err)
+	assert.Equal(t, appcore.ErrAggregateNotFound, err)
 	assert.Nil(t, events)
 }
 
