@@ -2,6 +2,53 @@
 
 Комплексная система чата с интегрированным таск-трекером, help desk функциональностью и поддержкой команд.
 
+## 📊 Текущее состояние проекта
+
+**Версия:** 0.4.0-alpha  
+**Дата обновления:** 2024-12-31  
+**Общий прогресс:** ~62% к MVP  
+**Статус:** Active Development (Phase 1-2)
+
+### Прогресс по слоям
+
+| Слой | Статус | Прогресс | Файлов | Coverage |
+|------|--------|----------|--------|----------|
+| **Domain** | ✅ Complete | 95% | 48 | 90%+ |
+| **Application** | ✅ Strong | 85% | 139 | 79% |
+| **Infrastructure** | ⚠️ In Progress | 45% | 21 | 85%+ |
+| **Interface** | ❌ Not Started | 0% | 0 | N/A |
+| **Entry Points** | ❌ Not Started | 0% | 0 | N/A |
+
+### Что работает ✅
+
+- ✅ **Domain Layer:** 6 Event-Sourced агрегатов, 30+ domain events
+- ✅ **Application Layer:** 40+ use cases с 79% average coverage
+- ✅ **MongoDB Repositories:** Chat, User, Workspace, Message, Notification (5 из 6)
+- ✅ **Event Store:** MongoDB Event Store с optimistic locking
+- ✅ **Testing Infrastructure:** testcontainers-go, mocks, fixtures
+
+### Что требуется ❌
+
+- 🔴 **Task Repository** (последний недостающий репозиторий)
+- 🔴 **MongoDB Indexes** (критично для production)
+- 🔴 **Interface Layer** (HTTP handlers, WebSocket)
+- 🔴 **Entry Points** (cmd/api/main.go отсутствует)
+- 🟡 **Event Bus** (Redis Pub/Sub)
+- 🟡 **Frontend** (HTMX templates)
+
+### Следующие шаги
+
+См. детальный план: [docs/JANUARY_2025_PLAN.md](./docs/JANUARY_2025_PLAN.md)
+
+**ETA к MVP:** Середина февраля 2025 (6-8 недель)
+
+**Документация:**
+- [Текущий статус](./docs/STATUS.md) - живой статус проекта
+- [Roadmap 2025](./docs/DEVELOPMENT_ROADMAP_2025.md) - детальный план развития
+- [План на январь 2025](./docs/JANUARY_2025_PLAN.md) - недельный breakdown
+
+---
+
 ## 🚀 Основные возможности
 
 - **Real-time чат** с поддержкой групп и direct messages
@@ -49,55 +96,111 @@
 - **Валидация**: Tag format, reference checking
 - **Процессинг**: Автоматическая генерация команд из тегов
 
-## 📋 Содержание документации
+## 📋 Документация
 
-- [Архитектура](./docs/01-architecture.md) - Общая архитектура системы
-- [Установка и настройка](./docs/02-installation.md) - Руководство по установке
-- [База данных](./docs/03-database.md) - Схема БД и миграции
-- [Backend разработка](./docs/04-backend.md) - Go сервисы и API
-- [Frontend с HTMX](./docs/05-frontend-htmx.md) - HTMX templates и компоненты
-- [Keycloak интеграция](./docs/06-keycloak.md) - SSO и аутентификация
-- [WebSocket/Real-time](./docs/07-websocket.md) - Real-time функциональность
-- [Система команд](./docs/08-commands.md) - Command parser и handlers
-- [Help Desk](./docs/09-helpdesk.md) - SLA и support функции
-- [Плагины](./docs/10-plugins.md) - Система плагинов
-- [Тестирование](./docs/11-testing.md) - Unit, integration и E2E тесты
-- [Deployment](./docs/12-deployment.md) - Production deployment
-- [Мониторинг](./docs/13-monitoring.md) - Метрики и health checks
-- [API документация](./docs/14-api.md) - REST API endpoints
+### Статус и планирование
+- [Текущий статус](./docs/STATUS.md) - живой статус проекта (обновлен 2025-12-31)
+- [Roadmap 2025](./docs/DEVELOPMENT_ROADMAP_2025.md) - детальный план на 6 месяцев
+- [План на январь 2025](./docs/JANUARY_2025_PLAN.md) - недельный breakdown задач
+- [Архитектурные изменения](./docs/ARCHITECTURE_FIX.md) - миграция интерфейсов
+- [Лог рефакторинга](./docs/REFACTORING_LOG.md) - история изменений
+
+### Архитектура и дизайн
+- [01-architecture.md](./docs/01-architecture.md) - общая архитектура системы
+- [02-domain-model.md](./docs/02-domain-model.md) - доменная модель
+- [03-tag-grammar.md](./docs/03-tag-grammar.md) - грамматика команд через теги
+- [04-security-model.md](./docs/04-security-model.md) - модель безопасности
+- [05-event-flow.md](./docs/05-event-flow.md) - потоки событий
+- [06-api-contracts.md](./docs/06-api-contracts.md) - API контракты
+- [07-code-structure.md](./docs/07-code-structure.md) - структура кода
+- [08-mvp-roadmap.md](./docs/08-mvp-roadmap.md) - MVP roadmap
+
+### Разработка
+- [development/setup.md](./docs/development/setup.md) - настройка окружения
+- [development/coding-standards.md](./docs/development/coding-standards.md) - стандарты кода
+- [development/testing.md](./docs/development/testing.md) - тестирование
 
 ## 🛠 Технологический стек
 
 ### Backend
 - **Go 1.25+** - основной язык
-- **Echo v4** - веб-фреймворк
-- **MongoDB 6+** с **Go Driver v2** - основная БД (event sourcing)
-- **Redis** - кеш и pub/sub
-- **Keycloak** - SSO и управление пользователями
+- **Echo v4.13+** - веб-фреймворк
+- **MongoDB 6+** с **Go Driver v2** - основная БД (event sourcing + read models)
+- **Redis 7+** - кеш, pub/sub, session store
+- **Keycloak 23+** - SSO и управление пользователями
 
 ### Frontend
-- **HTMX 2+** - динамические обновления
+- **HTMX 2+** - динамические обновления без JavaScript
 - **Pico CSS v2** - минималистичный CSS фреймворк
+- **Alpine.js** (опционально) - минимальный JS для интерактивности
+
+### Development & Testing
+- **testcontainers-go** - интеграционное тестирование
+- **testify** - assertions и mocks
+- **golangci-lint** - комплексный линтинг
 
 ## 📁 Структура проекта
 
 ```
 new-teams-up/
-├── cmd/                         # Точки входа приложений (scaffolding)
-│   ├── api/                    # HTTP API сервер (planned)
-│   ├── worker/                 # Background workers (planned)
-│   └── migrator/               # DB миграции (planned)
+├── cmd/                         # Точки входа приложений
+│   ├── api/                    # ❌ HTTP API сервер (требуется)
+│   ├── worker/                 # ❌ Background workers (требуется)
+│   └── migrator/               # ❌ DB миграции (требуется)
 ├── internal/                    # Внутренний код приложения
-│   ├── application/            # ✅ Application layer (40+ use cases)
+│   ├── application/            # ✅ Application layer (40+ use cases, 79% coverage)
+│   │   ├── appcore/           # Shared interfaces (EventStore, EventBus)
 │   │   ├── auth/              # Аутентификация
-│   │   ├── chat/              # Управление чатами (6 use cases)
-│   │   ├── message/           # Операции с сообщениями (7 use cases)
-│   │   ├── notification/      # Уведомления (8 use cases)
-│   │   ├── task/              # Управление задачами (5 use cases)
-│   │   ├── user/              # Управление пользователями (7 use cases)
-│   │   ├── workspace/         # Управление workspace (7 use cases)
-│   │   ├── shared/            # Общие интерфейсы
-│   │   └── eventhandler/      # Event handling
+│   │   ├── chat/              # Управление чатами (15 use cases, 81% coverage)
+│   │   ├── message/           # Операции с сообщениями (7 use cases, 64% coverage)
+│   │   ├── notification/      # Уведомления (8 use cases, 85% coverage)
+│   │   ├── task/              # Управление задачами (5 use cases, 85% coverage)
+│   │   ├── user/              # Управление пользователями (7 use cases, 86% coverage)
+│   │   ├── workspace/         # Управление workspace (7 use cases, 86% coverage)
+│   │   └── eventhandler/      # Event handling (planned)
+│   ├── domain/                 # ✅ Domain layer (95% complete, 90%+ coverage)
+│   │   ├── chat/              # Chat aggregate (Event Sourcing)
+│   │   ├── message/           # Message aggregate
+│   │   ├── task/              # Task aggregate (Event Sourcing)
+│   │   ├── notification/      # Notification aggregate
+│   │   ├── user/              # User entity
+│   │   ├── workspace/         # Workspace entity
+│   │   ├── tag/               # Tag processing system
+│   │   ├── event/             # Domain events infrastructure
+│   │   ├── errs/              # Domain errors
+│   │   └── uuid/              # UUID utilities
+│   ├── infrastructure/         # ⚠️ Infrastructure layer (45% complete)
+│   │   ├── eventstore/        # ✅ MongoDB Event Store (production ready)
+│   │   ├── mongodb/           # ✅ MongoDB connection setup
+│   │   ├── repository/        # ⚠️ MongoDB repositories (5 из 6 готовы)
+│   │   │   └── mongodb/       # Chat, User, Workspace, Message, Notification
+│   │   ├── redis/             # ✅ Redis client setup
+│   │   ├── eventbus/          # ❌ Event Bus (требуется)
+│   │   ├── keycloak/          # ❌ Keycloak client (требуется)
+│   │   └── websocket/         # ❌ WebSocket server (требуется)
+│   ├── handler/                # ❌ Interface layer (требуется)
+│   │   ├── http/              # HTTP handlers (planned)
+│   │   └── websocket/         # WebSocket handlers (planned)
+│   ├── middleware/             # ❌ Middleware (требуется)
+│   └── config/                 # ✅ Configuration management
+├── tests/                       # ✅ Testing infrastructure (90% complete)
+│   ├── testutil/              # MongoDB/Redis test helpers
+│   ├── mocks/                 # Generated mocks
+│   └── fixtures/              # Test data
+├── web/                         # ❌ Frontend (требуется)
+│   ├── templates/             # HTMX templates (planned)
+│   └── static/                # CSS, JS (planned)
+├── configs/                     # ✅ Configuration files
+│   ├── config.yaml            # Main config
+│   ├── config.dev.yaml        # Development overrides
+│   └── config.prod.yaml       # Production overrides
+├── docs/                        # ✅ Documentation (обновлена 2024-12-31)
+│   ├── STATUS.md              # Текущий статус проекта
+│   ├── DEVELOPMENT_ROADMAP_2025.md  # Детальный roadmap
+│   ├── JANUARY_2025_PLAN.md   # План на январь
+│   ├── roadmap/               # Фазы разработки по неделям
+│   └── tasks/                 # Детальные задачи
+└── docker-compose.yml          # ✅ Development infrastructure
 │   ├── domain/                 # ✅ Domain layer (event-sourced aggregates)
 │   │   ├── chat/              # Chat aggregate + 10 events
 │   │   ├── message/           # Message aggregate + 6 events
