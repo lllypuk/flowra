@@ -722,54 +722,54 @@ db.messages.createIndex({ "chat_id": 1, "is_deleted": 1, "created_at": -1 })
 
 ### Phase 1: Domain layer
 
-- [ ] Проверить существование функции `Restore` в `message.go`
-- [ ] Добавить `Restore` если отсутствует
-- [ ] Добавить `RestoreAttachment` если отсутствует
-- [ ] Добавить `RestoreReaction` если отсутствует
-- [ ] Проверить наличие всех необходимых getters
+- [x] Проверить существование функции `Restore` в `message.go`
+- [x] Добавить `Restore` если отсутствует
+- [x] Добавить `RestoreAttachment` если отсутствует
+- [x] Добавить `RestoreReaction` если отсутствует
+- [x] Проверить наличие всех необходимых getters
 
 ### Phase 2: Document structures
 
-- [ ] Проверить/создать `messageDocument` структуру
-- [ ] Проверить/создать `attachmentDocument` структуру
-- [ ] Проверить/создать `reactionDocument` структуру
+- [x] Проверить/создать `messageDocument` структуру
+- [x] Проверить/создать `attachmentDocument` структуру
+- [x] Проверить/создать `reactionDocument` структуру
 
 ### Phase 3: Core methods
 
-- [ ] Реализовать/исправить `documentToMessage`
-- [ ] Реализовать/исправить `messageToDocument`
-- [ ] Проверить метод `Save`
-- [ ] Проверить метод `FindByID`
-- [ ] Проверить метод `FindByChatID`
+- [x] Реализовать/исправить `documentToMessage`
+- [x] Реализовать/исправить `messageToDocument`
+- [x] Проверить метод `Save`
+- [x] Проверить метод `FindByID`
+- [x] Проверить метод `FindByChatID`
 
 ### Phase 4: Thread methods
 
-- [ ] Добавить/проверить метод `FindThread`
-- [ ] Добавить метод `CountThreadReplies`
+- [x] Добавить/проверить метод `FindThread`
+- [x] Добавить метод `CountThreadReplies`
 
 ### Phase 5: Reaction methods
 
-- [ ] Добавить метод `AddReaction`
-- [ ] Добавить метод `RemoveReaction`
-- [ ] Добавить метод `GetReactionUsers`
+- [x] Добавить метод `AddReaction`
+- [x] Добавить метод `RemoveReaction`
+- [x] Добавить метод `GetReactionUsers`
 
 ### Phase 6: Search methods
 
-- [ ] Добавить метод `SearchInChat`
-- [ ] Добавить метод `FindByAuthor`
+- [x] Добавить метод `SearchInChat`
+- [x] Добавить метод `FindByAuthor`
 
 ### Phase 7: Interface update
 
-- [ ] Обновить `QueryRepository` интерфейс с новыми методами
-- [ ] Убедиться, что `MongoMessageRepository` реализует все методы
+- [x] Обновить `QueryRepository` интерфейс с новыми методами
+- [x] Убедиться, что `MongoMessageRepository` реализует все методы
 
 ### Phase 8: Тестирование
 
-- [ ] Добавить тест `Save_And_FindByID`
-- [ ] Добавить тест `FindThread`
-- [ ] Добавить тест `AddReaction`
-- [ ] Добавить тест `SearchInChat`
-- [ ] Проверить, что все существующие тесты проходят
+- [x] Добавить тест `Save_And_FindByID`
+- [x] Добавить тест `FindThread`
+- [x] Добавить тест `AddReaction`
+- [x] Добавить тест `SearchInChat`
+- [x] Проверить, что все существующие тесты проходят
 
 ## Следующие шаги
 

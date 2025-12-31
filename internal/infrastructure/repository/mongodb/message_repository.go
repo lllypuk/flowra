@@ -3,6 +3,7 @@ package mongodb
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -183,6 +184,247 @@ func (r *MongoMessageRepository) Delete(ctx context.Context, id uuid.UUID) error
 	}
 
 	return nil
+}
+
+// CountThreadReplies возвращает количество ответов в треде
+func (r *MongoMessageRepository) CountThreadReplies(
+	ctx context.Context,
+	parentMessageID uuid.UUID,
+) (int, error) {
+	if parentMessageID.IsZero() {
+		return 0, errs.ErrInvalidInput
+	}
+
+	filter := bson.M{
+		"parent_id":  parentMessageID.String(),
+		"is_deleted": false,
+	}
+
+	count, err := r.collection.CountDocuments(ctx, filter)
+	if err != nil {
+		return 0, HandleMongoError(err, "messages")
+	}
+
+	return int(count), nil
+}
+
+// AddReaction добавляет реакцию к сообщению
+func (r *MongoMessageRepository) AddReaction(
+	ctx context.Context,
+	messageID uuid.UUID,
+	emojiCode string,
+	userID uuid.UUID,
+) error {
+	if messageID.IsZero() || emojiCode == "" || userID.IsZero() {
+		return errs.ErrInvalidInput
+	}
+
+	reaction := reactionDocument{
+		UserID:    userID.String(),
+		EmojiCode: emojiCode,
+		AddedAt:   time.Now().UTC(),
+	}
+
+	filter := bson.M{"message_id": messageID.String()}
+	update := bson.M{
+		"$push": bson.M{"reactions": reaction},
+	}
+
+	result, err := r.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return HandleMongoError(err, "message")
+	}
+
+	if result.MatchedCount == 0 {
+		return errs.ErrNotFound
+	}
+
+	return nil
+}
+
+// RemoveReaction удаляет реакцию с сообщения
+func (r *MongoMessageRepository) RemoveReaction(
+	ctx context.Context,
+	messageID uuid.UUID,
+	emojiCode string,
+	userID uuid.UUID,
+) error {
+	if messageID.IsZero() || emojiCode == "" || userID.IsZero() {
+		return errs.ErrInvalidInput
+	}
+
+	filter := bson.M{"message_id": messageID.String()}
+	update := bson.M{
+		"$pull": bson.M{
+			"reactions": bson.M{
+				"emoji_code": emojiCode,
+				"user_id":    userID.String(),
+			},
+		},
+	}
+
+	result, err := r.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return HandleMongoError(err, "message")
+	}
+
+	if result.MatchedCount == 0 {
+		return errs.ErrNotFound
+	}
+
+	return nil
+}
+
+// GetReactionUsers возвращает пользователей, поставивших определенную реакцию
+func (r *MongoMessageRepository) GetReactionUsers(
+	ctx context.Context,
+	messageID uuid.UUID,
+	emojiCode string,
+) ([]uuid.UUID, error) {
+	if messageID.IsZero() || emojiCode == "" {
+		return nil, errs.ErrInvalidInput
+	}
+
+	filter := bson.M{"message_id": messageID.String()}
+	var doc messageDocument
+	err := r.collection.FindOne(ctx, filter).Decode(&doc)
+	if err != nil {
+		return nil, HandleMongoError(err, "message")
+	}
+
+	var userIDs []uuid.UUID
+	for _, reaction := range doc.Reactions {
+		if reaction.EmojiCode == emojiCode {
+			userID, parseErr := uuid.ParseUUID(reaction.UserID)
+			if parseErr == nil {
+				userIDs = append(userIDs, userID)
+			}
+		}
+	}
+
+	if userIDs == nil {
+		userIDs = make([]uuid.UUID, 0)
+	}
+
+	return userIDs, nil
+}
+
+// SearchInChat ищет сообщения в чате по тексту
+func (r *MongoMessageRepository) SearchInChat(
+	ctx context.Context,
+	chatID uuid.UUID,
+	query string,
+	offset, limit int,
+) ([]*messagedomain.Message, error) {
+	if chatID.IsZero() || query == "" {
+		return nil, errs.ErrInvalidInput
+	}
+
+	limit = DefaultLimitWithMax(limit, DefaultPaginationLimit, MaxPaginationLimit)
+
+	// Escape regex special characters for safe search
+	escapedQuery := regexp.QuoteMeta(query)
+
+	filter := bson.M{
+		"chat_id":    chatID.String(),
+		"is_deleted": false,
+		"content": bson.M{
+			"$regex":   escapedQuery,
+			"$options": "i", // case-insensitive
+		},
+	}
+
+	opts := options.Find().
+		SetSort(bson.D{{Key: "created_at", Value: -1}}).
+		SetLimit(int64(limit)).
+		SetSkip(int64(offset))
+
+	cursor, err := r.collection.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, HandleMongoError(err, "messages")
+	}
+	defer cursor.Close(ctx)
+
+	var messages []*messagedomain.Message
+	for cursor.Next(ctx) {
+		var doc messageDocument
+		if decodeErr := cursor.Decode(&doc); decodeErr != nil {
+			continue
+		}
+
+		msg, docErr := r.documentToMessage(&doc)
+		if docErr != nil {
+			continue
+		}
+
+		messages = append(messages, msg)
+	}
+
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("cursor error: %w", err)
+	}
+
+	if messages == nil {
+		messages = make([]*messagedomain.Message, 0)
+	}
+
+	return messages, nil
+}
+
+// FindByAuthor находит сообщения автора в чате
+func (r *MongoMessageRepository) FindByAuthor(
+	ctx context.Context,
+	chatID uuid.UUID,
+	authorID uuid.UUID,
+	offset, limit int,
+) ([]*messagedomain.Message, error) {
+	if chatID.IsZero() || authorID.IsZero() {
+		return nil, errs.ErrInvalidInput
+	}
+
+	limit = DefaultLimitWithMax(limit, DefaultPaginationLimit, MaxPaginationLimit)
+
+	filter := bson.M{
+		"chat_id":    chatID.String(),
+		"sent_by":    authorID.String(),
+		"is_deleted": false,
+	}
+
+	opts := options.Find().
+		SetSort(bson.D{{Key: "created_at", Value: -1}}).
+		SetLimit(int64(limit)).
+		SetSkip(int64(offset))
+
+	cursor, err := r.collection.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, HandleMongoError(err, "messages")
+	}
+	defer cursor.Close(ctx)
+
+	var messages []*messagedomain.Message
+	for cursor.Next(ctx) {
+		var doc messageDocument
+		if decodeErr := cursor.Decode(&doc); decodeErr != nil {
+			continue
+		}
+
+		msg, docErr := r.documentToMessage(&doc)
+		if docErr != nil {
+			continue
+		}
+
+		messages = append(messages, msg)
+	}
+
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("cursor error: %w", err)
+	}
+
+	if messages == nil {
+		messages = make([]*messagedomain.Message, 0)
+	}
+
+	return messages, nil
 }
 
 // messageDocument представляет структуру документа в MongoDB
