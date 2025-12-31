@@ -22,7 +22,7 @@ func SetupTestDatabase(t *testing.T) *mongo.Database {
 	}
 
 	ctx := context.Background()
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURI))
+	client, err := mongo.Connect(options.Client().ApplyURI(mongoURI))
 	if err != nil {
 		t.Fatalf("Failed to connect to test database: %v", err)
 	}
