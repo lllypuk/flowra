@@ -2,7 +2,7 @@
 
 **Приоритет:** 🟡 High  
 **Дни:** 4-5 января  
-**Статус:** ⏳ Не начато
+**Статус:** ✅ Выполнено
 
 ---
 
@@ -23,14 +23,19 @@
 ## Файлы
 
 ```
-internal/infrastructure/http/
-├── server.go               (~150 LOC)
-└── response.go             (~100 LOC)
+internal/infrastructure/httpserver/
+├── server.go               (~155 LOC)
+├── server_test.go          (~310 LOC)
+├── response.go             (~124 LOC)
+└── response_test.go        (~229 LOC)
 
 internal/middleware/
-├── cors.go                 (~50 LOC)
-├── logging.go              (~100 LOC)
-└── recovery.go             (~80 LOC)
+├── cors.go                 (~82 LOC)
+├── cors_test.go            (~282 LOC)
+├── logging.go              (~147 LOC)
+├── logging_test.go         (~496 LOC)
+├── recovery.go             (~112 LOC)
+└── recovery_test.go        (~408 LOC)
 ```
 
 ---
@@ -70,12 +75,12 @@ internal/middleware/
 
 ## Критерии приёмки
 
-- [ ] Echo server запускается на указанном порту
-- [ ] CORS middleware настроен и работает
-- [ ] Logging middleware логирует requests/responses
-- [ ] Recovery middleware перехватывает panic
-- [ ] Response helpers создают консистентные ответы
-- [ ] Unit tests для middleware
+- [x] Echo server запускается на указанном порту
+- [x] CORS middleware настроен и работает
+- [x] Logging middleware логирует requests/responses
+- [x] Recovery middleware перехватывает panic
+- [x] Response helpers создают консистентные ответы
+- [x] Unit tests для middleware
 
 ---
 
