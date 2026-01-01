@@ -21,6 +21,15 @@ type Error struct {
 	Message string `json:"message"`
 }
 
+// HTTPError interface allows application errors to define their HTTP representation.
+// Errors implementing this interface will be automatically mapped to proper HTTP responses.
+type HTTPError interface {
+	error
+	HTTPStatus() int
+	HTTPCode() string
+	HTTPMessage() string
+}
+
 // RespondJSON sends a successful JSON response.
 func RespondJSON(c echo.Context, code int, data any) error {
 	return c.JSON(code, Response{
@@ -66,6 +75,16 @@ func RespondErrorWithCode(c echo.Context, code int, errorCode, message string) e
 
 // mapError maps domain errors to HTTP status codes and API errors.
 func mapError(err error) (int, *Error) {
+	// First, check if the error implements HTTPError interface
+	var httpErr HTTPError
+	if errors.As(err, &httpErr) {
+		return httpErr.HTTPStatus(), &Error{
+			Code:    httpErr.HTTPCode(),
+			Message: httpErr.HTTPMessage(),
+		}
+	}
+
+	// Fall back to domain error mapping
 	switch {
 	case errors.Is(err, errs.ErrNotFound):
 		return http.StatusNotFound, &Error{

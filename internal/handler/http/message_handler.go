@@ -159,7 +159,7 @@ func (h *MessageHandler) Send(c echo.Context) error {
 
 	result, err := h.messageService.SendMessage(c.Request().Context(), cmd)
 	if err != nil {
-		return handleMessageError(c, err)
+		return httpserver.RespondError(c, err)
 	}
 
 	resp := ToMessageResponse(result.Value)
@@ -192,7 +192,7 @@ func (h *MessageHandler) List(c echo.Context) error {
 
 	result, err := h.messageService.ListMessages(c.Request().Context(), query)
 	if err != nil {
-		return handleMessageError(c, err)
+		return httpserver.RespondError(c, err)
 	}
 
 	// Build response
@@ -256,7 +256,7 @@ func (h *MessageHandler) Edit(c echo.Context) error {
 
 	result, err := h.messageService.EditMessage(c.Request().Context(), cmd)
 	if err != nil {
-		return handleMessageError(c, err)
+		return httpserver.RespondError(c, err)
 	}
 
 	resp := ToMessageResponse(result.Value)
@@ -285,7 +285,7 @@ func (h *MessageHandler) Delete(c echo.Context) error {
 
 	_, deleteErr := h.messageService.DeleteMessage(c.Request().Context(), cmd)
 	if deleteErr != nil {
-		return handleMessageError(c, deleteErr)
+		return httpserver.RespondError(c, deleteErr)
 	}
 
 	return httpserver.RespondNoContent(c)
@@ -336,36 +336,6 @@ func parseMessagePagination(c echo.Context) (int, int) {
 	// The cursor is handled in the service layer
 
 	return limit, offset
-}
-
-func handleMessageError(c echo.Context, err error) error {
-	switch {
-	case errors.Is(err, messageapp.ErrMessageNotFound):
-		return httpserver.RespondErrorWithCode(c, http.StatusNotFound, "MESSAGE_NOT_FOUND", "message not found")
-	case errors.Is(err, messageapp.ErrChatNotFound):
-		return httpserver.RespondErrorWithCode(c, http.StatusNotFound, "CHAT_NOT_FOUND", "chat not found")
-	case errors.Is(err, messageapp.ErrNotChatParticipant):
-		return httpserver.RespondErrorWithCode(
-			c, http.StatusForbidden, "NOT_PARTICIPANT", "not a participant of this chat")
-	case errors.Is(err, messageapp.ErrNotAuthor):
-		return httpserver.RespondErrorWithCode(c, http.StatusForbidden, "NOT_AUTHOR", "only message author can edit")
-	case errors.Is(err, messageapp.ErrMessageDeleted):
-		return httpserver.RespondErrorWithCode(c, http.StatusGone, "MESSAGE_DELETED", "message is deleted")
-	case errors.Is(err, messageapp.ErrEmptyContent):
-		return httpserver.RespondErrorWithCode(
-			c, http.StatusBadRequest, "EMPTY_CONTENT", "message content cannot be empty")
-	case errors.Is(err, messageapp.ErrContentTooLong):
-		return httpserver.RespondErrorWithCode(
-			c, http.StatusBadRequest, "CONTENT_TOO_LONG", "message content is too long")
-	case errors.Is(err, messageapp.ErrParentNotFound):
-		return httpserver.RespondErrorWithCode(
-			c, http.StatusBadRequest, "PARENT_NOT_FOUND", "parent message not found")
-	case errors.Is(err, messageapp.ErrParentInDifferentChat):
-		return httpserver.RespondErrorWithCode(
-			c, http.StatusBadRequest, "PARENT_DIFFERENT_CHAT", "parent message is from different chat")
-	default:
-		return httpserver.RespondError(c, err)
-	}
 }
 
 // ToMessageResponse converts a domain Message to MessageResponse.

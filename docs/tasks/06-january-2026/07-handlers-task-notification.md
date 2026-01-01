@@ -1,7 +1,7 @@
 # 07: Task & Notification Handlers
 
 **Приоритет:** 🟡 High  
-**Статус:** ⏳ Не начато  
+**Статус:** ✅ Выполнено  
 **Дни:** 15-17 января  
 **Зависит от:** [04-middleware.md](04-middleware.md)
 
@@ -17,12 +17,12 @@
 
 ```
 internal/handler/http/
-├── task_handler.go         (~400 LOC)
-├── task_handler_test.go    (~300 LOC)
-├── notification_handler.go (~250 LOC)
-├── notification_handler_test.go (~200 LOC)
-├── user_handler.go         (~200 LOC)
-└── user_handler_test.go    (~150 LOC)
+├── task_handler.go         (959 LOC)
+├── task_handler_test.go    (856 LOC)
+├── notification_handler.go (497 LOC)
+├── notification_handler_test.go (631 LOC)
+├── user_handler.go         (314 LOC)
+└── user_handler_test.go    (469 LOC)
 ```
 
 ---
@@ -204,35 +204,35 @@ type UpdateProfileRequest struct {
 ## Критерии приёмки
 
 ### Task Handler
-- [ ] POST `/workspaces/:workspace_id/tasks` создаёт задачу
-- [ ] GET `/workspaces/:workspace_id/tasks` возвращает список с фильтрацией
-- [ ] GET `/tasks/:id` возвращает задачу
-- [ ] PUT `/tasks/:id/status` меняет статус
-- [ ] PUT `/tasks/:id/assign` назначает исполнителя
-- [ ] PUT `/tasks/:id/priority` меняет приоритет
-- [ ] PUT `/tasks/:id/due-date` устанавливает срок
-- [ ] DELETE `/tasks/:id` удаляет задачу
-- [ ] Валидация входных данных работает
-- [ ] Пагинация и сортировка работают
-- [ ] Authorization проверяется
+- [x] POST `/workspaces/:workspace_id/tasks` создаёт задачу
+- [x] GET `/workspaces/:workspace_id/tasks` возвращает список с фильтрацией
+- [x] GET `/tasks/:id` возвращает задачу
+- [x] PUT `/tasks/:id/status` меняет статус
+- [x] PUT `/tasks/:id/assign` назначает исполнителя
+- [x] PUT `/tasks/:id/priority` меняет приоритет
+- [x] PUT `/tasks/:id/due-date` устанавливает срок
+- [x] DELETE `/tasks/:id` удаляет задачу
+- [x] Валидация входных данных работает
+- [x] Пагинация и сортировка работают
+- [x] Authorization проверяется
 
 ### Notification Handler
-- [ ] GET `/notifications` возвращает список
-- [ ] GET `/notifications/unread/count` возвращает количество
-- [ ] PUT `/notifications/:id/read` помечает как прочитанное
-- [ ] PUT `/notifications/mark-all-read` помечает все
-- [ ] DELETE `/notifications/:id` удаляет уведомление
+- [x] GET `/notifications` возвращает список
+- [x] GET `/notifications/unread/count` возвращает количество
+- [x] PUT `/notifications/:id/read` помечает как прочитанное
+- [x] PUT `/notifications/mark-all-read` помечает все
+- [x] DELETE `/notifications/:id` удаляет уведомление
 
 ### User Handler
-- [ ] GET `/users/me` возвращает текущего пользователя
-- [ ] PUT `/users/me` обновляет профиль
-- [ ] GET `/users/:id` возвращает пользователя
+- [x] GET `/users/me` возвращает текущего пользователя
+- [x] PUT `/users/me` обновляет профиль
+- [x] GET `/users/:id` возвращает пользователя
 
 ### Общее
-- [ ] Unit tests для всех handlers
-- [ ] Integration tests с mock use cases
-- [ ] Error handling корректен
-- [ ] HTTP статусы соответствуют REST conventions
+- [x] Unit tests для всех handlers
+- [x] Integration tests с mock use cases
+- [x] Error handling корректен
+- [x] HTTP статусы соответствуют REST conventions
 
 ---
 
@@ -259,4 +259,5 @@ type UpdateProfileRequest struct {
 
 ---
 
-*Создано: 2026-01-01*
+*Создано: 2026-01-01*  
+*Выполнено: 2026-01-17*
