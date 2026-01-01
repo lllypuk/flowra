@@ -1,7 +1,7 @@
 # Задача 08: WebSocket Server
 
 **Приоритет:** 🟡 High  
-**Статус:** ⏳ Не начато  
+**Статус:** ✅ Выполнено  
 **Дни:** 18-21 января  
 **Зависит от:** [01-event-bus.md](01-event-bus.md), [04-middleware.md](04-middleware.md)
 
@@ -17,15 +17,16 @@
 
 ```
 internal/infrastructure/websocket/
-├── hub.go                  (~300 LOC)
-├── client.go               (~250 LOC)
-├── broadcaster.go          (~200 LOC)
-├── hub_test.go             (~200 LOC)
-└── client_test.go          (~150 LOC)
+├── hub.go                  (~370 LOC)
+├── client.go               (~360 LOC)
+├── broadcaster.go          (~335 LOC)
+├── hub_test.go             (~510 LOC)
+├── client_test.go          (~460 LOC)
+└── broadcaster_test.go     (~475 LOC)
 
 internal/handler/websocket/
-├── handler.go              (~150 LOC)
-└── handler_test.go         (~100 LOC)
+├── handler.go              (~220 LOC)
+└── handler_test.go         (~330 LOC)
 ```
 
 ---
@@ -188,53 +189,53 @@ func (h *Handler) HandleWebSocket(c echo.Context) error
 
 ## Критерии приёмки
 
-- [ ] WebSocket connections работают
-- [ ] Hub корректно управляет клиентами
-- [ ] Subscribe/unsubscribe на чаты работает
-- [ ] Events broadcast через WebSocket
-- [ ] Broadcaster слушает Event Bus
-- [ ] Фильтрация событий по chat membership
-- [ ] Graceful disconnect
-- [ ] Heartbeat/ping-pong для keepalive
-- [ ] Integration tests проходят
+- [x] WebSocket connections работают
+- [x] Hub корректно управляет клиентами
+- [x] Subscribe/unsubscribe на чаты работает
+- [x] Events broadcast через WebSocket
+- [x] Broadcaster слушает Event Bus
+- [x] Фильтрация событий по chat membership
+- [x] Graceful disconnect
+- [x] Heartbeat/ping-pong для keepalive
+- [x] Integration tests проходят
 
 ---
 
 ## Чеклист
 
 ### Hub
-- [ ] Создать `hub.go`
-- [ ] Реализовать регистрацию/дерегистрацию клиентов
-- [ ] Реализовать chat rooms
-- [ ] Реализовать broadcast по чатам
-- [ ] Реализовать отправку конкретному пользователю
-- [ ] Thread-safe операции с mutex
+- [x] Создать `hub.go`
+- [x] Реализовать регистрацию/дерегистрацию клиентов
+- [x] Реализовать chat rooms
+- [x] Реализовать broadcast по чатам
+- [x] Реализовать отправку конкретному пользователю
+- [x] Thread-safe операции с mutex
 
 ### Client
-- [ ] Создать `client.go`
-- [ ] Реализовать ReadPump с parsing команд
-- [ ] Реализовать WritePump с buffered channel
-- [ ] Ping/pong для keepalive
-- [ ] Graceful close
+- [x] Создать `client.go`
+- [x] Реализовать ReadPump с parsing команд
+- [x] Реализовать WritePump с buffered channel
+- [x] Ping/pong для keepalive
+- [x] Graceful close
 
 ### Broadcaster
-- [ ] Создать `broadcaster.go`
-- [ ] Подписаться на события из Event Bus
-- [ ] Преобразование domain events → WebSocket messages
-- [ ] Роутинг сообщений в правильные chat rooms
+- [x] Создать `broadcaster.go`
+- [x] Подписаться на события из Event Bus
+- [x] Преобразование domain events → WebSocket messages
+- [x] Роутинг сообщений в правильные chat rooms
 
 ### Handler
-- [ ] Создать `handler.go`
-- [ ] WebSocket upgrade
-- [ ] JWT validation
-- [ ] Регистрация клиента в Hub
+- [x] Создать `handler.go`
+- [x] WebSocket upgrade
+- [x] JWT validation
+- [x] Регистрация клиента в Hub
 
 ### Тестирование
-- [ ] Unit tests для Hub
-- [ ] Unit tests для Client
-- [ ] Integration test для WebSocket flow
-- [ ] Test multiple clients in same chat
-- [ ] Test broadcast delivery
+- [x] Unit tests для Hub
+- [x] Unit tests для Client
+- [x] Integration test для WebSocket flow
+- [x] Test multiple clients in same chat
+- [x] Test broadcast delivery
 
 ---
 
@@ -278,4 +279,5 @@ websocket:
 
 ---
 
-*Создано: 2026-01-01*
+*Создано: 2026-01-01*  
+*Выполнено: 2026-01-21*
