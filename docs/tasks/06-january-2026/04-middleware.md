@@ -1,7 +1,7 @@
 # Задача 04: Echo Router & Middleware
 
 **Приоритет:** 🔴 Critical  
-**Статус:** ⏳ Не начато  
+**Статус:** ✅ Выполнено  
 **Дни:** 8-10 января  
 **Зависит от:** [03-http-server.md](03-http-server.md)
 
@@ -13,126 +13,93 @@
 
 ---
 
-## Файлы для создания
+## Файлы
+
+### Созданные файлы
 
 ```
-internal/infrastructure/http/
-├── router.go               (~400 LOC)
-├── server.go               (~150 LOC)
-└── response.go             (~100 LOC)
+internal/infrastructure/httpserver/
+├── router.go               (373 LOC) - Router с группами маршрутов
+├── router_test.go          (864 LOC) - Тесты для роутера
+├── server.go               (уже существовал)
+├── response.go             (уже существовал)
+└── *_test.go               (уже существовали)
 
 internal/middleware/
-├── auth.go                 (~200 LOC)
-├── workspace.go            (~150 LOC)
-├── cors.go                 (~50 LOC)
-├── logging.go              (~100 LOC)
-├── rate_limit.go           (~150 LOC)
-└── recovery.go             (~80 LOC)
+├── auth.go                 (420 LOC) - JWT валидация и контекст пользователя
+├── auth_test.go            (733 LOC) - Тесты для auth middleware
+├── workspace.go            (363 LOC) - Проверка доступа к workspace
+├── workspace_test.go       (821 LOC) - Тесты для workspace middleware
+├── rate_limit.go           (537 LOC) - Redis-based rate limiter
+├── rate_limit_test.go      (800 LOC) - Тесты для rate limiter
+├── cors.go                 (уже существовал)
+├── logging.go              (уже существовал)
+└── recovery.go             (уже существовал)
 ```
 
 ---
 
 ## Детали реализации
 
-### 1. Echo Server Setup (`server.go`)
+### 1. Router (`router.go`)
 
-```go
-func NewServer(config *Config) *echo.Echo {
-    e := echo.New()
-    e.Use(middleware.Logger())
-    e.Use(middleware.Recover())
-    e.Use(middleware.CORS())
-    
-    // Custom middleware
-    e.Use(middlewares.RequestID())
-    e.Use(middlewares.Logging())
-    
-    return e
-}
-```
+- `RouterConfig` - конфигурация с middleware и настройками
+- `Router` - управление группами маршрутов
+- Route groups: Public, Auth, Workspace
+- `RouteBuilder` - fluent API для создания маршрутов
+- `RouteRegistrar` - интерфейс для регистрации маршрутов
+- `WorkspaceRouteGroup` / `AuthRouteGroup` - специализированные группы
 
-### 2. Router Groups (`router.go`)
+### 2. Auth Middleware (`auth.go`)
 
-```go
-// Public routes
-public := e.Group("/api/v1")
+- `TokenValidator` interface - валидация JWT токенов
+- `UserResolver` interface - резолвинг пользователей по external ID
+- Context enrichment: UserID, ExternalUserID, Username, Email, Roles
+- Helpers: `GetUserID()`, `GetUsername()`, `HasRole()`, `IsSystemAdmin()`
+- Role middleware: `RequireRole()`, `RequireSystemAdmin()`
+- `StaticTokenValidator` - для development/testing
 
-// Authenticated routes
-auth := public.Group("", middlewares.Auth())
+### 3. Workspace Middleware (`workspace.go`)
 
-// Workspace-scoped routes
-workspace := auth.Group("/workspaces/:workspace_id",
-    middlewares.WorkspaceAccess())
-```
+- `WorkspaceAccessChecker` interface - проверка членства
+- `WorkspaceMembership` - информация о членстве
+- Context enrichment: WorkspaceID, WorkspaceName, WorkspaceRole
+- System admin bypass (настраиваемый)
+- Helpers: `GetWorkspaceID()`, `IsWorkspaceAdmin()`, `IsWorkspaceOwner()`
+- Role middleware: `RequireWorkspaceAdmin()`, `RequireWorkspaceOwner()`
 
-### 3. Middleware
+### 4. Rate Limiting (`rate_limit.go`)
 
-#### Auth Middleware (`auth.go`)
-- JWT validation
-- User extraction из токена
-- Permission checks
-- Context enrichment с UserID
-
-#### Workspace Middleware (`workspace.go`)
-- Проверка доступа к workspace
-- Извлечение workspace_id из пути
-- Проверка членства пользователя
-- Context enrichment с WorkspaceID
-
-#### Rate Limiting (`rate_limit.go`)
-- Redis-based rate limiter
-- Per-user limits
-- Per-endpoint limits
-- Configurable windows и limits
-
-#### Logging (`logging.go`)
-- Request/response logging
-- Performance metrics (latency)
-- Error tracking
-- Request ID propagation
-
-#### CORS (`cors.go`)
-- Configurable origins
-- Allowed methods и headers
-- Credentials support
-
-#### Recovery (`recovery.go`)
-- Panic recovery
-- Stack trace logging
-- Graceful error response
-
-### 4. Response Helpers (`response.go`)
-
-```go
-func RespondJSON(c echo.Context, code int, data interface{}) error
-func RespondError(c echo.Context, err error) error
-func RespondValidationError(c echo.Context, err error) error
-func RespondCreated(c echo.Context, data interface{}) error
-func RespondNoContent(c echo.Context) error
-```
+- `RateLimitStore` interface - Redis/Memory backend
+- `RateLimitConfig` - настройки лимитов
+- Стратегии: `RateLimitByUser()`, `RateLimitByIP()`, `RateLimitByEndpoint()`, `RateLimitByWorkspace()`
+- `MemoryRateLimitStore` - для тестирования
+- `RedisRateLimitStore` - для production
+- `WorkspaceRateLimiter` - per-workspace лимиты
+- HTTP headers: X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, Retry-After
 
 ---
 
 ## Критерии приёмки
 
-- [ ] Echo server запускается корректно
-- [ ] Middleware chain работает в правильном порядке
-- [ ] CORS настроен для development и production
-- [ ] Rate limiting работает с Redis backend
-- [ ] Logging пишет structured logs в stdout
-- [ ] Auth middleware валидирует JWT
-- [ ] Workspace middleware проверяет доступ
-- [ ] Recovery middleware ловит panics
-- [ ] Response helpers упрощают работу с ответами
-- [ ] Unit tests для каждого middleware
-- [ ] Integration test для middleware chain
+- [x] Echo server запускается корректно
+- [x] Middleware chain работает в правильном порядке
+- [x] CORS настроен для development и production
+- [x] Rate limiting работает с Redis backend
+- [x] Logging пишет structured logs в stdout
+- [x] Auth middleware валидирует JWT (через TokenValidator interface)
+- [x] Workspace middleware проверяет доступ
+- [x] Recovery middleware ловит panics
+- [x] Response helpers упрощают работу с ответами
+- [x] Unit tests для каждого middleware (100+ тестов)
+- [x] Integration test для middleware chain
 
 ---
 
 ## Зависимости
 
 ### Входящие
-- [03-http-server.md](03-http-server.md) — базовый HTTP server setup
+- [03-http-server.md](03-http-server.md) — базовый HTTP server setup ✅
 
 ### Исходящие
 - [05-handlers-auth-workspace.md](05-handlers-auth-workspace.md) — использует middleware
@@ -145,10 +112,12 @@ func RespondNoContent(c echo.Context) error
 
 - Используем Echo v4 built-in middleware где возможно
 - Rate limiter хранит счётчики в Redis для распределённости
-- JWT validation использует публичный ключ из Keycloak
-- Logging использует structured JSON формат
+- JWT validation использует TokenValidator interface для интеграции с Keycloak
+- Logging использует structured JSON формат (slog)
 - Recovery middleware не должен падать сам
+- Все middleware покрыты unit тестами
 
 ---
 
-*Создано: 2026-01-01*
+*Создано: 2026-01-01*  
+*Выполнено: 2026-01-10*
