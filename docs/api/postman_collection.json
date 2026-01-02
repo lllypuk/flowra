@@ -1,0 +1,1563 @@
+{
+  "info": {
+    "_postman_id": "flowra-api-collection-2026",
+    "name": "Flowra API",
+    "description": "Complete API collection for Flowra - Chat System with Task Management.\n\n## Setup\n\n1. Import this collection into Postman\n2. Import the environment file or create variables:\n   - `base_url`: http://localhost:8080/api/v1\n   - `access_token`: Your JWT token\n   - `workspace_id`: Active workspace ID\n   - `chat_id`: Active chat ID\n\n## Authentication\n\nMost endpoints require authentication. Use the Login endpoint to get tokens, then set the `access_token` variable.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080/api/v1",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "description": "Authentication and session management endpoints",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.data) {",
+                  "        pm.environment.set('access_token', jsonData.data.access_token);",
+                  "        pm.environment.set('refresh_token', jsonData.data.refresh_token);",
+                  "        pm.environment.set('user_id', jsonData.data.user.id);",
+                  "    }",
+                  "}",
+                  "",
+                  "pm.test('Login successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has access token', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('access_token');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"code\": \"{{oauth_code}}\",\n    \"redirect_uri\": \"http://localhost:8080/callback\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Login with OAuth authorization code from Keycloak"
+          }
+        },
+        {
+          "name": "Logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Logout successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    pm.environment.unset('access_token');",
+                  "    pm.environment.unset('refresh_token');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Logout current session and invalidate tokens"
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.data) {",
+                  "        pm.environment.set('access_token', jsonData.data.access_token);",
+                  "        pm.environment.set('refresh_token', jsonData.data.refresh_token);",
+                  "    }",
+                  "}",
+                  "",
+                  "pm.test('Token refreshed', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"refresh_token\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Refresh access token using refresh token"
+          }
+        },
+        {
+          "name": "Get Current User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Get current user successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has user data', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('id');",
+                  "    pm.expect(jsonData.data).to.have.property('email');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "me"]
+            },
+            "description": "Get current authenticated user info"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "description": "User profile management",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Get profile successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/users/me",
+              "host": ["{{base_url}}"],
+              "path": ["users", "me"]
+            },
+            "description": "Get current user's full profile"
+          }
+        },
+        {
+          "name": "Update My Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Update profile successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"display_name\": \"John Doe\",\n    \"email\": \"john.doe@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/users/me",
+              "host": ["{{base_url}}"],
+              "path": ["users", "me"]
+            },
+            "description": "Update current user's profile"
+          }
+        },
+        {
+          "name": "Get User by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Get user successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/users/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["users", "{{user_id}}"]
+            },
+            "description": "Get a user by their ID"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Workspaces",
+      "description": "Workspace management and member operations",
+      "item": [
+        {
+          "name": "List Workspaces",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('List workspaces successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is array', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.workspaces).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/workspaces?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["workspaces"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "List all workspaces the user is a member of"
+          }
+        },
+        {
+          "name": "Create Workspace",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Create workspace successful', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.data && jsonData.data.id) {",
+                  "        pm.environment.set('workspace_id', jsonData.data.id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"My Team Workspace\",\n    \"description\": \"Workspace for team collaboration\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/workspaces",
+              "host": ["{{base_url}}"],
+              "path": ["workspaces"]
+            },
+            "description": "Create a new workspace"
+          }
+        },
+        {
+          "name": "Get Workspace",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Get workspace successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["workspaces", "{{workspace_id}}"]
+            },
+            "description": "Get workspace details"
+          }
+        },
+        {
+          "name": "Update Workspace",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Update workspace successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Updated Workspace Name\",\n    \"description\": \"Updated description\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["workspaces", "{{workspace_id}}"]
+            },
+            "description": "Update workspace settings"
+          }
+        },
+        {
+          "name": "Delete Workspace",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Delete workspace successful', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["workspaces", "{{workspace_id}}"]
+            },
+            "description": "Delete a workspace (owner only)"
+          }
+        },
+        {
+          "name": "Add Member",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Add member successful', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"user_id\": \"{{target_user_id}}\",\n    \"role\": \"member\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}/members",
+              "host": ["{{base_url}}"],
+              "path": ["workspaces", "{{workspace_id}}", "members"]
+            },
+            "description": "Add a member to workspace (admin only)"
+          }
+        },
+        {
+          "name": "Remove Member",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Remove member successful', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}/members/{{target_user_id}}",
+              "host": ["{{base_url}}"],
+              "path": [
+                "workspaces",
+                "{{workspace_id}}",
+                "members",
+                "{{target_user_id}}"
+              ]
+            },
+            "description": "Remove a member from workspace (admin only)"
+          }
+        },
+        {
+          "name": "Update Member Role",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Update role successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"role\": \"admin\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}/members/{{target_user_id}}/role",
+              "host": ["{{base_url}}"],
+              "path": [
+                "workspaces",
+                "{{workspace_id}}",
+                "members",
+                "{{target_user_id}}",
+                "role"
+              ]
+            },
+            "description": "Update member role (admin only)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chats",
+      "description": "Chat rooms and participant management",
+      "item": [
+        {
+          "name": "List Chats",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('List chats successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has chats array', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.chats).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}/chats?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["workspaces", "{{workspace_id}}", "chats"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                },
+                {
+                  "key": "type",
+                  "value": "chat",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "open",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List chats in a workspace"
+          }
+        },
+        {
+          "name": "Create Chat",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Create chat successful', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.data && jsonData.data.id) {",
+                  "        pm.environment.set('chat_id', jsonData.data.id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Project Discussion\",\n    \"type\": \"chat\",\n    \"is_public\": true,\n    \"participant_ids\": []\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}/chats",
+              "host": ["{{base_url}}"],
+              "path": ["workspaces", "{{workspace_id}}", "chats"]
+            },
+            "description": "Create a new chat"
+          }
+        },
+        {
+          "name": "Get Chat",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Get chat successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}/chats/{{chat_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["workspaces", "{{workspace_id}}", "chats", "{{chat_id}}"]
+            },
+            "description": "Get chat details"
+          }
+        },
+        {
+          "name": "Update Chat",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Update chat successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Updated Chat Name\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}/chats/{{chat_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["workspaces", "{{workspace_id}}", "chats", "{{chat_id}}"]
+            },
+            "description": "Update chat settings"
+          }
+        },
+        {
+          "name": "Delete Chat",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Delete chat successful', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}/chats/{{chat_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["workspaces", "{{workspace_id}}", "chats", "{{chat_id}}"]
+            },
+            "description": "Delete a chat"
+          }
+        },
+        {
+          "name": "Add Participant",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Add participant successful', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"user_id\": \"{{target_user_id}}\",\n    \"role\": \"member\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}/chats/{{chat_id}}/participants",
+              "host": ["{{base_url}}"],
+              "path": [
+                "workspaces",
+                "{{workspace_id}}",
+                "chats",
+                "{{chat_id}}",
+                "participants"
+              ]
+            },
+            "description": "Add a participant to chat"
+          }
+        },
+        {
+          "name": "Remove Participant",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Remove participant successful', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}/chats/{{chat_id}}/participants/{{target_user_id}}",
+              "host": ["{{base_url}}"],
+              "path": [
+                "workspaces",
+                "{{workspace_id}}",
+                "chats",
+                "{{chat_id}}",
+                "participants",
+                "{{target_user_id}}"
+              ]
+            },
+            "description": "Remove a participant from chat"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Messages",
+      "description": "Message operations within chats",
+      "item": [
+        {
+          "name": "List Messages",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('List messages successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has messages array', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.messages).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}/chats/{{chat_id}}/messages?limit=50&offset=0",
+              "host": ["{{base_url}}"],
+              "path": [
+                "workspaces",
+                "{{workspace_id}}",
+                "chats",
+                "{{chat_id}}",
+                "messages"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                },
+                {
+                  "key": "before",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List messages in a chat"
+          }
+        },
+        {
+          "name": "Send Message",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Send message successful', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.data && jsonData.data.id) {",
+                  "        pm.environment.set('message_id', jsonData.data.id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"content\": \"Hello, team! Let's discuss the project.\",\n    \"reply_to_id\": null\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}/chats/{{chat_id}}/messages",
+              "host": ["{{base_url}}"],
+              "path": [
+                "workspaces",
+                "{{workspace_id}}",
+                "chats",
+                "{{chat_id}}",
+                "messages"
+              ]
+            },
+            "description": "Send a message to chat"
+          }
+        },
+        {
+          "name": "Edit Message",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Edit message successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"content\": \"Updated message content\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/messages/{{message_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["messages", "{{message_id}}"]
+            },
+            "description": "Edit a message (author only)"
+          }
+        },
+        {
+          "name": "Delete Message",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Delete message successful', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/messages/{{message_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["messages", "{{message_id}}"]
+            },
+            "description": "Delete a message"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "description": "Task management and workflow operations",
+      "item": [
+        {
+          "name": "List Tasks",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('List tasks successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has tasks array', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.tasks).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}/tasks?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["workspaces", "{{workspace_id}}", "tasks"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                },
+                {
+                  "key": "status",
+                  "value": "in_progress",
+                  "disabled": true
+                },
+                {
+                  "key": "assignee_id",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "priority",
+                  "value": "high",
+                  "disabled": true
+                },
+                {
+                  "key": "entity_type",
+                  "value": "task",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List tasks in workspace with optional filters"
+          }
+        },
+        {
+          "name": "Create Task",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Create task successful', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.data && jsonData.data.id) {",
+                  "        pm.environment.set('task_id', jsonData.data.id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Implement user authentication\",\n    \"description\": \"Add login/logout functionality with JWT tokens\",\n    \"priority\": \"high\",\n    \"assignee_id\": null,\n    \"due_date\": \"2026-02-15T00:00:00Z\",\n    \"entity_type\": \"task\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}/tasks",
+              "host": ["{{base_url}}"],
+              "path": ["workspaces", "{{workspace_id}}", "tasks"]
+            },
+            "description": "Create a new task"
+          }
+        },
+        {
+          "name": "Get Task",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Get task successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}/tasks/{{task_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["workspaces", "{{workspace_id}}", "tasks", "{{task_id}}"]
+            },
+            "description": "Get task details"
+          }
+        },
+        {
+          "name": "Change Task Status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Change status successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"status\": \"in_progress\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}/tasks/{{task_id}}/status",
+              "host": ["{{base_url}}"],
+              "path": [
+                "workspaces",
+                "{{workspace_id}}",
+                "tasks",
+                "{{task_id}}",
+                "status"
+              ]
+            },
+            "description": "Change task status (todo, in_progress, review, done, cancelled)"
+          }
+        },
+        {
+          "name": "Assign Task",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Assign task successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"assignee_id\": \"{{target_user_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}/tasks/{{task_id}}/assignee",
+              "host": ["{{base_url}}"],
+              "path": [
+                "workspaces",
+                "{{workspace_id}}",
+                "tasks",
+                "{{task_id}}",
+                "assignee"
+              ]
+            },
+            "description": "Assign task to a user"
+          }
+        },
+        {
+          "name": "Change Task Priority",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Change priority successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"priority\": \"critical\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}/tasks/{{task_id}}/priority",
+              "host": ["{{base_url}}"],
+              "path": [
+                "workspaces",
+                "{{workspace_id}}",
+                "tasks",
+                "{{task_id}}",
+                "priority"
+              ]
+            },
+            "description": "Change task priority (low, medium, high, critical)"
+          }
+        },
+        {
+          "name": "Set Task Due Date",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Set due date successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"due_date\": \"2026-02-28T23:59:59Z\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}/tasks/{{task_id}}/due-date",
+              "host": ["{{base_url}}"],
+              "path": [
+                "workspaces",
+                "{{workspace_id}}",
+                "tasks",
+                "{{task_id}}",
+                "due-date"
+              ]
+            },
+            "description": "Set or update task due date"
+          }
+        },
+        {
+          "name": "Delete Task",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Delete task successful', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}/tasks/{{task_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["workspaces", "{{workspace_id}}", "tasks", "{{task_id}}"]
+            },
+            "description": "Delete a task"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "description": "User notification management",
+      "item": [
+        {
+          "name": "List Notifications",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('List notifications successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has notifications array', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.notifications).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/notifications?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["notifications"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                },
+                {
+                  "key": "unread_only",
+                  "value": "true",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List user notifications"
+          }
+        },
+        {
+          "name": "Get Unread Count",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Get unread count successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has count', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('count');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/notifications/unread/count",
+              "host": ["{{base_url}}"],
+              "path": ["notifications", "unread", "count"]
+            },
+            "description": "Get count of unread notifications"
+          }
+        },
+        {
+          "name": "Mark Notification as Read",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Mark as read successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/notifications/{{notification_id}}/read",
+              "host": ["{{base_url}}"],
+              "path": ["notifications", "{{notification_id}}", "read"]
+            },
+            "description": "Mark a notification as read"
+          }
+        },
+        {
+          "name": "Mark All as Read",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Mark all as read successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has marked count', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('marked_count');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/notifications/mark-all-read",
+              "host": ["{{base_url}}"],
+              "path": ["notifications", "mark-all-read"]
+            },
+            "description": "Mark all notifications as read"
+          }
+        },
+        {
+          "name": "Delete Notification",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Delete notification successful', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/notifications/{{notification_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["notifications", "{{notification_id}}"]
+            },
+            "description": "Delete a notification"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "description": "Health check endpoints",
+      "item": [
+        {
+          "name": "Health Check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Health check successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Status is healthy', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.eql('healthy');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["health"]
+            },
+            "description": "Liveness probe"
+          }
+        },
+        {
+          "name": "Readiness Check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Readiness check successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Status is ready', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.eql('ready');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/ready",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["ready"]
+            },
+            "description": "Readiness probe"
+          }
+        }
+      ]
+    }
+  ]
+}

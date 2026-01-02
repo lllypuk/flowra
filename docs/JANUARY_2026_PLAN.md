@@ -18,14 +18,14 @@
 
 ### Ожидаемые результаты к концу января
 
-- ✅ Все MongoDB repositories работают (включая Task)
-- ✅ MongoDB indexes созданы для всех коллекций
+- ✅ Все MongoDB repositories работают (включая Task) — **ВЫПОЛНЕНО**
+- ✅ MongoDB indexes созданы для всех коллекций — **ВЫПОЛНЕНО**
 - ✅ Event Bus публикует события асинхронно
 - ✅ HTTP Infrastructure настроена (Echo, middleware)
 - ✅ Первые HTTP handlers реализованы
 - ⚠️ Entry points в разработке (cmd/api/main.go)
 
-**Прогресс к концу месяца:** ~75% от MVP
+**Прогресс к концу месяца:** ~80% от MVP (с учётом досрочно выполненных задач)
 
 ---
 
@@ -34,171 +34,49 @@
 ### Неделя 1: 1-7 января — Infrastructure Completion
 
 **Приоритет:** 🔴 КРИТИЧЕСКИЙ  
-**Цель:** Завершить все MongoDB repositories и indexes
+**Цель:** Завершить Event Bus и подготовить HTTP infrastructure
 
-#### День 1-2 (1-2 января): Task Repository
+#### ✅ ВЫПОЛНЕНО: Task Repository (до начала января)
 
-**Задача:** Реализовать Task Repository с Event Sourcing
+**Статус:** Реализован и протестирован
 
 **Файлы:**
 ```
 internal/infrastructure/repository/mongodb/
-├── task_repository.go           (новый)
-└── task_repository_test.go      (новый)
+├── task_repository.go           ✅
+└── task_repository_test.go      ✅
 ```
 
-**Детали реализации:**
-
-1. **Task Repository структура** (~300 LOC)
-   ```go
-   type MongoTaskRepository struct {
-       eventStore *eventstore.MongoEventStore
-       db         *mongo.Database
-       collection *mongo.Collection  // read model: "tasks"
-   }
-   ```
-
-2. **Методы (аналогично ChatRepository):**
-   - `Save(ctx, task)` — сохранить события + обновить read model
-   - `FindByID(ctx, id)` — загрузить из событий
-   - `List(ctx, filters)` — запрос из read model
-   - `Delete(ctx, id)` — soft delete
-
-3. **Read Model проекции:**
-   ```go
-   type taskDocument struct {
-       ID          string    `bson:"_id"`
-       WorkspaceID string    `bson:"workspace_id"`
-       ChatID      string    `bson:"chat_id"`
-       Title       string    `bson:"title"`
-       Status      string    `bson:"status"`
-       Priority    string    `bson:"priority"`
-       AssignedTo  *string   `bson:"assigned_to"`
-       DueDate     *time.Time `bson:"due_date"`
-       CreatedAt   time.Time `bson:"created_at"`
-       UpdatedAt   time.Time `bson:"updated_at"`
-       Version     int       `bson:"version"`
-   }
-   ```
-
-4. **Integration tests** (~200 LOC)
-   - Save/Load task lifecycle
-   - Event replay восстанавливает состояние
-   - Optimistic locking работает
-   - Фильтрация по workspace/status/assignee
-
-**Референс:** `chat_repository.go` (аналогичная структура)
-
-**Критерии приёмки:**
-- ✅ Task Repository реализован
-- ✅ Event Sourcing работает корректно
+**Что сделано:**
+- ✅ Task Repository с Event Sourcing
 - ✅ Read Model обновляется при Save
-- ✅ Все integration tests проходят
-- ✅ Coverage > 85%
-
-**Оценка:** 2 дня (16 часов)
+- ✅ Integration tests проходят
 
 ---
 
-#### День 3 (3 января): MongoDB Indexes
+#### ✅ ВЫПОЛНЕНО: MongoDB Indexes (до начала января)
 
-**Задача:** Создать production-ready индексы для всех коллекций
+**Статус:** Реализован и протестирован
 
 **Файлы:**
 ```
 internal/infrastructure/mongodb/
-├── indexes.go           (новый)
-└── indexes_test.go      (новый)
+├── indexes.go           ✅
+└── indexes_test.go      ✅
 ```
 
-**Детали реализации:**
-
-1. **Index Manager** (~150 LOC)
-   ```go
-   type IndexManager struct {
-       client *mongo.Client
-       db     *mongo.Database
-   }
-   
-   func (m *IndexManager) CreateAllIndexes(ctx context.Context) error
-   func (m *IndexManager) DropAllIndexes(ctx context.Context) error
-   ```
-
-2. **Индексы по коллекциям:**
-
-   **events:**
-   ```go
-   // Unique для optimistic locking
-   {aggregate_id: 1, version: 1} - unique
-   
-   // Для загрузки событий агрегата
-   {aggregate_id: 1, created_at: 1}
-   
-   // Для поиска по типу
-   {event_type: 1, created_at: -1}
-   ```
-
-   **chats (read model):**
-   ```go
-   {workspace_id: 1, type: 1, created_at: -1}
-   {workspace_id: 1, status: 1}
-   {parent_id: 1, created_at: 1}
-   {participants: 1}
-   ```
-
-   **tasks (read model):**
-   ```go
-   {workspace_id: 1, status: 1, created_at: -1}
-   {workspace_id: 1, assigned_to: 1}
-   {chat_id: 1, created_at: -1}
-   {due_date: 1, status: 1}
-   ```
-
-   **messages:**
-   ```go
-   {chat_id: 1, created_at: -1}
-   {chat_id: 1, user_id: 1}
-   {parent_id: 1, created_at: 1}  // threads
-   ```
-
-   **users:**
-   ```go
-   {email: 1} - unique
-   {username: 1} - unique
-   {keycloak_id: 1} - unique, sparse
-   ```
-
-   **workspaces:**
-   ```go
-   {keycloak_group_id: 1} - unique
-   ```
-
-   **notifications:**
-   ```go
-   {user_id: 1, read_at: 1, created_at: -1}
-   {workspace_id: 1, created_at: -1}
-   ```
-
-3. **Migration скрипт:**
-   ```go
-   // cmd/migrator/main.go
-   func runIndexMigration(ctx context.Context, db *mongo.Database) error
-   ```
-
-**Критерии приёмки:**
-- ✅ Все индексы созданы
-- ✅ Unique constraints защищают от дубликатов
-- ✅ Compound indexes покрывают частые запросы
-- ✅ Migration скрипт работает идемпотентно
+**Что сделано:**
+- ✅ Index Manager реализован
+- ✅ Все индексы созданы для всех коллекций
 - ✅ Tests проверяют создание/удаление индексов
-
-**Оценка:** 1 день (8 часов)
 
 ---
 
-#### День 4-6 (4-6 января): Event Bus Basic Implementation
+#### День 1-3 (1-3 января): Event Bus Basic Implementation
 
 **Задача:** Реализовать Redis Pub/Sub Event Bus для асинхронной обработки событий
+
+> ⏰ **Высвобожденное время:** 3 дня (Task Repository + MongoDB Indexes выполнены досрочно)
 
 **Файлы:**
 ```
@@ -276,7 +154,18 @@ internal/infrastructure/eventbus/
 
 ---
 
-#### День 7 (7 января): Code Review & Documentation
+#### День 4-5 (4-5 января): Начать HTTP Infrastructure (бонусное время)
+
+**Задача:** Используя высвобожденное время, начать работу над HTTP infrastructure раньше графика
+
+**Что можно успеть:**
+- Echo Server Setup
+- Базовые middleware (logging, recovery, CORS)
+- Response helpers
+
+---
+
+#### День 6-7 (6-7 января): Code Review & Documentation
 
 **Задачи:**
 - Code review всех изменений Week 1
@@ -285,10 +174,11 @@ internal/infrastructure/eventbus/
 - Подготовить демо для stakeholders
 
 **Deliverables Week 1:**
-- ✅ Task Repository готов
-- ✅ MongoDB Indexes созданы
+- ✅ Task Repository готов (выполнено досрочно)
+- ✅ MongoDB Indexes созданы (выполнено досрочно)
 - ✅ Event Bus работает
-- ✅ Infrastructure Layer: 90% complete
+- ✅ HTTP Infrastructure начата (бонус)
+- ✅ Infrastructure Layer: 100% complete
 
 ---
 
@@ -749,9 +639,9 @@ tests/e2e/
 
 | Риск | Вероятность | Влияние | Митигация |
 |------|-------------|---------|-----------|
-| Task Repository занимает > 2 дней | Средняя | Среднее | Использовать ChatRepository как референс |
+| ~~Task Repository занимает > 2 дней~~ | ~~Средняя~~ | ~~Среднее~~ | ✅ **УСТРАНЁН** — выполнено досрочно |
 | Event Bus интеграция проблемы | Низкая | Среднее | In-memory fallback готов |
-| HTTP Handlers complexity underestimated | Средняя | Высокое | Начать с минимальных endpoints |
+| HTTP Handlers complexity underestimated | Средняя | Высокое | Начать с минимальных endpoints + бонусное время |
 | WebSocket сложнее ожидаемого | Средняя | Среднее | Упростить до базового broadcast |
 | DI wiring занимает много времени | Средняя | Среднее | Manual DI вместо wire |
 
@@ -833,5 +723,5 @@ tests/e2e/
 **Успехов в разработке! 🚀**
 
 *Plan owner: Project Lead*  
-*Last updated: 2024-12-31*  
-*Next review: 2025-01-07*
+*Last updated: 2026-01-01*  
+*Next review: 2026-01-07*
