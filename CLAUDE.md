@@ -20,7 +20,7 @@ This is a **Chat System with Task Management** built in Go. It's a comprehensive
 # Start infrastructure services
 docker-compose up -d mongodb redis keycloak
 
-# Start the main application (when implemented)
+# Start the main application
 go run cmd/api/main.go
 ```
 
@@ -29,7 +29,7 @@ go run cmd/api/main.go
 # Run linting with comprehensive Go linting rules
 golangci-lint run
 
-# Run tests (when implemented)
+# Run tests
 go test ./...
 go test ./tests/integration -tags=integration
 go test ./tests/e2e -tags=e2e
@@ -37,10 +37,10 @@ go test ./tests/e2e -tags=e2e
 
 ### Build and Development
 ```bash
-# Build application (when build targets are added to Makefile)
+# Build application
 make build
 
-# Development mode with hot reload (when implemented)
+# Development mode
 make dev
 ```
 
@@ -102,12 +102,21 @@ configs/              # Configuration files
 
 ## Development Notes
 
-- This is currently in **planning/architecture phase** - no Go source code exists yet
-- The project follows the planned structure described in extensive documentation
-- All business logic will be event-driven with proper domain boundaries
-- HTMX will be used for minimal JavaScript frontend with server-side rendering
+- **Project Status**: January 2026 Release Candidate (~95% complete)
+- All domain, application, and infrastructure layers are fully implemented
+- HTTP handlers and WebSocket support are production-ready
+- Entry points (API server, Worker, Migrator) are implemented and tested
+- E2E tests provide full coverage of critical workflows
+- HTMX frontend is planned for February 2026
 - Comprehensive linting rules are configured in `.golangci.yml`
 - Security-first approach with Keycloak SSO, RBAC, and secure defaults
+
+## Documentation Structure
+
+- **API Documentation**: `docs/api/` - OpenAPI spec, Postman collection
+- **Deployment Guide**: `docs/DEPLOYMENT.md` - Docker, environment setup
+- **Development Guide**: `docs/DEVELOPMENT.md` - Local setup, testing
+- **Architecture Overview**: `docs/ARCHITECTURE.md` - System design, decisions
 
 ## MongoDB Driver
 
