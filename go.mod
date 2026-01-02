@@ -5,11 +5,13 @@ go 1.24.0
 require (
 	github.com/docker/docker v28.5.1+incompatible
 	github.com/google/uuid v1.6.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/labstack/echo/v4 v4.14.0
 	github.com/redis/go-redis/v9 v9.14.0
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.40.0
 	go.mongodb.org/mongo-driver/v2 v2.3.1
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -34,7 +36,6 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
-	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/labstack/gommon v0.4.2 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
@@ -81,5 +82,4 @@ require (
 	golang.org/x/text v0.32.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
