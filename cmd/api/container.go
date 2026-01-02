@@ -14,6 +14,7 @@ import (
 	wshandler "github.com/lllypuk/flowra/internal/handler/websocket"
 	"github.com/lllypuk/flowra/internal/infrastructure/eventbus"
 	"github.com/lllypuk/flowra/internal/infrastructure/eventstore"
+	"github.com/lllypuk/flowra/internal/infrastructure/httpserver"
 	"github.com/lllypuk/flowra/internal/infrastructure/repository/mongodb"
 	"github.com/lllypuk/flowra/internal/infrastructure/websocket"
 	"github.com/lllypuk/flowra/internal/middleware"
@@ -29,14 +30,8 @@ const (
 	mongoDisconnectTimeout = 10 * time.Second
 )
 
-// Health status constants.
-const (
-	healthStatusHealthy   = "healthy"
-	healthStatusUnhealthy = "unhealthy"
-	healthStatusDegraded  = "degraded"
-)
-
 // Container holds all application dependencies and manages their lifecycle.
+// It implements httpserver.HealthChecker for unified health endpoint support.
 type Container struct {
 	// Configuration
 	Config *config.Config
@@ -78,6 +73,9 @@ type Container struct {
 	AccessChecker  middleware.WorkspaceAccessChecker
 }
 
+// Ensure Container implements httpserver.HealthChecker.
+var _ httpserver.HealthChecker = (*Container)(nil)
+
 // ContainerOption configures the Container.
 type ContainerOption func(*Container)
 
@@ -89,6 +87,7 @@ func WithLogger(logger *slog.Logger) ContainerOption {
 }
 
 // NewContainer creates a new dependency injection container.
+// The wiring mode (real/mock) is determined by config.App.Mode.
 func NewContainer(cfg *config.Config, opts ...ContainerOption) (*Container, error) {
 	c := &Container{
 		Config: cfg,
@@ -98,6 +97,9 @@ func NewContainer(cfg *config.Config, opts ...ContainerOption) (*Container, erro
 	for _, opt := range opts {
 		opt(c)
 	}
+
+	// Log the wiring mode
+	c.logWiringMode()
 
 	// Initialize all components in order
 	if err := c.setupInfrastructure(); err != nil {
@@ -109,9 +111,96 @@ func NewContainer(cfg *config.Config, opts ...ContainerOption) (*Container, erro
 	c.setupRepositories()
 	c.setupUseCases()
 	c.setupEventHandlers()
-	c.setupHTTPHandlers()
+
+	// Setup HTTP handlers based on wiring mode
+	if c.Config.App.IsMockMode() {
+		c.setupHTTPHandlersMock()
+	} else {
+		c.setupHTTPHandlersReal()
+	}
+
+	// Validate that all required components are initialized
+	if err := c.validateWiring(); err != nil {
+		_ = c.Close()
+		return nil, fmt.Errorf("wiring validation failed: %w", err)
+	}
 
 	return c, nil
+}
+
+// logWiringMode logs the current wiring mode configuration.
+func (c *Container) logWiringMode() {
+	mode := c.Config.App.Mode
+	if mode == "" {
+		mode = config.AppModeReal
+	}
+
+	if c.Config.App.IsMockMode() {
+		c.Logger.Warn("container starting in MOCK mode",
+			slog.String("mode", string(mode)),
+			slog.Bool("is_development", c.Config.IsDevelopment()),
+			slog.Bool("is_production", c.Config.IsProduction()),
+		)
+	} else {
+		c.Logger.Info("container starting in REAL mode",
+			slog.String("mode", string(mode)),
+			slog.Bool("is_development", c.Config.IsDevelopment()),
+			slog.Bool("is_production", c.Config.IsProduction()),
+		)
+	}
+}
+
+// validateWiring ensures all required dependencies are properly initialized.
+// In real mode, this is strict. In mock mode, placeholders are allowed.
+func (c *Container) validateWiring() error {
+	var errs []error
+
+	// Infrastructure is always required
+	if c.MongoDB == nil {
+		errs = append(errs, errors.New("mongodb client not initialized"))
+	}
+	if c.Redis == nil {
+		errs = append(errs, errors.New("redis client not initialized"))
+	}
+	if c.Hub == nil {
+		errs = append(errs, errors.New("websocket hub not initialized"))
+	}
+	if c.EventBus == nil {
+		errs = append(errs, errors.New("event bus not initialized"))
+	}
+
+	// Auth components are always required
+	if c.TokenValidator == nil {
+		errs = append(errs, errors.New("token validator not initialized"))
+	}
+	if c.AccessChecker == nil {
+		errs = append(errs, errors.New("access checker not initialized"))
+	}
+
+	// In real mode, all handlers must be initialized (no placeholders)
+	if c.Config.App.IsRealMode() {
+		if c.AuthHandler == nil {
+			errs = append(errs, errors.New("auth handler not initialized in real mode"))
+		}
+		if c.WorkspaceHandler == nil {
+			errs = append(errs, errors.New("workspace handler not initialized in real mode"))
+		}
+		if c.ChatHandler == nil {
+			errs = append(errs, errors.New("chat handler not initialized in real mode"))
+		}
+		if c.WSHandler == nil {
+			errs = append(errs, errors.New("websocket handler not initialized in real mode"))
+		}
+		// Note: MessageHandler, TaskHandler, NotificationHandler, UserHandler
+		// may be nil in real mode if their use cases are not fully implemented yet.
+		// This will result in placeholder endpoints returning 501.
+	}
+
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+
+	return nil
 }
 
 // setupInfrastructure initializes infrastructure components (MongoDB, Redis, EventBus, Hub).
@@ -292,25 +381,30 @@ func (c *Container) registerEventHandlers() error {
 	)
 }
 
-// setupHTTPHandlers initializes all HTTP handlers.
-func (c *Container) setupHTTPHandlers() {
-	// Setup mock auth service and user repo for development
-	// In production, these would be replaced with real implementations
+// setupHTTPHandlersReal initializes HTTP handlers with real implementations.
+// This wires handlers to actual use cases and services.
+func (c *Container) setupHTTPHandlersReal() {
+	c.Logger.Debug("setting up HTTP handlers with REAL implementations")
+
+	// TODO: Wire real AuthService implementation when available
+	// For now, use mock but log a warning
+	c.Logger.Warn("AuthHandler: using mock implementation (real auth service not yet available)")
 	mockAuthService := httphandler.NewMockAuthService()
 	mockUserRepo := httphandler.NewMockUserRepository()
-
 	c.AuthHandler = httphandler.NewAuthHandler(mockAuthService, mockUserRepo)
 
-	// Setup workspace handler with mock services
+	// TODO: Wire real WorkspaceService implementation when available
+	c.Logger.Warn("WorkspaceHandler: using mock implementation (real workspace service not yet available)")
 	mockWorkspaceService := httphandler.NewMockWorkspaceService()
 	mockMemberService := httphandler.NewMockMemberService()
 	c.WorkspaceHandler = httphandler.NewWorkspaceHandler(mockWorkspaceService, mockMemberService)
 
-	// Setup chat handler with mock service
+	// TODO: Wire real ChatService implementation when available
+	c.Logger.Warn("ChatHandler: using mock implementation (real chat service not yet available)")
 	mockChatService := httphandler.NewMockChatService()
 	c.ChatHandler = httphandler.NewChatHandler(mockChatService)
 
-	// Setup WebSocket handler
+	// WebSocket handler uses real Hub
 	c.WSHandler = wshandler.NewHandler(
 		c.Hub,
 		wshandler.WithHandlerLogger(c.Logger),
@@ -321,13 +415,57 @@ func (c *Container) setupHTTPHandlers() {
 		}),
 	)
 
-	// Setup token validator for auth middleware (dev mode)
+	// Setup token validator for auth middleware
 	c.TokenValidator = middleware.NewStaticTokenValidator(c.Config.Auth.JWTSecret)
 
-	// Setup workspace access checker
+	// TODO: Wire real WorkspaceAccessChecker implementation
+	c.Logger.Warn("AccessChecker: using mock implementation (real access checker not yet available)")
 	c.AccessChecker = middleware.NewMockWorkspaceAccessChecker()
 
-	c.Logger.Debug("HTTP handlers initialized")
+	// Note: MessageHandler, TaskHandler, NotificationHandler, UserHandler
+	// are left nil - routes.go will create placeholder endpoints for them.
+	// This is intentional until their use cases are fully implemented.
+
+	c.Logger.Debug("HTTP handlers initialized (real mode with temporary mocks)")
+}
+
+// setupHTTPHandlersMock initializes HTTP handlers with mock implementations.
+// This is for development and testing only.
+func (c *Container) setupHTTPHandlersMock() {
+	c.Logger.Debug("setting up HTTP handlers with MOCK implementations")
+
+	// Mock auth service and user repo
+	mockAuthService := httphandler.NewMockAuthService()
+	mockUserRepo := httphandler.NewMockUserRepository()
+	c.AuthHandler = httphandler.NewAuthHandler(mockAuthService, mockUserRepo)
+
+	// Mock workspace services
+	mockWorkspaceService := httphandler.NewMockWorkspaceService()
+	mockMemberService := httphandler.NewMockMemberService()
+	c.WorkspaceHandler = httphandler.NewWorkspaceHandler(mockWorkspaceService, mockMemberService)
+
+	// Mock chat service
+	mockChatService := httphandler.NewMockChatService()
+	c.ChatHandler = httphandler.NewChatHandler(mockChatService)
+
+	// WebSocket handler with real Hub (even in mock mode, we need real WS)
+	c.WSHandler = wshandler.NewHandler(
+		c.Hub,
+		wshandler.WithHandlerLogger(c.Logger),
+		wshandler.WithHandlerConfig(wshandler.HandlerConfig{
+			ReadBufferSize:  c.Config.WebSocket.ReadBufferSize,
+			WriteBufferSize: c.Config.WebSocket.WriteBufferSize,
+			Logger:          c.Logger,
+		}),
+	)
+
+	// Static token validator for development
+	c.TokenValidator = middleware.NewStaticTokenValidator(c.Config.Auth.JWTSecret)
+
+	// Mock workspace access checker
+	c.AccessChecker = middleware.NewMockWorkspaceAccessChecker()
+
+	c.Logger.Debug("HTTP handlers initialized (mock mode)")
 }
 
 // Close gracefully closes all container resources.
@@ -407,7 +545,8 @@ func (c *Container) StartHub(ctx context.Context) {
 	c.Logger.InfoContext(ctx, "websocket hub started")
 }
 
-// IsReady checks if all infrastructure components are healthy.
+// IsReady implements httpserver.HealthChecker.
+// It checks if all infrastructure components are healthy.
 func (c *Container) IsReady(ctx context.Context) bool {
 	// Check MongoDB
 	if c.MongoDB == nil {
@@ -436,57 +575,51 @@ func (c *Container) IsReady(ctx context.Context) bool {
 	return true
 }
 
-// HealthStatus represents the health status of a component.
-type HealthStatus struct {
-	Name    string `json:"name"`
-	Status  string `json:"status"`
-	Message string `json:"message,omitempty"`
-}
-
-// GetHealthStatus returns detailed health status of all components.
-func (c *Container) GetHealthStatus(ctx context.Context) []HealthStatus {
-	var statuses []HealthStatus
+// GetHealthStatus implements httpserver.HealthChecker.
+// It returns detailed health status of all components.
+func (c *Container) GetHealthStatus(ctx context.Context) []httpserver.ComponentStatus {
+	var statuses []httpserver.ComponentStatus
 
 	// MongoDB status
-	mongoStatus := HealthStatus{Name: "mongodb", Status: healthStatusHealthy}
+	mongoStatus := httpserver.ComponentStatus{Name: "mongodb", Status: httpserver.StatusHealthy}
 	if c.MongoDB == nil {
-		mongoStatus.Status = healthStatusUnhealthy
+		mongoStatus.Status = httpserver.StatusUnhealthy
 		mongoStatus.Message = "client not initialized"
 	} else if err := c.MongoDB.Ping(ctx, nil); err != nil {
-		mongoStatus.Status = healthStatusUnhealthy
+		mongoStatus.Status = httpserver.StatusUnhealthy
 		mongoStatus.Message = err.Error()
 	}
 	statuses = append(statuses, mongoStatus)
 
 	// Redis status
-	redisStatus := HealthStatus{Name: "redis", Status: healthStatusHealthy}
+	redisStatus := httpserver.ComponentStatus{Name: "redis", Status: httpserver.StatusHealthy}
 	if c.Redis == nil {
-		redisStatus.Status = healthStatusUnhealthy
+		redisStatus.Status = httpserver.StatusUnhealthy
 		redisStatus.Message = "client not initialized"
 	} else if err := c.Redis.Ping(ctx).Err(); err != nil {
-		redisStatus.Status = healthStatusUnhealthy
+		redisStatus.Status = httpserver.StatusUnhealthy
 		redisStatus.Message = err.Error()
 	}
 	statuses = append(statuses, redisStatus)
 
 	// WebSocket Hub status
-	hubStatus := HealthStatus{Name: "websocket_hub", Status: healthStatusHealthy}
+	hubStatus := httpserver.ComponentStatus{Name: "websocket_hub", Status: httpserver.StatusHealthy}
 	if c.Hub == nil {
-		hubStatus.Status = healthStatusUnhealthy
+		hubStatus.Status = httpserver.StatusUnhealthy
 		hubStatus.Message = "hub not initialized"
 	} else if !c.Hub.IsRunning() {
-		hubStatus.Status = healthStatusUnhealthy
+		hubStatus.Status = httpserver.StatusUnhealthy
 		hubStatus.Message = "hub not running"
 	}
 	statuses = append(statuses, hubStatus)
 
 	// EventBus status
-	eventBusStatus := HealthStatus{Name: "eventbus", Status: healthStatusHealthy}
+	eventBusStatus := httpserver.ComponentStatus{Name: "eventbus", Status: httpserver.StatusHealthy}
 	if c.EventBus == nil {
-		eventBusStatus.Status = healthStatusUnhealthy
+		eventBusStatus.Status = httpserver.StatusUnhealthy
 		eventBusStatus.Message = "event bus not initialized"
 	} else if !c.EventBus.IsRunning() {
-		eventBusStatus.Status = healthStatusDegraded
+		eventBusStatus.Status = httpserver.StatusDegraded
 		eventBusStatus.Message = "event bus not running"
 	}
 	statuses = append(statuses, eventBusStatus)

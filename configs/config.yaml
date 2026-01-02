@@ -1,3 +1,11 @@
+# Application configuration
+app:
+  # Wiring mode: "real" (default) or "mock"
+  # In production, only "real" mode is allowed.
+  # Use "mock" only for development/testing without external dependencies.
+  mode: "real"
+  name: "flowra"
+
 server:
   host: "0.0.0.0"
   port: 8080

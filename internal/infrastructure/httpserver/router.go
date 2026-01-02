@@ -149,16 +149,27 @@ func (r *Router) Workspace() *echo.Group {
 }
 
 // RegisterHealthEndpoints registers health and readiness endpoints.
+//
+// Deprecated: Use RegisterHealthEndpointsWithChecker or RegisterHealthEndpointsSimple instead.
+// This function uses a callback without context, which can lead to incorrect behavior
+// under load or when the request is cancelled.
+//
+// The readinessCheck callback here does NOT receive a context, which means:
+//   - It cannot respect request cancellation/deadlines
+//   - It may use stale or incorrect context if called improperly
+//
+// Migration: Replace with RegisterHealthEndpointsSimple(func(ctx context.Context) bool { ... })
+// or implement HealthChecker interface and use RegisterHealthEndpointsWithChecker.
 func (r *Router) RegisterHealthEndpoints(readinessCheck func() bool) {
 	r.echo.GET("/health", func(c echo.Context) error {
-		return RespondOK(c, map[string]string{"status": "healthy"})
+		return c.JSON(http.StatusOK, HealthResponse{Status: StatusHealthy})
 	})
 
 	r.echo.GET("/ready", func(c echo.Context) error {
 		if readinessCheck == nil || readinessCheck() {
-			return RespondOK(c, map[string]string{"status": "ready"})
+			return c.JSON(http.StatusOK, HealthResponse{Status: StatusReady})
 		}
-		return RespondErrorWithCode(c, http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "Service is not ready")
+		return c.JSON(http.StatusServiceUnavailable, HealthResponse{Status: StatusNotReady})
 	})
 }
 

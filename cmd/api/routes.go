@@ -9,14 +9,6 @@ import (
 	"github.com/lllypuk/flowra/internal/middleware"
 )
 
-// Health status constants.
-const (
-	statusHealthy   = "healthy"
-	statusUnhealthy = "unhealthy"
-	statusReady     = "ready"
-	statusNotReady  = "not ready"
-)
-
 // SetupRoutes configures all API routes and middleware chains.
 func SetupRoutes(c *Container) *httpserver.Router {
 	e := echo.New()
@@ -32,6 +24,7 @@ func SetupRoutes(c *Container) *httpserver.Router {
 			SkipPaths: []string{
 				"/health",
 				"/ready",
+				"/health/details",
 				"/api/v1/auth/login",
 				"/api/v1/auth/register",
 			},
@@ -54,10 +47,10 @@ func SetupRoutes(c *Container) *httpserver.Router {
 	// Create router with configuration
 	router := httpserver.NewRouter(e, routerConfig)
 
-	// Register health check endpoints
-	router.RegisterHealthEndpoints(func() bool {
-		return c.IsReady(e.AcquireContext().Request().Context())
-	})
+	// Register health check endpoints using the HealthChecker interface.
+	// Container implements httpserver.HealthChecker, so we pass it directly.
+	// This ensures proper context handling from the request.
+	router.RegisterHealthEndpointsWithChecker(c)
 
 	// Register API routes
 	registerAuthRoutes(router, c)
@@ -134,15 +127,7 @@ func registerMessageRoutes(r *httpserver.Router, c *Container) {
 		messages.DELETE("/:message_id", c.MessageHandler.Delete)
 	} else {
 		// Placeholder endpoints when handler is not initialized
-		placeholder := func(ctx echo.Context) error {
-			return ctx.JSON(http.StatusNotImplemented, map[string]any{
-				"success": false,
-				"error": map[string]string{
-					"code":    "NOT_IMPLEMENTED",
-					"message": "Message service not available",
-				},
-			})
-		}
+		placeholder := createPlaceholderHandler("Message")
 		messages.POST("", placeholder)
 		messages.GET("", placeholder)
 		messages.PUT("/:message_id", placeholder)
@@ -165,15 +150,7 @@ func registerTaskRoutes(r *httpserver.Router, c *Container) {
 		tasks.DELETE("/:task_id", c.TaskHandler.Delete)
 	} else {
 		// Placeholder endpoints when handler is not initialized
-		placeholder := func(ctx echo.Context) error {
-			return ctx.JSON(http.StatusNotImplemented, map[string]any{
-				"success": false,
-				"error": map[string]string{
-					"code":    "NOT_IMPLEMENTED",
-					"message": "Task service not available",
-				},
-			})
-		}
+		placeholder := createPlaceholderHandler("Task")
 		tasks.POST("", placeholder)
 		tasks.GET("", placeholder)
 		tasks.GET("/:task_id", placeholder)
@@ -196,15 +173,7 @@ func registerNotificationRoutes(r *httpserver.Router, c *Container) {
 		r.Auth().DELETE("/notifications/:id", c.NotificationHandler.Delete)
 	} else {
 		// Placeholder endpoints when handler is not initialized
-		placeholder := func(ctx echo.Context) error {
-			return ctx.JSON(http.StatusNotImplemented, map[string]any{
-				"success": false,
-				"error": map[string]string{
-					"code":    "NOT_IMPLEMENTED",
-					"message": "Notification service not available",
-				},
-			})
-		}
+		placeholder := createPlaceholderHandler("Notification")
 		r.Auth().GET("/notifications", placeholder)
 		r.Auth().GET("/notifications/unread/count", placeholder)
 		r.Auth().PUT("/notifications/:id/read", placeholder)
@@ -221,15 +190,7 @@ func registerUserRoutes(r *httpserver.Router, c *Container) {
 		r.Auth().GET("/users/:id", c.UserHandler.Get)
 	} else {
 		// Placeholder endpoints when handler is not initialized
-		placeholder := func(ctx echo.Context) error {
-			return ctx.JSON(http.StatusNotImplemented, map[string]any{
-				"success": false,
-				"error": map[string]string{
-					"code":    "NOT_IMPLEMENTED",
-					"message": "User service not available",
-				},
-			})
-		}
+		placeholder := createPlaceholderHandler("User")
 		r.Auth().GET("/users/me", placeholder)
 		r.Auth().PUT("/users/me", placeholder)
 		r.Auth().GET("/users/:id", placeholder)
@@ -242,52 +203,16 @@ func registerWebSocketRoutes(r *httpserver.Router, c *Container) {
 	r.Auth().GET("/ws", c.WSHandler.HandleWebSocket)
 }
 
-// SetupHealthEndpoints adds health check endpoints directly to an Echo instance.
-// This is useful when you need to add health checks before full routing is set up.
-func SetupHealthEndpoints(e *echo.Echo, c *Container) {
-	// Liveness probe - checks if the application is running
-	e.GET("/health", func(ctx echo.Context) error {
-		return ctx.JSON(http.StatusOK, map[string]string{
-			"status": statusHealthy,
+// createPlaceholderHandler creates a handler that returns 501 Not Implemented.
+// This is used for endpoints where the handler is not yet available.
+func createPlaceholderHandler(serviceName string) echo.HandlerFunc {
+	return func(ctx echo.Context) error {
+		return ctx.JSON(http.StatusNotImplemented, map[string]any{
+			"success": false,
+			"error": map[string]string{
+				"code":    "NOT_IMPLEMENTED",
+				"message": serviceName + " service not available",
+			},
 		})
-	})
-
-	// Readiness probe - checks if the application is ready to serve traffic
-	e.GET("/ready", func(ctx echo.Context) error {
-		if c.IsReady(ctx.Request().Context()) {
-			return ctx.JSON(http.StatusOK, map[string]any{
-				"status":     statusReady,
-				"components": c.GetHealthStatus(ctx.Request().Context()),
-			})
-		}
-		return ctx.JSON(http.StatusServiceUnavailable, map[string]any{
-			"status":     statusNotReady,
-			"components": c.GetHealthStatus(ctx.Request().Context()),
-		})
-	})
-
-	// Detailed health status endpoint
-	e.GET("/health/details", func(ctx echo.Context) error {
-		statuses := c.GetHealthStatus(ctx.Request().Context())
-
-		allHealthy := true
-		for _, s := range statuses {
-			if s.Status != statusHealthy {
-				allHealthy = false
-				break
-			}
-		}
-
-		statusCode := http.StatusOK
-		overallStatus := statusHealthy
-		if !allHealthy {
-			statusCode = http.StatusServiceUnavailable
-			overallStatus = statusUnhealthy
-		}
-
-		return ctx.JSON(statusCode, map[string]any{
-			"status":     overallStatus,
-			"components": statuses,
-		})
-	})
+	}
 }

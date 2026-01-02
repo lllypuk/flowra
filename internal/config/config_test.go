@@ -575,3 +575,102 @@ func TestConfig_Validate_AuthTokenTTL(t *testing.T) {
 		})
 	}
 }
+
+func TestAppConfig_Defaults(t *testing.T) {
+	cfg := config.DefaultConfig()
+
+	assert.Equal(t, config.AppModeReal, cfg.App.Mode)
+	assert.Equal(t, "flowra", cfg.App.Name)
+}
+
+func TestAppConfig_IsRealMode(t *testing.T) {
+	tests := []struct {
+		name     string
+		mode     config.AppMode
+		expected bool
+	}{
+		{"empty mode defaults to real", "", true},
+		{"explicit real mode", config.AppModeReal, true},
+		{"mock mode", config.AppModeMock, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := config.AppConfig{Mode: tt.mode}
+			assert.Equal(t, tt.expected, cfg.IsRealMode())
+		})
+	}
+}
+
+func TestAppConfig_IsMockMode(t *testing.T) {
+	tests := []struct {
+		name     string
+		mode     config.AppMode
+		expected bool
+	}{
+		{"empty mode is not mock", "", false},
+		{"real mode is not mock", config.AppModeReal, false},
+		{"mock mode", config.AppModeMock, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := config.AppConfig{Mode: tt.mode}
+			assert.Equal(t, tt.expected, cfg.IsMockMode())
+		})
+	}
+}
+
+func TestConfig_Validate_InvalidAppMode(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.App.Mode = "invalid"
+
+	err := cfg.Validate()
+	require.Error(t, err)
+	require.ErrorIs(t, err, config.ErrConfigInvalid)
+	assert.Contains(t, err.Error(), "invalid app mode")
+}
+
+func TestConfig_Validate_ValidAppModes(t *testing.T) {
+	validModes := []config.AppMode{
+		"",
+		config.AppModeReal,
+		config.AppModeMock,
+	}
+
+	for _, mode := range validModes {
+		t.Run(string(mode), func(t *testing.T) {
+			cfg := config.DefaultConfig()
+			cfg.App.Mode = mode
+			// Ensure we're not in production mode for mock to pass
+			cfg.Auth.JWTSecret = "dev-secret-change-in-production"
+			err := cfg.Validate()
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestConfig_Validate_MockModeInProduction(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.App.Mode = config.AppModeMock
+	cfg.Auth.JWTSecret = "production-secret-not-dev" // Makes IsProduction() return true
+
+	err := cfg.Validate()
+	require.Error(t, err)
+	require.ErrorIs(t, err, config.ErrConfigInvalid)
+	require.ErrorIs(t, err, config.ErrMockModeInProd)
+}
+
+func TestConfig_Validate_MockModeInDevelopment(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.App.Mode = config.AppModeMock
+	cfg.Auth.JWTSecret = "dev-secret-change-in-production" // Makes IsProduction() return false
+
+	err := cfg.Validate()
+	require.NoError(t, err)
+}
+
+func TestAppModeConstants(t *testing.T) {
+	assert.Equal(t, config.AppModeReal, config.AppMode("real"))
+	assert.Equal(t, config.AppModeMock, config.AppMode("mock"))
+}

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/lllypuk/flowra/internal/config"
+	"github.com/lllypuk/flowra/internal/infrastructure/httpserver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -81,7 +82,7 @@ func TestContainer_GetHealthStatus_NoResources(t *testing.T) {
 
 	// All should be unhealthy
 	for _, status := range statuses {
-		assert.Equal(t, healthStatusUnhealthy, status.Status, "component %s should be unhealthy", status.Name)
+		assert.Equal(t, httpserver.StatusUnhealthy, status.Status, "component %s should be unhealthy", status.Name)
 		assert.NotEmpty(t, status.Message, "component %s should have a message", status.Name)
 	}
 }
@@ -105,21 +106,21 @@ func TestContainer_GetHealthStatus_ComponentNames(t *testing.T) {
 }
 
 func TestHealthStatus_Structure(t *testing.T) {
-	status := HealthStatus{
+	status := httpserver.ComponentStatus{
 		Name:    "test",
-		Status:  healthStatusHealthy,
+		Status:  httpserver.StatusHealthy,
 		Message: "all good",
 	}
 
 	assert.Equal(t, "test", status.Name)
-	assert.Equal(t, healthStatusHealthy, status.Status)
+	assert.Equal(t, httpserver.StatusHealthy, status.Status)
 	assert.Equal(t, "all good", status.Message)
 }
 
 func TestHealthStatusConstants(t *testing.T) {
-	assert.Equal(t, "healthy", healthStatusHealthy)
-	assert.Equal(t, "unhealthy", healthStatusUnhealthy)
-	assert.Equal(t, "degraded", healthStatusDegraded)
+	assert.Equal(t, "healthy", httpserver.StatusHealthy)
+	assert.Equal(t, "unhealthy", httpserver.StatusUnhealthy)
+	assert.Equal(t, "degraded", httpserver.StatusDegraded)
 }
 
 func TestContainerTimeoutConstants(t *testing.T) {

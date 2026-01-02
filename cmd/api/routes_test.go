@@ -9,6 +9,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/lllypuk/flowra/internal/config"
+	"github.com/lllypuk/flowra/internal/infrastructure/httpserver"
 	"github.com/lllypuk/flowra/internal/infrastructure/websocket"
 	"github.com/lllypuk/flowra/internal/middleware"
 	"github.com/stretchr/testify/assert"
@@ -16,10 +17,12 @@ import (
 )
 
 func TestStatusConstants(t *testing.T) {
-	assert.Equal(t, "healthy", statusHealthy)
-	assert.Equal(t, "unhealthy", statusUnhealthy)
-	assert.Equal(t, "ready", statusReady)
-	assert.Equal(t, "not ready", statusNotReady)
+	// Test that constants are defined in httpserver package
+	assert.Equal(t, "healthy", httpserver.StatusHealthy)
+	assert.Equal(t, "unhealthy", httpserver.StatusUnhealthy)
+	assert.Equal(t, "ready", httpserver.StatusReady)
+	assert.Equal(t, "not_ready", httpserver.StatusNotReady)
+	assert.Equal(t, "degraded", httpserver.StatusDegraded)
 }
 
 func TestSetupRoutes_ReturnsRouter(t *testing.T) {
@@ -41,15 +44,20 @@ func TestSetupRoutes_ReturnsRouter(t *testing.T) {
 	require.NotNil(t, router.Echo())
 }
 
-func TestSetupHealthEndpoints_Health(t *testing.T) {
-	e := echo.New()
+func TestSetupRoutes_HealthEndpoint(t *testing.T) {
 	cfg := config.DefaultConfig()
+	logger := slog.Default()
+
 	c := &Container{
-		Config: cfg,
-		Logger: slog.Default(),
+		Config:         cfg,
+		Logger:         logger,
+		TokenValidator: middleware.NewStaticTokenValidator(cfg.Auth.JWTSecret),
+		AccessChecker:  middleware.NewMockWorkspaceAccessChecker(),
+		Hub:            websocket.NewHub(),
 	}
 
-	SetupHealthEndpoints(e, c)
+	router := SetupRoutes(c)
+	e := router.Echo()
 
 	// Test /health endpoint
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
@@ -58,41 +66,49 @@ func TestSetupHealthEndpoints_Health(t *testing.T) {
 	e.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), statusHealthy)
+	assert.Contains(t, rec.Body.String(), httpserver.StatusHealthy)
 }
 
-func TestSetupHealthEndpoints_Ready_NotReady(t *testing.T) {
-	e := echo.New()
+func TestSetupRoutes_ReadyEndpoint_NotReady(t *testing.T) {
 	cfg := config.DefaultConfig()
+	logger := slog.Default()
 
 	// Container without initialized resources should not be ready
 	c := &Container{
-		Config: cfg,
-		Logger: slog.Default(),
+		Config:         cfg,
+		Logger:         logger,
+		TokenValidator: middleware.NewStaticTokenValidator(cfg.Auth.JWTSecret),
+		AccessChecker:  middleware.NewMockWorkspaceAccessChecker(),
+		Hub:            websocket.NewHub(),
 	}
 
-	SetupHealthEndpoints(e, c)
+	router := SetupRoutes(c)
+	e := router.Echo()
 
-	// Test /ready endpoint - should not be ready since no resources
+	// Test /ready endpoint - should not be ready since no MongoDB/Redis
 	req := httptest.NewRequest(http.MethodGet, "/ready", nil)
 	rec := httptest.NewRecorder()
 
 	e.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
-	assert.Contains(t, rec.Body.String(), statusNotReady)
+	assert.Contains(t, rec.Body.String(), httpserver.StatusNotReady)
 }
 
-func TestSetupHealthEndpoints_HealthDetails(t *testing.T) {
-	e := echo.New()
+func TestSetupRoutes_HealthDetailsEndpoint(t *testing.T) {
 	cfg := config.DefaultConfig()
+	logger := slog.Default()
 
 	c := &Container{
-		Config: cfg,
-		Logger: slog.Default(),
+		Config:         cfg,
+		Logger:         logger,
+		TokenValidator: middleware.NewStaticTokenValidator(cfg.Auth.JWTSecret),
+		AccessChecker:  middleware.NewMockWorkspaceAccessChecker(),
+		Hub:            websocket.NewHub(),
 	}
 
-	SetupHealthEndpoints(e, c)
+	router := SetupRoutes(c)
+	e := router.Echo()
 
 	// Test /health/details endpoint
 	req := httptest.NewRequest(http.MethodGet, "/health/details", nil)
@@ -102,7 +118,7 @@ func TestSetupHealthEndpoints_HealthDetails(t *testing.T) {
 
 	// Should return unhealthy status since no resources are initialized
 	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
-	assert.Contains(t, rec.Body.String(), statusUnhealthy)
+	assert.Contains(t, rec.Body.String(), httpserver.StatusUnhealthy)
 	assert.Contains(t, rec.Body.String(), "components")
 }
 
@@ -157,6 +173,7 @@ func TestSetupRoutes_RegistersHealthEndpoints(t *testing.T) {
 	// Health endpoints should be registered
 	assert.True(t, routePaths["GET:/health"], "health route should be registered")
 	assert.True(t, routePaths["GET:/ready"], "ready route should be registered")
+	assert.True(t, routePaths["GET:/health/details"], "health details route should be registered")
 }
 
 func TestSetupRoutes_RegistersWorkspaceRoutes(t *testing.T) {
@@ -287,7 +304,7 @@ func TestHealthEndpoint_DirectCall(t *testing.T) {
 	// Register a simple health handler
 	e.GET("/health", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]string{
-			"status": statusHealthy,
+			"status": httpserver.StatusHealthy,
 		})
 	})
 
@@ -338,4 +355,19 @@ func TestSetupRoutes_EchoConfiguration(t *testing.T) {
 	// Echo should be configured to hide banner
 	assert.True(t, e.HideBanner)
 	assert.True(t, e.HidePort)
+}
+
+func TestCreatePlaceholderHandler(t *testing.T) {
+	handler := createPlaceholderHandler("Test")
+
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	err := handler(c)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusNotImplemented, rec.Code)
+	assert.Contains(t, rec.Body.String(), "NOT_IMPLEMENTED")
+	assert.Contains(t, rec.Body.String(), "Test service not available")
 }

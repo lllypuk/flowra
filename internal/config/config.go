@@ -34,8 +34,23 @@ const (
 	DefaultWSPongTimeout  = 60 * time.Second
 )
 
+// AppMode defines the application wiring mode.
+type AppMode string
+
+// Application wiring modes.
+const (
+	// AppModeReal uses real implementations (MongoDB, Redis, Keycloak, etc.).
+	// This is the default mode and should be used in production.
+	AppModeReal AppMode = "real"
+
+	// AppModeMock uses mock implementations for development/testing.
+	// This mode is NOT allowed in production environments.
+	AppModeMock AppMode = "mock"
+)
+
 // Config holds the complete application configuration.
 type Config struct {
+	App       AppConfig       `yaml:"app"`
 	Server    ServerConfig    `yaml:"server"`
 	MongoDB   MongoDBConfig   `yaml:"mongodb"`
 	Redis     RedisConfig     `yaml:"redis"`
@@ -44,6 +59,26 @@ type Config struct {
 	EventBus  EventBusConfig  `yaml:"eventbus"`
 	Log       LogConfig       `yaml:"log"`
 	WebSocket WebSocketConfig `yaml:"websocket"`
+}
+
+// AppConfig holds application-level configuration.
+type AppConfig struct {
+	// Mode controls dependency wiring: "real" (default) or "mock".
+	// In production, only "real" mode is allowed.
+	Mode AppMode `yaml:"mode" env:"APP_MODE"`
+
+	// Name is the application name used in logs and metrics.
+	Name string `yaml:"name" env:"APP_NAME"`
+}
+
+// IsRealMode returns true if the application should use real implementations.
+func (c AppConfig) IsRealMode() bool {
+	return c.Mode == "" || c.Mode == AppModeReal
+}
+
+// IsMockMode returns true if the application should use mock implementations.
+func (c AppConfig) IsMockMode() bool {
+	return c.Mode == AppModeMock
 }
 
 // ServerConfig holds HTTP server configuration.
@@ -138,11 +173,17 @@ var (
 	ErrInvalidLogLevel     = errors.New("invalid log level: must be debug, info, warn, or error")
 	ErrInvalidLogFormat    = errors.New("invalid log format: must be json or text")
 	ErrInvalidEventBusType = errors.New("invalid event bus type: must be redis or inmemory")
+	ErrInvalidAppMode      = errors.New("invalid app mode: must be real or mock")
+	ErrMockModeInProd      = errors.New("mock mode is not allowed in production")
 )
 
 // DefaultConfig returns a Config with sensible default values.
 func DefaultConfig() *Config {
 	return &Config{
+		App: AppConfig{
+			Mode: AppModeReal,
+			Name: "flowra",
+		},
 		Server: ServerConfig{
 			Host:            DefaultHost,
 			Port:            DefaultPort,
@@ -193,7 +234,35 @@ func DefaultConfig() *Config {
 func (c *Config) Validate() error {
 	var errs []error
 
-	// Server validation
+	errs = c.validateApp(errs)
+	errs = c.validateServer(errs)
+	errs = c.validateMongoDB(errs)
+	errs = c.validateRedis(errs)
+	errs = c.validateAuth(errs)
+	errs = c.validateLog(errs)
+	errs = c.validateEventBus(errs)
+	errs = c.validateWebSocket(errs)
+
+	if len(errs) > 0 {
+		return fmt.Errorf("%w: %w", ErrConfigInvalid, errors.Join(errs...))
+	}
+
+	return nil
+}
+
+// validateApp validates application configuration.
+func (c *Config) validateApp(errs []error) []error {
+	if c.App.Mode != "" && c.App.Mode != AppModeReal && c.App.Mode != AppModeMock {
+		errs = append(errs, fmt.Errorf("%w: got %q", ErrInvalidAppMode, c.App.Mode))
+	}
+	if c.App.IsMockMode() && c.IsProduction() {
+		errs = append(errs, ErrMockModeInProd)
+	}
+	return errs
+}
+
+// validateServer validates server configuration.
+func (c *Config) validateServer(errs []error) []error {
 	if c.Server.Port <= 0 || c.Server.Port > 65535 {
 		errs = append(errs, fmt.Errorf("server.port must be between 1 and 65535, got %d", c.Server.Port))
 	}
@@ -203,21 +272,30 @@ func (c *Config) Validate() error {
 	if c.Server.WriteTimeout <= 0 {
 		errs = append(errs, errors.New("server.write_timeout must be positive"))
 	}
+	return errs
+}
 
-	// MongoDB validation
+// validateMongoDB validates MongoDB configuration.
+func (c *Config) validateMongoDB(errs []error) []error {
 	if c.MongoDB.URI == "" {
 		errs = append(errs, errors.New("mongodb.uri is required"))
 	}
 	if c.MongoDB.Database == "" {
 		errs = append(errs, errors.New("mongodb.database is required"))
 	}
+	return errs
+}
 
-	// Redis validation
+// validateRedis validates Redis configuration.
+func (c *Config) validateRedis(errs []error) []error {
 	if c.Redis.Addr == "" {
 		errs = append(errs, errors.New("redis.addr is required"))
 	}
+	return errs
+}
 
-	// Auth validation
+// validateAuth validates authentication configuration.
+func (c *Config) validateAuth(errs []error) []error {
 	if c.Auth.JWTSecret == "" {
 		errs = append(errs, errors.New("auth.jwt_secret is required"))
 	}
@@ -229,8 +307,11 @@ func (c *Config) Validate() error {
 	if c.Auth.RefreshTokenTTL <= 0 {
 		errs = append(errs, errors.New("auth.refresh_token_ttl must be positive"))
 	}
+	return errs
+}
 
-	// Log validation
+// validateLog validates logging configuration.
+func (c *Config) validateLog(errs []error) []error {
 	validLogLevels := map[string]bool{"debug": true, "info": true, "warn": true, "error": true}
 	if !validLogLevels[strings.ToLower(c.Log.Level)] {
 		errs = append(errs, ErrInvalidLogLevel)
@@ -239,14 +320,20 @@ func (c *Config) Validate() error {
 	if !validLogFormats[strings.ToLower(c.Log.Format)] {
 		errs = append(errs, ErrInvalidLogFormat)
 	}
+	return errs
+}
 
-	// EventBus validation
+// validateEventBus validates event bus configuration.
+func (c *Config) validateEventBus(errs []error) []error {
 	validEventBusTypes := map[string]bool{"redis": true, "inmemory": true}
 	if !validEventBusTypes[strings.ToLower(c.EventBus.Type)] {
 		errs = append(errs, ErrInvalidEventBusType)
 	}
+	return errs
+}
 
-	// WebSocket validation
+// validateWebSocket validates WebSocket configuration.
+func (c *Config) validateWebSocket(errs []error) []error {
 	if c.WebSocket.ReadBufferSize <= 0 {
 		errs = append(errs, errors.New("websocket.read_buffer_size must be positive"))
 	}
@@ -259,12 +346,7 @@ func (c *Config) Validate() error {
 	if c.WebSocket.PongTimeout <= 0 {
 		errs = append(errs, errors.New("websocket.pong_timeout must be positive"))
 	}
-
-	if len(errs) > 0 {
-		return fmt.Errorf("%w: %w", ErrConfigInvalid, errors.Join(errs...))
-	}
-
-	return nil
+	return errs
 }
 
 // Load loads configuration from the default config file and environment variables.
