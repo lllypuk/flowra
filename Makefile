@@ -1,7 +1,7 @@
-.PHONY: help dev build test lint docker-up docker-down docker-logs migrate-up migrate-down clean deps test-integration test-integration-docker test-integration-short test-all test-repository
+.PHONY: help dev build test lint docker-up docker-down docker-logs migrate-up migrate-down clean deps test-e2e test-e2e-docker test-e2e-short test-all test-repository
 
 help: ## Show this help
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 dev: ## Run in development mode
 	go run cmd/api/main.go
@@ -17,21 +17,21 @@ test: ## Run all tests
 test-unit: ## Run unit tests only
 	go test -v -race ./internal/...
 
-test-integration: ## Run integration tests (with testcontainers)
-	go test -tags=integration -v -race -timeout=10m ./tests/integration/...
+test-e2e: ## Run E2E tests (with testcontainers)
+	go test -tags=e2e -v -timeout=10m ./tests/e2e/...
 
-test-integration-docker: ## Run integration tests with docker-compose MongoDB
-	docker-compose up -d mongodb
+test-e2e-docker: ## Run E2E tests with docker-compose MongoDB
+	docker-compose up -d mongodb redis
 	@sleep 2
-	TEST_MONGODB_URI="mongodb://admin:admin123@localhost:27017/test_db" go test -tags=integration -v ./tests/integration/...
+	TEST_MONGODB_URI="mongodb://admin:admin123@localhost:27017/test_db" go test -tags=e2e -v ./tests/e2e/...
 	docker-compose down
 
-test-integration-short: ## Run integration tests in short mode
-	go test -tags=integration -v -short -timeout=5m ./tests/integration/...
+test-e2e-short: ## Run E2E tests in short mode
+	go test -tags=e2e -v -short -timeout=5m ./tests/e2e/...
 
-test-all: ## Run all tests (unit + integration)
+test-all: ## Run all tests (unit + e2e)
 	go test -v -race -coverprofile=coverage.out ./internal/...
-	go test -tags=integration -v -race -timeout=10m ./tests/integration/...
+	go test -tags=e2e -v -timeout=10m ./tests/e2e/...
 
 test-repository: ## Run only repository integration tests
 	go test -v -race -timeout=5m ./internal/infrastructure/repository/...
@@ -63,7 +63,7 @@ test-clean: ## Clean test cache and coverage files
 	rm -f coverage.out coverage.html
 
 # Линтер
-lint:
+lint: ## Run linter and format code
 	@echo "Running linter..."
 	@go fmt ./...
 	@golangci-lint run --fix

@@ -9,7 +9,7 @@
 
 ## Описание
 
-Финальная задача января: документирование API, создание гайдов для разработчиков, подготовка демо для stakeholders. Включает bug fixing найденных проблем из E2E тестов.
+Финальная задача января: документирование API, создание гайдов для разработчиков. Включает bug fixing найденных проблем из E2E тестов.
 
 ---
 
@@ -18,8 +18,7 @@
 1. Создать полную API документацию (OpenAPI/Swagger)
 2. Написать deployment guide
 3. Обновить developer documentation
-4. Подготовить демонстрацию для stakeholders
-5. Исправить баги из E2E тестов
+4. Исправить баги из E2E тестов
 
 ---
 
@@ -71,16 +70,6 @@ docs/api/
 - Environment variables
 - Pre-request scripts для auth
 - Tests для каждого request
-
-### 5. Demo Materials
-
-**Файлы:**
-```
-docs/demo/
-├── DEMO_SCRIPT.md          (сценарий демо)
-├── screenshots/            (скриншоты key flows)
-└── demo-video.md           (инструкции для записи)
-```
 
 ---
 
@@ -135,12 +124,6 @@ docs/demo/
 - [ ] Auth flow работает
 - [ ] Examples проверены
 
-### Demo
-- [ ] Demo script написан
-- [ ] Screenshots сделаны
-- [ ] Video инструкции готовы
-- [ ] Demo проведено для stakeholders
-
 ### Bug Fixing
 - [ ] Critical bugs исправлены
 - [ ] High priority bugs исправлены
@@ -156,7 +139,6 @@ docs/demo/
 - [ ] Postman collection импортируется и работает
 - [ ] `docker-compose up` запускает приложение
 - [ ] README quick start выполним за 5 минут
-- [ ] Demo script покрывает основные сценарии
 - [ ] Все Critical и High баги исправлены
 - [ ] Known issues документированы
 
@@ -217,32 +199,6 @@ components:
 
 ---
 
-## Demo Script Outline
-
-### 1. Introduction (2 min)
-- Обзор системы
-- Ключевые возможности
-
-### 2. User Flow (5 min)
-- Login через Keycloak
-- Создание workspace
-- Приглашение участников
-
-### 3. Chat Flow (5 min)
-- Создание группового чата
-- Отправка сообщений
-- Real-time delivery через WebSocket
-
-### 4. Task Management (5 min)
-- Создание задачи из чата
-- Назначение исполнителя
-- Изменение статуса
-- Уведомления
-
-### 5. Q&A (3 min)
-
----
-
 ## Зависимости
 
 ### Входящие
@@ -259,7 +215,6 @@ components:
 
 - OpenAPI spec можно генерировать автоматически из annotations (swaggo/swag)
 - Postman collection можно экспортировать из OpenAPI spec
-- Demo лучше записать на видео для асинхронного просмотра
 - Known issues должны быть в GitHub Issues с label `known-issue`
 - После демо собрать feedback и создать issues на февраль
 
