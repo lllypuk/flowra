@@ -5,8 +5,10 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	httphandler "github.com/lllypuk/flowra/internal/handler/http"
 	"github.com/lllypuk/flowra/internal/infrastructure/httpserver"
 	"github.com/lllypuk/flowra/internal/middleware"
+	"github.com/lllypuk/flowra/web"
 )
 
 // SetupRoutes configures all API routes and middleware chains.
@@ -47,10 +49,21 @@ func SetupRoutes(c *Container) *httpserver.Router {
 	// Create router with configuration
 	router := httpserver.NewRouter(e, routerConfig)
 
+	// Setup template renderer for HTML pages
+	e.Renderer = c.TemplateRenderer
+
+	// Setup static file serving
+	if err := httphandler.SetupStaticRoutes(e, web.StaticFS); err != nil {
+		c.Logger.Error("failed to setup static routes", "error", err)
+	}
+
 	// Register health check endpoints using the HealthChecker interface.
 	// Container implements httpserver.HealthChecker, so we pass it directly.
 	// This ensures proper context handling from the request.
 	router.RegisterHealthEndpointsWithChecker(c)
+
+	// Register HTML page routes
+	registerPageRoutes(e, c)
 
 	// Register API routes
 	registerAuthRoutes(router, c)
@@ -215,4 +228,46 @@ func createPlaceholderHandler(serviceName string) echo.HandlerFunc {
 			},
 		})
 	}
+}
+
+// registerPageRoutes registers HTML page routes for the HTMX frontend.
+func registerPageRoutes(e *echo.Echo, c *Container) {
+	// Public pages
+	e.GET("/", c.TemplateHandler.Home)
+
+	// Auth pages (public)
+	e.GET("/login", c.TemplateHandler.LoginPage)
+	e.GET("/auth/callback", c.TemplateHandler.AuthCallback)
+
+	// Auth actions
+	e.GET("/logout", httphandler.RequireAuth(c.TemplateHandler.LogoutPage))
+	e.POST("/auth/logout", c.TemplateHandler.LogoutHandler)
+
+	// Protected pages (require authentication)
+	// These will be added as frontend features are implemented:
+	// - /workspaces (workspace list)
+	// - /workspaces/:id (workspace view)
+	// - /workspaces/:id/chats/:chat_id (chat view)
+	// - /workspaces/:id/board (kanban board)
+	// - /settings (user settings)
+
+	// Placeholder for workspaces (for testing auth flow)
+	e.GET("/workspaces", httphandler.RequireAuth(func(c echo.Context) error {
+		return c.HTML(http.StatusOK, `
+			<!DOCTYPE html>
+			<html>
+			<head>
+				<title>Workspaces - Flowra</title>
+				<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+			</head>
+			<body>
+				<main class="container">
+					<h1>Workspaces</h1>
+					<p>You are logged in!</p>
+					<p><a href="/logout">Sign Out</a></p>
+				</main>
+			</body>
+			</html>
+		`)
+	}))
 }

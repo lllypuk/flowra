@@ -1,0 +1,26 @@
+{{define "loading"}}
+<div class="htmx-indicator" {{if .ID}}id="{{.ID}}"{{end}}>
+    <span aria-busy="true">Loading...</span>
+</div>
+{{end}}
+
+{{define "loading-spinner"}}
+<div class="loading-spinner" {{if .ID}}id="{{.ID}}"{{end}} aria-busy="true">
+    <span class="spinner"></span>
+    {{if .Message}}<span>{{.Message}}</span>{{end}}
+</div>
+{{end}}
+
+{{define "loading-skeleton"}}
+<div class="skeleton" {{if .ID}}id="{{.ID}}"{{end}}>
+    {{if .Lines}}
+    {{range .Lines}}
+    <div class="skeleton-line" style="width: {{.}}%"></div>
+    {{end}}
+    {{else}}
+    <div class="skeleton-line" style="width: 100%"></div>
+    <div class="skeleton-line" style="width: 75%"></div>
+    <div class="skeleton-line" style="width: 50%"></div>
+    {{end}}
+</div>
+{{end}}
