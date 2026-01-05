@@ -1,0 +1,36 @@
+{{define "base"}}
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{if .Title}}{{.Title}} - {{end}}Flowra</title>
+
+    <!-- Pico CSS -->
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/custom.css">
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@2.0.0"
+            crossorigin="anonymous"></script>
+
+    <!-- HTMX WebSocket Extension -->
+    <script src="https://unpkg.com/htmx-ext-ws@2.0.0/ws.js"></script>
+</head>
+<body hx-boost="true">
+    {{template "navbar" .}}
+
+    <main class="container">
+        {{template "flash" .}}
+        {{block "content" .}}{{end}}
+    </main>
+
+    {{template "footer" .}}
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
+{{end}}

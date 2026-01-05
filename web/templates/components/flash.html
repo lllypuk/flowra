@@ -1,0 +1,41 @@
+{{define "flash"}}
+{{if .Flash}}
+<div id="flash-messages">
+    {{range .Flash.Success}}
+    <article class="flash flash-success" role="alert">
+        <button class="close"
+                onclick="this.parentElement.remove()"
+                aria-label="Close">&times;</button>
+        {{.}}
+    </article>
+    {{end}}
+
+    {{range .Flash.Error}}
+    <article class="flash flash-error" role="alert">
+        <button class="close"
+                onclick="this.parentElement.remove()"
+                aria-label="Close">&times;</button>
+        {{.}}
+    </article>
+    {{end}}
+
+    {{range .Flash.Info}}
+    <article class="flash flash-info" role="alert">
+        <button class="close"
+                onclick="this.parentElement.remove()"
+                aria-label="Close">&times;</button>
+        {{.}}
+    </article>
+    {{end}}
+
+    {{range .Flash.Warning}}
+    <article class="flash flash-warning" role="alert">
+        <button class="close"
+                onclick="this.parentElement.remove()"
+                aria-label="Close">&times;</button>
+        {{.}}
+    </article>
+    {{end}}
+</div>
+{{end}}
+{{end}}

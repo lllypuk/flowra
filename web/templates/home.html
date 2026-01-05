@@ -1,0 +1,84 @@
+{{define "home.html"}}
+<!doctype html>
+<html lang="en" data-theme="light">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>{{if .Title}}{{.Title}} - {{end}}Flowra</title>
+
+        <!-- Pico CSS -->
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"
+        />
+
+        <!-- Custom CSS -->
+        <link rel="stylesheet" href="/static/css/custom.css" />
+
+        <!-- HTMX -->
+        <script
+            src="https://unpkg.com/htmx.org@2.0.0"
+            crossorigin="anonymous"
+        ></script>
+
+        <!-- HTMX WebSocket Extension -->
+        <script src="https://unpkg.com/htmx-ext-ws@2.0.0/ws.js"></script>
+    </head>
+    <body hx-boost="true">
+        {{template "navbar" .}}
+
+        <main class="container">
+            {{template "flash" .}}
+
+            <article class="text-center" style="padding: 4rem 1rem">
+                <hgroup>
+                    <h1>Welcome to Flowra</h1>
+                    <p>
+                        A modern chat platform with integrated task management
+                    </p>
+                </hgroup>
+
+                {{if .User}}
+                <p>
+                    <a href="/workspaces" role="button">Go to Workspaces</a>
+                </p>
+                {{else}}
+                <p>
+                    <a href="/login" role="button">Get Started</a>
+                </p>
+                {{end}}
+
+                <section style="margin-top: 3rem">
+                    <div class="grid">
+                        <article>
+                            <h3>Real-time Chat</h3>
+                            <p>
+                                Stay connected with your team through instant
+                                messaging with WebSocket support.
+                            </p>
+                        </article>
+                        <article>
+                            <h3>Task Management</h3>
+                            <p>
+                                Create tasks directly from chat messages and
+                                track them on a Kanban board.
+                            </p>
+                        </article>
+                        <article>
+                            <h3>Workspaces</h3>
+                            <p>
+                                Organize your projects into workspaces with team
+                                members and permissions.
+                            </p>
+                        </article>
+                    </div>
+                </section>
+            </article>
+        </main>
+
+        {{template "footer" .}}
+
+        <script src="/static/js/app.js"></script>
+    </body>
+</html>
+{{end}}

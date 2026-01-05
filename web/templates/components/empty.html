@@ -1,0 +1,32 @@
+{{define "empty"}}
+<article class="empty-state text-center">
+    {{if .Icon}}
+    <div class="empty-icon">{{.Icon}}</div>
+    {{end}}
+    <h3>{{if .Title}}{{.Title}}{{else}}Nothing here yet{{end}}</h3>
+    {{if .Message}}
+    <p class="text-muted">{{.Message}}</p>
+    {{end}}
+    {{if .Action}}
+    <a href="{{.Action.URL}}" role="button" {{if .Action.HxGet}}hx-get="{{.Action.HxGet}}" hx-target="{{.Action.HxTarget}}"{{end}}>
+        {{.Action.Label}}
+    </a>
+    {{end}}
+</article>
+{{end}}
+
+{{define "empty-workspaces"}}
+{{template "empty" dict "Title" "No workspaces yet" "Message" "Create your first workspace to get started" "Action" (dict "URL" "/workspaces/new" "Label" "+ Create Workspace")}}
+{{end}}
+
+{{define "empty-chats"}}
+{{template "empty" dict "Title" "No chats yet" "Message" "Start a new conversation" "Action" (dict "HxGet" "/partials/chat/new" "HxTarget" "#modal-container" "Label" "+ New Chat")}}
+{{end}}
+
+{{define "empty-tasks"}}
+{{template "empty" dict "Title" "No tasks" "Message" "Tasks will appear here when created from chat messages"}}
+{{end}}
+
+{{define "empty-notifications"}}
+{{template "empty" dict "Title" "All caught up!" "Message" "You have no notifications"}}
+{{end}}

@@ -1,0 +1,54 @@
+{{define "navbar"}}
+<nav class="container-fluid">
+    <ul>
+        <li><a href="/" class="contrast"><strong>Flowra</strong></a></li>
+    </ul>
+
+    {{if .User}}
+    <ul>
+        <li>
+            <a href="/workspaces">Workspaces</a>
+        </li>
+        <li>
+            <!-- Notifications dropdown -->
+            <details class="dropdown" role="list" dir="rtl">
+                <summary aria-haspopup="listbox" role="link">
+                    <span id="notification-badge"
+                          hx-get="/partials/notifications/count"
+                          hx-trigger="load, every 30s"
+                          hx-swap="innerHTML">
+                    </span>
+                    Notifications
+                </summary>
+                <ul role="listbox"
+                    hx-get="/partials/notifications"
+                    hx-trigger="toggle"
+                    hx-swap="innerHTML">
+                    <li>Loading...</li>
+                </ul>
+            </details>
+        </li>
+        <li>
+            <details class="dropdown" role="list" dir="rtl">
+                <summary aria-haspopup="listbox" role="link">
+                    {{.User.DisplayName}}
+                </summary>
+                <ul role="listbox">
+                    <li><a href="/settings">Settings</a></li>
+                    <li>
+                        <a href="#"
+                           hx-post="/auth/logout"
+                           hx-swap="none"
+                           hx-on::after-request="window.location.href='/'">Logout</a>
+                    </li>
+                </ul>
+            </details>
+        </li>
+    </ul>
+    {{else}}
+    <ul>
+        <li><a href="/login" role="button">Login</a></li>
+    </ul>
+    {{end}}
+</nav>
+{{end}}

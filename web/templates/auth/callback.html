@@ -1,0 +1,60 @@
+{{define "auth/callback.html"}}
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{if .Title}}{{.Title}} - {{end}}Flowra</title>
+
+    <!-- Pico CSS -->
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/custom.css">
+
+    {{if and (not .Error) .RedirectURL}}
+    <!-- Auto-redirect via meta refresh as fallback -->
+    <meta http-equiv="refresh" content="0;url={{.RedirectURL}}">
+    {{end}}
+</head>
+<body>
+    {{template "navbar" .}}
+
+    <main class="container">
+        <article class="callback-container">
+            {{if .Error}}
+            <header>
+                <h2>Sign-in failed</h2>
+            </header>
+
+            <article class="flash flash-error">
+                <p>{{.Error}}</p>
+            </article>
+
+            <footer class="text-center">
+                <a href="/login" role="button">Try again</a>
+            </footer>
+            {{else}}
+            <header>
+                <h2>Signing you in...</h2>
+            </header>
+
+            <div class="text-center">
+                <span aria-busy="true"></span>
+                <p class="text-muted">Please wait while we complete the sign-in process.</p>
+            </div>
+            {{end}}
+        </article>
+    </main>
+
+    <style>
+    .callback-container {
+        max-width: 400px;
+        margin: 4rem auto;
+        text-align: center;
+    }
+    </style>
+</body>
+</html>
+{{end}}

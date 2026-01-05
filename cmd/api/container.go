@@ -18,6 +18,7 @@ import (
 	"github.com/lllypuk/flowra/internal/infrastructure/repository/mongodb"
 	"github.com/lllypuk/flowra/internal/infrastructure/websocket"
 	"github.com/lllypuk/flowra/internal/middleware"
+	"github.com/lllypuk/flowra/web"
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
@@ -68,6 +69,10 @@ type Container struct {
 	UserHandler         *httphandler.UserHandler
 	WSHandler           *wshandler.Handler
 
+	// Template Rendering
+	TemplateRenderer *httphandler.TemplateRenderer
+	TemplateHandler  *httphandler.TemplateHandler
+
 	// Auth middleware components
 	TokenValidator middleware.TokenValidator
 	AccessChecker  middleware.WorkspaceAccessChecker
@@ -111,6 +116,12 @@ func NewContainer(cfg *config.Config, opts ...ContainerOption) (*Container, erro
 	c.setupRepositories()
 	c.setupUseCases()
 	c.setupEventHandlers()
+
+	// Setup template rendering
+	if err := c.setupTemplateRenderer(); err != nil {
+		_ = c.Close()
+		return nil, fmt.Errorf("failed to setup template renderer: %w", err)
+	}
 
 	// Setup HTTP handlers based on wiring mode
 	if c.Config.App.IsMockMode() {
@@ -368,6 +379,27 @@ func (c *Container) setupEventHandlers() {
 	c.LogHandler = eventbus.NewLoggingHandler(c.Logger)
 
 	c.Logger.Debug("event handlers initialized")
+}
+
+// setupTemplateRenderer initializes the template renderer and handler.
+func (c *Container) setupTemplateRenderer() error {
+	renderer, err := httphandler.NewTemplateRenderer(httphandler.TemplateRendererConfig{
+		FS:      web.TemplatesFS,
+		Logger:  c.Logger,
+		DevMode: c.Config.IsDevelopment(),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create template renderer: %w", err)
+	}
+
+	c.TemplateRenderer = renderer
+	c.TemplateHandler = httphandler.NewTemplateHandler(renderer, c.Logger)
+
+	c.Logger.Debug("template renderer initialized",
+		slog.Bool("dev_mode", c.Config.IsDevelopment()),
+	)
+
+	return nil
 }
 
 // registerEventHandlers registers all event handlers with the event bus.

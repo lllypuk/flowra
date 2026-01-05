@@ -1,0 +1,60 @@
+{{define "auth/logout.html"}}
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{if .Title}}{{.Title}} - {{end}}Flowra</title>
+
+    <!-- Pico CSS -->
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/custom.css">
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@2.0.0"
+            crossorigin="anonymous"></script>
+</head>
+<body>
+    {{template "navbar" .}}
+
+    <main class="container">
+        <article class="logout-container">
+            <header>
+                <h2>Sign Out</h2>
+            </header>
+
+            <p>Are you sure you want to sign out?</p>
+
+            <footer>
+                <form hx-post="/auth/logout"
+                      hx-swap="none"
+                      hx-on::after-request="window.location.href='/'">
+                    <div class="grid">
+                        <a href="javascript:history.back()"
+                           role="button"
+                           class="secondary outline">
+                            Cancel
+                        </a>
+                        <button type="submit">
+                            Sign Out
+                        </button>
+                    </div>
+                </form>
+            </footer>
+        </article>
+    </main>
+
+    <script src="/static/js/app.js"></script>
+
+    <style>
+    .logout-container {
+        max-width: 400px;
+        margin: 4rem auto;
+    }
+    </style>
+</body>
+</html>
+{{end}}
