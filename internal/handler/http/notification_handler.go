@@ -20,6 +20,7 @@ import (
 const (
 	defaultNotificationListLimit = 20
 	maxNotificationListLimit     = 100
+	queryParamTrue               = "true"
 )
 
 // Notification handler errors.
@@ -113,7 +114,7 @@ func (h *NotificationHandler) List(c echo.Context) error {
 
 	// Parse query parameters
 	limit, offset := parseNotificationPagination(c)
-	unreadOnly := c.QueryParam("unread_only") == "true"
+	unreadOnly := c.QueryParam("unread_only") == queryParamTrue
 
 	query := notifapp.ListNotificationsQuery{
 		UserID:     userID,

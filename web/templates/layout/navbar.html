@@ -11,27 +11,29 @@
         </li>
         <li>
             <!-- Notifications dropdown -->
-            <details class="dropdown" role="list" dir="rtl">
+            <details class="dropdown notification-dropdown" role="list" dir="rtl">
                 <summary aria-haspopup="listbox" role="link">
+                    <span class="notification-icon">🔔</span>
                     <span id="notification-badge"
+                          class="notification-badge"
                           hx-get="/partials/notifications/count"
-                          hx-trigger="load, every 30s"
-                          hx-swap="innerHTML">
+                          hx-trigger="load, every 30s, notification-update from:body"
+                          hx-swap="outerHTML">
                     </span>
-                    Notifications
                 </summary>
                 <ul role="listbox"
-                    hx-get="/partials/notifications"
-                    hx-trigger="toggle"
+                    id="notification-dropdown-list"
+                    hx-get="/partials/notifications?limit=10"
+                    hx-trigger="toggle once"
                     hx-swap="innerHTML">
-                    <li>Loading...</li>
+                    <li class="loading">Loading...</li>
                 </ul>
             </details>
         </li>
         <li>
             <details class="dropdown" role="list" dir="rtl">
                 <summary aria-haspopup="listbox" role="link">
-                    {{.User.DisplayName}}
+                    {{if .User.DisplayName}}{{.User.DisplayName}}{{else}}{{.User.Username}}{{end}}
                 </summary>
                 <ul role="listbox">
                     <li><a href="/settings">Settings</a></li>
@@ -51,4 +53,44 @@
     </ul>
     {{end}}
 </nav>
+
+<style>
+.notification-dropdown summary {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.notification-icon {
+    font-size: 1.1rem;
+}
+
+.notification-badge {
+    background: var(--pico-del-color, #c62828);
+    color: white;
+    font-size: 0.65rem;
+    font-weight: bold;
+    padding: 0.1rem 0.35rem;
+    border-radius: 8px;
+    min-width: 1rem;
+    text-align: center;
+}
+
+.notification-badge:empty,
+.notification-badge.hidden {
+    display: none;
+}
+
+.notification-dropdown ul {
+    min-width: 320px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.notification-dropdown li.loading {
+    padding: 1rem;
+    text-align: center;
+    color: var(--pico-muted-color);
+}
+</style>
 {{end}}

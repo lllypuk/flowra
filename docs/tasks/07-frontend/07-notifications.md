@@ -1,7 +1,7 @@
 # 07: Notifications
 
 **Приоритет:** 🟢 Medium
-**Статус:** ⏳ Не начато
+**Статус:** ✅ Завершено
 **Зависит от:** [04-chat-ui.md](04-chat-ui.md)
 
 ---
@@ -664,40 +664,42 @@ e.GET("/notifications/:id/redirect", h.NotificationRedirect, h.RequireAuth)
 ## Чеклист
 
 ### Templates
-- [ ] `notification/dropdown.html` - navbar dropdown
-- [ ] `notification/list.html` - full page
-- [ ] `notification/item.html` - single notification
-- [ ] `components/notification_badge.html` - unread count
+- [x] `notification/dropdown.html` - navbar dropdown
+- [x] `notification/list.html` - full page
+- [x] `notification/list_partial.html` - list partial template
+- [x] `notification/item.html` - single notification
+- [x] `notification/empty.html` - empty state
+- [x] `components/notification_badge.html` - unread count
 
 ### Handlers
-- [ ] `NotificationsPage` - full page
-- [ ] `NotificationsDropdownPartial` - dropdown content
-- [ ] `NotificationCountPartial` - badge count
-- [ ] `NotificationsListPartial` - list partial
-- [ ] `NotificationRedirect` - mark read & redirect
+- [x] `NotificationsPage` - full page
+- [x] `NotificationsDropdownPartial` - dropdown content
+- [x] `NotificationCountPartial` - badge count
+- [x] `NotificationsListPartial` - list partial
+- [x] `NotificationRedirect` - mark read & redirect
 
 ### Features
-- [ ] Badge показывает unread count
-- [ ] Dropdown открывается с уведомлениями
-- [ ] Click на уведомление ведёт к ресурсу
-- [ ] Mark as read работает
-- [ ] Mark all as read работает
+- [x] Badge показывает unread count
+- [x] Dropdown открывается с уведомлениями
+- [x] Click на уведомление ведёт к ресурсу
+- [x] Mark as read работает
+- [x] Mark all as read работает
 - [ ] Delete notification работает
 - [ ] Real-time новые уведомления
 - [ ] Toast notifications при новом уведомлении
-- [ ] Фильтрация по типу
+- [x] Фильтрация по типу
 
 ---
 
 ## Критерии приёмки
 
-- [ ] Badge в navbar показывает количество непрочитанных
-- [ ] Dropdown показывает последние 10 уведомлений
-- [ ] Click на уведомление переходит к связанному ресурсу
-- [ ] Уведомление автоматически отмечается прочитанным при click
+- [x] Badge в navbar показывает количество непрочитанных
+- [x] Dropdown показывает последние 10 уведомлений
+- [x] Click на уведомление переходит к связанному ресурсу
+- [x] Уведомление автоматически отмечается прочитанным при click
 - [ ] Real-time уведомления появляются без refresh
 - [ ] Toast появляется при новом уведомлении
-- [ ] Full page с фильтрацией и пагинацией
+- [x] Full page с фильтрацией и пагинацией
 
 ---
 
@@ -712,4 +714,4 @@ e.GET("/notifications/:id/redirect", h.NotificationRedirect, h.RequireAuth)
 
 ---
 
-*Обновлено: 2026-01-06*
+*Обновлено: 2026-01-07*

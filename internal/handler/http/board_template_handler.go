@@ -21,6 +21,12 @@ const (
 	maxBoardColumnLimit     = 100
 	maxMembersListLimit     = 100
 	boardColumnsCount       = 4
+
+	// Priority string constants.
+	priorityStringLow      = "low"
+	priorityStringMedium   = "medium"
+	priorityStringHigh     = "high"
+	priorityStringCritical = "critical"
 )
 
 // BoardTaskService defines the interface for task operations needed by the board.
@@ -527,19 +533,19 @@ func parseEntityTypeFromString(s string) *task.EntityType {
 
 // parsePriorityFromString converts a string to task.Priority.
 //
-//nolint:goconst // string literals are clearer than constants here
+
 func parsePriorityFromString(s string) *task.Priority {
 	switch strings.ToLower(s) {
-	case "low":
+	case priorityStringLow:
 		p := task.PriorityLow
 		return &p
-	case "medium":
+	case priorityStringMedium:
 		p := task.PriorityMedium
 		return &p
-	case "high":
+	case priorityStringHigh:
 		p := task.PriorityHigh
 		return &p
-	case "critical":
+	case priorityStringCritical:
 		p := task.PriorityCritical
 		return &p
 	default:

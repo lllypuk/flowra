@@ -1,0 +1,71 @@
+{{define "notification/list"}}
+{{template "base" .}}
+{{end}}
+
+{{define "content"}}
+<div class="notifications-page">
+    <header class="page-header">
+        <h1>Notifications</h1>
+
+        <div class="header-actions">
+            {{if gt .Data.UnreadCount 0}}
+            <button hx-put="/api/v1/notifications/mark-all-read"
+                    hx-swap="none"
+                    hx-on::after-request="location.reload()"
+                    class="outline">
+                Mark all as read
+            </button>
+            {{end}}
+
+            <select hx-get="/notifications"
+                    hx-target="body"
+                    hx-push-url="true"
+                    name="filter">
+                <option value="" {{if not .Data.Filter}}selected{{end}}>All</option>
+                <option value="unread" {{if eq .Data.Filter "unread"}}selected{{end}}>Unread</option>
+                <option value="mention" {{if eq .Data.Filter "mention"}}selected{{end}}>Mentions</option>
+                <option value="assignment" {{if eq .Data.Filter "assignment"}}selected{{end}}>Assignments</option>
+            </select>
+        </div>
+    </header>
+
+    <div id="notifications-list"
+         hx-get="/partials/notifications/list"
+         hx-trigger="load"
+         hx-swap="innerHTML"
+         hx-vals='{"filter": "{{.Data.Filter}}"}'>
+        {{template "loading" (dict "ID" "notifications-loading")}}
+    </div>
+</div>
+
+<style>
+.notifications-page {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.page-header h1 {
+    margin: 0;
+}
+
+.header-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.header-actions select {
+    margin-bottom: 0;
+    width: auto;
+}
+</style>
+{{end}}

@@ -261,6 +261,11 @@ func registerPageRoutes(e *echo.Echo, c *Container) {
 	partials.GET("/workspace/:id/members", c.TemplateHandler.WorkspaceMembersPartial)
 	partials.GET("/workspace/:id/invite-form", c.TemplateHandler.WorkspaceInviteForm)
 
+	// Notification pages and partials
+	if c.NotificationTemplateHandler != nil {
+		c.NotificationTemplateHandler.SetupNotificationRoutes(e)
+	}
+
 	// TODO: Add more protected pages as frontend features are implemented:
 	// - /workspaces/:id/chats/:chat_id (chat view)
 	// - /workspaces/:id/board (kanban board)

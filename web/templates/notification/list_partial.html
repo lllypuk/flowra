@@ -1,0 +1,65 @@
+{{define "notification/list-partial"}}
+{{if .Notifications}}
+<div class="notification-list">
+    {{range .Notifications}}
+        {{template "notification/item" .}}
+    {{end}}
+
+    {{if .HasMore}}
+    <button hx-get="/partials/notifications/list"
+            hx-target="this"
+            hx-swap="outerHTML"
+            hx-vals='{"offset": "{{.NextOffset}}", "filter": "{{$.Filter}}"}'
+            class="load-more outline secondary">
+        Load more
+    </button>
+    {{end}}
+</div>
+{{else}}
+<div class="empty-state">
+    <span class="empty-icon">🔔</span>
+    <h3>No notifications</h3>
+    <p class="text-muted">
+        {{if .Filter}}
+            No {{.Filter}} notifications found.
+        {{else}}
+            You're all caught up!
+        {{end}}
+    </p>
+</div>
+{{end}}
+
+<style>
+.notification-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.load-more {
+    width: 100%;
+    margin-top: 1rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--pico-muted-color);
+}
+
+.empty-state .empty-icon {
+    font-size: 3rem;
+    opacity: 0.5;
+    display: block;
+    margin-bottom: 1rem;
+}
+
+.empty-state h3 {
+    margin: 0 0 0.5rem;
+}
+
+.empty-state p {
+    margin: 0;
+}
+</style>
+{{end}}

@@ -12,6 +12,7 @@ import (
 	"github.com/lllypuk/flowra/internal/application/notification"
 	wsapp "github.com/lllypuk/flowra/internal/application/workspace"
 	"github.com/lllypuk/flowra/internal/config"
+	notificationdomain "github.com/lllypuk/flowra/internal/domain/notification"
 	httphandler "github.com/lllypuk/flowra/internal/handler/http"
 	wshandler "github.com/lllypuk/flowra/internal/handler/websocket"
 	"github.com/lllypuk/flowra/internal/infrastructure/auth"
@@ -86,8 +87,9 @@ type Container struct {
 	WSHandler           *wshandler.Handler
 
 	// Template Rendering
-	TemplateRenderer *httphandler.TemplateRenderer
-	TemplateHandler  *httphandler.TemplateHandler
+	TemplateRenderer            *httphandler.TemplateRenderer
+	TemplateHandler             *httphandler.TemplateHandler
+	NotificationTemplateHandler *httphandler.NotificationTemplateHandler
 
 	// Auth middleware components
 	TokenValidator middleware.TokenValidator
@@ -505,6 +507,9 @@ func (c *Container) setupHTTPHandlers() {
 	// === 8. Token Validator (unchanged) ===
 	c.TokenValidator = middleware.NewStaticTokenValidator(c.Config.Auth.JWTSecret)
 
+	// === 9. Notification Service and Template Handler ===
+	c.setupNotificationTemplateHandler()
+
 	// Note: MessageHandler, TaskHandler, NotificationHandler, UserHandler
 	// are left nil - routes.go will create placeholder endpoints for them.
 	// This is intentional until their use cases are fully implemented.
@@ -610,6 +615,86 @@ func (c *Container) createAuthService() httphandler.AuthService {
 		UserRepo:    c.UserRepo,
 		Logger:      c.Logger,
 	})
+}
+
+// setupNotificationTemplateHandler creates the notification template handler with all dependencies.
+func (c *Container) setupNotificationTemplateHandler() {
+	// Create notification service that implements NotificationTemplateService
+	notifService := c.createNotificationTemplateService()
+
+	// Create template handler
+	c.NotificationTemplateHandler = httphandler.NewNotificationTemplateHandler(
+		c.TemplateRenderer,
+		c.Logger,
+		notifService,
+	)
+
+	c.Logger.Debug("notification template handler initialized")
+}
+
+// createNotificationTemplateService creates a service implementing NotificationTemplateService.
+func (c *Container) createNotificationTemplateService() httphandler.NotificationTemplateService {
+	// Create use cases
+	listUC := notification.NewListNotificationsUseCase(c.NotificationRepo)
+	countUC := notification.NewCountUnreadUseCase(c.NotificationRepo)
+	markAsReadUC := notification.NewMarkAsReadUseCase(c.NotificationRepo)
+	getUC := notification.NewGetNotificationUseCase(c.NotificationRepo)
+
+	return &notificationTemplateService{
+		listUC:       listUC,
+		countUC:      countUC,
+		markAsReadUC: markAsReadUC,
+		getUC:        getUC,
+	}
+}
+
+// notificationTemplateService implements httphandler.NotificationTemplateService.
+type notificationTemplateService struct {
+	listUC       *notification.ListNotificationsUseCase
+	countUC      *notification.CountUnreadUseCase
+	markAsReadUC *notification.MarkAsReadUseCase
+	getUC        *notification.GetNotificationUseCase
+}
+
+// ListNotifications lists notifications for a user.
+func (s *notificationTemplateService) ListNotifications(
+	ctx context.Context,
+	query notification.ListNotificationsQuery,
+) (notification.ListResult, error) {
+	return s.listUC.Execute(ctx, query)
+}
+
+// CountUnread counts unread notifications for a user.
+func (s *notificationTemplateService) CountUnread(
+	ctx context.Context,
+	query notification.CountUnreadQuery,
+) (notification.CountResult, error) {
+	return s.countUC.Execute(ctx, query)
+}
+
+// MarkAsRead marks a notification as read.
+func (s *notificationTemplateService) MarkAsRead(
+	ctx context.Context,
+	cmd notification.MarkAsReadCommand,
+) (notification.Result, error) {
+	return s.markAsReadUC.Execute(ctx, cmd)
+}
+
+// GetNotification gets a notification by ID.
+func (s *notificationTemplateService) GetNotification(
+	ctx context.Context,
+	notificationID uuid.UUID,
+	userID uuid.UUID,
+) (*notificationdomain.Notification, error) {
+	query := notification.GetNotificationQuery{
+		NotificationID: notificationID,
+		UserID:         userID,
+	}
+	result, err := s.getUC.Execute(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	return result.Value, nil
 }
 
 // createUserRepoAdapter creates an adapter for UserRepository that works with echo.Context.

@@ -1,0 +1,121 @@
+{{define "notification/item"}}
+<article class="notification-card {{if not .IsRead}}unread{{end}}"
+         id="notification-{{.ID}}">
+    <div class="notification-icon-type">
+        {{if eq .Type "chat.mention"}}💬
+        {{else if eq .Type "task.assigned"}}👤
+        {{else if eq .Type "task.status_changed"}}🔄
+        {{else if eq .Type "chat.message"}}💭
+        {{else if eq .Type "task.created"}}📋
+        {{else if eq .Type "workspace.invite"}}📨
+        {{else if eq .Type "system"}}📢
+        {{else}}📢
+        {{end}}
+    </div>
+
+    <div class="notification-body">
+        <header>
+            <strong>{{.Title}}</strong>
+            <time>{{.CreatedAt | timeAgo}}</time>
+        </header>
+        <p>{{.Message}}</p>
+        {{if .Link}}
+        <a href="{{.Link}}"
+           class="notification-link"
+           hx-get="{{.Link}}"
+           hx-push-url="true"
+           hx-target="body">
+            View details →
+        </a>
+        {{end}}
+    </div>
+
+    <div class="notification-actions">
+        {{if not .IsRead}}
+        <button hx-put="/api/v1/notifications/{{.ID}}/read"
+                hx-target="#notification-{{.ID}}"
+                hx-swap="outerHTML"
+                class="small outline"
+                title="Mark as read">
+            ✓
+        </button>
+        {{end}}
+        <button hx-delete="/api/v1/notifications/{{.ID}}"
+                hx-target="#notification-{{.ID}}"
+                hx-swap="outerHTML swap:0.3s"
+                class="small outline secondary"
+                title="Delete">
+            ✕
+        </button>
+    </div>
+</article>
+
+<style>
+.notification-card {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 8px;
+    background: var(--pico-card-background-color);
+    transition: background 0.2s;
+}
+
+.notification-card.unread {
+    background: color-mix(in srgb, var(--pico-primary) 8%, var(--pico-card-background-color));
+    border-left: 3px solid var(--pico-primary);
+}
+
+.notification-card:hover {
+    background: var(--pico-primary-focus);
+}
+
+.notification-icon-type {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.notification-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.notification-body header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.25rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.notification-body time {
+    font-size: 0.75rem;
+    color: var(--pico-muted-color);
+}
+
+.notification-body p {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.9rem;
+}
+
+.notification-link {
+    font-size: 0.85rem;
+}
+
+.notification-actions {
+    display: flex;
+    gap: 0.25rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.notification-card:hover .notification-actions {
+    opacity: 1;
+}
+
+.notification-actions button {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+</style>
+{{end}}
