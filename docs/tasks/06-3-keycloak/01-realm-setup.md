@@ -1,7 +1,7 @@
 # 01: Keycloak Realm Setup
 
 **Приоритет:** 🔴 Critical
-**Статус:** ⏳ Не начато
+**Статус:** ✅ Завершено
 **Зависит от:** Docker Compose с Keycloak
 
 ---
@@ -188,40 +188,40 @@ echo "Keycloak setup complete!"
 ## Чеклист
 
 ### Realm Configuration
-- [ ] Realm `flowra` создан
-- [ ] Login settings настроены
-- [ ] Email settings настроены (SMTP для dev)
+- [x] Realm `flowra` создан
+- [x] Login settings настроены
+- [x] Email settings настроены (SMTP для dev)
 
 ### OAuth Client
-- [ ] Client `flowra-backend` создан
-- [ ] Client secret сгенерирован и сохранён
-- [ ] Redirect URIs настроены
-- [ ] Client scopes настроены
+- [x] Client `flowra-backend` создан
+- [x] Client secret сгенерирован и сохранён
+- [x] Redirect URIs настроены
+- [x] Client scopes настроены
 
 ### Roles & Groups
-- [ ] Realm roles созданы
-- [ ] Default groups созданы
-- [ ] Role mappings настроены
+- [x] Realm roles созданы
+- [x] Default groups созданы
+- [x] Role mappings настроены
 
 ### Test Users
-- [ ] Тестовые пользователи созданы
-- [ ] Пароли установлены
-- [ ] Роли назначены
+- [x] Тестовые пользователи созданы
+- [x] Пароли установлены
+- [x] Роли назначены
 
 ### Export
-- [ ] Realm экспортирован в JSON
-- [ ] Docker volume настроен
-- [ ] Auto-import при старте работает
+- [x] Realm экспортирован в JSON
+- [x] Docker volume настроен
+- [x] Auto-import при старте работает
 
 ---
 
 ## Критерии приёмки
 
-- [ ] `docker-compose up` автоматически настраивает Keycloak
-- [ ] OAuth2 login flow работает с настроенным client
-- [ ] Тестовые пользователи могут авторизоваться
-- [ ] JWT токены содержат roles и groups
-- [ ] Конфигурация воспроизводима (fresh start работает)
+- [x] `docker-compose up` автоматически настраивает Keycloak
+- [x] OAuth2 login flow работает с настроенным client
+- [x] Тестовые пользователи могут авторизоваться
+- [x] JWT токены содержат roles и groups
+- [x] Конфигурация воспроизводима (fresh start работает)
 
 ---
 
@@ -235,5 +235,59 @@ echo "Keycloak setup complete!"
 - [03-token-middleware.md](03-token-middleware.md) — требует client configuration
 
 ---
+
+## Реализация
+
+### Созданные файлы
+
+1. **`configs/keycloak/realm-export.json`** - Полный экспорт realm с:
+   - Realm settings (login, brute force protection)
+   - OAuth2 client `flowra-backend` с секретом
+   - Realm roles: user, admin, workspace_owner, workspace_admin
+   - Groups: users, admins
+   - Client scopes с protocol mappers
+   - 4 тестовых пользователя
+
+2. **`configs/keycloak/users-export.json`** - Отдельный экспорт тестовых пользователей
+
+3. **`configs/keycloak/README.md`** - Документация по настройке и импорту
+
+4. **`scripts/setup-keycloak.sh`** - Скрипт автоматизации с опциями:
+   - `--reset` - удалить существующий realm перед импортом
+   - `--wait` - только дождаться готовности Keycloak
+   - Верификация конфигурации после импорта
+
+5. **`docker-compose.yml`** - Обновлён для auto-import realm
+
+6. **`configs/config.yaml`** - Обновлён client_secret
+
+### Интеграционные тесты
+
+**`tests/integration/keycloak_realm_test.go`** - 13 тестов:
+- `TestKeycloakRealmSetup_RealmExists`
+- `TestKeycloakRealmSetup_ClientExists`
+- `TestKeycloakRealmSetup_RealmRolesExist`
+- `TestKeycloakRealmSetup_GroupsExist`
+- `TestKeycloakRealmSetup_TestUsersExist`
+- `TestKeycloakRealmSetup_TestUserCanAuthenticate`
+- `TestKeycloakRealmSetup_InvalidCredentialsRejected`
+- `TestKeycloakRealmSetup_TokenContainsExpectedClaims`
+- `TestKeycloakRealmSetup_TokenContainsRealmRoles`
+- `TestKeycloakRealmSetup_UserInfoEndpoint`
+- `TestKeycloakRealmSetup_AdminUserInfo`
+- `TestKeycloakRealmSetup_RefreshTokenWorks`
+- `TestKeycloakRealmSetup_DirectAccessGrantsEnabled`
+- `TestKeycloakRealmSetup_TokenScopes`
+
+**`tests/testutil/keycloak.go`** - Утилиты для тестирования:
+- Testcontainer для Keycloak с auto-import realm
+- Методы для получения токенов, user info
+- Проверка ролей, групп, пользователей
+
+### Запуск тестов
+
+```bash
+go test ./tests/integration/... -tags=integration -run TestKeycloakRealmSetup -v
+```
 
 *Обновлено: 2026-01-06*

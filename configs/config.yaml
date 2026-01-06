@@ -29,7 +29,7 @@ keycloak:
   url: "http://localhost:8090"
   realm: "flowra"
   client_id: "flowra-backend"
-  client_secret: "your-client-secret"
+  client_secret: "flowra-dev-secret-change-in-production"
   admin_username: "admin"
   admin_password: "admin123"
 
