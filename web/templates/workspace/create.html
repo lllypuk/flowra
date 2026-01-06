@@ -1,0 +1,51 @@
+{{define "workspace/create-form"}}
+<dialog open id="create-workspace-modal">
+    <article>
+        <header>
+            <button aria-label="Close"
+                    rel="prev"
+                    onclick="this.closest('dialog').remove()">
+            </button>
+            <h3>Create Workspace</h3>
+        </header>
+
+        <form hx-post="/api/v1/workspaces"
+              hx-target="#workspace-list"
+              hx-swap="afterbegin"
+              hx-on::after-request="if(event.detail.successful) this.closest('dialog').remove()">
+
+            <label for="name">
+                Workspace Name
+                <input type="text"
+                       id="name"
+                       name="name"
+                       placeholder="e.g., Engineering Team"
+                       required
+                       minlength="3"
+                       maxlength="100"
+                       autofocus>
+            </label>
+
+            <label for="description">
+                Description (optional)
+                <textarea id="description"
+                          name="description"
+                          placeholder="What is this workspace for?"
+                          maxlength="500"
+                          rows="3"></textarea>
+            </label>
+
+            <footer>
+                <button type="button"
+                        class="secondary"
+                        onclick="this.closest('dialog').remove()">
+                    Cancel
+                </button>
+                <button type="submit">
+                    Create Workspace
+                </button>
+            </footer>
+        </form>
+    </article>
+</dialog>
+{{end}}

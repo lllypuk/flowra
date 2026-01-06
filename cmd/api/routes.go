@@ -33,6 +33,9 @@ func SetupRoutes(c *Container) *httpserver.Router {
 			AllowExpiredForPaths: []string{
 				"/api/v1/auth/refresh",
 			},
+			// Session cookie support for HTMX frontend
+			SessionCookieName: "flowra_session",
+			MockSessionToken:  "mock-session-token",
 		}),
 		WorkspaceMiddleware: middleware.WorkspaceAccess(middleware.WorkspaceConfig{
 			Logger:           c.Logger,
@@ -244,30 +247,22 @@ func registerPageRoutes(e *echo.Echo, c *Container) {
 	e.POST("/auth/logout", c.TemplateHandler.LogoutHandler)
 
 	// Protected pages (require authentication)
-	// These will be added as frontend features are implemented:
-	// - /workspaces (workspace list)
-	// - /workspaces/:id (workspace view)
+	// Workspace pages
+	workspaces := e.Group("/workspaces", httphandler.RequireAuth)
+	workspaces.GET("", c.TemplateHandler.WorkspaceList)
+	workspaces.GET("/:id", c.TemplateHandler.WorkspaceView)
+	workspaces.GET("/:id/members", c.TemplateHandler.WorkspaceMembers)
+	workspaces.GET("/:id/settings", c.TemplateHandler.WorkspaceSettings)
+
+	// Workspace partials (for HTMX)
+	partials := e.Group("/partials", httphandler.RequireAuth)
+	partials.GET("/workspaces", c.TemplateHandler.WorkspaceListPartial)
+	partials.GET("/workspace/create-form", c.TemplateHandler.WorkspaceCreateForm)
+	partials.GET("/workspace/:id/members", c.TemplateHandler.WorkspaceMembersPartial)
+	partials.GET("/workspace/:id/invite-form", c.TemplateHandler.WorkspaceInviteForm)
+
+	// TODO: Add more protected pages as frontend features are implemented:
 	// - /workspaces/:id/chats/:chat_id (chat view)
 	// - /workspaces/:id/board (kanban board)
 	// - /settings (user settings)
-
-	// Placeholder for workspaces (for testing auth flow)
-	e.GET("/workspaces", httphandler.RequireAuth(func(c echo.Context) error {
-		return c.HTML(http.StatusOK, `
-			<!DOCTYPE html>
-			<html>
-			<head>
-				<title>Workspaces - Flowra</title>
-				<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
-			</head>
-			<body>
-				<main class="container">
-					<h1>Workspaces</h1>
-					<p>You are logged in!</p>
-					<p><a href="/logout">Sign Out</a></p>
-				</main>
-			</body>
-			</html>
-		`)
-	}))
 }

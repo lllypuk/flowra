@@ -9,9 +9,16 @@ import (
 	"net/http"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
 	"github.com/lllypuk/flowra/internal/middleware"
+)
+
+// Template handler constants.
+const (
+	defaultPageLimit = 100
 )
 
 // TemplateRenderer implements echo.Renderer for HTML template rendering.
@@ -142,19 +149,35 @@ type UserView struct {
 
 // TemplateHandler provides handlers for rendering HTML pages.
 type TemplateHandler struct {
-	renderer *TemplateRenderer
-	logger   *slog.Logger
+	renderer         *TemplateRenderer
+	logger           *slog.Logger
+	workspaceService WorkspaceService
+	memberService    MemberService
 }
 
 // NewTemplateHandler creates a new template handler.
-func NewTemplateHandler(renderer *TemplateRenderer, logger *slog.Logger) *TemplateHandler {
+func NewTemplateHandler(
+	renderer *TemplateRenderer,
+	logger *slog.Logger,
+	workspaceService WorkspaceService,
+	memberService MemberService,
+) *TemplateHandler {
 	if logger == nil {
 		logger = slog.Default()
 	}
 	return &TemplateHandler{
-		renderer: renderer,
-		logger:   logger,
+		renderer:         renderer,
+		logger:           logger,
+		workspaceService: workspaceService,
+		memberService:    memberService,
 	}
+}
+
+// SetServices sets the workspace and member services.
+// This is used to inject services after the handler is created.
+func (h *TemplateHandler) SetServices(workspaceService WorkspaceService, memberService MemberService) {
+	h.workspaceService = workspaceService
+	h.memberService = memberService
 }
 
 // render is a helper to render a template with common page data.
@@ -379,8 +402,323 @@ func (h *TemplateHandler) SetupPageRoutes(e *echo.Echo) {
 	e.GET("/", h.Home)
 	e.GET("/login", h.LoginPage)
 
-	// These will be implemented in subsequent tasks
-	// e.GET("/workspaces", h.WorkspaceList)
-	// e.GET("/workspaces/:id", h.WorkspaceView)
-	// etc.
+	// Auth pages
+	e.GET("/auth/callback", h.AuthCallback)
+	e.GET("/logout", h.LogoutPage)
+	e.POST("/auth/logout", h.LogoutHandler)
+
+	// Workspace pages (protected)
+	workspaces := e.Group("/workspaces", RequireAuth)
+	workspaces.GET("", h.WorkspaceList)
+	workspaces.GET("/:id", h.WorkspaceView)
+	workspaces.GET("/:id/members", h.WorkspaceMembers)
+	workspaces.GET("/:id/settings", h.WorkspaceSettings)
+
+	// Workspace partials (protected)
+	partials := e.Group("/partials", RequireAuth)
+	partials.GET("/workspaces", h.WorkspaceListPartial)
+	partials.GET("/workspace/create-form", h.WorkspaceCreateForm)
+	partials.GET("/workspace/:id/members", h.WorkspaceMembersPartial)
+	partials.GET("/workspace/:id/invite-form", h.WorkspaceInviteForm)
+}
+
+// WorkspaceList renders the workspace list page.
+func (h *TemplateHandler) WorkspaceList(c echo.Context) error {
+	return h.render(c, "workspace/list.html", "Workspaces", nil)
+}
+
+// WorkspaceListPartial returns the workspace list as HTML partial for HTMX.
+func (h *TemplateHandler) WorkspaceListPartial(c echo.Context) error {
+	user := h.getUserView(c)
+	if user == nil {
+		return c.String(http.StatusUnauthorized, "Unauthorized")
+	}
+
+	// Check if services are available
+	if h.workspaceService == nil {
+		return h.RenderPartial(c, "empty-workspaces", nil)
+	}
+
+	userID, err := uuid.ParseUUID(user.ID)
+	if err != nil {
+		return h.RenderPartial(c, "empty-workspaces", nil)
+	}
+
+	workspaces, _, err := h.workspaceService.ListUserWorkspaces(c.Request().Context(), userID, 0, defaultPageLimit)
+	if err != nil {
+		h.logger.Error("failed to list workspaces", slog.String("error", err.Error()))
+		return h.RenderPartial(c, "empty-workspaces", nil)
+	}
+
+	// Convert to view models
+	workspaceViews := make([]WorkspaceViewData, 0, len(workspaces))
+	for _, ws := range workspaces {
+		memberCount, _ := h.workspaceService.GetMemberCount(c.Request().Context(), ws.ID())
+		workspaceViews = append(workspaceViews, WorkspaceViewData{
+			ID:          ws.ID().String(),
+			Name:        ws.Name(),
+			Description: "", // Description not in domain model yet
+			MemberCount: memberCount,
+			CreatedAt:   ws.CreatedAt(),
+			UnreadCount: 0, // TODO: implement unread count
+		})
+	}
+
+	data := map[string]any{
+		"Workspaces": workspaceViews,
+	}
+	return h.RenderPartial(c, "workspace/list-partial", data)
+}
+
+// WorkspaceView renders a single workspace page.
+func (h *TemplateHandler) WorkspaceView(c echo.Context) error {
+	user := h.getUserView(c)
+	if user == nil {
+		return c.Redirect(http.StatusFound, "/login")
+	}
+
+	// Check if services are available
+	if h.workspaceService == nil || h.memberService == nil {
+		return h.NotFound(c)
+	}
+
+	workspaceID, err := uuid.ParseUUID(c.Param("id"))
+	if err != nil {
+		return h.NotFound(c)
+	}
+
+	userID, err := uuid.ParseUUID(user.ID)
+	if err != nil {
+		return h.NotFound(c)
+	}
+
+	ws, err := h.workspaceService.GetWorkspace(c.Request().Context(), workspaceID)
+	if err != nil {
+		return h.NotFound(c)
+	}
+
+	member, err := h.memberService.GetMember(c.Request().Context(), workspaceID, userID)
+	if err != nil {
+		return h.NotFound(c)
+	}
+
+	memberCount, _ := h.workspaceService.GetMemberCount(c.Request().Context(), workspaceID)
+
+	data := map[string]any{
+		"Workspace": WorkspaceViewData{
+			ID:          ws.ID().String(),
+			Name:        ws.Name(),
+			Description: "",
+			MemberCount: memberCount,
+			CreatedAt:   ws.CreatedAt(),
+		},
+		"UserRole":    member.Role().String(),
+		"ActiveTab":   c.QueryParam("tab"),
+		"UnreadChats": 0,
+	}
+
+	return h.render(c, "workspace/view.html", ws.Name(), data)
+}
+
+// WorkspaceCreateForm returns the create workspace form partial.
+func (h *TemplateHandler) WorkspaceCreateForm(c echo.Context) error {
+	return h.RenderPartial(c, "workspace/create-form", nil)
+}
+
+// WorkspaceMembers renders the workspace members page.
+func (h *TemplateHandler) WorkspaceMembers(c echo.Context) error {
+	user := h.getUserView(c)
+	if user == nil {
+		return c.Redirect(http.StatusFound, "/login")
+	}
+
+	// Check if services are available
+	if h.workspaceService == nil || h.memberService == nil {
+		return h.NotFound(c)
+	}
+
+	workspaceID, err := uuid.ParseUUID(c.Param("id"))
+	if err != nil {
+		return h.NotFound(c)
+	}
+
+	userID, err := uuid.ParseUUID(user.ID)
+	if err != nil {
+		return h.NotFound(c)
+	}
+
+	ws, err := h.workspaceService.GetWorkspace(c.Request().Context(), workspaceID)
+	if err != nil {
+		return h.NotFound(c)
+	}
+
+	member, err := h.memberService.GetMember(c.Request().Context(), workspaceID, userID)
+	if err != nil {
+		return h.NotFound(c)
+	}
+
+	memberCount, _ := h.workspaceService.GetMemberCount(c.Request().Context(), workspaceID)
+
+	data := map[string]any{
+		"Workspace": WorkspaceViewData{
+			ID:          ws.ID().String(),
+			Name:        ws.Name(),
+			Description: "",
+			MemberCount: memberCount,
+			CreatedAt:   ws.CreatedAt(),
+		},
+		"UserRole":      member.Role().String(),
+		"CurrentUserID": user.ID,
+	}
+
+	return h.render(c, "workspace/members.html", "Members - "+ws.Name(), data)
+}
+
+// WorkspaceMembersPartial returns the workspace members list as HTML partial.
+func (h *TemplateHandler) WorkspaceMembersPartial(c echo.Context) error {
+	user := h.getUserView(c)
+	if user == nil {
+		return c.String(http.StatusUnauthorized, "Unauthorized")
+	}
+
+	// Check if services are available
+	if h.workspaceService == nil || h.memberService == nil {
+		return c.String(http.StatusServiceUnavailable, "Service unavailable")
+	}
+
+	workspaceID, err := uuid.ParseUUID(c.Param("id"))
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid workspace ID")
+	}
+
+	userID, err := uuid.ParseUUID(user.ID)
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid user ID")
+	}
+
+	ws, err := h.workspaceService.GetWorkspace(c.Request().Context(), workspaceID)
+	if err != nil {
+		return c.String(http.StatusNotFound, "Workspace not found")
+	}
+
+	currentMember, err := h.memberService.GetMember(c.Request().Context(), workspaceID, userID)
+	if err != nil {
+		return c.String(http.StatusForbidden, "Not a member of this workspace")
+	}
+
+	members, _, err := h.memberService.ListMembers(c.Request().Context(), workspaceID, 0, defaultPageLimit)
+	if err != nil {
+		h.logger.Error("failed to list members", slog.String("error", err.Error()))
+		return c.String(http.StatusInternalServerError, "Failed to load members")
+	}
+
+	memberCount, _ := h.workspaceService.GetMemberCount(c.Request().Context(), workspaceID)
+
+	// Convert to view models
+	memberViews := make([]MemberViewData, 0, len(members))
+	for _, m := range members {
+		memberViews = append(memberViews, MemberViewData{
+			UserID:      m.UserID().String(),
+			Username:    "user" + m.UserID().String()[:8], // TODO: get actual username
+			DisplayName: "User " + m.UserID().String()[:8],
+			AvatarURL:   "",
+			Role:        m.Role().String(),
+			JoinedAt:    m.JoinedAt(),
+		})
+	}
+
+	data := map[string]any{
+		"Members": memberViews,
+		"Workspace": WorkspaceViewData{
+			ID:          ws.ID().String(),
+			Name:        ws.Name(),
+			MemberCount: memberCount,
+		},
+		"UserRole":      currentMember.Role().String(),
+		"CurrentUserID": user.ID,
+	}
+
+	return h.RenderPartial(c, "workspace/members-partial", data)
+}
+
+// WorkspaceSettings renders the workspace settings page.
+func (h *TemplateHandler) WorkspaceSettings(c echo.Context) error {
+	user := h.getUserView(c)
+	if user == nil {
+		return c.Redirect(http.StatusFound, "/login")
+	}
+
+	// Check if services are available
+	if h.workspaceService == nil || h.memberService == nil {
+		return h.NotFound(c)
+	}
+
+	workspaceID, err := uuid.ParseUUID(c.Param("id"))
+	if err != nil {
+		return h.NotFound(c)
+	}
+
+	userID, err := uuid.ParseUUID(user.ID)
+	if err != nil {
+		return h.NotFound(c)
+	}
+
+	ws, err := h.workspaceService.GetWorkspace(c.Request().Context(), workspaceID)
+	if err != nil {
+		return h.NotFound(c)
+	}
+
+	member, err := h.memberService.GetMember(c.Request().Context(), workspaceID, userID)
+	if err != nil {
+		return h.NotFound(c)
+	}
+
+	// Only owner can access settings
+	if member.Role().String() != "owner" {
+		return c.Redirect(http.StatusFound, "/workspaces/"+workspaceID.String())
+	}
+
+	memberCount, _ := h.workspaceService.GetMemberCount(c.Request().Context(), workspaceID)
+
+	data := map[string]any{
+		"Workspace": WorkspaceViewData{
+			ID:          ws.ID().String(),
+			Name:        ws.Name(),
+			Description: "",
+			MemberCount: memberCount,
+			CreatedAt:   ws.CreatedAt(),
+		},
+		"UserRole": member.Role().String(),
+	}
+
+	return h.render(c, "workspace/settings.html", "Settings - "+ws.Name(), data)
+}
+
+// WorkspaceInviteForm returns the invite member form partial.
+func (h *TemplateHandler) WorkspaceInviteForm(c echo.Context) error {
+	workspaceID := c.Param("id")
+	data := map[string]any{
+		"WorkspaceID": workspaceID,
+	}
+	return h.RenderPartial(c, "workspace/invite-form", data)
+}
+
+// WorkspaceViewData represents workspace data for templates.
+type WorkspaceViewData struct {
+	ID          string
+	Name        string
+	Description string
+	MemberCount int
+	CreatedAt   time.Time
+	UnreadCount int
+}
+
+// MemberViewData represents member data for templates.
+type MemberViewData struct {
+	UserID      string
+	Username    string
+	DisplayName string
+	AvatarURL   string
+	Role        string
+	JoinedAt    time.Time
 }

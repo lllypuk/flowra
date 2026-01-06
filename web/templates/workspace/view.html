@@ -1,0 +1,178 @@
+{{define "workspace/view.html"}}
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{if .Title}}{{.Title}} - {{end}}Flowra</title>
+
+    <!-- Pico CSS -->
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/custom.css">
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@2.0.0"
+            crossorigin="anonymous"></script>
+
+    <!-- HTMX WebSocket Extension -->
+    <script src="https://unpkg.com/htmx-ext-ws@2.0.0/ws.js"></script>
+</head>
+<body hx-boost="true">
+    {{template "navbar" .}}
+
+    <div class="workspace-layout">
+        <!-- Sidebar -->
+        <aside class="workspace-sidebar">
+            <header>
+                <h2>{{.Data.Workspace.Name}}</h2>
+                {{if eq .Data.UserRole "owner"}}
+                <a href="/workspaces/{{.Data.Workspace.ID}}/settings"
+                   title="Settings">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                </a>
+                {{end}}
+            </header>
+
+            <nav>
+                <ul>
+                    <li>
+                        <a href="/workspaces/{{.Data.Workspace.ID}}/chats"
+                           {{if eq .Data.ActiveTab "chats"}}aria-current="page"{{end}}>
+                            Chats
+                            {{if gt .Data.UnreadChats 0}}
+                            <span class="badge">{{.Data.UnreadChats}}</span>
+                            {{end}}
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/workspaces/{{.Data.Workspace.ID}}/board"
+                           {{if eq .Data.ActiveTab "board"}}aria-current="page"{{end}}>
+                            Board
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/workspaces/{{.Data.Workspace.ID}}/members"
+                           {{if eq .Data.ActiveTab "members"}}aria-current="page"{{end}}>
+                            Members
+                            <small class="text-muted">({{.Data.Workspace.MemberCount}})</small>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+
+            <!-- Quick actions -->
+            <div class="sidebar-actions">
+                <button hx-get="/partials/chat/create-form?workspace_id={{.Data.Workspace.ID}}"
+                        hx-target="#modal-container"
+                        hx-swap="innerHTML"
+                        class="outline">
+                    + New Chat
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main content -->
+        <main class="workspace-main">
+            {{if .Data.Content}}
+            {{.Data.Content}}
+            {{else}}
+            <div class="workspace-dashboard">
+                <h2>Welcome to {{.Data.Workspace.Name}}</h2>
+                <p class="text-muted">Choose an option from the sidebar to get started.</p>
+            </div>
+            {{end}}
+        </main>
+
+        <!-- Modal container -->
+        <div id="modal-container"></div>
+    </div>
+
+    {{template "footer" .}}
+
+    <script src="/static/js/app.js"></script>
+
+    <style>
+    .workspace-layout {
+        display: grid;
+        grid-template-columns: 250px 1fr;
+        min-height: calc(100vh - 60px);
+    }
+
+    .workspace-sidebar {
+        background: var(--card-background-color);
+        border-right: 1px solid var(--muted-border-color);
+        padding: 1rem;
+    }
+
+    .workspace-sidebar header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .workspace-sidebar header h2 {
+        margin: 0;
+        font-size: 1.25rem;
+    }
+
+    .workspace-sidebar nav ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .workspace-sidebar nav a {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0.75rem;
+        border-radius: 4px;
+        text-decoration: none;
+    }
+
+    .workspace-sidebar nav a[aria-current="page"] {
+        background: var(--primary-focus);
+    }
+
+    .sidebar-actions {
+        margin-top: 2rem;
+    }
+
+    .workspace-main {
+        padding: 1.5rem;
+        overflow-y: auto;
+    }
+
+    .workspace-dashboard {
+        text-align: center;
+        padding: 3rem;
+    }
+
+    .badge {
+        background: var(--primary);
+        color: var(--primary-inverse);
+        padding: 0.125rem 0.5rem;
+        border-radius: 1rem;
+        font-size: 0.75rem;
+    }
+
+    @media (max-width: 768px) {
+        .workspace-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .workspace-sidebar {
+            display: none;
+        }
+    }
+    </style>
+</body>
+</html>
+{{end}}

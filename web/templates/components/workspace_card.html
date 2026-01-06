@@ -1,0 +1,89 @@
+{{define "workspace_card"}}
+<article class="workspace-card"
+         hx-get="/workspaces/{{.ID}}"
+         hx-push-url="true"
+         hx-target="body"
+         style="cursor: pointer;">
+    <header>
+        <hgroup>
+            <h3>{{.Name}}</h3>
+            {{if .Description}}
+            <p>{{truncate .Description 100}}</p>
+            {{end}}
+        </hgroup>
+    </header>
+
+    <footer>
+        <div class="workspace-meta">
+            <span title="Members">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                {{.MemberCount}} {{pluralize .MemberCount "member" "members"}}
+            </span>
+            {{if gt .UnreadCount 0}}
+            <span class="badge" title="Unread messages">
+                {{.UnreadCount}}
+            </span>
+            {{end}}
+        </div>
+        <small class="text-muted">
+            Created {{timeAgo .CreatedAt}}
+        </small>
+    </footer>
+</article>
+
+<style>
+.workspace-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.workspace-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.workspace-card header hgroup h3 {
+    margin-bottom: 0.25rem;
+}
+
+.workspace-card header hgroup p {
+    margin: 0;
+    color: var(--muted-color);
+    font-size: 0.875rem;
+}
+
+.workspace-card footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 1rem;
+    border-top: 1px solid var(--muted-border-color);
+}
+
+.workspace-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.workspace-meta span {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--muted-color);
+}
+
+.workspace-meta .badge {
+    background: var(--primary);
+    color: var(--primary-inverse);
+    padding: 0.125rem 0.5rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+}
+</style>
+{{end}}
