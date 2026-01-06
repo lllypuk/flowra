@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"errors"
 	"slices"
 	"time"
 
@@ -41,6 +42,11 @@ type Chat struct {
 	assigneeID *uuid.UUID
 	dueDate    *time.Time
 	severity   string // только для Bug
+
+	// Soft delete
+	deleted   bool
+	deletedAt *time.Time
+	deletedBy *uuid.UUID
 
 	// Event sourcing
 	version           int
@@ -442,8 +448,26 @@ func (c *Chat) Rename(newTitle string, userID uuid.UUID) error {
 	return nil
 }
 
+// Delete удаляет чат (soft delete)
+func (c *Chat) Delete(deletedBy uuid.UUID) error {
+	if c.deleted {
+		return errors.New("chat already deleted")
+	}
+
+	now := time.Now()
+	evt := NewChatDeleted(
+		c.id,
+		deletedBy,
+		now,
+		c.version+1,
+		event.Metadata{},
+	)
+	c.applyEvent(evt)
+	return nil
+}
+
 // SetSeverity устанавливает severity для Bug
-func (c *Chat) SetSeverity(severity string, userID uuid.UUID) error {
+func (c *Chat) SetSeverity(severity string, setBy uuid.UUID) error {
 	if c.chatType != TypeBug {
 		return errs.ErrInvalidState
 	}
@@ -462,12 +486,12 @@ func (c *Chat) SetSeverity(severity string, userID uuid.UUID) error {
 		c.id,
 		oldSeverity,
 		severity,
-		userID,
+		setBy,
 		c.version+1,
 		event.Metadata{
 			CorrelationID: uuid.NewUUID().String(),
 			CausationID:   uuid.NewUUID().String(),
-			UserID:        userID.String(),
+			UserID:        setBy.String(),
 		},
 	)
 
@@ -558,6 +582,8 @@ func (c *Chat) Apply(e event.DomainEvent) error {
 		c.applyRenamed(evt)
 	case *SeveritySet:
 		c.applySeveritySet(evt)
+	case *Deleted:
+		c.applyDeleted(evt)
 	default:
 		// Неизвестные события игнорируем (forward compatibility)
 	}
@@ -638,6 +664,13 @@ func (c *Chat) applyRenamed(evt *Renamed) {
 
 func (c *Chat) applySeveritySet(evt *SeveritySet) {
 	c.severity = evt.NewSeverity
+	c.version = evt.Version()
+}
+
+func (c *Chat) applyDeleted(evt *Deleted) {
+	c.deleted = true
+	c.deletedAt = &evt.DeletedAt
+	c.deletedBy = &evt.DeletedBy
 	c.version = evt.Version()
 }
 
@@ -728,8 +761,17 @@ func (c *Chat) AssigneeID() *uuid.UUID { return c.assigneeID }
 // DueDate возвращает дедлайн
 func (c *Chat) DueDate() *time.Time { return c.dueDate }
 
-// Severity возвращает severity (для Bug)
+// Severity возвращает severity для Bug
 func (c *Chat) Severity() string { return c.severity }
+
+// IsDeleted возвращает признак удаления
+func (c *Chat) IsDeleted() bool { return c.deleted }
+
+// DeletedAt возвращает время удаления
+func (c *Chat) DeletedAt() *time.Time { return c.deletedAt }
+
+// DeletedBy возвращает ID удалившего пользователя
+func (c *Chat) DeletedBy() *uuid.UUID { return c.deletedBy }
 
 // Validation helpers
 

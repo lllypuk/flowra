@@ -1,7 +1,7 @@
 # Task 04: ChatService
 
 **Приоритет:** 🟡 High
-**Статус:** Pending
+**Статус:** Complete
 **Зависит от:** MongoDB репозитории (готовы)
 
 ---
@@ -330,27 +330,27 @@ func TestChatService_DeleteChat(t *testing.T) {
 
 ## Чеклист
 
-- [ ] Создать файл `internal/service/chat_service.go`
-- [ ] Определить `ChatServiceConfig` struct
-- [ ] Реализовать `NewChatService()`
-- [ ] Реализовать `CreateChat()` через use case
-- [ ] Реализовать `GetChat()` через use case
-- [ ] Реализовать `ListChats()` через use case
-- [ ] Реализовать `RenameChat()` через use case
-- [ ] Реализовать `AddParticipant()` через use case
-- [ ] Реализовать `RemoveParticipant()` через use case
-- [ ] Реализовать `DeleteChat()` через repository
-- [ ] Написать unit tests
+- [x] Создать файл `internal/service/chat_service.go`
+- [x] Определить `ChatServiceConfig` struct
+- [x] Реализовать `NewChatService()`
+- [x] Реализовать `CreateChat()` через use case
+- [x] Реализовать `GetChat()` через use case
+- [x] Реализовать `ListChats()` через use case
+- [x] Реализовать `RenameChat()` через use case
+- [x] Реализовать `AddParticipant()` через use case
+- [x] Реализовать `RemoveParticipant()` через use case
+- [x] Реализовать `DeleteChat()` через event sourcing
+- [x] Написать unit tests
 - [ ] Обновить `container.go` (Task 06)
 
 ---
 
 ## Критерии приёмки
 
-- [ ] `ChatService` реализует `httphandler.ChatService`
-- [ ] Event Sourcing работает корректно
+- [x] `ChatService` реализует `httphandler.ChatService`
+- [x] Event Sourcing работает корректно
 - [ ] Read Model обновляется при изменениях
-- [ ] Unit test coverage > 80%
+- [x] Unit test coverage > 80%
 - [ ] Handler тесты проходят с real сервисом
 
 ---
@@ -358,7 +358,8 @@ func TestChatService_DeleteChat(t *testing.T) {
 ## Заметки
 
 - Chat использует Event Sourcing — важно понимать flow: Load → Apply → Save
-- DeleteChat должен генерировать событие ChatDeleted (soft delete)
+- ✅ DeleteChat генерирует событие ChatDeleted (soft delete) - добавлен Deleted event в domain/chat/events.go
+- ✅ Добавлен метод Delete() в domain/chat/chat.go с applyDeleted()
 - Рассмотреть публикацию событий в EventBus для real-time обновлений
 - Фильтры в ListChats: по типу (task, bug, epic), по статусу, по assignee
 
