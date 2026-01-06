@@ -10,9 +10,11 @@ import (
 
 	chatapp "github.com/lllypuk/flowra/internal/application/chat"
 	"github.com/lllypuk/flowra/internal/application/notification"
+	taskapp "github.com/lllypuk/flowra/internal/application/task"
 	wsapp "github.com/lllypuk/flowra/internal/application/workspace"
 	"github.com/lllypuk/flowra/internal/config"
 	notificationdomain "github.com/lllypuk/flowra/internal/domain/notification"
+	taskdomain "github.com/lllypuk/flowra/internal/domain/task"
 	httphandler "github.com/lllypuk/flowra/internal/handler/http"
 	wshandler "github.com/lllypuk/flowra/internal/handler/websocket"
 	"github.com/lllypuk/flowra/internal/infrastructure/auth"
@@ -90,6 +92,9 @@ type Container struct {
 	TemplateRenderer            *httphandler.TemplateRenderer
 	TemplateHandler             *httphandler.TemplateHandler
 	NotificationTemplateHandler *httphandler.NotificationTemplateHandler
+	ChatTemplateHandler         *httphandler.ChatTemplateHandler
+	BoardTemplateHandler        *httphandler.BoardTemplateHandler
+	TaskDetailTemplateHandler   *httphandler.TaskDetailTemplateHandler
 
 	// Auth middleware components
 	TokenValidator middleware.TokenValidator
@@ -510,6 +515,15 @@ func (c *Container) setupHTTPHandlers() {
 	// === 9. Notification Service and Template Handler ===
 	c.setupNotificationTemplateHandler()
 
+	// === 10. Chat Template Handler ===
+	c.setupChatTemplateHandler()
+
+	// === 11. Board Template Handler ===
+	c.setupBoardTemplateHandler()
+
+	// === 12. Task Detail Template Handler ===
+	c.setupTaskDetailTemplateHandler()
+
 	// Note: MessageHandler, TaskHandler, NotificationHandler, UserHandler
 	// are left nil - routes.go will create placeholder endpoints for them.
 	// This is intentional until their use cases are fully implemented.
@@ -630,6 +644,286 @@ func (c *Container) setupNotificationTemplateHandler() {
 	)
 
 	c.Logger.Debug("notification template handler initialized")
+}
+
+// setupChatTemplateHandler creates the chat template handler with all dependencies.
+func (c *Container) setupChatTemplateHandler() {
+	// Create chat template service adapter
+	chatService := c.createChatTemplateService()
+
+	// For now, message service is nil - will be implemented with message use cases
+	c.ChatTemplateHandler = httphandler.NewChatTemplateHandler(
+		c.TemplateRenderer,
+		c.Logger,
+		chatService,
+		nil, // MessageTemplateService - TODO: implement when message use cases are ready
+	)
+
+	c.Logger.Debug("chat template handler initialized")
+}
+
+// createChatTemplateService creates a service implementing ChatTemplateService.
+func (c *Container) createChatTemplateService() httphandler.ChatTemplateService {
+	return &chatTemplateServiceAdapter{
+		chatService: c.ChatService,
+	}
+}
+
+// chatTemplateServiceAdapter adapts ChatService to ChatTemplateService.
+type chatTemplateServiceAdapter struct {
+	chatService *service.ChatService
+}
+
+// GetChat implements ChatTemplateService.
+func (a *chatTemplateServiceAdapter) GetChat(
+	ctx context.Context,
+	query chatapp.GetChatQuery,
+) (*chatapp.GetChatResult, error) {
+	if a.chatService == nil {
+		return nil, chatapp.ErrChatNotFound
+	}
+	return a.chatService.GetChat(ctx, query)
+}
+
+// ListChats implements ChatTemplateService.
+func (a *chatTemplateServiceAdapter) ListChats(
+	ctx context.Context,
+	query chatapp.ListChatsQuery,
+) (*chatapp.ListChatsResult, error) {
+	if a.chatService == nil {
+		return &chatapp.ListChatsResult{}, nil
+	}
+	return a.chatService.ListChats(ctx, query)
+}
+
+// setupBoardTemplateHandler creates the board template handler with all dependencies.
+func (c *Container) setupBoardTemplateHandler() {
+	// Create board task service adapter
+	taskService := c.createBoardTaskService()
+
+	// Create board member service adapter
+	memberService := c.createBoardMemberService()
+
+	c.BoardTemplateHandler = httphandler.NewBoardTemplateHandler(
+		c.TemplateRenderer,
+		c.Logger,
+		taskService,
+		memberService,
+	)
+
+	c.Logger.Debug("board template handler initialized")
+}
+
+// createBoardTaskService creates a service implementing BoardTaskService.
+func (c *Container) createBoardTaskService() httphandler.BoardTaskService {
+	return &boardTaskServiceAdapter{
+		collection: c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model"),
+	}
+}
+
+// boardTaskServiceAdapter adapts MongoDB collection to BoardTaskService.
+type boardTaskServiceAdapter struct {
+	collection *mongo.Collection
+}
+
+// ListTasks implements BoardTaskService.
+func (a *boardTaskServiceAdapter) ListTasks(
+	ctx context.Context,
+	filters taskapp.Filters,
+) ([]*taskapp.ReadModel, error) {
+	if a.collection == nil {
+		return []*taskapp.ReadModel{}, nil
+	}
+	return a.queryTasks(ctx, filters)
+}
+
+// CountTasks implements BoardTaskService.
+func (a *boardTaskServiceAdapter) CountTasks(
+	ctx context.Context,
+	filters taskapp.Filters,
+) (int, error) {
+	if a.collection == nil {
+		return 0, nil
+	}
+	filter := a.buildFilter(filters)
+	count, err := a.collection.CountDocuments(ctx, filter)
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
+}
+
+// GetTask implements BoardTaskService.
+func (a *boardTaskServiceAdapter) GetTask(ctx context.Context, taskID uuid.UUID) (*taskapp.ReadModel, error) {
+	if a.collection == nil {
+		return nil, taskapp.ErrTaskNotFound
+	}
+	filter := map[string]any{"_id": taskID.String()}
+	var result taskReadModelDoc
+	if err := a.collection.FindOne(ctx, filter).Decode(&result); err != nil {
+		return nil, taskapp.ErrTaskNotFound
+	}
+	return result.toReadModel(), nil
+}
+
+// queryTasks queries tasks with filters.
+func (a *boardTaskServiceAdapter) queryTasks(
+	ctx context.Context,
+	filters taskapp.Filters,
+) ([]*taskapp.ReadModel, error) {
+	filter := a.buildFilter(filters)
+
+	opts := options.Find()
+	if filters.Limit > 0 {
+		opts.SetLimit(int64(filters.Limit))
+	}
+	if filters.Offset > 0 {
+		opts.SetSkip(int64(filters.Offset))
+	}
+	opts.SetSort(map[string]int{"created_at": -1})
+
+	cursor, err := a.collection.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var results []*taskapp.ReadModel
+	for cursor.Next(ctx) {
+		var doc taskReadModelDoc
+		if decodeErr := cursor.Decode(&doc); decodeErr != nil {
+			continue
+		}
+		results = append(results, doc.toReadModel())
+	}
+
+	return results, nil
+}
+
+// buildFilter builds a MongoDB filter from task filters.
+func (a *boardTaskServiceAdapter) buildFilter(filters taskapp.Filters) map[string]any {
+	filter := make(map[string]any)
+
+	if filters.Status != nil {
+		filter["status"] = string(*filters.Status)
+	}
+	if filters.Priority != nil {
+		filter["priority"] = string(*filters.Priority)
+	}
+	if filters.EntityType != nil {
+		filter["entity_type"] = string(*filters.EntityType)
+	}
+	if filters.AssigneeID != nil {
+		filter["assigned_to"] = filters.AssigneeID.String()
+	}
+	if filters.ChatID != nil {
+		filter["chat_id"] = filters.ChatID.String()
+	}
+
+	return filter
+}
+
+// taskReadModelDoc represents a task document in MongoDB.
+type taskReadModelDoc struct {
+	ID         string     `bson:"_id"`
+	ChatID     string     `bson:"chat_id"`
+	Title      string     `bson:"title"`
+	EntityType string     `bson:"entity_type"`
+	Status     string     `bson:"status"`
+	Priority   string     `bson:"priority"`
+	AssignedTo *string    `bson:"assigned_to,omitempty"`
+	DueDate    *time.Time `bson:"due_date,omitempty"`
+	CreatedBy  string     `bson:"created_by"`
+	CreatedAt  time.Time  `bson:"created_at"`
+	Version    int        `bson:"version"`
+}
+
+// toReadModel converts the document to a ReadModel.
+func (d *taskReadModelDoc) toReadModel() *taskapp.ReadModel {
+	id, _ := uuid.ParseUUID(d.ID)
+	chatID, _ := uuid.ParseUUID(d.ChatID)
+	createdBy, _ := uuid.ParseUUID(d.CreatedBy)
+
+	model := &taskapp.ReadModel{
+		ID:         id,
+		ChatID:     chatID,
+		Title:      d.Title,
+		EntityType: taskdomain.EntityType(d.EntityType),
+		Status:     taskdomain.Status(d.Status),
+		Priority:   taskdomain.Priority(d.Priority),
+		DueDate:    d.DueDate,
+		CreatedBy:  createdBy,
+		CreatedAt:  d.CreatedAt,
+		Version:    d.Version,
+	}
+
+	if d.AssignedTo != nil {
+		assignedTo, _ := uuid.ParseUUID(*d.AssignedTo)
+		model.AssignedTo = &assignedTo
+	}
+
+	return model
+}
+
+// createBoardMemberService creates a service implementing BoardMemberService.
+func (c *Container) createBoardMemberService() httphandler.BoardMemberService {
+	return &boardMemberServiceAdapter{
+		memberService: c.MemberService,
+	}
+}
+
+// boardMemberServiceAdapter adapts MemberService to BoardMemberService.
+type boardMemberServiceAdapter struct {
+	memberService *service.MemberService
+}
+
+// ListWorkspaceMembers implements BoardMemberService.
+func (a *boardMemberServiceAdapter) ListWorkspaceMembers(
+	ctx context.Context,
+	workspaceID uuid.UUID,
+	offset, limit int,
+) ([]httphandler.MemberViewData, error) {
+	if a.memberService == nil {
+		return []httphandler.MemberViewData{}, nil
+	}
+	members, _, err := a.memberService.ListMembers(ctx, workspaceID, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]httphandler.MemberViewData, 0, len(members))
+	for _, m := range members {
+		result = append(result, httphandler.MemberViewData{
+			UserID:   m.UserID().String(),
+			Username: "user" + m.UserID().String()[:8], // TODO: get actual username
+			Role:     m.Role().String(),
+			JoinedAt: m.JoinedAt(),
+		})
+	}
+	return result, nil
+}
+
+// setupTaskDetailTemplateHandler creates the task detail template handler with all dependencies.
+func (c *Container) setupTaskDetailTemplateHandler() {
+	// Create task detail service adapter
+	taskService := c.createTaskDetailService()
+
+	// For now, event service is nil - will be implemented for activity timeline
+	c.TaskDetailTemplateHandler = httphandler.NewTaskDetailTemplateHandler(
+		c.TemplateRenderer,
+		c.Logger,
+		taskService,
+		nil, // TaskEventService - TODO: implement for activity timeline
+		c.createBoardMemberService(),
+	)
+
+	c.Logger.Debug("task detail template handler initialized")
+}
+
+// createTaskDetailService creates a service implementing TaskDetailService.
+// Reuses the boardTaskServiceAdapter since both interfaces require the same GetTask method.
+func (c *Container) createTaskDetailService() httphandler.TaskDetailService {
+	return c.createBoardTaskService()
 }
 
 // createNotificationTemplateService creates a service implementing NotificationTemplateService.

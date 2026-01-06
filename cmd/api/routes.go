@@ -266,8 +266,21 @@ func registerPageRoutes(e *echo.Echo, c *Container) {
 		c.NotificationTemplateHandler.SetupNotificationRoutes(e)
 	}
 
+	// Chat pages and partials
+	if c.ChatTemplateHandler != nil {
+		c.ChatTemplateHandler.SetupChatRoutes(e)
+	}
+
+	// Board pages and partials
+	if c.BoardTemplateHandler != nil {
+		c.BoardTemplateHandler.SetupBoardRoutes(e)
+	}
+
+	// Task detail partials
+	if c.TaskDetailTemplateHandler != nil {
+		c.TaskDetailTemplateHandler.SetupTaskDetailRoutes(e)
+	}
+
 	// TODO: Add more protected pages as frontend features are implemented:
-	// - /workspaces/:id/chats/:chat_id (chat view)
-	// - /workspaces/:id/board (kanban board)
 	// - /settings (user settings)
 }
