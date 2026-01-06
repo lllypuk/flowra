@@ -1,7 +1,7 @@
 # Task 05: AuthService
 
 **Приоритет:** 🟡 High
-**Статус:** Pending
+**Статус:** Complete
 **Зависит от:** Keycloak client (частично готов)
 
 ---
@@ -389,40 +389,40 @@ func TestAuthService_RefreshToken(t *testing.T) {
 ## Чеклист
 
 ### Keycloak OAuth Client
-- [ ] Создать `internal/infrastructure/keycloak/oauth_client.go`
-- [ ] Реализовать `ExchangeCode()`
-- [ ] Реализовать `RefreshToken()`
-- [ ] Реализовать `RevokeToken()`
-- [ ] Реализовать `GetUserInfo()`
+- [x] Создать `internal/infrastructure/keycloak/oauth_client.go`
+- [x] Реализовать `ExchangeCode()`
+- [x] Реализовать `RefreshToken()`
+- [x] Реализовать `RevokeToken()`
+- [x] Реализовать `GetUserInfo()`
 
 ### Token Store
-- [ ] Создать `internal/infrastructure/auth/token_store.go`
-- [ ] Реализовать `StoreRefreshToken()`
-- [ ] Реализовать `GetRefreshToken()`
-- [ ] Реализовать `DeleteRefreshToken()`
+- [x] Создать `internal/infrastructure/auth/token_store.go`
+- [x] Реализовать `StoreRefreshToken()`
+- [x] Реализовать `GetRefreshToken()`
+- [x] Реализовать `DeleteRefreshToken()`
 
 ### AuthService
-- [ ] Создать `internal/service/auth_service.go`
-- [ ] Реализовать `Login()`
-- [ ] Реализовать `Logout()`
-- [ ] Реализовать `RefreshToken()`
-- [ ] Реализовать `findOrCreateUser()`
+- [x] Создать `internal/service/auth_service.go`
+- [x] Реализовать `Login()`
+- [x] Реализовать `Logout()`
+- [x] Реализовать `RefreshToken()`
+- [x] Реализовать `findOrCreateUser()`
 
 ### Интеграция
-- [ ] Добавить `KeycloakConfig` в config
+- [x] Добавить `KeycloakConfig` в config (уже существует)
 - [ ] Обновить `container.go` (Task 06)
-- [ ] Написать unit tests
-- [ ] Написать integration tests
+- [x] Написать unit tests
+- [x] Написать integration tests
 
 ---
 
 ## Критерии приёмки
 
-- [ ] OAuth2 authorization code flow работает
-- [ ] Пользователи синхронизируются из Keycloak в MongoDB
-- [ ] Refresh token сохраняется в Redis
-- [ ] Logout корректно инвалидирует сессию
-- [ ] Unit test coverage > 80%
+- [x] OAuth2 authorization code flow работает
+- [x] Пользователи синхронизируются из Keycloak в MongoDB
+- [x] Refresh token сохраняется в Redis
+- [x] Logout корректно инвалидирует сессию
+- [x] Unit test coverage > 80%
 
 ---
 
