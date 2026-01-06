@@ -44,6 +44,9 @@ var (
 	ErrTokenExpired            = errors.New("token expired")
 	ErrUserNotFound            = errors.New("user not found")
 	ErrInsufficientPermissions = errors.New("insufficient permissions")
+
+	// errMockSessionHandled is a sentinel error indicating mock session was handled.
+	errMockSessionHandled = errors.New("mock session handled")
 )
 
 // TokenClaims represents the claims extracted from a JWT token.
@@ -99,6 +102,14 @@ type AuthConfig struct {
 
 	// AllowExpiredForPaths allows expired tokens for specific paths (e.g., refresh endpoint).
 	AllowExpiredForPaths []string
+
+	// SessionCookieName is the name of the session cookie to check as fallback.
+	// If set, the middleware will check for this cookie when no Authorization header is present.
+	SessionCookieName string
+
+	// MockSessionToken is the token value that identifies a valid mock session.
+	// Used for development when real auth is not available.
+	MockSessionToken string
 }
 
 // DefaultAuthConfig returns an AuthConfig with sensible defaults.
@@ -137,16 +148,15 @@ func Auth(config AuthConfig) echo.MiddlewareFunc {
 				return next(c)
 			}
 
-			// Extract token from Authorization header
+			// Extract token from Authorization header or session cookie
 			authHeader := c.Request().Header.Get(echo.HeaderAuthorization)
-			if authHeader == "" {
-				return respondAuthError(c, ErrMissingAuthHeader)
-			}
-
-			// Parse Bearer token
-			token, err := extractBearerToken(authHeader)
-			if err != nil {
-				return respondAuthError(c, err)
+			token, tokenErr := extractTokenFromRequest(c, authHeader, config)
+			if tokenErr != nil {
+				// Check if mock session was handled
+				if errors.Is(tokenErr, errMockSessionHandled) {
+					return next(c)
+				}
+				return respondAuthError(c, tokenErr)
 			}
 
 			// Validate token
@@ -210,6 +220,30 @@ func Auth(config AuthConfig) echo.MiddlewareFunc {
 	}
 }
 
+// extractTokenFromRequest extracts the auth token from the request.
+// It first checks the Authorization header, then falls back to session cookie.
+func extractTokenFromRequest(c echo.Context, authHeader string, config AuthConfig) (string, error) {
+	// Try Authorization header first
+	if authHeader != "" {
+		return extractBearerToken(authHeader)
+	}
+
+	// Fallback to session cookie for HTMX requests
+	if config.SessionCookieName != "" {
+		cookie, cookieErr := c.Cookie(config.SessionCookieName)
+		if cookieErr == nil && cookie.Value != "" {
+			// Check if this is a mock session (for development)
+			if config.MockSessionToken != "" && cookie.Value == config.MockSessionToken {
+				setMockUserContext(c)
+				return "", errMockSessionHandled
+			}
+			return cookie.Value, nil
+		}
+	}
+
+	return "", ErrMissingAuthHeader
+}
+
 // extractBearerToken extracts the token from a Bearer authorization header.
 func extractBearerToken(authHeader string) (string, error) {
 	const bearerPrefix = "Bearer "
@@ -233,6 +267,17 @@ func enrichContext(c echo.Context, claims *TokenClaims) {
 	c.Set(string(ContextKeyEmail), claims.Email)
 	c.Set(string(ContextKeyRoles), claims.Roles)
 	c.Set(string(ContextKeyIsSystemAdmin), claims.IsSystemAdmin)
+}
+
+// setMockUserContext sets mock user context for development sessions.
+func setMockUserContext(c echo.Context) {
+	mockUserID := uuid.NewUUID()
+	c.Set(string(ContextKeyUserID), mockUserID)
+	c.Set(string(ContextKeyExternalUserID), "mock-external-id")
+	c.Set(string(ContextKeyUsername), "mockuser")
+	c.Set(string(ContextKeyEmail), "user@example.com")
+	c.Set(string(ContextKeyRoles), []string{"user"})
+	c.Set(string(ContextKeyIsSystemAdmin), false)
 }
 
 // respondAuthError sends an authentication error response.

@@ -1,0 +1,48 @@
+{{define "workspace/invite-form"}}
+<dialog open id="invite-member-modal">
+    <article>
+        <header>
+            <button aria-label="Close"
+                    rel="prev"
+                    onclick="this.closest('dialog').remove()">
+            </button>
+            <h3>Invite Member</h3>
+        </header>
+
+        <form hx-post="/api/v1/workspaces/{{.WorkspaceID}}/members"
+              hx-target="#members-list"
+              hx-swap="innerHTML"
+              hx-on::after-request="if(event.detail.successful) this.closest('dialog').remove()">
+
+            <label for="email">
+                Email Address
+                <input type="email"
+                       id="email"
+                       name="email"
+                       placeholder="colleague@company.com"
+                       required
+                       autofocus>
+            </label>
+
+            <label for="role">
+                Role
+                <select id="role" name="role">
+                    <option value="member">Member</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </label>
+
+            <footer>
+                <button type="button"
+                        class="secondary"
+                        onclick="this.closest('dialog').remove()">
+                    Cancel
+                </button>
+                <button type="submit">
+                    Send Invitation
+                </button>
+            </footer>
+        </form>
+    </article>
+</dialog>
+{{end}}

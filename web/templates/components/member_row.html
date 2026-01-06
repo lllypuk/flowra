@@ -1,0 +1,52 @@
+{{define "member_row"}}
+<tr id="member-{{.Member.UserID}}">
+    <td>
+        <div class="member-info">
+            {{if .Member.AvatarURL}}
+            <img src="{{.Member.AvatarURL}}"
+                 alt="{{.Member.Username}}"
+                 class="avatar">
+            {{else}}
+            <div class="avatar avatar-placeholder">
+                {{initials .Member.DisplayName}}
+            </div>
+            {{end}}
+            <div>
+                <strong>{{.Member.DisplayName}}</strong>
+                <small class="text-muted">@{{.Member.Username}}</small>
+            </div>
+        </div>
+    </td>
+    <td>
+        {{if and (eq $.UserRole "owner") (ne .Member.Role "owner") (ne .Member.UserID $.CurrentUserID)}}
+        <select hx-put="/api/v1/workspaces/{{$.WorkspaceID}}/members/{{.Member.UserID}}/role"
+                hx-target="#member-{{.Member.UserID}}"
+                hx-swap="outerHTML"
+                name="role">
+            <option value="admin" {{if eq .Member.Role "admin"}}selected{{end}}>Admin</option>
+            <option value="member" {{if eq .Member.Role "member"}}selected{{end}}>Member</option>
+        </select>
+        {{else}}
+        <span class="role-badge role-{{.Member.Role}}">
+            {{title .Member.Role}}
+        </span>
+        {{end}}
+    </td>
+    <td>
+        <small>{{formatDate .Member.JoinedAt}}</small>
+    </td>
+    {{if or (eq $.UserRole "owner") (eq $.UserRole "admin")}}
+    <td>
+        {{if and (ne .Member.Role "owner") (ne .Member.UserID $.CurrentUserID)}}
+        <button hx-delete="/api/v1/workspaces/{{$.WorkspaceID}}/members/{{.Member.UserID}}"
+                hx-target="#member-{{.Member.UserID}}"
+                hx-swap="outerHTML swap:1s"
+                hx-confirm="Remove {{.Member.Username}} from workspace?"
+                class="outline secondary small">
+            Remove
+        </button>
+        {{end}}
+    </td>
+    {{end}}
+</tr>
+{{end}}

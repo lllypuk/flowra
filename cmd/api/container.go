@@ -124,11 +124,7 @@ func NewContainer(cfg *config.Config, opts ...ContainerOption) (*Container, erro
 	}
 
 	// Setup HTTP handlers based on wiring mode
-	if c.Config.App.IsMockMode() {
-		c.setupHTTPHandlersMock()
-	} else {
-		c.setupHTTPHandlersReal()
-	}
+	c.setupHTTPHandlers()
 
 	// Validate that all required components are initialized
 	if err := c.validateWiring(); err != nil {
@@ -393,7 +389,8 @@ func (c *Container) setupTemplateRenderer() error {
 	}
 
 	c.TemplateRenderer = renderer
-	c.TemplateHandler = httphandler.NewTemplateHandler(renderer, c.Logger)
+	// Create template handler - workspace and member services will be set later during setupHTTPHandlers
+	c.TemplateHandler = httphandler.NewTemplateHandler(renderer, c.Logger, nil, nil)
 
 	c.Logger.Debug("template renderer initialized",
 		slog.Bool("dev_mode", c.Config.IsDevelopment()),
@@ -413,9 +410,9 @@ func (c *Container) registerEventHandlers() error {
 	)
 }
 
-// setupHTTPHandlersReal initializes HTTP handlers with real implementations.
+// setupHTTPHandlers initializes HTTP handlers with real implementations.
 // This wires handlers to actual use cases and services.
-func (c *Container) setupHTTPHandlersReal() {
+func (c *Container) setupHTTPHandlers() {
 	c.Logger.Debug("setting up HTTP handlers with REAL implementations")
 
 	// TODO: Wire real AuthService implementation when available
@@ -430,6 +427,11 @@ func (c *Container) setupHTTPHandlersReal() {
 	mockWorkspaceService := httphandler.NewMockWorkspaceService()
 	mockMemberService := httphandler.NewMockMemberService()
 	c.WorkspaceHandler = httphandler.NewWorkspaceHandler(mockWorkspaceService, mockMemberService)
+
+	// Inject services into template handler
+	if c.TemplateHandler != nil {
+		c.TemplateHandler.SetServices(mockWorkspaceService, mockMemberService)
+	}
 
 	// TODO: Wire real ChatService implementation when available
 	c.Logger.Warn("ChatHandler: using mock implementation (real chat service not yet available)")
@@ -459,45 +461,6 @@ func (c *Container) setupHTTPHandlersReal() {
 	// This is intentional until their use cases are fully implemented.
 
 	c.Logger.Debug("HTTP handlers initialized (real mode with temporary mocks)")
-}
-
-// setupHTTPHandlersMock initializes HTTP handlers with mock implementations.
-// This is for development and testing only.
-func (c *Container) setupHTTPHandlersMock() {
-	c.Logger.Debug("setting up HTTP handlers with MOCK implementations")
-
-	// Mock auth service and user repo
-	mockAuthService := httphandler.NewMockAuthService()
-	mockUserRepo := httphandler.NewMockUserRepository()
-	c.AuthHandler = httphandler.NewAuthHandler(mockAuthService, mockUserRepo)
-
-	// Mock workspace services
-	mockWorkspaceService := httphandler.NewMockWorkspaceService()
-	mockMemberService := httphandler.NewMockMemberService()
-	c.WorkspaceHandler = httphandler.NewWorkspaceHandler(mockWorkspaceService, mockMemberService)
-
-	// Mock chat service
-	mockChatService := httphandler.NewMockChatService()
-	c.ChatHandler = httphandler.NewChatHandler(mockChatService)
-
-	// WebSocket handler with real Hub (even in mock mode, we need real WS)
-	c.WSHandler = wshandler.NewHandler(
-		c.Hub,
-		wshandler.WithHandlerLogger(c.Logger),
-		wshandler.WithHandlerConfig(wshandler.HandlerConfig{
-			ReadBufferSize:  c.Config.WebSocket.ReadBufferSize,
-			WriteBufferSize: c.Config.WebSocket.WriteBufferSize,
-			Logger:          c.Logger,
-		}),
-	)
-
-	// Static token validator for development
-	c.TokenValidator = middleware.NewStaticTokenValidator(c.Config.Auth.JWTSecret)
-
-	// Mock workspace access checker
-	c.AccessChecker = middleware.NewMockWorkspaceAccessChecker()
-
-	c.Logger.Debug("HTTP handlers initialized (mock mode)")
 }
 
 // Close gracefully closes all container resources.
