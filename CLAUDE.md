@@ -61,29 +61,68 @@ The system is designed around multiple services:
 
 ### Directory Layout
 ```
-cmd/                    # Application entry points
-├── api/               # HTTP API server
-├── websocket/         # WebSocket server
-├── worker/            # Background workers
-└── migrator/          # Database migrations
+cmd/                           # Application entry points
+├── api/                      # HTTP API server (main.go, container.go, routes.go)
+├── worker/                   # Background workers (user sync)
+└── migrator/                 # Database migrations (placeholder)
 
-internal/              # Internal application code
-├── domain/           # Business logic and models
-├── repository/       # Data access layer
-├── service/          # Service layer
-├── handler/          # HTTP/WS handlers
-├── auth/             # Authentication (Keycloak integration)
-├── command/          # Command processors
-└── event/            # Event bus
+internal/                     # Internal application code
+├── application/             # Use cases (40+ use cases, CQRS)
+│   ├── appcore/            # Shared interfaces and utilities
+│   ├── chat/               # Chat use cases (34 files)
+│   ├── message/            # Message use cases (21 files)
+│   ├── task/               # Task use cases (15 files)
+│   ├── notification/       # Notification use cases (17 files)
+│   ├── workspace/          # Workspace use cases (20 files)
+│   └── user/               # User use cases (16 files)
+├── domain/                  # Business logic and models (48 files)
+│   ├── chat/               # Chat aggregate
+│   ├── message/            # Message aggregate
+│   ├── task/               # Task aggregate
+│   ├── user/               # User aggregate
+│   ├── workspace/          # Workspace aggregate
+│   ├── notification/       # Notification aggregate
+│   ├── tag/                # Tag/command processing system
+│   ├── event/              # Event base types
+│   └── errs/               # Domain errors
+├── infrastructure/          # External dependencies (50 files)
+│   ├── mongodb/            # MongoDB index setup
+│   ├── repository/mongodb/ # MongoDB repositories (6 repos)
+│   ├── eventstore/         # Event store implementation
+│   ├── eventbus/           # Redis pub/sub event bus
+│   ├── httpserver/         # HTTP server utilities
+│   ├── websocket/          # WebSocket hub and client
+│   ├── keycloak/           # Keycloak SSO integration
+│   └── auth/               # Token store
+├── handler/                 # HTTP/WS handlers (20 files)
+│   ├── http/               # REST API handlers
+│   └── websocket/          # WebSocket handler
+├── middleware/              # HTTP middleware (14 files)
+├── service/                 # Business services (12 files)
+├── worker/                  # Background workers
+└── config/                  # Configuration loading
 
-pkg/                   # Reusable packages
-web/                   # Frontend resources
-├── templates/        # HTML templates
-├── static/           # CSS, JS assets
-└── components/       # HTMX components
+web/                          # Frontend resources (HTMX + Pico CSS)
+├── templates/               # HTML templates
+│   ├── layout/             # Base layout (base, navbar, footer)
+│   ├── components/         # Reusable HTMX components
+│   ├── auth/               # Auth pages
+│   ├── workspace/          # Workspace pages
+│   ├── chat/               # Chat pages (planned)
+│   └── task/               # Task pages (planned)
+├── static/                  # CSS, JS assets
+└── embed.go                 # Go embed for static files
 
-migrations/           # SQL migrations
-configs/              # Configuration files
+tests/                        # Test suites
+├── e2e/                     # End-to-end tests
+├── integration/             # Integration tests
+├── testutil/                # Test utilities
+├── fixtures/                # Test data fixtures
+└── mocks/                   # Mock implementations
+
+migrations/                   # MongoDB migrations (6 schema files)
+configs/                      # Configuration files (YAML)
+docs/                         # Documentation (100+ files)
 ```
 
 ## Configuration
@@ -103,13 +142,29 @@ configs/              # Configuration files
 ## Development Notes
 
 - **Project Status**: January 2026 Release Candidate (~95% complete)
-- All domain, application, and infrastructure layers are fully implemented
-- HTTP handlers and WebSocket support are production-ready
-- Entry points (API server, Worker, Migrator) are implemented and tested
-- E2E tests provide full coverage of critical workflows
-- HTMX frontend is planned for February 2026
-- Comprehensive linting rules are configured in `.golangci.yml`
-- Security-first approach with Keycloak SSO, RBAC, and secure defaults
+- **Backend**: Fully production-ready with all layers implemented
+- **Frontend**: ~20% complete (framework ready, auth + workspace UI done)
+
+### Layer Implementation Status
+| Layer | Status | Files | Coverage |
+|-------|--------|-------|----------|
+| Domain | Complete | 48 | 90%+ |
+| Application | Complete | 139 | 85%+ |
+| Infrastructure | Complete | 50 | 85%+ |
+| Handlers | Complete | 20 | 80%+ |
+| Middleware | Complete | 14 | 80%+ |
+| Services | Complete | 12 | 80%+ |
+| Frontend | In Progress | ~30 | - |
+
+### Key Implementation Details
+- 6 Event-Sourced Aggregates (Chat, Message, Task, User, Workspace, Notification)
+- 40+ Use Cases with CQRS pattern
+- 40+ REST API endpoints
+- Real-time WebSocket with Hub pattern
+- Full Keycloak SSO integration
+- E2E tests cover all critical workflows
+- Comprehensive linting rules in `.golangci.yml`
+- Security-first approach with RBAC and secure defaults
 
 ## Documentation Structure
 
@@ -117,6 +172,7 @@ configs/              # Configuration files
 - **Deployment Guide**: `docs/DEPLOYMENT.md` - Docker, environment setup
 - **Development Guide**: `docs/DEVELOPMENT.md` - Local setup, testing
 - **Architecture Overview**: `docs/ARCHITECTURE.md` - System design, decisions
+- **Task Documentation**: `docs/tasks/` - Implementation task tracking (100+ files)
 
 ## MongoDB Driver
 
@@ -136,11 +192,13 @@ configs/              # Configuration files
 
 ## Application Access
 
-- **Main App**: http://localhost:8080 (when implemented)
-- **Keycloak**: http://localhost:8090 (admin/admin123)
-- **Traefik Dashboard**: http://localhost:8080 (reverse proxy)
-- **MongoDB**: localhost:27017 (admin/admin123)
-- **Redis**: localhost:6379
+| Service | URL | Credentials |
+|---------|-----|-------------|
+| API Server | http://localhost:8080 | JWT Token |
+| API Health | http://localhost:8080/health | - |
+| Keycloak | http://localhost:8090 | admin/admin123 |
+| MongoDB | localhost:27017 | admin/admin123 |
+| Redis | localhost:6379 | - |
 
 ## Testing Strategy
 

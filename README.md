@@ -5,7 +5,7 @@
 ## 📊 Текущее состояние проекта
 
 **Версия:** 1.0.0-beta  
-**Дата обновления:** 2026-01-31  
+**Дата обновления:** 2026-01-06  
 **Общий прогресс:** ~95% к MVP  
 **Статус:** January 2026 Release Candidate
 
@@ -13,10 +13,13 @@
 
 | Слой | Статус | Прогресс | Файлов | Coverage |
 |------|--------|----------|--------|----------|
-| **Domain** | ✅ Complete | 100% | 48+ | 90%+ |
-| **Application** | ✅ Complete | 100% | 139+ | 85%+ |
-| **Infrastructure** | ✅ Complete | 95% | 45+ | 85%+ |
-| **Interface** | ✅ Complete | 100% | 16+ | 80%+ |
+| **Domain** | ✅ Complete | 100% | 48 | 90%+ |
+| **Application** | ✅ Complete | 100% | 139 | 85%+ |
+| **Infrastructure** | ✅ Complete | 100% | 50 | 85%+ |
+| **Handlers** | ✅ Complete | 100% | 20 | 80%+ |
+| **Middleware** | ✅ Complete | 100% | 14 | 80%+ |
+| **Services** | ✅ Complete | 100% | 12 | 80%+ |
+| **Frontend** | 🔄 In Progress | 20% | ~30 | - |
 | **Entry Points** | ✅ Complete | 100% | 6 | 75%+ |
 
 ### Что работает ✅
@@ -25,12 +28,19 @@
 - ✅ **Application Layer:** 40+ use cases с 85% average coverage
 - ✅ **MongoDB Repositories:** Все 6 репозиториев с интеграционными тестами
 - ✅ **Event Store:** MongoDB Event Store с optimistic locking
+- ✅ **Event Bus:** Redis pub/sub для событий между сервисами
 - ✅ **HTTP Handlers:** Полный REST API с 40+ endpoints
 - ✅ **WebSocket:** Real-time коммуникация с Hub pattern
-- ✅ **Middleware:** Auth, CORS, Logging, Recovery, Workspace Access
-- ✅ **Entry Points:** API server, Worker, Migrator
+- ✅ **Middleware:** Auth, CORS, Logging, Recovery, Rate Limiting, Workspace Access
+- ✅ **Services:** Workspace Access Checker, Chat, Member, Auth services
+- ✅ **Keycloak Integration:** Полная SSO интеграция (JWT, OAuth, User Sync)
+- ✅ **Entry Points:** API server, Worker (с User Sync)
 - ✅ **E2E Tests:** Полное покрытие критических flows
 - ✅ **API Documentation:** OpenAPI 3.1, Postman collection
+
+### В разработке 🔄
+
+- 🔄 **Frontend:** HTMX + Pico CSS (framework ready, auth + workspace UI done)
 
 ---
 
@@ -191,30 +201,56 @@ make test-coverage # Generate coverage report
 
 ```
 .
-├── cmd/                    # Application entry points
-│   ├── api/               # HTTP API server
-│   ├── worker/            # Background worker
-│   └── migrator/          # Database migrations
+├── cmd/                        # Application entry points
+│   ├── api/                   # HTTP API server (main, container, routes)
+│   ├── worker/                # Background worker (user sync)
+│   └── migrator/              # Database migrations
 │
-├── internal/              # Private application code
-│   ├── application/       # Application services (use cases)
-│   ├── domain/           # Domain models and business logic
-│   ├── handler/          # HTTP and WebSocket handlers
-│   ├── infrastructure/   # External dependencies
-│   ├── middleware/       # HTTP middleware
-│   └── config/           # Configuration
+├── internal/                  # Private application code
+│   ├── application/           # Use cases (139 files, 40+ use cases)
+│   │   ├── appcore/          # Shared interfaces
+│   │   ├── chat/             # Chat use cases
+│   │   ├── message/          # Message use cases
+│   │   ├── task/             # Task use cases
+│   │   ├── notification/     # Notification use cases
+│   │   ├── workspace/        # Workspace use cases
+│   │   └── user/             # User use cases
+│   ├── domain/               # Domain models (48 files, 6 aggregates)
+│   │   ├── chat/             # Chat aggregate
+│   │   ├── message/          # Message aggregate
+│   │   ├── task/             # Task aggregate
+│   │   ├── user/             # User aggregate
+│   │   ├── workspace/        # Workspace aggregate
+│   │   ├── notification/     # Notification aggregate
+│   │   └── tag/              # Tag/command system
+│   ├── infrastructure/        # External dependencies (50 files)
+│   │   ├── repository/       # MongoDB repositories
+│   │   ├── eventstore/       # Event store
+│   │   ├── eventbus/         # Redis event bus
+│   │   ├── websocket/        # WebSocket hub
+│   │   └── keycloak/         # Keycloak integration
+│   ├── handler/              # HTTP/WS handlers (20 files)
+│   ├── middleware/           # HTTP middleware (14 files)
+│   ├── service/              # Business services (12 files)
+│   └── config/               # Configuration
 │
-├── tests/                # Test suites
-│   ├── e2e/             # End-to-end tests
-│   ├── integration/     # Integration tests
-│   └── testutil/        # Test utilities
+├── web/                       # Frontend (HTMX + Pico CSS)
+│   ├── templates/            # HTML templates
+│   └── static/               # CSS, JS assets
 │
-├── docs/                # Documentation
-│   ├── api/            # API documentation
-│   └── tasks/          # Task tracking
+├── tests/                     # Test suites
+│   ├── e2e/                  # End-to-end tests
+│   ├── integration/          # Integration tests
+│   ├── testutil/             # Test utilities
+│   └── mocks/                # Mock implementations
 │
-├── configs/             # Configuration files
-└── docker-compose.yml   # Local development services
+├── docs/                      # Documentation (100+ files)
+│   ├── api/                  # API documentation
+│   └── tasks/                # Task tracking
+│
+├── migrations/                # MongoDB migrations
+├── configs/                   # Configuration files
+└── docker-compose.yml         # Local development services
 ```
 
 ---
@@ -272,19 +308,28 @@ make test-coverage-check
 
 ### ✅ Completed (January 2026)
 
-- Full domain layer with event sourcing
-- Complete application layer with use cases
-- MongoDB repositories with integration tests
-- HTTP handlers for all endpoints
-- WebSocket real-time communication
-- Authentication & authorization middleware
-- E2E test coverage
-- API documentation (OpenAPI, Postman)
-- Deployment documentation
+- Full domain layer with event sourcing (6 aggregates, 30+ events)
+- Complete application layer with use cases (40+ use cases)
+- MongoDB repositories with integration tests (6 repositories)
+- HTTP handlers for all endpoints (40+ REST endpoints)
+- WebSocket real-time communication (Hub pattern)
+- Authentication & authorization middleware (7 middleware components)
+- Keycloak SSO integration (JWT, OAuth, User Sync)
+- Business services (Workspace Access, Chat, Member, Auth)
+- E2E test coverage (all critical flows)
+- API documentation (OpenAPI 3.1, Postman collection)
+- Deployment and development documentation
+
+### 🔄 In Progress (January 2026)
+
+- Frontend framework setup (HTMX + Pico CSS) - Complete
+- Authentication UI (login, logout, callback) - Complete
+- Workspace management UI - Complete
+- Chat and Task UI - In Progress
 
 ### 🔜 Coming (February 2026)
 
-- HTMX frontend templates
+- Complete HTMX frontend templates
 - Email notifications
 - File attachments (S3)
 - Search functionality
@@ -305,4 +350,4 @@ MIT License - см. [LICENSE](./LICENSE)
 
 ---
 
-*Last updated: January 2026*
+*Last updated: January 6, 2026*
