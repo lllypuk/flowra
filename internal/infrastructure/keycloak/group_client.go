@@ -214,6 +214,8 @@ func (c *GroupClient) modifyUserGroupMembership(
 }
 
 // GetGroup retrieves a group by ID from Keycloak.
+//
+//nolint:dupl // Similar structure to UserClient.GetUser but different types and endpoints
 func (c *GroupClient) GetGroup(ctx context.Context, groupID string) (*Group, error) {
 	if groupID == "" {
 		return nil, ErrGroupNotFound

@@ -423,3 +423,95 @@ func TestMongoUserRepository_DocumentToUser(t *testing.T) {
 	assert.WithinDuration(t, user.CreatedAt(), loaded.CreatedAt(), time.Millisecond)
 	assert.WithinDuration(t, user.UpdatedAt(), loaded.UpdatedAt(), time.Millisecond)
 }
+
+// TestMongoUserRepository_ListExternalIDs проверяет получение списка всех external ID
+func TestMongoUserRepository_ListExternalIDs(t *testing.T) {
+	repo := setupTestUserRepository(t)
+	ctx := context.Background()
+
+	// Create multiple users
+	user1 := createTestUser(t, "ext1")
+	user2 := createTestUser(t, "ext2")
+	user3 := createTestUser(t, "ext3")
+
+	err := repo.Save(ctx, user1)
+	require.NoError(t, err)
+	err = repo.Save(ctx, user2)
+	require.NoError(t, err)
+	err = repo.Save(ctx, user3)
+	require.NoError(t, err)
+
+	// List all external IDs
+	externalIDs, err := repo.ListExternalIDs(ctx)
+	require.NoError(t, err)
+	require.Len(t, externalIDs, 3)
+
+	// Verify all external IDs are present
+	expectedIDs := map[string]bool{
+		user1.ExternalID(): true,
+		user2.ExternalID(): true,
+		user3.ExternalID(): true,
+	}
+	for _, id := range externalIDs {
+		assert.True(t, expectedIDs[id], "unexpected external ID: %s", id)
+	}
+}
+
+// TestMongoUserRepository_ListExternalIDs_Empty проверяет пустой список
+func TestMongoUserRepository_ListExternalIDs_Empty(t *testing.T) {
+	repo := setupTestUserRepository(t)
+	ctx := context.Background()
+
+	externalIDs, err := repo.ListExternalIDs(ctx)
+	require.NoError(t, err)
+	assert.Empty(t, externalIDs)
+}
+
+// TestMongoUserRepository_IsActive_Persistence проверяет сохранение флага isActive
+func TestMongoUserRepository_IsActive_Persistence(t *testing.T) {
+	repo := setupTestUserRepository(t)
+	ctx := context.Background()
+
+	t.Run("new user is active", func(t *testing.T) {
+		user := createTestUser(t, "active")
+		err := repo.Save(ctx, user)
+		require.NoError(t, err)
+
+		loaded, err := repo.FindByID(ctx, user.ID())
+		require.NoError(t, err)
+		assert.True(t, loaded.IsActive())
+	})
+
+	t.Run("deactivated user stays deactivated", func(t *testing.T) {
+		user := createTestUser(t, "deactivated")
+		user.SetActive(false)
+
+		err := repo.Save(ctx, user)
+		require.NoError(t, err)
+
+		loaded, err := repo.FindByID(ctx, user.ID())
+		require.NoError(t, err)
+		assert.False(t, loaded.IsActive())
+	})
+
+	t.Run("reactivated user becomes active", func(t *testing.T) {
+		user := createTestUser(t, "reactivated")
+		user.SetActive(false)
+		err := repo.Save(ctx, user)
+		require.NoError(t, err)
+
+		// Reload and reactivate
+		loaded, err := repo.FindByID(ctx, user.ID())
+		require.NoError(t, err)
+		assert.False(t, loaded.IsActive())
+
+		loaded.SetActive(true)
+		err = repo.Save(ctx, loaded)
+		require.NoError(t, err)
+
+		// Verify reactivation
+		reloaded, err := repo.FindByID(ctx, user.ID())
+		require.NoError(t, err)
+		assert.True(t, reloaded.IsActive())
+	})
+}

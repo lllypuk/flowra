@@ -193,6 +193,7 @@ type userDocument struct {
 	Email         string    `bson:"email"`
 	DisplayName   string    `bson:"display_name"`
 	IsSystemAdmin bool      `bson:"is_system_admin"`
+	IsActive      bool      `bson:"is_active"`
 	CreatedAt     time.Time `bson:"created_at"`
 	UpdatedAt     time.Time `bson:"updated_at"`
 }
@@ -205,6 +206,7 @@ func (r *MongoUserRepository) userToDocument(user *userdomain.User) userDocument
 		Email:         user.Email(),
 		DisplayName:   user.DisplayName(),
 		IsSystemAdmin: user.IsSystemAdmin(),
+		IsActive:      user.IsActive(),
 		CreatedAt:     user.CreatedAt(),
 		UpdatedAt:     user.UpdatedAt(),
 	}
@@ -234,7 +236,42 @@ func (r *MongoUserRepository) documentToUser(doc *userDocument) (*userdomain.Use
 		doc.Email,
 		doc.DisplayName,
 		doc.IsSystemAdmin,
+		doc.IsActive,
 		doc.CreatedAt,
 		doc.UpdatedAt,
 	), nil
+}
+
+// ListExternalIDs возвращает список всех external ID (Keycloak ID) пользователей
+func (r *MongoUserRepository) ListExternalIDs(ctx context.Context) ([]string, error) {
+	filter := bson.M{
+		"keycloak_id": bson.M{"$exists": true, "$ne": nil},
+	}
+
+	cursor, err := r.collection.Find(ctx, filter, options.Find().SetProjection(bson.M{"keycloak_id": 1}))
+	if err != nil {
+		return nil, HandleMongoError(err, "users")
+	}
+	defer cursor.Close(ctx)
+
+	var externalIDs []string
+	for cursor.Next(ctx) {
+		var doc struct {
+			KeycloakID *string `bson:"keycloak_id"`
+		}
+		decodeErr := cursor.Decode(&doc)
+		if decodeErr != nil {
+			continue
+		}
+		if doc.KeycloakID != nil && *doc.KeycloakID != "" {
+			externalIDs = append(externalIDs, *doc.KeycloakID)
+		}
+	}
+
+	cursorErr := cursor.Err()
+	if cursorErr != nil {
+		return nil, HandleMongoError(cursorErr, "users")
+	}
+
+	return externalIDs, nil
 }
