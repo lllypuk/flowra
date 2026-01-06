@@ -2,8 +2,31 @@
 
 **Приоритет:** 🟢 Medium
 **Статус:** ⏳ Не начато
-**Период:** 21-23 февраля
 **Зависит от:** [04-chat-ui.md](04-chat-ui.md)
+
+---
+
+## Backend сервисы
+
+### Application Layer — Notification Use Cases (`internal/application/notification/`)
+
+| Use Case | Описание |
+|----------|----------|
+| `CreateNotification` | Создать уведомление |
+| `ListNotifications` | Список уведомлений пользователя |
+| `GetNotification` | Получить уведомление по ID |
+| `MarkAsRead` | Отметить как прочитанное |
+| `MarkAllAsRead` | Отметить все как прочитанные |
+| `CountUnread` | Количество непрочитанных |
+| `DeleteNotification` | Удалить уведомление |
+
+**Типы уведомлений:**
+- `mention` — @упоминание в чате
+- `assignment` — назначение на задачу
+- `status_change` — изменение статуса задачи
+- `comment` — ответ на сообщение
+- `due_date` — напоминание о сроке
+- `workspace_invite` — приглашение в workspace
 
 ---
 
@@ -681,12 +704,12 @@ e.GET("/notifications/:id/redirect", h.NotificationRedirect, h.RequireAuth)
 ## Зависимости
 
 ### Входящие
-- [04-chat-ui.md](04-chat-ui.md) - WebSocket connection ✅
-- Notification API endpoints
+- [04-chat-ui.md](04-chat-ui.md) - WebSocket connection
+- **Notification Use Cases** — реализованы (`internal/application/notification/`)
 
 ### Исходящие
 - Нет
 
 ---
 
-*Создано: 2026-01-05*
+*Обновлено: 2026-01-06*

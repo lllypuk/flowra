@@ -2,8 +2,31 @@
 
 **Приоритет:** 🟡 High
 **Статус:** ⏳ Не начато
-**Период:** 15-17 февраля
 **Зависит от:** [03-workspace-pages.md](03-workspace-pages.md)
+
+---
+
+## Backend сервисы
+
+### Application Layer — Task Use Cases (`internal/application/task/`)
+
+| Use Case | Описание |
+|----------|----------|
+| `CreateTask` | Создать задачу |
+| `GetTask` | Получить задачу по ID |
+| `ListTasks` | Список задач (с фильтрами) |
+| `ChangeStatus` | Изменить статус |
+| `ChangePriority` | Изменить приоритет |
+| `ChangeSeverity` | Изменить severity |
+| `AssignTask` | Назначить исполнителя |
+| `UnassignTask` | Снять исполнителя |
+| `SetDueDate` | Установить срок |
+| `ClearDueDate` | Очистить срок |
+| `DeleteTask` | Удалить задачу |
+
+**Статусы задач:** `todo`, `in_progress`, `review`, `done`
+
+**Примечание:** Может потребоваться создание `TaskService` wrapper (по аналогии с `ChatService`) для удобства использования в handlers.
 
 ---
 
@@ -715,8 +738,8 @@ partials.GET("/task/create-form", h.TaskCreateForm)
 ## Зависимости
 
 ### Входящие
-- [03-workspace-pages.md](03-workspace-pages.md) - workspace context ✅
-- Task API endpoints
+- [03-workspace-pages.md](03-workspace-pages.md) - workspace context
+- **Task Use Cases** — реализованы (`internal/application/task/`)
 - WebSocket for real-time updates
 
 ### Исходящие
@@ -733,4 +756,4 @@ partials.GET("/task/create-form", h.TaskCreateForm)
 
 ---
 
-*Создано: 2026-01-05*
+*Обновлено: 2026-01-06*

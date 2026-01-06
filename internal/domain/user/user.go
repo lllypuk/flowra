@@ -15,6 +15,7 @@ type User struct {
 	email         string
 	displayName   string
 	isSystemAdmin bool
+	isActive      bool // флаг активности пользователя (для soft-delete при удалении из Keycloak)
 	createdAt     time.Time
 	updatedAt     time.Time
 }
@@ -37,6 +38,7 @@ func NewUser(externalID, username, email, displayName string) (*User, error) {
 		username:    username,
 		email:       email,
 		displayName: displayName,
+		isActive:    true,
 		createdAt:   time.Now(),
 		updatedAt:   time.Now(),
 	}, nil
@@ -46,7 +48,7 @@ func NewUser(externalID, username, email, displayName string) (*User, error) {
 func Reconstruct(
 	id uuid.UUID,
 	externalID, username, email, displayName string,
-	isSystemAdmin bool,
+	isSystemAdmin, isActive bool,
 	createdAt, updatedAt time.Time,
 ) *User {
 	return &User{
@@ -56,6 +58,7 @@ func Reconstruct(
 		email:         email,
 		displayName:   displayName,
 		isSystemAdmin: isSystemAdmin,
+		isActive:      isActive,
 		createdAt:     createdAt,
 		updatedAt:     updatedAt,
 	}
@@ -91,6 +94,11 @@ func (u *User) DisplayName() string {
 // IsSystemAdmin возвращает флаг системного администратора
 func (u *User) IsSystemAdmin() bool {
 	return u.isSystemAdmin
+}
+
+// IsActive возвращает флаг активности пользователя
+func (u *User) IsActive() bool {
+	return u.isActive
 }
 
 // CreatedAt возвращает время создания
@@ -129,4 +137,42 @@ func (u *User) UpdateProfile(displayName *string, email *string) error {
 func (u *User) SetAdmin(isAdmin bool) {
 	u.isSystemAdmin = isAdmin
 	u.updatedAt = time.Now()
+}
+
+// SetActive устанавливает флаг активности пользователя
+func (u *User) SetActive(isActive bool) {
+	u.isActive = isActive
+	u.updatedAt = time.Now()
+}
+
+// UpdateFromSync обновляет данные пользователя из внешней системы (Keycloak)
+// Возвращает true, если данные были изменены
+func (u *User) UpdateFromSync(username, email, displayName string, isActive bool) bool {
+	updated := false
+
+	if u.username != username {
+		u.username = username
+		updated = true
+	}
+
+	if u.email != email {
+		u.email = email
+		updated = true
+	}
+
+	if u.displayName != displayName {
+		u.displayName = displayName
+		updated = true
+	}
+
+	if u.isActive != isActive {
+		u.isActive = isActive
+		updated = true
+	}
+
+	if updated {
+		u.updatedAt = time.Now()
+	}
+
+	return updated
 }

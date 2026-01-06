@@ -94,7 +94,17 @@ func TestReconstruct(t *testing.T) {
 	updatedAt := time.Now().Add(-1 * time.Hour)
 
 	// Act
-	user := userDomain.Reconstruct(id, keycloakID, username, email, displayName, isSystemAdmin, createdAt, updatedAt)
+	user := userDomain.Reconstruct(
+		id,
+		keycloakID,
+		username,
+		email,
+		displayName,
+		isSystemAdmin,
+		true,
+		createdAt,
+		updatedAt,
+	)
 
 	// Assert
 	assert.NotNil(t, user)
@@ -168,7 +178,8 @@ func TestUser_SetAdmin_RevokeRights(t *testing.T) {
 		"admin",
 		"admin@example.com",
 		"Admin",
-		true,
+		true, // isSystemAdmin
+		true, // isActive
 		time.Now(),
 		time.Now(),
 	)
@@ -197,7 +208,7 @@ func TestUser_AllGetters(t *testing.T) {
 	createdAt := time.Now().Add(-48 * time.Hour)
 	updatedAt := time.Now().Add(-24 * time.Hour)
 
-	user := userDomain.Reconstruct(id, keycloakID, username, email, displayName, isAdmin, createdAt, updatedAt)
+	user := userDomain.Reconstruct(id, keycloakID, username, email, displayName, isAdmin, true, createdAt, updatedAt)
 
 	// Act & Assert
 	t.Run("ID", func(t *testing.T) {
@@ -230,5 +241,114 @@ func TestUser_AllGetters(t *testing.T) {
 
 	t.Run("UpdatedAt", func(t *testing.T) {
 		assert.Equal(t, updatedAt, user.UpdatedAt())
+	})
+}
+
+func TestUser_IsActive(t *testing.T) {
+	t.Run("new user is active by default", func(t *testing.T) {
+		user, err := userDomain.NewUser("ext-123", "john", "john@example.com", "John Doe")
+		require.NoError(t, err)
+		assert.True(t, user.IsActive())
+	})
+
+	t.Run("reconstructed user preserves active status", func(t *testing.T) {
+		id := uuid.NewUUID()
+		user := userDomain.Reconstruct(
+			id, "ext-123", "john", "john@example.com", "John", false, false,
+			time.Now(), time.Now(),
+		)
+		assert.False(t, user.IsActive())
+	})
+}
+
+func TestUser_SetActive(t *testing.T) {
+	t.Run("deactivates user", func(t *testing.T) {
+		user, err := userDomain.NewUser("ext-123", "john", "john@example.com", "John")
+		require.NoError(t, err)
+		assert.True(t, user.IsActive())
+		oldUpdatedAt := user.UpdatedAt()
+
+		time.Sleep(10 * time.Millisecond)
+
+		user.SetActive(false)
+
+		assert.False(t, user.IsActive())
+		assert.True(t, user.UpdatedAt().After(oldUpdatedAt))
+	})
+
+	t.Run("reactivates user", func(t *testing.T) {
+		id := uuid.NewUUID()
+		user := userDomain.Reconstruct(
+			id, "ext-123", "john", "john@example.com", "John", false, false,
+			time.Now(), time.Now(),
+		)
+		assert.False(t, user.IsActive())
+		oldUpdatedAt := user.UpdatedAt()
+
+		time.Sleep(10 * time.Millisecond)
+
+		user.SetActive(true)
+
+		assert.True(t, user.IsActive())
+		assert.True(t, user.UpdatedAt().After(oldUpdatedAt))
+	})
+}
+
+func TestUser_UpdateFromSync(t *testing.T) {
+	t.Run("updates all fields when changed", func(t *testing.T) {
+		user, err := userDomain.NewUser("ext-123", "old_user", "old@example.com", "Old Name")
+		require.NoError(t, err)
+		oldUpdatedAt := user.UpdatedAt()
+
+		time.Sleep(10 * time.Millisecond)
+
+		updated := user.UpdateFromSync("new_user", "new@example.com", "New Name", true)
+
+		assert.True(t, updated)
+		assert.Equal(t, "new_user", user.Username())
+		assert.Equal(t, "new@example.com", user.Email())
+		assert.Equal(t, "New Name", user.DisplayName())
+		assert.True(t, user.IsActive())
+		assert.True(t, user.UpdatedAt().After(oldUpdatedAt))
+	})
+
+	t.Run("updates only changed fields", func(t *testing.T) {
+		user, err := userDomain.NewUser("ext-123", "same_user", "same@example.com", "Same Name")
+		require.NoError(t, err)
+		oldUpdatedAt := user.UpdatedAt()
+
+		time.Sleep(10 * time.Millisecond)
+
+		// Only email changed
+		updated := user.UpdateFromSync("same_user", "new@example.com", "Same Name", true)
+
+		assert.True(t, updated)
+		assert.Equal(t, "same_user", user.Username())
+		assert.Equal(t, "new@example.com", user.Email())
+		assert.True(t, user.UpdatedAt().After(oldUpdatedAt))
+	})
+
+	t.Run("returns false when no changes", func(t *testing.T) {
+		user, err := userDomain.NewUser("ext-123", "user", "user@example.com", "User Name")
+		require.NoError(t, err)
+		oldUpdatedAt := user.UpdatedAt()
+
+		time.Sleep(10 * time.Millisecond)
+
+		updated := user.UpdateFromSync("user", "user@example.com", "User Name", true)
+
+		assert.False(t, updated)
+		assert.Equal(t, oldUpdatedAt, user.UpdatedAt())
+	})
+
+	t.Run("updates active status", func(t *testing.T) {
+		user, err := userDomain.NewUser("ext-123", "user", "user@example.com", "User")
+		require.NoError(t, err)
+		assert.True(t, user.IsActive())
+
+		updated := user.UpdateFromSync("user", "user@example.com", "User", false)
+
+		assert.True(t, updated)
+		assert.False(t, user.IsActive())
 	})
 }

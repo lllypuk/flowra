@@ -731,3 +731,361 @@ func TestAuth_ContextEnrichment(t *testing.T) {
 	assert.Equal(t, claims.Roles, extractedRoles)
 	assert.Equal(t, claims.IsSystemAdmin, extractedIsAdmin)
 }
+
+func TestGetUser(t *testing.T) {
+	t.Run("returns claims when set", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		expectedClaims := &middleware.TokenClaims{
+			UserID:         uuid.NewUUID(),
+			ExternalUserID: "ext-123",
+			Username:       "testuser",
+			Email:          "test@example.com",
+			Roles:          []string{"user"},
+			Groups:         []string{"/team-a"},
+			IsSystemAdmin:  false,
+		}
+		c.Set("claims", expectedClaims)
+
+		result := middleware.GetUser(c)
+
+		require.NotNil(t, result)
+		assert.Equal(t, expectedClaims.UserID, result.UserID)
+		assert.Equal(t, expectedClaims.ExternalUserID, result.ExternalUserID)
+		assert.Equal(t, expectedClaims.Username, result.Username)
+		assert.Equal(t, expectedClaims.Email, result.Email)
+		assert.Equal(t, expectedClaims.Roles, result.Roles)
+		assert.Equal(t, expectedClaims.Groups, result.Groups)
+	})
+
+	t.Run("returns nil when not set", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		result := middleware.GetUser(c)
+
+		assert.Nil(t, result)
+	})
+
+	t.Run("returns nil when wrong type", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.Set("claims", "not a claims object")
+
+		result := middleware.GetUser(c)
+
+		assert.Nil(t, result)
+	})
+}
+
+func TestGetGroups(t *testing.T) {
+	t.Run("returns groups when set", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		expectedGroups := []string{"/team-a", "/team-b", "/admins"}
+		c.Set("groups", expectedGroups)
+
+		result := middleware.GetGroups(c)
+
+		assert.Equal(t, expectedGroups, result)
+	})
+
+	t.Run("returns nil when not set", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		result := middleware.GetGroups(c)
+
+		assert.Nil(t, result)
+	})
+}
+
+func TestInGroup(t *testing.T) {
+	tests := []struct {
+		name     string
+		groups   []string
+		check    string
+		expected bool
+	}{
+		{
+			name:     "exact match with slash",
+			groups:   []string{"/team-a", "/team-b"},
+			check:    "/team-a",
+			expected: true,
+		},
+		{
+			name:     "match without slash when stored with slash",
+			groups:   []string{"/team-a", "/team-b"},
+			check:    "team-a",
+			expected: true,
+		},
+		{
+			name:     "match with slash when stored without slash",
+			groups:   []string{"team-a", "team-b"},
+			check:    "/team-a",
+			expected: true,
+		},
+		{
+			name:     "exact match without slash",
+			groups:   []string{"team-a", "team-b"},
+			check:    "team-a",
+			expected: true,
+		},
+		{
+			name:     "no match",
+			groups:   []string{"/team-a", "/team-b"},
+			check:    "team-c",
+			expected: false,
+		},
+		{
+			name:     "empty groups",
+			groups:   []string{},
+			check:    "team-a",
+			expected: false,
+		},
+		{
+			name:     "nil groups",
+			groups:   nil,
+			check:    "team-a",
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := echo.New()
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			if tt.groups != nil {
+				c.Set("groups", tt.groups)
+			}
+
+			result := middleware.InGroup(c, tt.check)
+
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestHasAnyGroup(t *testing.T) {
+	t.Run("returns true when user has one of the groups", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.Set("groups", []string{"/team-a", "/team-b"})
+
+		assert.True(t, middleware.HasAnyGroup(c, "team-c", "team-a"))
+	})
+
+	t.Run("returns false when user has none of the groups", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.Set("groups", []string{"/team-a", "/team-b"})
+
+		assert.False(t, middleware.HasAnyGroup(c, "team-c", "team-d"))
+	})
+
+	t.Run("returns false with no groups", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		assert.False(t, middleware.HasAnyGroup(c, "team-a"))
+	})
+}
+
+func TestRequireGroup(t *testing.T) {
+	t.Run("allows access when user is in group", func(t *testing.T) {
+		e := echo.New()
+
+		claims := &middleware.TokenClaims{
+			UserID:   uuid.NewUUID(),
+			Username: "testuser",
+			Groups:   []string{"/team-a", "/team-b"},
+		}
+
+		validator := &mockTokenValidator{claims: claims}
+		config := middleware.AuthConfig{TokenValidator: validator}
+
+		e.Use(middleware.Auth(config))
+
+		protected := e.Group("")
+		protected.Use(middleware.RequireGroup("team-a"))
+		protected.GET("/protected", func(c echo.Context) error {
+			return c.String(http.StatusOK, "ok")
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+		req.Header.Set(echo.HeaderAuthorization, "Bearer valid-token")
+		rec := httptest.NewRecorder()
+
+		e.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+	t.Run("denies access when user is not in group", func(t *testing.T) {
+		e := echo.New()
+
+		claims := &middleware.TokenClaims{
+			UserID:   uuid.NewUUID(),
+			Username: "testuser",
+			Groups:   []string{"/team-a"},
+		}
+
+		validator := &mockTokenValidator{claims: claims}
+		config := middleware.AuthConfig{TokenValidator: validator}
+
+		e.Use(middleware.Auth(config))
+
+		protected := e.Group("")
+		protected.Use(middleware.RequireGroup("team-x"))
+		protected.GET("/protected", func(c echo.Context) error {
+			return c.String(http.StatusOK, "ok")
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+		req.Header.Set(echo.HeaderAuthorization, "Bearer valid-token")
+		rec := httptest.NewRecorder()
+
+		e.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusForbidden, rec.Code)
+		assert.Contains(t, rec.Body.String(), "FORBIDDEN")
+	})
+}
+
+func TestRequireAnyGroup(t *testing.T) {
+	t.Run("allows access when user is in one of the groups", func(t *testing.T) {
+		e := echo.New()
+
+		claims := &middleware.TokenClaims{
+			UserID:   uuid.NewUUID(),
+			Username: "testuser",
+			Groups:   []string{"/team-b"},
+		}
+
+		validator := &mockTokenValidator{claims: claims}
+		config := middleware.AuthConfig{TokenValidator: validator}
+
+		e.Use(middleware.Auth(config))
+
+		protected := e.Group("")
+		protected.Use(middleware.RequireAnyGroup("team-a", "team-b", "team-c"))
+		protected.GET("/protected", func(c echo.Context) error {
+			return c.String(http.StatusOK, "ok")
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+		req.Header.Set(echo.HeaderAuthorization, "Bearer valid-token")
+		rec := httptest.NewRecorder()
+
+		e.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+	t.Run("denies access when user is not in any of the groups", func(t *testing.T) {
+		e := echo.New()
+
+		claims := &middleware.TokenClaims{
+			UserID:   uuid.NewUUID(),
+			Username: "testuser",
+			Groups:   []string{"/team-x"},
+		}
+
+		validator := &mockTokenValidator{claims: claims}
+		config := middleware.AuthConfig{TokenValidator: validator}
+
+		e.Use(middleware.Auth(config))
+
+		protected := e.Group("")
+		protected.Use(middleware.RequireAnyGroup("team-a", "team-b", "team-c"))
+		protected.GET("/protected", func(c echo.Context) error {
+			return c.String(http.StatusOK, "ok")
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+		req.Header.Set(echo.HeaderAuthorization, "Bearer valid-token")
+		rec := httptest.NewRecorder()
+
+		e.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusForbidden, rec.Code)
+	})
+}
+
+func TestAuth_ContextEnrichment_WithGroups(t *testing.T) {
+	e := echo.New()
+
+	claims := &middleware.TokenClaims{
+		UserID:         uuid.NewUUID(),
+		ExternalUserID: "ext-789",
+		Username:       "groupuser",
+		Email:          "group@example.com",
+		Roles:          []string{"user"},
+		Groups:         []string{"/team-alpha", "/team-beta"},
+		IsSystemAdmin:  false,
+		ExpiresAt:      time.Now().Add(time.Hour),
+	}
+
+	validator := &mockTokenValidator{claims: claims}
+	config := middleware.AuthConfig{TokenValidator: validator}
+
+	var extractedUser *middleware.TokenClaims
+	var extractedGroups []string
+
+	e.Use(middleware.Auth(config))
+	e.GET("/test", func(c echo.Context) error {
+		extractedUser = middleware.GetUser(c)
+		extractedGroups = middleware.GetGroups(c)
+		return c.String(http.StatusOK, "ok")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req.Header.Set(echo.HeaderAuthorization, "Bearer valid-token")
+	rec := httptest.NewRecorder()
+
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	// Verify GetUser returns full claims
+	require.NotNil(t, extractedUser)
+	assert.Equal(t, claims.UserID, extractedUser.UserID)
+	assert.Equal(t, claims.ExternalUserID, extractedUser.ExternalUserID)
+	assert.Equal(t, claims.Username, extractedUser.Username)
+	assert.Equal(t, claims.Groups, extractedUser.Groups)
+
+	// Verify GetGroups returns groups
+	assert.Equal(t, claims.Groups, extractedGroups)
+
+	// Verify InGroup works
+	e2 := echo.New()
+	req2 := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec2 := httptest.NewRecorder()
+	c2 := e2.NewContext(req2, rec2)
+	c2.Set("groups", claims.Groups)
+
+	assert.True(t, middleware.InGroup(c2, "team-alpha"))
+	assert.True(t, middleware.InGroup(c2, "/team-beta"))
+	assert.False(t, middleware.InGroup(c2, "team-gamma"))
+}

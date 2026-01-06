@@ -38,6 +38,7 @@ const (
 	containerInitTimeout   = 30 * time.Second
 	redisPingTimeout       = 5 * time.Second
 	mongoDisconnectTimeout = 10 * time.Second
+	keycloakTokenBuffer    = 30 * time.Second
 )
 
 // Container holds all application dependencies and manages their lifecycle.
@@ -515,13 +516,29 @@ func (c *Container) setupHTTPHandlers() {
 func (c *Container) createWorkspaceService() *service.WorkspaceService {
 	// Create Keycloak client or NoOp if not configured
 	var keycloakClient wsapp.KeycloakClient
-	if c.Config.Keycloak.URL != "" && c.Config.Keycloak.ClientID != "" {
-		c.Logger.Debug("using real Keycloak client for workspace service")
-		// Note: Real Keycloak admin client for group management would go here
-		// For now, we use NoOp as the admin API is not yet implemented
-		keycloakClient = service.NewNoOpKeycloakClient()
+	if c.Config.Keycloak.URL != "" && c.Config.Keycloak.AdminUsername != "" {
+		c.Logger.Debug("using real Keycloak GroupClient for workspace service",
+			slog.String("url", c.Config.Keycloak.URL),
+			slog.String("realm", c.Config.Keycloak.Realm),
+		)
+
+		// Create admin token manager for authentication
+		tokenManager := keycloak.NewAdminTokenManager(keycloak.AdminTokenConfig{
+			KeycloakURL: c.Config.Keycloak.URL,
+			Realm:       "master", // Admin operations are typically against master realm
+			ClientID:    "admin-cli",
+			Username:    c.Config.Keycloak.AdminUsername,
+			Password:    c.Config.Keycloak.AdminPassword,
+			TokenBuffer: keycloakTokenBuffer,
+		})
+
+		// Create group client for workspace management
+		keycloakClient = keycloak.NewGroupClient(keycloak.GroupClientConfig{
+			KeycloakURL: c.Config.Keycloak.URL,
+			Realm:       c.Config.Keycloak.Realm,
+		}, tokenManager)
 	} else {
-		c.Logger.Debug("using NoOp Keycloak client for workspace service")
+		c.Logger.Debug("using NoOp Keycloak client for workspace service (admin not configured)")
 		keycloakClient = service.NewNoOpKeycloakClient()
 	}
 

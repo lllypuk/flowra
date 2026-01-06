@@ -318,7 +318,8 @@ func TestToUserResponse(t *testing.T) {
 		"testuser",
 		"test@example.com",
 		"Test User Display",
-		true,
+		true, // isSystemAdmin
+		true, // isActive
 		time.Now().Add(-24*time.Hour),
 		time.Now(),
 	)

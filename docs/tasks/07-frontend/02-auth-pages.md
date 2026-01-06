@@ -1,9 +1,25 @@
 # 02: Auth Pages
 
 **Приоритет:** 🔴 Critical
-**Статус:** ✅ Завершено
-**Период:** 4-5 февраля
+**Статус:** ⏳ Не начато
 **Зависит от:** [01-base-infrastructure.md](01-base-infrastructure.md)
+
+---
+
+## Backend сервисы
+
+Эта задача использует **AuthService** (`internal/service/auth_service.go`):
+
+| Метод | Описание |
+|-------|----------|
+| `Login(ctx, code, redirectURI)` | OAuth2 authorization code flow |
+| `Logout(ctx, userID)` | Инвалидация сессии и revoke токенов |
+| `RefreshToken(ctx, refreshToken)` | Обновление access token |
+
+**Зависимости AuthService:**
+- `AuthServiceOAuthClient` — Keycloak OAuth операции
+- `AuthServiceTokenStore` — Redis хранилище токенов
+- `AuthServiceUserRepository` — синхронизация пользователей
 
 ---
 
@@ -442,47 +458,47 @@ func (h *TemplateHandler) RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 ## Чеклист
 
 ### Templates
-- [x] `auth/login.html` - Login page с SSO button
-- [x] `auth/callback.html` - OAuth callback processing
-- [x] `auth/logout.html` - Logout confirmation
+- [ ] `auth/login.html` - Login page с SSO button
+- [ ] `auth/callback.html` - OAuth callback processing
+- [ ] `auth/logout.html` - Logout confirmation
 
 ### Handlers
-- [x] `LoginPage` - отображает login page
-- [x] `AuthCallback` - обрабатывает OAuth callback
-- [x] `LogoutPage` - отображает logout confirmation
-- [x] `Logout` - выполняет logout
+- [ ] `LoginPage` - отображает login page
+- [ ] `AuthCallback` - обрабатывает OAuth callback
+- [ ] `LogoutPage` - отображает logout confirmation
+- [ ] `Logout` - выполняет logout
 
 ### Cookies
-- [x] Session cookie management
-- [x] State cookie for CSRF protection
-- [x] Redirect cookie for return URL
+- [ ] Session cookie management
+- [ ] State cookie for CSRF protection
+- [ ] Redirect cookie for return URL
 
 ### Integration
-- [x] Keycloak auth URL генерируется корректно (mock mode)
-- [x] OAuth callback обрабатывается
-- [x] Session создаётся при успешном login
-- [x] Logout очищает session
-- [x] Protected routes редиректят на login
+- [ ] Keycloak auth URL генерируется корректно
+- [ ] OAuth callback обрабатывается
+- [ ] Session создаётся при успешном login
+- [ ] Logout очищает session
+- [ ] Protected routes редиректят на login
 
 ---
 
 ## Критерии приёмки
 
-- [x] `/login` отображает страницу входа
-- [x] Click на "Sign in with SSO" редиректит на Keycloak (mock mode)
-- [x] После успешной авторизации пользователь попадает на `/workspaces`
-- [x] `/logout` отображает подтверждение
-- [x] После logout session удалён
-- [x] Попытка доступа к protected route редиректит на login
-- [x] После login пользователь возвращается на исходную страницу
+- [ ] `/login` отображает страницу входа
+- [ ] Click на "Sign in with SSO" редиректит на Keycloak
+- [ ] После успешной авторизации пользователь попадает на `/workspaces`
+- [ ] `/logout` отображает подтверждение
+- [ ] После logout session удалён
+- [ ] Попытка доступа к protected route редиректит на login
+- [ ] После login пользователь возвращается на исходную страницу
 
 ---
 
 ## Зависимости
 
 ### Входящие
-- [01-base-infrastructure.md](01-base-infrastructure.md) - base layout ✅
-- Auth API endpoint (`/api/v1/auth/*`)
+- [01-base-infrastructure.md](01-base-infrastructure.md) - base layout
+- **AuthService** — реализован (`internal/service/auth_service.go`)
 - Keycloak configured
 
 ### Исходящие
@@ -517,4 +533,4 @@ func (h *TemplateHandler) RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 
 ---
 
-*Создано: 2026-01-05*
+*Обновлено: 2026-01-06*

@@ -1,6 +1,5 @@
-# Задачи на февраль 2026: HTMX Frontend
+# HTMX Frontend
 
-**Период:** 1-28 февраля 2026
 **Цель:** Реализовать минимальный работающий UI на HTMX + Pico CSS
 **Статус:** ⏳ Запланировано
 
@@ -10,11 +9,13 @@
 
 Этот каталог содержит детализированные задачи по разработке фронтенда для Flowra. Frontend построен на принципах progressive enhancement с использованием HTMX для динамики и Pico CSS для стилизации.
 
-### Предварительные требования
-- ✅ API endpoints работают (40+ endpoints)
-- ✅ WebSocket server готов
+### Предварительные требования (Backend)
+- ✅ **AuthService** — OAuth2 flow с Keycloak (Login, Logout, RefreshToken)
+- ✅ **WorkspaceService** — CRUD workspaces (CreateWorkspace, GetWorkspace, ListUserWorkspaces, UpdateWorkspace, DeleteWorkspace)
+- ✅ **MemberService** — управление участниками (AddMember, RemoveMember, UpdateMemberRole, ListMembers, IsOwner)
+- ✅ **ChatService** — управление чатами с event sourcing (CreateChat, GetChat, ListChats, RenameChat, DeleteChat, AddParticipant, RemoveParticipant)
+- ✅ **Application Layer** — 45+ use cases (chat, message, task, user, workspace, notification)
 - ✅ E2E tests проходят
-- ✅ Authentication через Keycloak настроена
 
 ### Tech Stack
 
@@ -29,14 +30,14 @@
 
 ## Структура задач
 
-### Фаза 1: Foundation (1-7 февраля)
+### Фаза 1: Foundation
 
 | № | Задача | Файл | Приоритет | Статус |
 |---|--------|------|-----------|--------|
 | 01 | Base Infrastructure | [01-base-infrastructure.md](01-base-infrastructure.md) | 🔴 Critical | ⏳ |
 | 02 | Auth Pages | [02-auth-pages.md](02-auth-pages.md) | 🔴 Critical | ⏳ |
 
-### Фаза 2: Core Features (8-18 февраля)
+### Фаза 2: Core Features
 
 | № | Задача | Файл | Приоритет | Статус |
 |---|--------|------|-----------|--------|
@@ -44,7 +45,7 @@
 | 04 | Chat UI | [04-chat-ui.md](04-chat-ui.md) | 🔴 Critical | ⏳ |
 | 05 | Kanban Board | [05-kanban-board.md](05-kanban-board.md) | 🟡 High | ⏳ |
 
-### Фаза 3: Task Management & Polish (19-28 февраля)
+### Фаза 3: Task Management & Polish
 
 | № | Задача | Файл | Приоритет | Статус |
 |---|--------|------|-----------|--------|
@@ -236,7 +237,7 @@ partials.GET("/tasks/:id", h.TaskCardPartial)
 
 ## Метрики успеха
 
-### К концу февраля
+### Функциональные требования
 
 - [ ] Пользователь может войти через Keycloak
 - [ ] CRUD операции с workspaces через UI
@@ -288,5 +289,4 @@ partials.GET("/tasks/:id", h.TaskCardPartial)
 
 ---
 
-*Создано: 2026-01-05*
-*Обновлено: 2026-01-05*
+*Обновлено: 2026-01-06*

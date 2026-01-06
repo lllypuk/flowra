@@ -45,8 +45,11 @@ services:
       KC_DB: dev-file
     ports:
       - "8090:8080"
+    volumes:
+      - ./configs/keycloak:/opt/keycloak/data/import
     command:
       - start-dev
+      - --import-realm
     networks:
       - flowra-network
     healthcheck:
