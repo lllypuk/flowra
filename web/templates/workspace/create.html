@@ -9,7 +9,7 @@
             <h3>Create Workspace</h3>
         </header>
 
-        <form hx-post="/api/v1/workspaces"
+        <form hx-post="/partials/workspace/create"
               hx-target="#workspace-list"
               hx-swap="afterbegin"
               hx-on::after-request="if(event.detail.successful) this.closest('dialog').remove()">

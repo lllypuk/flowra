@@ -7,13 +7,21 @@ import (
 )
 
 // RequireAuth is a middleware that checks if the user is authenticated.
-// If not, it redirects to the login page and saves the intended destination.
+// For regular requests, it redirects to login. For HTMX requests, it returns 401.
 func RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		// Check for session cookie
 		token := getSessionCookie(c)
 		if token == "" {
-			// Save intended destination
+			// For HTMX requests, return 401 with HX-Redirect header
+			if c.Request().Header.Get("HX-Request") == "true" {
+				c.Response().Header().Set("HX-Redirect", "/login")
+				return c.JSON(http.StatusUnauthorized, map[string]string{
+					"error": "Authentication required",
+				})
+			}
+
+			// For regular requests, save destination and redirect
 			if c.Request().Method == http.MethodGet {
 				setRedirectCookie(c, c.Request().URL.Path)
 			}

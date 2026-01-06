@@ -11,10 +11,11 @@ import (
 func TemplateFuncs() template.FuncMap {
 	return template.FuncMap{
 		// Time formatting
-		"formatTime":     formatTime,
-		"formatDate":     formatDate,
-		"formatDateTime": formatDateTime,
-		"timeAgo":        timeAgo,
+		"formatTime":      formatTime,
+		"formatDate":      formatDate,
+		"formatDateTime":  formatDateTime,
+		"formatDateInput": formatDateInput,
+		"timeAgo":         timeAgo,
 
 		// String helpers
 		"truncate":  truncate,
@@ -56,11 +57,12 @@ func TemplateFuncs() template.FuncMap {
 		"list":  list,
 
 		// HTML helpers
-		"safeHTML": safeHTML,
-		"safeURL":  safeURL,
-		"safeCSS":  safeCSS,
-		"safeJS":   safeJS,
-		"attr":     attr,
+		"safeHTML":       safeHTML,
+		"safeURL":        safeURL,
+		"safeCSS":        safeCSS,
+		"safeJS":         safeJS,
+		"attr":           attr,
+		"renderMarkdown": renderMarkdown,
 
 		// Math helpers
 		"add": add,
@@ -92,6 +94,13 @@ func formatDateTime(t time.Time) string {
 		return ""
 	}
 	return t.Format("Jan 2, 2006 15:04")
+}
+
+func formatDateInput(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.Format("2006-01-02")
 }
 
 // Time-related constants for timeAgo function.
@@ -356,4 +365,26 @@ func mod(a, b int) int {
 		return 0
 	}
 	return a % b
+}
+
+// renderMarkdown converts markdown-like content to basic HTML.
+// This is a simple implementation that handles basic formatting.
+// For production, consider using a proper markdown library.
+func renderMarkdown(s string) string {
+	if s == "" {
+		return ""
+	}
+
+	// Escape HTML first to prevent XSS
+	escaped := template.HTMLEscapeString(s)
+
+	// Simple replacements for basic markdown
+	// Bold: **text** or __text__
+	result := escaped
+
+	// Convert newlines to <br>
+	result = strings.ReplaceAll(result, "\n", "<br>")
+
+	// Wrap in paragraph
+	return "<p>" + result + "</p>"
 }

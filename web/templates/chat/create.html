@@ -1,0 +1,170 @@
+{{define "chat/create"}}
+<dialog open id="create-chat-modal">
+    <article>
+        <header>
+            <button
+                aria-label="Close"
+                rel="prev"
+                onclick="this.closest('dialog').remove()"
+            ></button>
+            <h3>New Chat</h3>
+        </header>
+
+        <form
+            hx-post="/api/v1/workspaces/{{.WorkspaceID}}/chats"
+            hx-target="#chat-list"
+            hx-swap="afterbegin"
+            hx-on::after-request="if(event.detail.successful) { this.closest('dialog').remove(); }"
+        >
+            <input type="hidden" name="workspace_id" value="{{.WorkspaceID}}" />
+
+            <!-- Chat Name -->
+            <label for="chat-name">
+                Name
+                <input
+                    type="text"
+                    id="chat-name"
+                    name="name"
+                    placeholder="Enter chat name..."
+                    required
+                    autofocus
+                    maxlength="100"
+                />
+            </label>
+
+            <!-- Chat Type -->
+            <label for="chat-type">
+                Type
+                <select id="chat-type" name="type">
+                    <option value="discussion" selected>Discussion</option>
+                    <option value="task">Task</option>
+                    <option value="bug">Bug</option>
+                    <option value="epic">Epic</option>
+                </select>
+                <small class="text-muted"
+                    >Task, Bug, and Epic types have additional project
+                    management features.</small
+                >
+            </label>
+
+            <!-- Visibility -->
+            <fieldset>
+                <legend>Visibility</legend>
+                <label>
+                    <input type="radio" name="is_public" value="true" checked />
+                    Public - All workspace members can see this chat
+                </label>
+                <label>
+                    <input type="radio" name="is_public" value="false" />
+                    Private - Only invited members can see this chat
+                </label>
+            </fieldset>
+
+            <!-- Initial Participants (for private chats) -->
+            <div id="participants-section" class="hidden">
+                <label for="participants">
+                    Add Participants
+                    <select
+                        id="participants"
+                        name="participant_ids"
+                        multiple
+                        hx-get="/partials/workspace/{{.WorkspaceID}}/members-options"
+                        hx-trigger="load"
+                        hx-swap="innerHTML"
+                    >
+                        <option disabled>Loading members...</option>
+                    </select>
+                    <small class="text-muted"
+                        >Hold Ctrl/Cmd to select multiple members.</small
+                    >
+                </label>
+            </div>
+
+            <footer>
+                <button
+                    type="button"
+                    class="secondary"
+                    onclick="this.closest('dialog').remove()"
+                >
+                    Cancel
+                </button>
+                <button type="submit">Create Chat</button>
+            </footer>
+        </form>
+    </article>
+</dialog>
+
+<script>
+    (function () {
+        var visibilityRadios = document.querySelectorAll(
+            'input[name="is_public"]',
+        );
+        var participantsSection = document.getElementById(
+            "participants-section",
+        );
+
+        visibilityRadios.forEach(function (radio) {
+            radio.addEventListener("change", function () {
+                if (this.value === "false") {
+                    participantsSection.classList.remove("hidden");
+                } else {
+                    participantsSection.classList.add("hidden");
+                }
+            });
+        });
+    })();
+</script>
+
+<style>
+    #create-chat-modal article {
+        max-width: 500px;
+        margin: auto;
+    }
+
+    #create-chat-modal article header {
+        margin-bottom: 1rem;
+    }
+
+    #create-chat-modal article header h3 {
+        margin: 0;
+    }
+
+    #create-chat-modal fieldset {
+        border: none;
+        padding: 0;
+        margin-bottom: 1rem;
+    }
+
+    #create-chat-modal fieldset legend {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    #create-chat-modal fieldset label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: normal;
+    }
+
+    #create-chat-modal footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        margin-top: 1.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--muted-border-color);
+    }
+
+    #create-chat-modal footer button {
+        margin-bottom: 0;
+    }
+
+    #create-chat-modal select[multiple] {
+        min-height: 120px;
+    }
+
+    .hidden {
+        display: none !important;
+    }
+</style>
+{{end}} {{define "chat/create-form"}} {{template "chat/create" .}} {{end}}

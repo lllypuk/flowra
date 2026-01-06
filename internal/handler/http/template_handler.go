@@ -418,6 +418,7 @@ func (h *TemplateHandler) SetupPageRoutes(e *echo.Echo) {
 	partials := e.Group("/partials", RequireAuth)
 	partials.GET("/workspaces", h.WorkspaceListPartial)
 	partials.GET("/workspace/create-form", h.WorkspaceCreateForm)
+	partials.POST("/workspace/create", h.WorkspaceCreate)
 	partials.GET("/workspace/:id/members", h.WorkspaceMembersPartial)
 	partials.GET("/workspace/:id/invite-form", h.WorkspaceInviteForm)
 }
@@ -523,6 +524,58 @@ func (h *TemplateHandler) WorkspaceView(c echo.Context) error {
 // WorkspaceCreateForm returns the create workspace form partial.
 func (h *TemplateHandler) WorkspaceCreateForm(c echo.Context) error {
 	return h.RenderPartial(c, "workspace/create-form", nil)
+}
+
+// WorkspaceCreate handles POST /partials/workspace/create and returns HTML partial.
+func (h *TemplateHandler) WorkspaceCreate(c echo.Context) error {
+	user := h.getUserView(c)
+	if user == nil {
+		//nolint:canonicalheader // HTMX uses non-canonical header names
+		c.Response().Header().Set("HX-Retarget", "#modal-container")
+		return c.String(http.StatusUnauthorized, `<div class="error">Unauthorized</div>`)
+	}
+
+	if h.workspaceService == nil {
+		//nolint:canonicalheader // HTMX uses non-canonical header names
+		c.Response().Header().Set("HX-Retarget", "#modal-container")
+		return c.String(http.StatusServiceUnavailable, `<div class="error">Service unavailable</div>`)
+	}
+
+	userID, err := uuid.ParseUUID(user.ID)
+	if err != nil {
+		//nolint:canonicalheader // HTMX uses non-canonical header names
+		c.Response().Header().Set("HX-Retarget", "#modal-container")
+		return c.String(http.StatusBadRequest, `<div class="error">Invalid user ID</div>`)
+	}
+
+	name := c.FormValue("name")
+	description := c.FormValue("description")
+
+	if name == "" {
+		//nolint:canonicalheader // HTMX uses non-canonical header names
+		c.Response().Header().Set("HX-Retarget", "#modal-container")
+		return c.String(http.StatusBadRequest, `<div class="error">Workspace name is required</div>`)
+	}
+
+	ws, err := h.workspaceService.CreateWorkspace(c.Request().Context(), userID, name, description)
+	if err != nil {
+		h.logger.Error("failed to create workspace", slog.String("error", err.Error()))
+		//nolint:canonicalheader // HTMX uses non-canonical header names
+		c.Response().Header().Set("HX-Retarget", "#modal-container")
+		return c.String(http.StatusInternalServerError, `<div class="error">Failed to create workspace</div>`)
+	}
+
+	// Return the workspace card HTML partial
+	data := WorkspaceViewData{
+		ID:          ws.ID().String(),
+		Name:        ws.Name(),
+		Description: description,
+		MemberCount: 1, // Owner is the first member
+		CreatedAt:   ws.CreatedAt(),
+		UnreadCount: 0,
+	}
+
+	return h.RenderPartial(c, "components/workspace_card.html", data)
 }
 
 // WorkspaceMembers renders the workspace members page.

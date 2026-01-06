@@ -1,0 +1,19 @@
+{{define "messages-list"}}
+{{range .Messages}}
+{{template "message" .}}
+{{else}}
+<div class="messages-empty">
+    <p class="text-muted text-center">No messages yet. Start the conversation!</p>
+</div>
+{{end}}
+
+<style>
+.messages-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 200px;
+}
+</style>
+{{end}}
