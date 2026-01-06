@@ -1,7 +1,7 @@
 # 03: Workspace Pages
 
 **Приоритет:** 🔴 Critical
-**Статус:** ⏳ Не начато
+**Статус:** ✅ Завершено
 **Зависит от:** [02-auth-pages.md](02-auth-pages.md)
 
 ---
@@ -583,45 +583,45 @@ partials.GET("/workspace/:id/invite-form", h.WorkspaceInviteForm)
 ## Чеклист
 
 ### Templates
-- [ ] `workspace/list.html` - список workspaces
-- [ ] `workspace/create.html` - форма создания
-- [ ] `workspace/view.html` - workspace dashboard
-- [ ] `workspace/members.html` - управление участниками
-- [ ] `workspace/settings.html` - настройки
-- [ ] `workspace/invite.html` - форма приглашения участника
-- [ ] `components/workspace_card.html` - карточка workspace
-- [ ] `components/member_row.html` - строка участника
+- [x] `workspace/list.html` - список workspaces
+- [x] `workspace/create.html` - форма создания
+- [x] `workspace/view.html` - workspace dashboard
+- [x] `workspace/members.html` - управление участниками
+- [x] `workspace/settings.html` - настройки
+- [x] `workspace/invite.html` - форма приглашения участника
+- [x] `components/workspace_card.html` - карточка workspace
+- [x] `components/member_row.html` - строка участника
 
 ### Handlers
-- [ ] `WorkspaceList` - страница списка
-- [ ] `WorkspaceListPartial` - HTMX partial
-- [ ] `WorkspaceView` - страница workspace
-- [ ] `WorkspaceCreateForm` - форма создания
-- [ ] `WorkspaceMembers` - страница участников
-- [ ] `WorkspaceMembersPartial` - HTMX partial
-- [ ] `WorkspaceSettings` - страница настроек
-- [ ] `WorkspaceInviteForm` - форма приглашения
+- [x] `WorkspaceList` - страница списка
+- [x] `WorkspaceListPartial` - HTMX partial
+- [x] `WorkspaceView` - страница workspace
+- [x] `WorkspaceCreateForm` - форма создания
+- [x] `WorkspaceMembers` - страница участников
+- [x] `WorkspaceMembersPartial` - HTMX partial
+- [x] `WorkspaceSettings` - страница настроек
+- [x] `WorkspaceInviteForm` - форма приглашения
 
 ### Features
-- [ ] Список workspaces загружается
-- [ ] Создание workspace работает
-- [ ] Навигация в workspace работает
-- [ ] Управление участниками работает
-- [ ] Изменение роли через inline select
-- [ ] Удаление участника с подтверждением
+- [x] Список workspaces загружается
+- [x] Создание workspace работает
+- [x] Навигация в workspace работает
+- [x] Управление участниками работает
+- [x] Изменение роли через inline select
+- [x] Удаление участника с подтверждением
 
 ---
 
 ## Критерии приёмки
 
-- [ ] `/workspaces` отображает список workspaces пользователя
-- [ ] Создание workspace добавляет карточку в список
-- [ ] Click на карточку открывает workspace
-- [ ] Sidebar navigation работает
-- [ ] Members page показывает участников
-- [ ] Owner может менять роли участников
-- [ ] Удаление участника работает
-- [ ] Mobile responsive layout
+- [x] `/workspaces` отображает список workspaces пользователя
+- [x] Создание workspace добавляет карточку в список
+- [x] Click на карточку открывает workspace
+- [x] Sidebar navigation работает
+- [x] Members page показывает участников
+- [x] Owner может менять роли участников
+- [x] Удаление участника работает
+- [x] Mobile responsive layout
 
 ---
 

@@ -1,7 +1,7 @@
 # HTMX Frontend
 
 **Цель:** Реализовать минимальный работающий UI на HTMX + Pico CSS
-**Статус:** ⏳ Запланировано
+**Статус:** 🔄 В процессе
 
 ---
 
@@ -34,14 +34,14 @@
 
 | № | Задача | Файл | Приоритет | Статус |
 |---|--------|------|-----------|--------|
-| 01 | Base Infrastructure | [01-base-infrastructure.md](01-base-infrastructure.md) | 🔴 Critical | ⏳ |
-| 02 | Auth Pages | [02-auth-pages.md](02-auth-pages.md) | 🔴 Critical | ⏳ |
+| 01 | Base Infrastructure | [01-base-infrastructure.md](01-base-infrastructure.md) | 🔴 Critical | ✅ |
+| 02 | Auth Pages | [02-auth-pages.md](02-auth-pages.md) | 🔴 Critical | ✅ |
 
 ### Фаза 2: Core Features
 
 | № | Задача | Файл | Приоритет | Статус |
 |---|--------|------|-----------|--------|
-| 03 | Workspace Pages | [03-workspace-pages.md](03-workspace-pages.md) | 🔴 Critical | ⏳ |
+| 03 | Workspace Pages | [03-workspace-pages.md](03-workspace-pages.md) | 🔴 Critical | ✅ |
 | 04 | Chat UI | [04-chat-ui.md](04-chat-ui.md) | 🔴 Critical | ⏳ |
 | 05 | Kanban Board | [05-kanban-board.md](05-kanban-board.md) | 🟡 High | ⏳ |
 
