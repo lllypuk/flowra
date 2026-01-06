@@ -1,0 +1,11 @@
+{{define "task/activity"}}
+<div class="activity-list">
+    {{if .Activities}}
+        {{range .Activities}}
+            {{template "components/activity_item" .}}
+        {{end}}
+    {{else}}
+        <p class="text-muted text-center">No activity yet</p>
+    {{end}}
+</div>
+{{end}}

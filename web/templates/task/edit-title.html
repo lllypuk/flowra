@@ -1,0 +1,40 @@
+{{define "task/edit-title"}}
+<form hx-put="/api/v1/tasks/{{.Task.ID}}"
+      hx-target="this"
+      hx-swap="outerHTML"
+      class="edit-title-form">
+    <input type="text"
+           name="title"
+           value="{{.Task.Title}}"
+           required
+           minlength="3"
+           maxlength="200"
+           autofocus>
+    <div class="edit-actions">
+        <button type="submit" class="small">Save</button>
+        <button type="button"
+                class="small secondary outline"
+                hx-get="/partials/tasks/{{.Task.ID}}/title-display"
+                hx-target="closest .editable-field"
+                hx-swap="innerHTML">
+            Cancel
+        </button>
+    </div>
+</form>
+
+<style>
+.edit-title-form input {
+    margin-bottom: 0.5rem;
+}
+
+.edit-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+</style>
+{{end}}
+
+{{define "task/title-display"}}
+<h4>{{.Task.Title}}</h4>
+<span class="edit-icon">✏️</span>
+{{end}}

@@ -1,0 +1,269 @@
+{{define "task/sidebar"}}
+<aside class="task-sidebar-full"
+       id="task-sidebar-{{.Task.ID}}"
+       hx-ext="ws"
+       ws-connect="/ws?token={{.Token}}">
+
+    <header class="sidebar-header">
+        <h3>Task Details</h3>
+        <button class="close-btn"
+                onclick="closeTaskSidebar()"
+                aria-label="Close">
+            &times;
+        </button>
+    </header>
+
+    <div class="sidebar-content">
+        <!-- Title (editable) -->
+        <div class="field">
+            <label>Title</label>
+            <div class="editable-field"
+                 hx-get="/partials/tasks/{{.Task.ID}}/edit-title"
+                 hx-target="this"
+                 hx-swap="innerHTML"
+                 hx-trigger="click">
+                <h4>{{.Task.Title}}</h4>
+                <span class="edit-icon">✏️</span>
+            </div>
+        </div>
+
+        <hr>
+
+        <!-- Status & Priority (inline) -->
+        <div class="field-row">
+            <div class="field">
+                <label>Status</label>
+                <select hx-put="/api/v1/tasks/{{.Task.ID}}/status"
+                        hx-trigger="change"
+                        hx-swap="none"
+                        name="status"
+                        class="status-select status-{{.Task.Status | lower}}">
+                    {{range .Statuses}}
+                    <option value="{{.Value}}"
+                            {{if eq .Value $.Task.Status}}selected{{end}}>
+                        {{.Label}}
+                    </option>
+                    {{end}}
+                </select>
+            </div>
+
+            <div class="field">
+                <label>Priority</label>
+                <select hx-put="/api/v1/tasks/{{.Task.ID}}/priority"
+                        hx-trigger="change"
+                        hx-swap="none"
+                        name="priority"
+                        class="priority-select priority-{{.Task.Priority | lower}}">
+                    {{range .Priorities}}
+                    <option value="{{.Value}}"
+                            {{if eq .Value $.Task.Priority}}selected{{end}}>
+                        {{.Label}}
+                    </option>
+                    {{end}}
+                </select>
+            </div>
+        </div>
+
+        <!-- Assignee -->
+        <div class="field">
+            <label>Assignee</label>
+            {{template "components/user_select" (dict
+                "Name" "assignee_id"
+                "Selected" .Task.AssigneeID
+                "Users" .Participants
+                "HxPut" (printf "/api/v1/tasks/%s/assignee" .Task.ID)
+                "AllowEmpty" true
+                "EmptyLabel" "Unassigned"
+            )}}
+        </div>
+
+        <!-- Due Date -->
+        <div class="field">
+            <label>Due Date</label>
+            {{template "components/date_picker" (dict
+                "Name" "due_date"
+                "Value" .Task.DueDate
+                "HxPut" (printf "/api/v1/tasks/%s/due-date" .Task.ID)
+                "AllowEmpty" true
+            )}}
+        </div>
+
+        {{if .Task.DueDate}}
+        <div class="due-status {{if .Task.IsOverdue}}overdue{{else if .Task.IsDueSoon}}due-soon{{end}}">
+            {{if .Task.IsOverdue}}
+                ⚠️ Overdue by {{.Task.OverdueDays}} days
+            {{else if .Task.IsDueSoon}}
+                ⏰ Due in {{.Task.DaysUntilDue}} days
+            {{else}}
+                📅 Due {{.Task.DueDate | formatDate}}
+            {{end}}
+        </div>
+        {{end}}
+
+        <hr>
+
+        <!-- Description (editable) -->
+        <div class="field">
+            <label>Description</label>
+            <div class="editable-field description-field"
+                 hx-get="/partials/tasks/{{.Task.ID}}/edit-description"
+                 hx-target="this"
+                 hx-swap="innerHTML"
+                 hx-trigger="click">
+                {{if .Task.Description}}
+                <p>{{.Task.Description}}</p>
+                {{else}}
+                <p class="text-muted">Click to add description...</p>
+                {{end}}
+                <span class="edit-icon">✏️</span>
+            </div>
+        </div>
+
+        <hr>
+
+        <!-- Activity Timeline -->
+        <div class="field">
+            <label>Activity</label>
+            <div id="task-activity-{{.Task.ID}}"
+                 class="activity-timeline"
+                 hx-get="/partials/tasks/{{.Task.ID}}/activity"
+                 hx-trigger="load"
+                 hx-swap="innerHTML">
+                {{template "components/loading" (dict "ID" "activity-loading")}}
+            </div>
+        </div>
+    </div>
+
+    <footer class="sidebar-footer">
+        <a href="/workspaces/{{.Task.WorkspaceID}}/chats/{{.Task.ChatID}}"
+           class="btn outline">
+            Open Chat
+        </a>
+        <button hx-delete="/api/v1/tasks/{{.Task.ID}}"
+                hx-confirm="Delete this task? This cannot be undone."
+                hx-target="#task-sidebar-{{.Task.ID}}"
+                hx-swap="delete"
+                class="btn secondary outline">
+            Delete Task
+        </button>
+    </footer>
+</aside>
+
+<script>
+// Handle real-time updates
+document.body.addEventListener('task.updated', function(evt) {
+    if (evt.detail.task_id === '{{.Task.ID}}') {
+        // Refresh sidebar
+        htmx.ajax('GET', '/partials/tasks/{{.Task.ID}}/sidebar', {
+            target: '#task-sidebar-{{.Task.ID}}',
+            swap: 'outerHTML'
+        });
+    }
+});
+</script>
+
+<style>
+.task-sidebar-full {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid var(--muted-border-color);
+}
+
+.sidebar-header h3 {
+    margin: 0;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+    width: auto;
+}
+
+.sidebar-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.sidebar-footer {
+    padding: 1rem;
+    border-top: 1px solid var(--muted-border-color);
+    display: flex;
+    gap: 0.5rem;
+}
+
+.field {
+    margin-bottom: 1rem;
+}
+
+.field label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--muted-color);
+}
+
+.field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.editable-field {
+    position: relative;
+    padding: 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.editable-field:hover {
+    background: var(--primary-focus);
+}
+
+.editable-field .edit-icon {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.editable-field:hover .edit-icon {
+    opacity: 1;
+}
+
+.due-status {
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+}
+
+.due-status.overdue {
+    background: color-mix(in srgb, var(--flowra-danger) 15%, white);
+    color: var(--flowra-danger);
+}
+
+.due-status.due-soon {
+    background: color-mix(in srgb, var(--flowra-warning) 15%, white);
+    color: var(--flowra-warning);
+}
+
+.activity-timeline {
+    max-height: 300px;
+    overflow-y: auto;
+}
+</style>
+{{end}}

@@ -1,0 +1,41 @@
+{{define "task/edit-description"}}
+<form hx-put="/api/v1/tasks/{{.Task.ID}}"
+      hx-target="this"
+      hx-swap="outerHTML"
+      class="edit-description-form">
+    <textarea name="description"
+              rows="4"
+              maxlength="2000"
+              autofocus>{{.Task.Description}}</textarea>
+    <div class="edit-actions">
+        <button type="submit" class="small">Save</button>
+        <button type="button"
+                class="small secondary outline"
+                hx-get="/partials/tasks/{{.Task.ID}}/description-display"
+                hx-target="closest .editable-field"
+                hx-swap="innerHTML">
+            Cancel
+        </button>
+    </div>
+</form>
+
+<style>
+.edit-description-form textarea {
+    margin-bottom: 0.5rem;
+}
+
+.edit-description-form .edit-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+</style>
+{{end}}
+
+{{define "task/description-display"}}
+{{if .Task.Description}}
+<p>{{.Task.Description}}</p>
+{{else}}
+<p class="text-muted">Click to add description...</p>
+{{end}}
+<span class="edit-icon">✏️</span>
+{{end}}

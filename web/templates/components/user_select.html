@@ -1,0 +1,19 @@
+{{define "components/user_select"}}
+<select hx-put="{{.HxPut}}"
+        hx-trigger="change"
+        hx-swap="none"
+        name="{{.Name}}"
+        class="user-select">
+    {{if .AllowEmpty}}
+    <option value="" {{if not .Selected}}selected{{end}}>
+        {{.EmptyLabel}}
+    </option>
+    {{end}}
+    {{range .Users}}
+    <option value="{{.UserID}}"
+            {{if eq .UserID $.Selected}}selected{{end}}>
+        {{.DisplayName}} (@{{.Username}})
+    </option>
+    {{end}}
+</select>
+{{end}}

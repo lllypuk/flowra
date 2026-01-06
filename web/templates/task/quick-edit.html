@@ -1,0 +1,116 @@
+{{define "task/quick-edit"}}
+<div class="quick-edit-popover"
+     id="quick-edit-{{.Task.ID}}"
+     role="dialog"
+     aria-label="Quick edit task">
+    
+    <div class="quick-edit-content">
+        <!-- Status quick change -->
+        <div class="quick-edit-field">
+            <label>Status</label>
+            <select hx-put="/api/v1/tasks/{{.Task.ID}}/status"
+                    hx-trigger="change"
+                    hx-swap="none"
+                    name="status"
+                    class="status-select status-{{.Task.Status | lower}}">
+                {{range .Statuses}}
+                <option value="{{.Value}}"
+                        {{if eq .Value $.Task.Status}}selected{{end}}>
+                    {{.Label}}
+                </option>
+                {{end}}
+            </select>
+        </div>
+
+        <!-- Priority quick change -->
+        <div class="quick-edit-field">
+            <label>Priority</label>
+            <select hx-put="/api/v1/tasks/{{.Task.ID}}/priority"
+                    hx-trigger="change"
+                    hx-swap="none"
+                    name="priority"
+                    class="priority-select priority-{{.Task.Priority | lower}}">
+                {{range .Priorities}}
+                <option value="{{.Value}}"
+                        {{if eq .Value $.Task.Priority}}selected{{end}}>
+                    {{.Label}}
+                </option>
+                {{end}}
+            </select>
+        </div>
+
+        <!-- Assignee quick change -->
+        <div class="quick-edit-field">
+            <label>Assignee</label>
+            {{template "components/user_select" (dict
+                "Name" "assignee_id"
+                "Selected" .Task.AssigneeID
+                "Users" .Participants
+                "HxPut" (printf "/api/v1/tasks/%s/assignee" .Task.ID)
+                "AllowEmpty" true
+                "EmptyLabel" "Unassigned"
+            )}}
+        </div>
+
+        <!-- Due date quick change -->
+        <div class="quick-edit-field">
+            <label>Due Date</label>
+            {{template "components/date_picker" (dict
+                "Name" "due_date"
+                "Value" .Task.DueDate
+                "HxPut" (printf "/api/v1/tasks/%s/due-date" .Task.ID)
+                "AllowEmpty" true
+            )}}
+        </div>
+    </div>
+
+    <div class="quick-edit-footer">
+        <button class="btn small outline"
+                hx-get="/partials/tasks/{{.Task.ID}}/sidebar"
+                hx-target="#task-sidebar-container"
+                hx-swap="innerHTML">
+            Open Details
+        </button>
+    </div>
+</div>
+
+<style>
+.quick-edit-popover {
+    background: var(--card-background-color);
+    border: 1px solid var(--muted-border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 280px;
+    padding: 0.75rem;
+}
+
+.quick-edit-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.quick-edit-field label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--muted-color);
+    margin-bottom: 0.25rem;
+}
+
+.quick-edit-field select,
+.quick-edit-field input {
+    width: 100%;
+    margin-bottom: 0;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+.quick-edit-footer {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--muted-border-color);
+    display: flex;
+    justify-content: flex-end;
+}
+</style>
+{{end}}

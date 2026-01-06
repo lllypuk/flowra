@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -564,14 +565,14 @@ func parseEntityType(s string) task.EntityType {
 }
 
 func parsePriority(s string) task.Priority {
-	switch s {
-	case "low", "Low":
+	switch strings.ToLower(s) {
+	case "low":
 		return task.PriorityLow
-	case "medium", "Medium":
+	case "medium":
 		return task.PriorityMedium
-	case "high", "High":
+	case "high":
 		return task.PriorityHigh
-	case "critical", "Critical", "urgent", "Urgent":
+	case "critical", "urgent":
 		return task.PriorityCritical
 	default:
 		return task.PriorityMedium
@@ -581,14 +582,14 @@ func parsePriority(s string) task.Priority {
 // parsePriorityStrict parses priority strictly - returns empty string for invalid values.
 // Used in ChangePriority where we need to validate the input.
 func parsePriorityStrict(s string) task.Priority {
-	switch s {
-	case "low", "Low":
+	switch strings.ToLower(s) {
+	case "low":
 		return task.PriorityLow
-	case "medium", "Medium":
+	case "medium":
 		return task.PriorityMedium
-	case "high", "High":
+	case "high":
 		return task.PriorityHigh
-	case "critical", "Critical", "urgent", "Urgent":
+	case "critical", "urgent":
 		return task.PriorityCritical
 	default:
 		return ""
