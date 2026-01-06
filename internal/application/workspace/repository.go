@@ -21,6 +21,9 @@ type CommandRepository interface {
 
 	// RemoveMember удаляет члена из workspace
 	RemoveMember(ctx context.Context, workspaceID, userID uuid.UUID) error
+
+	// UpdateMember обновляет данные члена workspace
+	UpdateMember(ctx context.Context, member *workspace.Member) error
 }
 
 // QueryRepository определяет интерфейс для запросов (только чтение) рабочих пространств

@@ -1,7 +1,7 @@
 # Task 02: MemberService
 
 **Приоритет:** 🔴 Critical
-**Статус:** Pending
+**Статус:** Complete
 **Зависит от:** MongoDB репозитории (готовы)
 
 ---
@@ -304,27 +304,27 @@ func TestMemberService_IsOwner(t *testing.T) {
 
 ## Чеклист
 
-- [ ] Создать файл `internal/service/member_service.go`
-- [ ] Реализовать `NewMemberService()`
-- [ ] Реализовать `AddMember()` с проверками
-- [ ] Реализовать `RemoveMember()` с owner protection
-- [ ] Реализовать `UpdateMemberRole()` с ограничениями
-- [ ] Реализовать `GetMember()`
-- [ ] Реализовать `ListMembers()` с пагинацией
-- [ ] Реализовать `IsOwner()`
-- [ ] Проверить/добавить `UpdateMember` в CommandRepository
-- [ ] Написать unit tests
+- [x] Создать файл `internal/service/member_service.go`
+- [x] Реализовать `NewMemberService()`
+- [x] Реализовать `AddMember()` с проверками
+- [x] Реализовать `RemoveMember()` с owner protection
+- [x] Реализовать `UpdateMemberRole()` с ограничениями
+- [x] Реализовать `GetMember()`
+- [x] Реализовать `ListMembers()` с пагинацией
+- [x] Реализовать `IsOwner()`
+- [x] Проверить/добавить `UpdateMember` в CommandRepository
+- [x] Написать unit tests
 - [ ] Обновить `container.go` (Task 06)
 
 ---
 
 ## Критерии приёмки
 
-- [ ] `MemberService` реализует `httphandler.MemberService`
-- [ ] Owner protection работает корректно
-- [ ] Duplicate member detection работает
-- [ ] Unit test coverage > 80%
-- [ ] Все handler тесты проходят с real сервисом
+- [x] `MemberService` реализует `httphandler.MemberService`
+- [x] Owner protection работает корректно
+- [x] Duplicate member detection работает
+- [x] Unit test coverage > 80% (достигнуто 95.7%)
+- [ ] Все handler тесты проходят с real сервисом (требует интеграции в container.go)
 
 ---
 
@@ -337,3 +337,13 @@ func TestMemberService_IsOwner(t *testing.T) {
 ---
 
 *Создано: 2026-01-06*
+*Выполнено: 2026-01-06*
+
+## Выполненные изменения
+
+1. Добавлен метод `UpdateMember` в `CommandRepository` (`internal/application/workspace/repository.go`)
+2. Добавлен метод `UpdateMember` в MongoDB репозиторий (`internal/infrastructure/repository/mongodb/workspace_repository.go`)
+3. Добавлен метод `WithRole` для immutable update в `Member` value object (`internal/domain/workspace/member.go`)
+4. Создан `MemberService` (`internal/service/member_service.go`)
+5. Созданы unit тесты (`internal/service/member_service_test.go`) - 25 тест-кейсов
+6. Обновлён mock репозиторий в тестах application layer

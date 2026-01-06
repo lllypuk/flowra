@@ -209,6 +209,21 @@ func (m *mockWorkspaceRepository) RemoveMember(
 	return nil
 }
 
+func (m *mockWorkspaceRepository) UpdateMember(
+	_ context.Context,
+	member *domainworkspace.Member,
+) error {
+	if m.saveError != nil {
+		return m.saveError
+	}
+	key := member.WorkspaceID().String() + ":" + member.UserID().String()
+	if _, ok := m.members[key]; !ok {
+		return errors.New("not found")
+	}
+	m.members[key] = member
+	return nil
+}
+
 // mockKeycloakClient - мок клиента Keycloak для тестирования
 type mockKeycloakClient struct {
 	groups           map[string]string   // groupID -> name
