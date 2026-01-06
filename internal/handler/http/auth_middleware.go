@@ -6,6 +6,11 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+// HTMX header constants.
+const (
+	htmxHeaderValue = "true"
+)
+
 // RequireAuth is a middleware that checks if the user is authenticated.
 // For regular requests, it redirects to login. For HTMX requests, it returns 401.
 func RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
@@ -14,8 +19,8 @@ func RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 		token := getSessionCookie(c)
 		if token == "" {
 			// For HTMX requests, return 401 with HX-Redirect header
-			if c.Request().Header.Get("HX-Request") == "true" {
-				c.Response().Header().Set("HX-Redirect", "/login")
+			if c.Request().Header.Get("Hx-Request") == htmxHeaderValue {
+				c.Response().Header().Set("Hx-Redirect", "/login")
 				return c.JSON(http.StatusUnauthorized, map[string]string{
 					"error": "Authentication required",
 				})

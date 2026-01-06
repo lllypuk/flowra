@@ -1,0 +1,51 @@
+{{define "board/index"}}
+{{template "base" .}}
+{{end}}
+
+{{define "content"}}
+<div class="board-page">
+    <!-- Header with filters -->
+    <header class="board-header">
+        <div class="board-title">
+            <h1>Board</h1>
+            <span class="task-count">{{.Data.TotalTasks}} {{pluralize .Data.TotalTasks "task" "tasks"}}</span>
+        </div>
+
+        {{template "board/filters" .Data}}
+
+        <button hx-get="/partials/task/create-form?workspace_id={{.Data.Workspace.ID}}"
+                hx-target="#modal-container"
+                hx-swap="innerHTML"
+                class="primary">
+            + New Task
+        </button>
+    </header>
+
+    <!-- Kanban Board -->
+    <div class="board-container"
+         hx-ext="ws"
+         ws-connect="/ws?token={{.Data.Token}}">
+
+        <div class="board-columns"
+             id="board-columns"
+             hx-get="/partials/workspace/{{.Data.Workspace.ID}}/board"
+             hx-trigger="load"
+             hx-swap="innerHTML"
+             hx-include="[name='type'], [name='assignee'], [name='priority'], [name='search']">
+            {{template "loading" .}}
+        </div>
+    </div>
+
+    <!-- Modal container -->
+    <div id="modal-container"></div>
+</div>
+
+<link rel="stylesheet" href="/static/css/board.css">
+<script src="/static/js/board.js"></script>
+{{end}}
+
+{{define "board/columns"}}
+{{range .Columns}}
+    {{template "board/column" .}}
+{{end}}
+{{end}}

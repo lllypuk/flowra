@@ -1,0 +1,50 @@
+{{define "board/column"}}
+<div class="board-column"
+     id="column-{{.Status}}"
+     data-status="{{.Status}}">
+
+    <header class="column-header">
+        <h3>
+            <span class="status-dot status-{{.Status | lower}}"></span>
+            {{.Title}}
+        </h3>
+        <span class="column-count">{{.Count}}</span>
+    </header>
+
+    <div class="column-cards"
+         data-status="{{.Status}}"
+         ondrop="handleDrop(event)"
+         ondragover="handleDragOver(event)"
+         ondragleave="handleDragLeave(event)">
+
+        {{range .Tasks}}
+            {{template "components/task_card" .}}
+        {{end}}
+
+        {{if .HasMore}}
+        <button hx-get="/partials/workspace/{{.WorkspaceID}}/board/{{.Status}}/more"
+                hx-target="this"
+                hx-swap="outerHTML"
+                hx-vals='{"offset": {{.Count}}}'
+                class="load-more outline small">
+            Load more ({{sub .TotalCount .Count}} remaining)
+        </button>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{define "board/column_more"}}
+{{range .Tasks}}
+    {{template "components/task_card" .}}
+{{end}}
+{{if .HasMore}}
+<button hx-get="/partials/workspace/{{.WorkspaceID}}/board/{{.Status}}/more"
+        hx-target="this"
+        hx-swap="outerHTML"
+        hx-vals='{"offset": {{.Offset}}}'
+        class="load-more outline small">
+    Load more ({{sub .TotalCount .Offset}} remaining)
+</button>
+{{end}}
+{{end}}

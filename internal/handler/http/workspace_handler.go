@@ -31,13 +31,13 @@ var (
 
 // CreateWorkspaceRequest represents the request to create a workspace.
 type CreateWorkspaceRequest struct {
-	Name        string `json:"name" form:"name"`
+	Name        string `json:"name"        form:"name"`
 	Description string `json:"description" form:"description"`
 }
 
 // UpdateWorkspaceRequest represents the request to update a workspace.
 type UpdateWorkspaceRequest struct {
-	Name        string `json:"name" form:"name"`
+	Name        string `json:"name"        form:"name"`
 	Description string `json:"description" form:"description"`
 }
 

@@ -24,6 +24,13 @@ const (
 	maxParticipantsPerChat = 100
 )
 
+// Chat type string constants for request parsing.
+const (
+	chatTypeTask = "task"
+	chatTypeBug  = "bug"
+	chatTypeEpic = "epic"
+)
+
 // Chat handler errors.
 var (
 	ErrChatNotFound          = errors.New("chat not found")
@@ -468,7 +475,7 @@ func validateCreateChatRequest(req *CreateChatRequest) error {
 	}
 	// Validate type if provided
 	if req.Type != "" {
-		validTypes := []string{"discussion", "task", "bug", "epic", "direct", "group", "channel"}
+		validTypes := []string{"discussion", chatTypeTask, chatTypeBug, chatTypeEpic, "direct", "group", "channel"}
 		valid := false
 		for _, t := range validTypes {
 			if req.Type == t {
@@ -487,11 +494,11 @@ func parseChatType(typeStr string) chat.Type {
 	switch typeStr {
 	case "discussion":
 		return chat.TypeDiscussion
-	case "task":
+	case chatTypeTask:
 		return chat.TypeTask
-	case "bug":
+	case chatTypeBug:
 		return chat.TypeBug
-	case "epic":
+	case chatTypeEpic:
 		return chat.TypeEpic
 	case "direct", "group", "channel":
 		// Map legacy types to discussion

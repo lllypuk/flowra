@@ -773,7 +773,7 @@ func (h *ChatTemplateHandler) convertMessageToView(msg *message.Message, current
 // Utility functions
 
 func isTaskType(chatType string) bool {
-	return chatType == "task" || chatType == "bug" || chatType == "epic"
+	return chatType == chatTypeTask || chatType == chatTypeBug || chatType == chatTypeEpic
 }
 
 func getStringValue(s *string) string {

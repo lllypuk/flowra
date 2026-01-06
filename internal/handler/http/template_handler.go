@@ -2,6 +2,7 @@ package httphandler
 
 import (
 	"embed"
+	"fmt"
 	"html/template"
 	"io"
 	"io/fs"
@@ -112,6 +113,7 @@ func (r *TemplateRenderer) Render(w io.Writer, name string, data any, _ echo.Con
 	if r.devMode {
 		if err := r.loadTemplates(); err != nil {
 			r.logger.Error("failed to reload templates", slog.String("error", err.Error()))
+			return fmt.Errorf("failed to reload templates: %w", err)
 		}
 	}
 
