@@ -2,8 +2,28 @@
 
 **Приоритет:** 🟡 High
 **Статус:** ⏳ Не начато
-**Период:** 18-20 февраля
 **Зависит от:** [04-chat-ui.md](04-chat-ui.md), [05-kanban-board.md](05-kanban-board.md)
+
+---
+
+## Backend сервисы
+
+### Application Layer — Task Use Cases (`internal/application/task/`)
+
+Для редактирования задач используются те же use cases что и в Kanban Board:
+
+| Use Case | Описание |
+|----------|----------|
+| `ChangeStatus` | Изменить статус |
+| `ChangePriority` | Изменить приоритет |
+| `AssignTask` | Назначить исполнителя |
+| `UnassignTask` | Снять исполнителя |
+| `SetDueDate` | Установить срок |
+| `ClearDueDate` | Очистить срок |
+| `UpdateTitle` | Обновить заголовок (если есть) |
+| `UpdateDescription` | Обновить описание (если есть) |
+
+**Activity Log:** Получение истории изменений задачи через EventStore или отдельный query use case.
 
 ---
 
@@ -664,13 +684,13 @@ partials.GET("/tasks/:task_id/description-display", h.TaskDescriptionDisplay)
 ## Зависимости
 
 ### Входящие
-- [04-chat-ui.md](04-chat-ui.md) - task sidebar в chat view ✅
-- [05-kanban-board.md](05-kanban-board.md) - click на карточку ✅
-- Task API endpoints
+- [04-chat-ui.md](04-chat-ui.md) - task sidebar в chat view
+- [05-kanban-board.md](05-kanban-board.md) - click на карточку
+- **Task Use Cases** — реализованы (`internal/application/task/`)
 
 ### Исходящие
 - Нет
 
 ---
 
-*Создано: 2026-01-05*
+*Обновлено: 2026-01-06*

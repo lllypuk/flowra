@@ -1,9 +1,39 @@
 # 03: Workspace Pages
 
 **Приоритет:** 🔴 Critical
-**Статус:** 🔄 В процессе
-**Период:** 6-9 февраля
+**Статус:** ⏳ Не начато
 **Зависит от:** [02-auth-pages.md](02-auth-pages.md)
+
+---
+
+## Backend сервисы
+
+### WorkspaceService (`internal/service/workspace_service.go`)
+
+| Метод | Описание |
+|-------|----------|
+| `CreateWorkspace(ctx, ownerID, name)` | Создать workspace |
+| `GetWorkspace(ctx, id)` | Получить workspace по ID |
+| `ListUserWorkspaces(ctx, userID, offset, limit)` | Список workspaces пользователя |
+| `UpdateWorkspace(ctx, id, name)` | Обновить workspace |
+| `DeleteWorkspace(ctx, id)` | Удалить workspace |
+| `GetMemberCount(ctx, workspaceID)` | Количество участников |
+
+### MemberService (`internal/service/member_service.go`)
+
+| Метод | Описание |
+|-------|----------|
+| `AddMember(ctx, workspaceID, userID, role)` | Добавить участника |
+| `RemoveMember(ctx, workspaceID, userID)` | Удалить участника |
+| `UpdateMemberRole(ctx, workspaceID, userID, role)` | Изменить роль |
+| `GetMember(ctx, workspaceID, userID)` | Получить участника |
+| `ListMembers(ctx, workspaceID, offset, limit)` | Список участников |
+| `IsOwner(ctx, workspaceID, userID)` | Проверка владельца |
+
+**Бизнес-правила MemberService:**
+- Нельзя удалить владельца workspace
+- Нельзя изменить роль владельца через UpdateMemberRole
+- Нельзя назначить роль owner через UpdateMemberRole
 
 ---
 
@@ -553,24 +583,24 @@ partials.GET("/workspace/:id/invite-form", h.WorkspaceInviteForm)
 ## Чеклист
 
 ### Templates
-- [x] `workspace/list.html` - список workspaces
-- [x] `workspace/create.html` - форма создания
-- [x] `workspace/view.html` - workspace dashboard
-- [x] `workspace/members.html` - управление участниками
-- [x] `workspace/settings.html` - настройки
-- [x] `workspace/invite.html` - форма приглашения участника
-- [x] `components/workspace_card.html` - карточка workspace
-- [x] `components/member_row.html` - строка участника
+- [ ] `workspace/list.html` - список workspaces
+- [ ] `workspace/create.html` - форма создания
+- [ ] `workspace/view.html` - workspace dashboard
+- [ ] `workspace/members.html` - управление участниками
+- [ ] `workspace/settings.html` - настройки
+- [ ] `workspace/invite.html` - форма приглашения участника
+- [ ] `components/workspace_card.html` - карточка workspace
+- [ ] `components/member_row.html` - строка участника
 
 ### Handlers
-- [x] `WorkspaceList` - страница списка
-- [x] `WorkspaceListPartial` - HTMX partial
-- [x] `WorkspaceView` - страница workspace
-- [x] `WorkspaceCreateForm` - форма создания
-- [x] `WorkspaceMembers` - страница участников
-- [x] `WorkspaceMembersPartial` - HTMX partial
-- [x] `WorkspaceSettings` - страница настроек
-- [x] `WorkspaceInviteForm` - форма приглашения
+- [ ] `WorkspaceList` - страница списка
+- [ ] `WorkspaceListPartial` - HTMX partial
+- [ ] `WorkspaceView` - страница workspace
+- [ ] `WorkspaceCreateForm` - форма создания
+- [ ] `WorkspaceMembers` - страница участников
+- [ ] `WorkspaceMembersPartial` - HTMX partial
+- [ ] `WorkspaceSettings` - страница настроек
+- [ ] `WorkspaceInviteForm` - форма приглашения
 
 ### Features
 - [ ] Список workspaces загружается
@@ -598,8 +628,9 @@ partials.GET("/workspace/:id/invite-form", h.WorkspaceInviteForm)
 ## Зависимости
 
 ### Входящие
-- [02-auth-pages.md](02-auth-pages.md) - authentication ✅
-- Workspace API endpoints
+- [02-auth-pages.md](02-auth-pages.md) - authentication
+- **WorkspaceService** — реализован (`internal/service/workspace_service.go`)
+- **MemberService** — реализован (`internal/service/member_service.go`)
 
 ### Исходящие
 - [04-chat-ui.md](04-chat-ui.md) - workspace context
@@ -607,4 +638,4 @@ partials.GET("/workspace/:id/invite-form", h.WorkspaceInviteForm)
 
 ---
 
-*Создано: 2026-01-05*
+*Обновлено: 2026-01-06*

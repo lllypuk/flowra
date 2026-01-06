@@ -1,8 +1,7 @@
 # 01: Base Infrastructure
 
 **Приоритет:** 🔴 Critical
-**Статус:** ✅ Завершено
-**Период:** 1-3 февраля
+**Статус:** ⏳ Не начато
 **Зависит от:** Backend API готов
 
 ---
@@ -486,41 +485,41 @@ var StaticFS embed.FS
 ## Чеклист
 
 ### Templates
-- [x] `layout/base.html` - HTML5 skeleton с HTMX/Pico
-- [x] `layout/navbar.html` - Navigation с user menu
-- [x] `layout/footer.html` - Simple footer
-- [x] `components/flash.html` - Flash messages
-- [x] `components/loading.html` - HTMX loading indicator
-- [x] `components/empty.html` - Empty state
+- [ ] `layout/base.html` - HTML5 skeleton с HTMX/Pico
+- [ ] `layout/navbar.html` - Navigation с user menu
+- [ ] `layout/footer.html` - Simple footer
+- [ ] `components/flash.html` - Flash messages
+- [ ] `components/loading.html` - HTMX loading indicator
+- [ ] `components/empty.html` - Empty state
 
 ### Static Assets
-- [x] `css/custom.css` - Base styles
-- [x] `js/app.js` - Base utilities
+- [ ] `css/custom.css` - Base styles
+- [ ] `js/app.js` - Base utilities
 
 ### Go Code
-- [x] `embed.go` - Embed static files
-- [x] `template_handler.go` - Base handler
-- [x] `template_funcs.go` - Template functions
+- [ ] `embed.go` - Embed static files
+- [ ] `template_handler.go` - Base handler
+- [ ] `template_funcs.go` - Template functions
 
 ### Integration
-- [x] Templates загружаются без ошибок
-- [x] Static files доступны по `/static/*`
-- [x] Navbar отображается корректно
-- [x] Flash messages работают
-- [x] HTMX подключен и работает
-- [x] Pico CSS применяется
+- [ ] Templates загружаются без ошибок
+- [ ] Static files доступны по `/static/*`
+- [ ] Navbar отображается корректно
+- [ ] Flash messages работают
+- [ ] HTMX подключен и работает
+- [ ] Pico CSS применяется
 
 ---
 
 ## Критерии приёмки
 
-- [x] `go build` проходит без ошибок
-- [x] `/` возвращает HTML страницу
-- [x] `/static/css/custom.css` доступен
-- [x] HTMX `hx-get` работает
-- [x] Pico CSS стили применяются
-- [x] Navbar адаптивен на mobile
-- [x] Flash messages автоматически скрываются
+- [ ] `go build` проходит без ошибок
+- [ ] `/` возвращает HTML страницу
+- [ ] `/static/css/custom.css` доступен
+- [ ] HTMX `hx-get` работает
+- [ ] Pico CSS стили применяются
+- [ ] Navbar адаптивен на mobile
+- [ ] Flash messages автоматически скрываются
 
 ---
 
@@ -545,4 +544,4 @@ var StaticFS embed.FS
 
 ---
 
-*Создано: 2026-01-05*
+*Обновлено: 2026-01-06*

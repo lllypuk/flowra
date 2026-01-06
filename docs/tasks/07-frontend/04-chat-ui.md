@@ -2,8 +2,36 @@
 
 **Приоритет:** 🔴 Critical
 **Статус:** ⏳ Не начато
-**Период:** 10-14 февраля
 **Зависит от:** [03-workspace-pages.md](03-workspace-pages.md)
+
+---
+
+## Backend сервисы
+
+### ChatService (`internal/service/chat_service.go`)
+
+| Метод | Описание |
+|-------|----------|
+| `CreateChat(ctx, cmd)` | Создать чат |
+| `GetChat(ctx, query)` | Получить чат по ID |
+| `ListChats(ctx, query)` | Список чатов workspace |
+| `RenameChat(ctx, cmd)` | Переименовать чат |
+| `AddParticipant(ctx, cmd)` | Добавить участника |
+| `RemoveParticipant(ctx, cmd)` | Удалить участника |
+| `DeleteChat(ctx, chatID, deletedBy)` | Soft delete через event sourcing |
+
+**Особенности ChatService:**
+- Использует event sourcing для операций
+- `loadAggregate()` / `saveAggregate()` для работы с Chat aggregate
+
+### Application Layer Use Cases
+
+**Message Use Cases** (`internal/application/message/`):
+- `SendMessage` — отправка сообщения
+- `EditMessage` — редактирование сообщения
+- `DeleteMessage` — удаление сообщения
+- `AddReaction` — добавление реакции
+- `RemoveReaction` — удаление реакции
 
 ---
 
@@ -798,9 +826,10 @@ partials.GET("/chat/create-form", h.ChatCreateForm)
 ## Зависимости
 
 ### Входящие
-- [03-workspace-pages.md](03-workspace-pages.md) - workspace context ✅
-- WebSocket server working
-- Message API endpoints
+- [03-workspace-pages.md](03-workspace-pages.md) - workspace context
+- **ChatService** — реализован (`internal/service/chat_service.go`)
+- **Message Use Cases** — реализованы (`internal/application/message/`)
+- WebSocket server
 
 ### Исходящие
 - [05-kanban-board.md](05-kanban-board.md) - task updates sync
@@ -841,4 +870,4 @@ partials.GET("/chat/create-form", h.ChatCreateForm)
 
 ---
 
-*Создано: 2026-01-05*
+*Обновлено: 2026-01-06*
