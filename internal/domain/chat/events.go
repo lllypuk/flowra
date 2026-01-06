@@ -21,6 +21,7 @@ const (
 	EventTypeDueDateRemoved     = "chat.due_date_removed"
 	EventTypeChatRenamed        = "chat.renamed"
 	EventTypeSeveritySet        = "chat.severity_set"
+	EventTypeChatDeleted        = "chat.deleted"
 )
 
 // Created событие создания чата
@@ -360,5 +361,33 @@ func NewSeveritySet(
 		OldSeverity: oldSeverity,
 		NewSeverity: newSeverity,
 		ChangedBy:   changedBy,
+	}
+}
+
+// Deleted событие удаления чата (soft delete)
+type Deleted struct {
+	event.BaseEvent
+
+	DeletedBy uuid.UUID
+	DeletedAt time.Time
+}
+
+// NewChatDeleted создает событие Deleted
+func NewChatDeleted(
+	chatID, deletedBy uuid.UUID,
+	deletedAt time.Time,
+	version int,
+	metadata event.Metadata,
+) *Deleted {
+	return &Deleted{
+		BaseEvent: event.NewBaseEvent(
+			EventTypeChatDeleted,
+			chatID.String(),
+			"Chat",
+			version,
+			metadata,
+		),
+		DeletedBy: deletedBy,
+		DeletedAt: deletedAt,
 	}
 }

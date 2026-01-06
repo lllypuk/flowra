@@ -8,17 +8,26 @@ import (
 	"log/slog"
 	"time"
 
+	chatapp "github.com/lllypuk/flowra/internal/application/chat"
 	"github.com/lllypuk/flowra/internal/application/notification"
+	wsapp "github.com/lllypuk/flowra/internal/application/workspace"
 	"github.com/lllypuk/flowra/internal/config"
 	httphandler "github.com/lllypuk/flowra/internal/handler/http"
 	wshandler "github.com/lllypuk/flowra/internal/handler/websocket"
+	"github.com/lllypuk/flowra/internal/infrastructure/auth"
 	"github.com/lllypuk/flowra/internal/infrastructure/eventbus"
 	"github.com/lllypuk/flowra/internal/infrastructure/eventstore"
 	"github.com/lllypuk/flowra/internal/infrastructure/httpserver"
+	"github.com/lllypuk/flowra/internal/infrastructure/keycloak"
 	"github.com/lllypuk/flowra/internal/infrastructure/repository/mongodb"
 	"github.com/lllypuk/flowra/internal/infrastructure/websocket"
 	"github.com/lllypuk/flowra/internal/middleware"
+	"github.com/lllypuk/flowra/internal/service"
 	"github.com/lllypuk/flowra/web"
+
+	"github.com/labstack/echo/v4"
+	"github.com/lllypuk/flowra/internal/domain/user"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
@@ -52,12 +61,18 @@ type Container struct {
 	UserRepo         *mongodb.MongoUserRepository
 	WorkspaceRepo    *mongodb.MongoWorkspaceRepository
 	ChatRepo         *mongodb.MongoChatRepository
+	ChatQueryRepo    *mongodb.MongoChatReadModelRepository
 	MessageRepo      *mongodb.MongoMessageRepository
 	TaskRepo         *mongodb.MongoTaskRepository
 	NotificationRepo *mongodb.MongoNotificationRepository
 
 	// Use Cases
 	CreateNotificationUC *notification.CreateNotificationUseCase
+
+	// Services (for external access if needed)
+	WorkspaceService *service.WorkspaceService
+	MemberService    *service.MemberService
+	ChatService      *service.ChatService
 
 	// HTTP Handlers
 	AuthHandler         *httphandler.AuthHandler
@@ -162,7 +177,24 @@ func (c *Container) logWiringMode() {
 func (c *Container) validateWiring() error {
 	var errs []error
 
-	// Infrastructure is always required
+	// Validate infrastructure components
+	errs = c.validateInfrastructure(errs)
+
+	// Validate auth components
+	errs = c.validateAuthComponents(errs)
+
+	// Validate handlers in real mode
+	errs = c.validateHandlers(errs)
+
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+
+	return nil
+}
+
+// validateInfrastructure checks that all infrastructure components are initialized.
+func (c *Container) validateInfrastructure(errs []error) []error {
 	if c.MongoDB == nil {
 		errs = append(errs, errors.New("mongodb client not initialized"))
 	}
@@ -175,39 +207,47 @@ func (c *Container) validateWiring() error {
 	if c.EventBus == nil {
 		errs = append(errs, errors.New("event bus not initialized"))
 	}
+	return errs
+}
 
-	// Auth components are always required
+// validateAuthComponents checks that auth components are initialized.
+func (c *Container) validateAuthComponents(errs []error) []error {
 	if c.TokenValidator == nil {
 		errs = append(errs, errors.New("token validator not initialized"))
 	}
 	if c.AccessChecker == nil {
 		errs = append(errs, errors.New("access checker not initialized"))
 	}
+	return errs
+}
 
-	// In real mode, all handlers must be initialized (no placeholders)
-	if c.Config.App.IsRealMode() {
-		if c.AuthHandler == nil {
-			errs = append(errs, errors.New("auth handler not initialized in real mode"))
-		}
-		if c.WorkspaceHandler == nil {
-			errs = append(errs, errors.New("workspace handler not initialized in real mode"))
-		}
-		if c.ChatHandler == nil {
-			errs = append(errs, errors.New("chat handler not initialized in real mode"))
-		}
-		if c.WSHandler == nil {
-			errs = append(errs, errors.New("websocket handler not initialized in real mode"))
-		}
-		// Note: MessageHandler, TaskHandler, NotificationHandler, UserHandler
-		// may be nil in real mode if their use cases are not fully implemented yet.
-		// This will result in placeholder endpoints returning 501.
+// validateHandlers checks handler initialization in real mode.
+func (c *Container) validateHandlers(errs []error) []error {
+	if !c.Config.App.IsRealMode() {
+		return errs
 	}
 
-	if len(errs) > 0 {
-		return errors.Join(errs...)
+	if c.AuthHandler == nil {
+		errs = append(errs, errors.New("auth handler not initialized in real mode"))
+	}
+	if c.WorkspaceHandler == nil {
+		errs = append(errs, errors.New("workspace handler not initialized in real mode"))
+	}
+	if c.ChatHandler == nil {
+		errs = append(errs, errors.New("chat handler not initialized in real mode"))
+	}
+	if c.WSHandler == nil {
+		errs = append(errs, errors.New("websocket handler not initialized in real mode"))
 	}
 
-	return nil
+	// Check for mock access checker in production
+	if c.Config.IsProduction() && c.AccessChecker != nil {
+		if _, isMock := c.AccessChecker.(*middleware.MockWorkspaceAccessChecker); isMock {
+			errs = append(errs, errors.New("mock access checker is not allowed in production"))
+		}
+	}
+
+	return errs
 }
 
 // setupInfrastructure initializes infrastructure components (MongoDB, Redis, EventBus, Hub).
@@ -332,10 +372,16 @@ func (c *Container) setupRepositories() {
 		db.Collection("workspace_members"),
 	)
 
-	// Chat repository (event sourced)
+	// Chat repository (event sourced - command side)
 	c.ChatRepo = mongodb.NewMongoChatRepository(
 		c.EventStore,
 		db.Collection("chats_read_model"),
+	)
+
+	// Chat read model repository (query side)
+	c.ChatQueryRepo = mongodb.NewMongoChatReadModelRepository(
+		db.Collection("chats_read_model"),
+		c.EventStore,
 	)
 
 	// Message repository
@@ -415,30 +461,36 @@ func (c *Container) registerEventHandlers() error {
 func (c *Container) setupHTTPHandlers() {
 	c.Logger.Debug("setting up HTTP handlers with REAL implementations")
 
-	// TODO: Wire real AuthService implementation when available
-	// For now, use mock but log a warning
-	c.Logger.Warn("AuthHandler: using mock implementation (real auth service not yet available)")
-	mockAuthService := httphandler.NewMockAuthService()
-	mockUserRepo := httphandler.NewMockUserRepository()
-	c.AuthHandler = httphandler.NewAuthHandler(mockAuthService, mockUserRepo)
+	// === 1. Access Checker (Real) ===
+	c.AccessChecker = service.NewRealWorkspaceAccessChecker(c.WorkspaceRepo)
+	c.Logger.Debug("access checker initialized (real)")
 
-	// TODO: Wire real WorkspaceService implementation when available
-	c.Logger.Warn("WorkspaceHandler: using mock implementation (real workspace service not yet available)")
-	mockWorkspaceService := httphandler.NewMockWorkspaceService()
-	mockMemberService := httphandler.NewMockMemberService()
-	c.WorkspaceHandler = httphandler.NewWorkspaceHandler(mockWorkspaceService, mockMemberService)
+	// === 2. Member Service (Real) ===
+	c.MemberService = service.NewMemberService(c.WorkspaceRepo, c.WorkspaceRepo)
+	c.Logger.Debug("member service initialized (real)")
+
+	// === 3. Workspace Service (Real) ===
+	c.WorkspaceService = c.createWorkspaceService()
+	c.Logger.Debug("workspace service initialized (real)")
+
+	// === 4. Workspace Handler with Real Services ===
+	c.WorkspaceHandler = httphandler.NewWorkspaceHandler(c.WorkspaceService, c.MemberService)
 
 	// Inject services into template handler
 	if c.TemplateHandler != nil {
-		c.TemplateHandler.SetServices(mockWorkspaceService, mockMemberService)
+		c.TemplateHandler.SetServices(c.WorkspaceService, c.MemberService)
 	}
 
-	// TODO: Wire real ChatService implementation when available
-	c.Logger.Warn("ChatHandler: using mock implementation (real chat service not yet available)")
-	mockChatService := httphandler.NewMockChatService()
-	c.ChatHandler = httphandler.NewChatHandler(mockChatService)
+	// === 5. Chat Service (Real) ===
+	c.ChatService = c.createChatService()
+	c.ChatHandler = httphandler.NewChatHandler(c.ChatService)
+	c.Logger.Debug("chat service initialized (real)")
 
-	// WebSocket handler uses real Hub
+	// === 6. Auth Service ===
+	authService := c.createAuthService()
+	c.AuthHandler = httphandler.NewAuthHandler(authService, c.createUserRepoAdapter())
+
+	// === 7. WebSocket Handler (unchanged) ===
 	c.WSHandler = wshandler.NewHandler(
 		c.Hub,
 		wshandler.WithHandlerLogger(c.Logger),
@@ -449,18 +501,119 @@ func (c *Container) setupHTTPHandlers() {
 		}),
 	)
 
-	// Setup token validator for auth middleware
+	// === 8. Token Validator (unchanged) ===
 	c.TokenValidator = middleware.NewStaticTokenValidator(c.Config.Auth.JWTSecret)
-
-	// TODO: Wire real WorkspaceAccessChecker implementation
-	c.Logger.Warn("AccessChecker: using mock implementation (real access checker not yet available)")
-	c.AccessChecker = middleware.NewMockWorkspaceAccessChecker()
 
 	// Note: MessageHandler, TaskHandler, NotificationHandler, UserHandler
 	// are left nil - routes.go will create placeholder endpoints for them.
 	// This is intentional until their use cases are fully implemented.
 
-	c.Logger.Debug("HTTP handlers initialized (real mode with temporary mocks)")
+	c.Logger.Info("HTTP handlers initialized with REAL implementations")
+}
+
+// createWorkspaceService creates the workspace service with all dependencies.
+func (c *Container) createWorkspaceService() *service.WorkspaceService {
+	// Create Keycloak client or NoOp if not configured
+	var keycloakClient wsapp.KeycloakClient
+	if c.Config.Keycloak.URL != "" && c.Config.Keycloak.ClientID != "" {
+		c.Logger.Debug("using real Keycloak client for workspace service")
+		// Note: Real Keycloak admin client for group management would go here
+		// For now, we use NoOp as the admin API is not yet implemented
+		keycloakClient = service.NewNoOpKeycloakClient()
+	} else {
+		c.Logger.Debug("using NoOp Keycloak client for workspace service")
+		keycloakClient = service.NewNoOpKeycloakClient()
+	}
+
+	// Create use cases
+	createUC := wsapp.NewCreateWorkspaceUseCase(c.WorkspaceRepo, keycloakClient)
+	getUC := wsapp.NewGetWorkspaceUseCase(c.WorkspaceRepo)
+	updateUC := wsapp.NewUpdateWorkspaceUseCase(c.WorkspaceRepo)
+
+	return service.NewWorkspaceService(service.WorkspaceServiceConfig{
+		CreateUC:    createUC,
+		GetUC:       getUC,
+		UpdateUC:    updateUC,
+		CommandRepo: c.WorkspaceRepo,
+		QueryRepo:   c.WorkspaceRepo,
+	})
+}
+
+// createChatService creates the chat service with all dependencies.
+func (c *Container) createChatService() *service.ChatService {
+	// Create use cases
+	createUC := chatapp.NewCreateChatUseCase(c.EventStore)
+	getUC := chatapp.NewGetChatUseCase(c.EventStore)
+	listUC := chatapp.NewListChatsUseCase(c.ChatQueryRepo, c.EventStore)
+	renameUC := chatapp.NewRenameChatUseCase(c.EventStore)
+	addPartUC := chatapp.NewAddParticipantUseCase(c.EventStore)
+	removePartUC := chatapp.NewRemoveParticipantUseCase(c.EventStore)
+
+	return service.NewChatService(service.ChatServiceConfig{
+		CreateUC:     createUC,
+		GetUC:        getUC,
+		ListUC:       listUC,
+		RenameUC:     renameUC,
+		AddPartUC:    addPartUC,
+		RemovePartUC: removePartUC,
+		EventStore:   c.EventStore,
+	})
+}
+
+// createAuthService creates the auth service.
+// Uses mock if Keycloak is not configured, real otherwise.
+func (c *Container) createAuthService() httphandler.AuthService {
+	// Check if Keycloak is configured
+	if c.Config.Keycloak.URL == "" || c.Config.Keycloak.ClientID == "" {
+		c.Logger.Warn("Keycloak not configured, using mock auth service")
+		return httphandler.NewMockAuthService()
+	}
+
+	// Create real auth service with Keycloak
+	oauthClient := keycloak.NewOAuthClient(keycloak.OAuthClientConfig{
+		KeycloakURL:  c.Config.Keycloak.URL,
+		Realm:        c.Config.Keycloak.Realm,
+		ClientID:     c.Config.Keycloak.ClientID,
+		ClientSecret: c.Config.Keycloak.ClientSecret,
+		Logger:       c.Logger,
+	})
+
+	tokenStore := auth.NewTokenStore(auth.TokenStoreConfig{
+		Client: c.Redis,
+	})
+
+	c.Logger.Debug("auth service initialized with Keycloak",
+		slog.String("url", c.Config.Keycloak.URL),
+		slog.String("realm", c.Config.Keycloak.Realm),
+	)
+
+	return service.NewAuthService(service.AuthServiceConfig{
+		OAuthClient: oauthClient,
+		TokenStore:  tokenStore,
+		UserRepo:    c.UserRepo,
+		Logger:      c.Logger,
+	})
+}
+
+// createUserRepoAdapter creates an adapter for UserRepository that works with echo.Context.
+// This bridges the gap between service layer (uses context.Context) and handler layer (uses echo.Context).
+func (c *Container) createUserRepoAdapter() httphandler.UserRepository {
+	return &userRepoAdapter{repo: c.UserRepo}
+}
+
+// userRepoAdapter adapts MongoUserRepository to httphandler.UserRepository.
+type userRepoAdapter struct {
+	repo *mongodb.MongoUserRepository
+}
+
+// FindByID implements httphandler.UserRepository.
+func (a *userRepoAdapter) FindByID(ctx echo.Context, id uuid.UUID) (*user.User, error) {
+	return a.repo.FindByID(ctx.Request().Context(), id)
+}
+
+// FindByExternalID implements httphandler.UserRepository.
+func (a *userRepoAdapter) FindByExternalID(ctx echo.Context, externalID string) (*user.User, error) {
+	return a.repo.FindByExternalID(ctx.Request().Context(), externalID)
 }
 
 // Close gracefully closes all container resources.
