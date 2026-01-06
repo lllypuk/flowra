@@ -32,6 +32,9 @@ const (
 	DefaultWSBufferSize   = 1024
 	DefaultWSPingInterval = 30 * time.Second
 	DefaultWSPongTimeout  = 60 * time.Second
+
+	DefaultJWTLeeway          = 30 * time.Second
+	DefaultJWTRefreshInterval = 1 * time.Hour
 )
 
 // AppMode defines the application wiring mode.
@@ -121,12 +124,21 @@ type RedisConfig struct {
 //
 //nolint:golines // Struct tags require longer lines for readability
 type KeycloakConfig struct {
-	URL           string `yaml:"url" env:"KEYCLOAK_URL"`
-	Realm         string `yaml:"realm" env:"KEYCLOAK_REALM"`
-	ClientID      string `yaml:"client_id" env:"KEYCLOAK_CLIENT_ID"`
-	ClientSecret  string `yaml:"client_secret" env:"KEYCLOAK_CLIENT_SECRET"`
-	AdminUsername string `yaml:"admin_username" env:"KEYCLOAK_ADMIN_USERNAME"`
-	AdminPassword string `yaml:"admin_password" env:"KEYCLOAK_ADMIN_PASSWORD"`
+	URL           string    `yaml:"url" env:"KEYCLOAK_URL"`
+	Realm         string    `yaml:"realm" env:"KEYCLOAK_REALM"`
+	ClientID      string    `yaml:"client_id" env:"KEYCLOAK_CLIENT_ID"`
+	ClientSecret  string    `yaml:"client_secret" env:"KEYCLOAK_CLIENT_SECRET"`
+	AdminUsername string    `yaml:"admin_username" env:"KEYCLOAK_ADMIN_USERNAME"`
+	AdminPassword string    `yaml:"admin_password" env:"KEYCLOAK_ADMIN_PASSWORD"`
+	JWT           JWTConfig `yaml:"jwt"`
+}
+
+// JWTConfig holds JWT validation configuration.
+//
+//nolint:golines // Struct tags require longer lines for readability
+type JWTConfig struct {
+	Leeway          time.Duration `yaml:"leeway" env:"KEYCLOAK_JWT_LEEWAY"`
+	RefreshInterval time.Duration `yaml:"refresh_interval" env:"KEYCLOAK_JWT_REFRESH_INTERVAL"`
 }
 
 // AuthConfig holds authentication configuration.
@@ -207,6 +219,10 @@ func DefaultConfig() *Config {
 			URL:      "http://localhost:8090",
 			Realm:    "flowra",
 			ClientID: "flowra-backend",
+			JWT: JWTConfig{
+				Leeway:          DefaultJWTLeeway,
+				RefreshInterval: DefaultJWTRefreshInterval,
+			},
 		},
 		Auth: AuthConfig{
 			JWTSecret:       "dev-secret-change-in-production",

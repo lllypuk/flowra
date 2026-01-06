@@ -32,6 +32,9 @@ keycloak:
   client_secret: "flowra-dev-secret-change-in-production"
   admin_username: "admin"
   admin_password: "admin123"
+  jwt:
+    leeway: "30s"
+    refresh_interval: "1h"
 
 auth:
   jwt_secret: "dev-secret-change-in-production"

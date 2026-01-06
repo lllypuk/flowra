@@ -3,7 +3,10 @@ module github.com/lllypuk/flowra
 go 1.24.0
 
 require (
+	github.com/MicahParks/jwkset v0.11.0
+	github.com/MicahParks/keyfunc/v3 v3.7.0
 	github.com/docker/docker v28.5.1+incompatible
+	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/labstack/echo/v4 v4.14.0
