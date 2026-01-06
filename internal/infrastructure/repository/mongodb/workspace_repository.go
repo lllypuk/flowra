@@ -451,6 +451,39 @@ func (r *MongoWorkspaceRepository) AddMember(ctx context.Context, member *worksp
 	return HandleMongoError(err, "member")
 }
 
+// UpdateMember обновляет данные члена workspace
+func (r *MongoWorkspaceRepository) UpdateMember(ctx context.Context, member *workspacedomain.Member) error {
+	if member == nil {
+		return errs.ErrInvalidInput
+	}
+
+	if member.UserID().IsZero() || member.WorkspaceID().IsZero() {
+		return errs.ErrInvalidInput
+	}
+
+	filter := bson.M{
+		"workspace_id": member.WorkspaceID().String(),
+		"user_id":      member.UserID().String(),
+	}
+
+	update := bson.M{
+		"$set": bson.M{
+			"role": member.Role().String(),
+		},
+	}
+
+	result, err := r.membersCollection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return HandleMongoError(err, "member")
+	}
+
+	if result.MatchedCount == 0 {
+		return errs.ErrNotFound
+	}
+
+	return nil
+}
+
 // RemoveMember удаляет члена из workspace
 func (r *MongoWorkspaceRepository) RemoveMember(
 	ctx context.Context,

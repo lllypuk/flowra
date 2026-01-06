@@ -91,3 +91,13 @@ func (m Member) CanManageMembers() bool { return m.IsAdmin() }
 
 // CanInvite проверяет, может ли участник приглашать новых членов
 func (m Member) CanInvite() bool { return m.IsAdmin() }
+
+// WithRole возвращает копию Member с новой ролью (immutable update)
+func (m Member) WithRole(role Role) Member {
+	return Member{
+		userID:      m.userID,
+		workspaceID: m.workspaceID,
+		role:        role,
+		joinedAt:    m.joinedAt,
+	}
+}
