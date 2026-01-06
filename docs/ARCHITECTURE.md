@@ -9,9 +9,13 @@ This document provides a comprehensive overview of the Flowra system architectur
 3. [Core Principles](#core-principles)
 4. [Layer Architecture](#layer-architecture)
 5. [Key Components](#key-components)
-6. [Data Flow](#data-flow)
-7. [Technology Stack](#technology-stack)
-8. [Architectural Decisions](#architectural-decisions)
+6. [Tag System](#tag-system)
+7. [Data Flow](#data-flow)
+8. [Event Sourcing & Event Flow](#event-sourcing--event-flow)
+9. [Technology Stack](#technology-stack)
+10. [Architectural Decisions](#architectural-decisions)
+11. [Security Model](#security-model)
+12. [Scalability Considerations](#scalability-considerations)
 
 ---
 
@@ -321,6 +325,95 @@ func (r *MongoChatRepository) Save(ctx context.Context, chat *chat.Chat) error {
 
 ---
 
+## Tag System
+
+Tags are the primary mechanism for task management through chat. All task operations (status changes, assignments, priority updates) happen via tags in messages.
+
+### Design Principles
+
+| Principle | Description |
+|-----------|-------------|
+| **Simplicity** | Easy to remember basic syntax |
+| **Case-sensitive** | `#status` ≠ `#Status` (prevents accidental triggers) |
+| **Partial Application** | Valid tags apply even when others fail |
+| **Known Tags Only** | Only registered tags are parsed (`#` in regular text is ignored) |
+
+### Tag Positioning
+
+Tags can appear:
+1. **At the start of a message** (first line)
+2. **On a separate line** after regular text
+
+```
+Valid:
+#status Done #assignee @alex
+Finished the work, ready for review
+
+Also valid:
+Finished working on the task
+#status Done
+#assignee @alex
+
+Invalid (not parsed):
+Finished work #status Done — sending for review
+```
+
+### System Tags
+
+#### Entity Creation Tags
+
+| Tag | Description | Example |
+|-----|-------------|---------|
+| `#task <title>` | Create a Task | `#task Implement OAuth` |
+| `#bug <title>` | Create a Bug | `#bug Login fails on Chrome` |
+| `#epic <title>` | Create an Epic | `#epic User Management` |
+
+#### Entity Management Tags
+
+| Tag | Format | Description |
+|-----|--------|-------------|
+| `#status <value>` | Enum (case-sensitive) | Change status |
+| `#assignee @user` | Username | Assign to user |
+| `#priority <value>` | High/Medium/Low | Set priority |
+| `#due <date>` | ISO 8601 (YYYY-MM-DD) | Set deadline |
+| `#title <text>` | Free text | Change task title |
+| `#severity <value>` | Critical/Major/Minor/Trivial | Bug severity only |
+
+**Status Values by Type:**
+- **Task:** To Do, In Progress, Done
+- **Bug:** New, Investigating, Fixed, Verified
+- **Epic:** Planned, In Progress, Completed
+
+### Validation Strategy
+
+**Partial Application:** Each tag is validated independently. Valid tags are applied, invalid tags are reported but don't block others.
+
+```
+Input: "#status Done #assignee @unknown #priority High"
+
+Result:
+✅ status → "Done" (applied)
+❌ assignee → error "User @unknown not found" (not applied)
+✅ priority → "High" (applied)
+
+Bot response:
+"✅ Status changed to Done
+ ✅ Priority changed to High
+ ❌ User @unknown not found"
+```
+
+### Error Types
+
+| Type | Example | Message Format |
+|------|---------|----------------|
+| **Syntax** | `#assignee alex` (missing @) | `❌ Invalid format. Use @username` |
+| **Semantic** | `#status Completed` (invalid value) | `❌ Invalid status. Available: To Do, In Progress, Done` |
+| **Business** | `#assignee @nonexistent` | `❌ User @nonexistent not found` |
+
+**Important:** Messages are always saved, even if all tags are invalid. Tag errors don't prevent message posting.
+
+---
+
 ## Data Flow
 
 ### REST API Request Flow
@@ -412,6 +505,144 @@ Handler     Service       Broadcast
 Update     Create      Push to
 Read Model Notification  Clients
 ```
+
+---
+
+## Event Sourcing & Event Flow
+
+The system uses **Event Sourcing** for storing state changes and **Event-Driven Architecture** for communication between bounded contexts. Events are the single source of truth; all read models (projections) are built from the event stream.
+
+### Event Store
+
+**MongoDB Collection:** `events`
+
+```javascript
+{
+  "_id": "event-uuid",
+  "aggregateId": "chat-uuid",
+  "aggregateType": "Chat",
+  "eventType": "MessagePosted",
+  "eventData": {
+    "messageId": "msg-uuid",
+    "chatId": "chat-uuid",
+    "authorId": "user-uuid",
+    "content": "Finished work\n#status Done",
+    "timestamp": "2025-09-30T10:00:00Z"
+  },
+  "version": 142,
+  "timestamp": "2025-09-30T10:00:00Z",
+  "metadata": {
+    "correlationId": "req-uuid",
+    "causationId": "parent-event-id",
+    "userId": "user-uuid"
+  }
+}
+```
+
+**Key Indexes:**
+- `{ aggregateId: 1, version: 1 }` — unique, for loading aggregate events
+- `{ eventType: 1, timestamp: 1 }` — for filtering by event type
+- `{ timestamp: 1 }` — for chronological queries
+
+### Event Metadata
+
+| Field | Purpose |
+|-------|---------|
+| `correlationId` | Traces all events from a single user request |
+| `causationId` | Links to the event that caused this one |
+| `userId` | Who initiated the action |
+
+This enables full request tracing through the event chain.
+
+### Event Bus (Redis Pub/Sub)
+
+**Channel Strategy:** By event type
+
+```
+Channel: events.MessagePosted
+Channel: events.ChatTypeChanged
+Channel: events.TagsParsed
+Channel: events.StatusChanged
+Channel: events.TaskCreated
+```
+
+### Delivery Guarantees
+
+**MVP: At-most-once**
+- Redis Pub/Sub doesn't guarantee delivery
+- If subscriber is offline, event is lost
+- **Mitigation:** Events stored in Event Store; state can be rebuilt
+
+**V2: At-least-once** (Transactional Outbox pattern)
+
+### Idempotency
+
+**Problem:** Events may be redelivered (reconnections, retries).
+
+**Solution:** Track processed events.
+
+```javascript
+// Collection: processed_events
+{
+  "eventId": "event-uuid",
+  "handlerName": "TagParserService",
+  "processedAt": ISODate("..."),
+  "expiresAt": ISODate("...") // TTL = 7 days
+}
+```
+
+Each handler checks if event was already processed before handling.
+
+### Retry & Error Handling
+
+**Strategy:** Exponential Backoff + Dead Letter Queue
+
+```
+1. Event processing fails
+2. Retry: 1s → 2s → 4s → 8s → 16s
+3. After MaxRetries → Dead Letter Queue
+4. Manual replay by administrator
+```
+
+**Dead Letter Queue Collection:** `dead_letter_queue`
+- Stores failed events with error details
+- Admin can replay or discard entries
+
+### Event Ordering
+
+**Problem:** Events for same aggregate may process out of order.
+
+**Solution:** Partition by aggregateId.
+
+- Events for `chat-uuid-1` process sequentially
+- Events for `chat-uuid-2` process in parallel with `chat-uuid-1`
+- No race conditions on same aggregate
+
+### Example Event Chain
+
+```
+User sends: "Finished work\n#status Done"
+
+[1] MessagePosted
+    ↓ (causationId)
+[2] TagsParsed
+    ↓ (causationId)
+[3] StatusChanged
+    ↓ (causationId)
+[4] UserNotified
+
+All events share same correlationId
+```
+
+### Aggregate Recovery
+
+Aggregates are rebuilt from event stream:
+
+1. Load snapshot (if exists)
+2. Load events after snapshot version
+3. Apply events to rebuild current state
+
+**Snapshots:** Created every ~100 events to optimize recovery time.
 
 ---
 
@@ -559,7 +790,130 @@ Read Model Notification  Clients
 
 ---
 
-## Security Architecture
+## Security Model
+
+The system uses **Keycloak** for user management, authentication, and authorization. User and role logic is delegated to Keycloak; the application works with JWT tokens in a stateless manner.
+
+### Core Principles
+
+- **Keycloak as Source of Truth** for users, roles, workspace membership
+- **Stateless Authorization** via JWT tokens
+- **RBAC** (Role-Based Access Control) at Keycloak level
+- **Workspace Isolation** — users work within workspace context
+- **Self-Service** — users can create workspaces and invite others
+
+### Keycloak Configuration
+
+```
+Realm: flowra
+
+Realm Roles:
+├─ user              — base role (all registered users)
+└─ system-admin      — superadmin (full access)
+
+Client: flowra-app
+├─ Client ID: flowra-app
+├─ Protocol: openid-connect
+├─ Access Type: confidential
+└─ Client Roles:
+   ├─ workspace-admin   — workspace administrator
+   └─ workspace-member  — workspace member
+
+Groups (created dynamically):
+├─ "Engineering Team"
+│  ├─ Attributes: { workspace_id: "uuid" }
+│  └─ Members with roles
+└─ "Marketing Team"
+   └─ ...
+```
+
+### JWT Token Structure
+
+```json
+{
+  "sub": "user-uuid",
+  "email": "alice@example.com",
+  "preferred_username": "alice",
+  "realm_access": {
+    "roles": ["user"]
+  },
+  "resource_access": {
+    "flowra-app": {
+      "roles": ["workspace-admin", "workspace-member"]
+    }
+  },
+  "groups": ["/Engineering Team", "/Marketing Team"],
+  "aud": "flowra-app"
+}
+```
+
+### Access Hierarchy
+
+```
+System Level (Keycloak Realm)
+    ↓
+Workspace Level (Keycloak Groups)
+    ↓
+Chat Level (Application)
+    ↓
+Message Level (Application)
+```
+
+### Permission Tables
+
+#### System Level
+
+| Role | Capabilities |
+|------|-------------|
+| **system-admin** | Access all workspaces, manage any chat/task, view logs |
+| **user** | Create workspaces, join via invite |
+
+#### Workspace Level
+
+| Action | workspace-admin | workspace-member | non-member |
+|--------|----------------|------------------|------------|
+| View public chats | ✅ | ✅ | ❌ |
+| Create chat | ✅ | ✅ | ❌ |
+| Generate invite links | ✅ | ❌ | ❌ |
+| Manage settings | ✅ | ❌ | ❌ |
+| Remove members | ✅ | ❌ | ❌ |
+
+#### Chat Level
+
+| Action | Chat Admin | Chat Member | Workspace Member (not in chat) |
+|--------|------------|-------------|-------------------------------|
+| View private chat | ✅ | ✅ | ❌ |
+| View public chat | ✅ | ✅ | ✅ (read-only) |
+| Send messages | ✅ | ✅ | ❌ (needs Join) |
+| Apply tags | ✅ | ✅ | ❌ |
+| Add/remove participants | ✅ | ❌ | ❌ |
+| Delete chat | ✅ | ❌ | ❌ |
+
+#### Message Level
+
+| Action | Author (< 5 min) | Author (> 5 min) | Chat Admin |
+|--------|-----------------|------------------|------------|
+| Edit own message | ✅ | ❌ | ✅ |
+| Delete own message | ✅ | ❌ | ✅ |
+| Delete others' messages | ❌ | ❌ | ✅ |
+
+### Workspace Management
+
+**Self-Service Creation:**
+1. User clicks "Create Workspace"
+2. Backend creates Keycloak Group with workspace attributes
+3. User is added as workspace-admin
+4. Workspace record created in database
+
+**Invite Links:**
+```
+InviteLink:
+├─ Token: "secure-random-token"
+├─ WorkspaceID: UUID
+├─ ExpiresAt: timestamp
+├─ MaxUses: int (null = unlimited)
+└─ UsedCount: int
+```
 
 ### Authentication Flow
 
@@ -584,14 +938,26 @@ Read Model Notification  Clients
      │◀─────────────│               │
 ```
 
-### Authorization Model
+### WebSocket Authentication
 
-| Level | Mechanism | Checked By |
-|-------|-----------|------------|
-| **API Access** | JWT Token | Auth Middleware |
-| **Workspace Access** | Membership | Workspace Middleware |
-| **Chat Access** | Participant | Handler |
-| **Action Permission** | Role-based | Domain Logic |
+WebSocket doesn't support custom headers after handshake. Solution: pass token at connection time.
+
+```javascript
+const wsURL = `ws://localhost:8080/ws?token=${accessToken}`;
+const ws = new WebSocket(wsURL);
+```
+
+Backend validates JWT from query parameter, extracts user ID, and registers the client.
+
+### Security Best Practices
+
+| Practice | Implementation |
+|----------|----------------|
+| **JWT Validation** | Verify signature via Keycloak JWKS endpoint, check audience/issuer/expiry |
+| **CORS** | Whitelist allowed origins, enable credentials for cookies |
+| **Rate Limiting** | Per IP + UserID, stricter for auth endpoints |
+| **Input Validation** | Validate and sanitize all user input |
+| **Audit Logging** | Log security-relevant actions with user/IP/timestamp |
 
 ---
 
