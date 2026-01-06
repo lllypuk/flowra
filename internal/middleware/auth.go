@@ -32,8 +32,14 @@ const (
 	// ContextKeyRoles is the context key for user roles.
 	ContextKeyRoles contextKey = "roles"
 
+	// ContextKeyGroups is the context key for user groups (from Keycloak).
+	ContextKeyGroups contextKey = "groups"
+
 	// ContextKeyIsSystemAdmin is the context key for system admin flag.
 	ContextKeyIsSystemAdmin contextKey = "is_system_admin"
+
+	// ContextKeyClaims is the context key for full TokenClaims object.
+	ContextKeyClaims contextKey = "claims"
 )
 
 // Auth errors.
@@ -65,6 +71,9 @@ type TokenClaims struct {
 
 	// Roles is a list of user roles.
 	Roles []string
+
+	// Groups is a list of user groups (from Keycloak).
+	Groups []string
 
 	// IsSystemAdmin indicates if the user is a system administrator.
 	IsSystemAdmin bool
@@ -266,18 +275,31 @@ func enrichContext(c echo.Context, claims *TokenClaims) {
 	c.Set(string(ContextKeyUsername), claims.Username)
 	c.Set(string(ContextKeyEmail), claims.Email)
 	c.Set(string(ContextKeyRoles), claims.Roles)
+	c.Set(string(ContextKeyGroups), claims.Groups)
 	c.Set(string(ContextKeyIsSystemAdmin), claims.IsSystemAdmin)
+	c.Set(string(ContextKeyClaims), claims)
 }
 
 // setMockUserContext sets mock user context for development sessions.
 func setMockUserContext(c echo.Context) {
 	mockUserID := uuid.NewUUID()
-	c.Set(string(ContextKeyUserID), mockUserID)
-	c.Set(string(ContextKeyExternalUserID), "mock-external-id")
-	c.Set(string(ContextKeyUsername), "mockuser")
-	c.Set(string(ContextKeyEmail), "user@example.com")
-	c.Set(string(ContextKeyRoles), []string{"user"})
-	c.Set(string(ContextKeyIsSystemAdmin), false)
+	mockClaims := &TokenClaims{
+		UserID:         mockUserID,
+		ExternalUserID: "mock-external-id",
+		Username:       "mockuser",
+		Email:          "user@example.com",
+		Roles:          []string{"user"},
+		Groups:         []string{},
+		IsSystemAdmin:  false,
+	}
+	c.Set(string(ContextKeyUserID), mockClaims.UserID)
+	c.Set(string(ContextKeyExternalUserID), mockClaims.ExternalUserID)
+	c.Set(string(ContextKeyUsername), mockClaims.Username)
+	c.Set(string(ContextKeyEmail), mockClaims.Email)
+	c.Set(string(ContextKeyRoles), mockClaims.Roles)
+	c.Set(string(ContextKeyGroups), mockClaims.Groups)
+	c.Set(string(ContextKeyIsSystemAdmin), mockClaims.IsSystemAdmin)
+	c.Set(string(ContextKeyClaims), mockClaims)
 }
 
 // respondAuthError sends an authentication error response.
@@ -412,6 +434,70 @@ func RequireSystemAdmin() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			if !IsSystemAdmin(c) {
+				return respondAuthError(c, ErrInsufficientPermissions)
+			}
+			return next(c)
+		}
+	}
+}
+
+// GetUser returns the full TokenClaims from the echo context.
+// Returns nil if no user is authenticated.
+func GetUser(c echo.Context) *TokenClaims {
+	if claims, ok := c.Get(string(ContextKeyClaims)).(*TokenClaims); ok {
+		return claims
+	}
+	return nil
+}
+
+// GetGroups extracts the user groups from the echo context.
+func GetGroups(c echo.Context) []string {
+	if groups, ok := c.Get(string(ContextKeyGroups)).([]string); ok {
+		return groups
+	}
+	return nil
+}
+
+// InGroup checks if the current user is in the specified group.
+// Supports both "/group" and "group" formats for matching.
+func InGroup(c echo.Context, group string) bool {
+	groups := GetGroups(c)
+	for _, g := range groups {
+		// Match exact or with leading slash
+		if g == group || g == "/"+group || "/"+g == group {
+			return true
+		}
+	}
+	return false
+}
+
+// HasAnyGroup checks if the current user is in any of the specified groups.
+func HasAnyGroup(c echo.Context, groups ...string) bool {
+	for _, group := range groups {
+		if InGroup(c, group) {
+			return true
+		}
+	}
+	return false
+}
+
+// RequireGroup returns a middleware that requires the user to be in a specific group.
+func RequireGroup(group string) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			if !InGroup(c, group) {
+				return respondAuthError(c, ErrInsufficientPermissions)
+			}
+			return next(c)
+		}
+	}
+}
+
+// RequireAnyGroup returns a middleware that requires the user to be in any of the specified groups.
+func RequireAnyGroup(groups ...string) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			if !HasAnyGroup(c, groups...) {
 				return respondAuthError(c, ErrInsufficientPermissions)
 			}
 			return next(c)

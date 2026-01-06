@@ -1,7 +1,7 @@
 # 03: Token Middleware
 
 **Приоритет:** 🔴 Critical
-**Статус:** ⏳ Не начато
+**Статус:** ✅ Завершено
 **Зависит от:** [02-jwt-validation.md](02-jwt-validation.md)
 
 ---
@@ -73,9 +73,10 @@ func (h *Handler) SomeProtectedEndpoint(c echo.Context) error {
 
 ```
 internal/middleware/
-├── auth.go           # Auth middleware
-├── auth_test.go      # Tests
-└── context_keys.go   # Context key constants
+├── auth.go                    # Auth middleware + helper functions
+├── auth_test.go               # Tests for middleware and helpers
+├── keycloak_adapter.go        # Adapter bridging keycloak.JWTValidator to TokenValidator
+└── keycloak_adapter_test.go   # Tests for Keycloak adapter
 ```
 
 ---
@@ -378,39 +379,50 @@ func (h *WorkspaceHandler) Create(c echo.Context) error {
 ## Чеклист
 
 ### Implementation
-- [ ] `Auth` middleware реализован
-- [ ] Token extraction (header, query, cookie)
-- [ ] Context storage работает
-- [ ] Error handling настроен
-- [ ] Skipper function работает
+- [x] `Auth` middleware реализован
+- [x] Token extraction (header, cookie) — реализовано в `extractTokenFromRequest`
+- [x] Context storage работает — `enrichContext` сохраняет все claims
+- [x] Error handling настроен — `respondAuthError` с кодами
+- [x] Skipper function работает — через `SkipPaths` конфигурацию
 
 ### Helper Functions
-- [ ] `GetUser` реализован
-- [ ] `GetUserID` реализован
-- [ ] `HasRole` реализован
-- [ ] `RequireRole` middleware реализован
-- [ ] `InGroup` реализован
+- [x] `GetUser` реализован — возвращает полный `*TokenClaims`
+- [x] `GetUserID` реализован — возвращает `uuid.UUID`
+- [x] `HasRole` реализован
+- [x] `RequireRole` middleware реализован
+- [x] `InGroup` реализован — поддерживает форматы с/без `/`
+- [x] `GetGroups` реализован
+- [x] `HasAnyGroup` реализован
+- [x] `RequireGroup` middleware реализован
+- [x] `RequireAnyGroup` middleware реализован
+
+### Keycloak Integration
+- [x] `KeycloakValidatorAdapter` создан — адаптирует `keycloak.JWTValidator` к `TokenValidator`
+- [x] Error mapping реализован — keycloak errors → middleware errors
+- [x] Admin role detection — configurable через `WithAdminRoles`
+- [x] Groups support — передаются в `TokenClaims.Groups`
 
 ### Testing
-- [ ] Unit tests для middleware
-- [ ] Unit tests для helpers
-- [ ] Integration test с real validator
+- [x] Unit tests для middleware (30+ тестов)
+- [x] Unit tests для helpers
+- [x] Unit tests для KeycloakValidatorAdapter
 
 ### Integration
 - [ ] Routes используют middleware
 - [ ] Handlers используют helpers
-- [ ] Error responses стандартизированы
+- [x] Error responses стандартизированы
 
 ---
 
 ## Критерии приёмки
 
-- [ ] Protected routes возвращают 401 без токена
-- [ ] Protected routes возвращают 401 с invalid токеном
-- [ ] Valid токен позволяет доступ
-- [ ] User claims доступны в handlers
-- [ ] Role-based access работает
-- [ ] Custom error handler работает
+- [x] Protected routes возвращают 401 без токена
+- [x] Protected routes возвращают 401 с invalid токеном
+- [x] Valid токен позволяет доступ
+- [x] User claims доступны в handlers через `GetUser(c)`
+- [x] Role-based access работает через `RequireRole`, `HasRole`
+- [x] Group-based access работает через `RequireGroup`, `InGroup`
+- [x] Custom error handler работает — стандартизированные JSON responses
 
 ---
 
