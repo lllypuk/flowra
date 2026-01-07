@@ -1,6 +1,7 @@
 package httphandler
 
 import (
+	"bytes"
 	"context"
 	"embed"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/domain/workspace"
 	"github.com/lllypuk/flowra/internal/middleware"
 )
 
@@ -220,8 +222,17 @@ func (h *TemplateHandler) render(c echo.Context, templateName string, title stri
 // RenderPartial renders a template without the base layout.
 // This is used for HTMX partial updates.
 func (h *TemplateHandler) RenderPartial(c echo.Context, templateName string, data any) error {
+	// Buffer the template output to prevent partial writes on error
+	var buf bytes.Buffer
+	if err := h.renderer.Render(&buf, templateName, data, c); err != nil {
+		h.logger.Error("failed to render partial template",
+			slog.String("template", templateName),
+			slog.String("error", err.Error()))
+		return c.String(http.StatusInternalServerError, "Failed to render template")
+	}
+
 	c.Response().Header().Set("Content-Type", "text/html; charset=utf-8")
-	return h.renderer.Render(c.Response().Writer, templateName, data, c)
+	return c.HTMLBlob(http.StatusOK, buf.Bytes())
 }
 
 // getUserView extracts user information from the context for templates.
@@ -748,6 +759,85 @@ func (h *TemplateHandler) WorkspaceMembersPartial(c echo.Context) error {
 	}
 
 	return h.RenderPartial(c, "workspace/members-partial", data)
+}
+
+// UpdateMemberRolePartial handles role update for HTMX and returns the updated member row.
+func (h *TemplateHandler) UpdateMemberRolePartial(c echo.Context) error {
+	user := h.getUserView(c)
+	if user == nil {
+		return c.String(http.StatusUnauthorized, "Unauthorized")
+	}
+
+	if h.memberService == nil {
+		return c.String(http.StatusServiceUnavailable, "Service unavailable")
+	}
+
+	workspaceID, err := uuid.ParseUUID(c.Param("id"))
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid workspace ID")
+	}
+
+	targetUserID, err := uuid.ParseUUID(c.Param("user_id"))
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid user ID")
+	}
+
+	currentUserID, err := uuid.ParseUUID(user.ID)
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid current user ID")
+	}
+
+	// Only owner can change roles
+	isOwner, _ := h.memberService.IsOwner(c.Request().Context(), workspaceID, currentUserID)
+	if !isOwner {
+		return c.String(http.StatusForbidden, "Only workspace owner can change roles")
+	}
+
+	// Cannot change owner's role
+	isTargetOwner, _ := h.memberService.IsOwner(c.Request().Context(), workspaceID, targetUserID)
+	if isTargetOwner {
+		return c.String(http.StatusBadRequest, "Cannot change owner's role")
+	}
+
+	// Parse role from form
+	roleStr := c.FormValue("role")
+	var role workspace.Role
+	switch roleStr {
+	case "admin":
+		role = workspace.RoleAdmin
+	case "member":
+		role = workspace.RoleMember
+	default:
+		return c.String(http.StatusBadRequest, "Invalid role")
+	}
+
+	member, err := h.memberService.UpdateMemberRole(c.Request().Context(), workspaceID, targetUserID, role)
+	if err != nil {
+		h.logger.Error("failed to update member role", slog.String("error", err.Error()))
+		return c.String(http.StatusInternalServerError, "Failed to update role")
+	}
+
+	currentMember, _ := h.memberService.GetMember(c.Request().Context(), workspaceID, currentUserID)
+	currentRole := "member"
+	if currentMember != nil {
+		currentRole = currentMember.Role().String()
+	}
+
+	data := map[string]any{
+		"Member": MemberViewData{
+			UserID:      member.UserID().String(),
+			Username:    "user" + member.UserID().String()[:8],
+			DisplayName: "User " + member.UserID().String()[:8],
+			AvatarURL:   "",
+			Role:        member.Role().String(),
+			JoinedAt:    member.JoinedAt(),
+		},
+		"WorkspaceID":   workspaceID.String(),
+		"UserRole":      currentRole,
+		"CurrentUserID": user.ID,
+	}
+
+	return h.RenderPartial(c, "member_row", data)
 }
 
 // WorkspaceSettings renders the workspace settings page.

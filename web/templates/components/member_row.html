@@ -18,8 +18,8 @@
         </div>
     </td>
     <td>
-        {{if and (eq $.UserRole "owner") (ne .Member.Role "owner") (ne .Member.UserID $.CurrentUserID)}}
-        <select hx-put="/api/v1/workspaces/{{$.WorkspaceID}}/members/{{.Member.UserID}}/role"
+        {{if and (eq $.UserRole "owner") (and (ne .Member.Role "owner") (ne .Member.UserID $.CurrentUserID))}}
+        <select hx-put="/partials/workspace/{{$.WorkspaceID}}/members/{{.Member.UserID}}/role"
                 hx-target="#member-{{.Member.UserID}}"
                 hx-swap="outerHTML"
                 name="role">
