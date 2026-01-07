@@ -1,38 +1,56 @@
 {{define "navbar"}}
-<nav class="container-fluid">
+<nav id="main-nav" class="container-fluid" aria-label="Main navigation">
     <ul>
         <li><a href="/" class="contrast"><strong>Flowra</strong></a></li>
     </ul>
 
     {{if .User}}
-    <ul>
+    <!-- Mobile Navigation Toggle -->
+    <button class="mobile-nav-toggle hide-desktop"
+            aria-label="Toggle navigation menu"
+            aria-expanded="false"
+            aria-controls="mobile-nav-menu"
+            onclick="toggleMobileNav(this)">
+        <span aria-hidden="true">☰</span>
+    </button>
+
+    <!-- Desktop Navigation -->
+    <ul class="desktop-nav hide-mobile hide-tablet">
         <li>
             <a href="/workspaces">Workspaces</a>
         </li>
         <li>
             <!-- Notifications dropdown -->
             <details class="dropdown notification-dropdown" role="list" dir="rtl">
-                <summary aria-haspopup="listbox" role="link">
-                    <span class="notification-icon">🔔</span>
+                <summary aria-haspopup="listbox"
+                         aria-label="Notifications"
+                         role="button">
+                    <span class="notification-icon" aria-hidden="true">🔔</span>
+                    <span class="sr-only">Notifications</span>
                     <span id="notification-badge"
                           class="notification-badge"
                           hx-get="/partials/notifications/count"
                           hx-trigger="load, every 30s, notification-update from:body"
-                          hx-swap="outerHTML">
+                          hx-swap="outerHTML"
+                          aria-label="Unread notification count">
                     </span>
                 </summary>
                 <ul role="listbox"
                     id="notification-dropdown-list"
+                    aria-label="Recent notifications"
                     hx-get="/partials/notifications?limit=10"
                     hx-trigger="toggle once"
                     hx-swap="innerHTML">
-                    <li class="loading">Loading...</li>
+                    <li class="loading" aria-busy="true">
+                        <span class="spinner spinner-sm"></span>
+                        <span>Loading...</span>
+                    </li>
                 </ul>
             </details>
         </li>
         <li>
             <details class="dropdown" role="list" dir="rtl">
-                <summary aria-haspopup="listbox" role="link">
+                <summary aria-haspopup="listbox" role="button">
                     {{if .User.DisplayName}}{{.User.DisplayName}}{{else}}{{.User.Username}}{{end}}
                 </summary>
                 <ul role="listbox">
@@ -47,6 +65,19 @@
             </details>
         </li>
     </ul>
+
+    <!-- Mobile Navigation Menu -->
+    <ul id="mobile-nav-menu" class="mobile-nav hide-desktop" role="menu" aria-hidden="true">
+        <li role="menuitem"><a href="/workspaces">Workspaces</a></li>
+        <li role="menuitem"><a href="/notifications">Notifications</a></li>
+        <li role="menuitem"><a href="/settings">Settings</a></li>
+        <li role="menuitem">
+            <a href="#"
+               hx-post="/auth/logout"
+               hx-swap="none"
+               hx-on::after-request="window.location.href='/'">Logout</a>
+        </li>
+    </ul>
     {{else}}
     <ul>
         <li><a href="/login" role="button">Login</a></li>
@@ -55,6 +86,11 @@
 </nav>
 
 <style>
+/* Navbar styles */
+nav[aria-label="Main navigation"] {
+    position: relative;
+}
+
 .notification-dropdown summary {
     display: flex;
     align-items: center;
@@ -81,7 +117,7 @@
     display: none;
 }
 
-.notification-dropdown ul {
+.notification-dropdown ul[role="listbox"] {
     min-width: 320px;
     max-height: 400px;
     overflow-y: auto;
@@ -91,6 +127,103 @@
     padding: 1rem;
     text-align: center;
     color: var(--pico-muted-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+/* Mobile navigation */
+.mobile-nav {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--pico-background-color);
+    padding: 1rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    flex-direction: column;
+    list-style: none;
+    margin: 0;
+}
+
+.mobile-nav.open {
+    display: flex;
+}
+
+.mobile-nav li {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--pico-muted-border-color);
+}
+
+.mobile-nav li:last-child {
+    border-bottom: none;
+}
+
+.mobile-nav a {
+    display: block;
+    padding: 0.5rem 0;
+}
+
+/* Mobile toggle button */
+.mobile-nav-toggle {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    min-width: 44px;
+    min-height: 44px;
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .mobile-nav-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
 }
 </style>
+
+<script>
+function toggleMobileNav(button) {
+    var menu = document.getElementById('mobile-nav-menu');
+    var isExpanded = button.getAttribute('aria-expanded') === 'true';
+
+    button.setAttribute('aria-expanded', !isExpanded);
+    menu.setAttribute('aria-hidden', isExpanded);
+    menu.classList.toggle('open');
+
+    // Update button icon
+    button.querySelector('span').textContent = isExpanded ? '☰' : '✕';
+}
+
+// Close mobile nav when clicking outside
+document.addEventListener('click', function(evt) {
+    var nav = document.getElementById('mobile-nav-menu');
+    var toggle = document.querySelector('.mobile-nav-toggle');
+
+    if (nav && nav.classList.contains('open') &&
+        !nav.contains(evt.target) &&
+        !toggle.contains(evt.target)) {
+        toggle.click();
+    }
+});
+
+// Close mobile nav on escape
+document.addEventListener('keydown', function(evt) {
+    if (evt.key === 'Escape') {
+        var nav = document.getElementById('mobile-nav-menu');
+        var toggle = document.querySelector('.mobile-nav-toggle');
+
+        if (nav && nav.classList.contains('open')) {
+            toggle.click();
+            toggle.focus();
+        }
+    }
+});
+</script>
 {{end}}
