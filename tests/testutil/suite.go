@@ -41,8 +41,9 @@ func NewTestSuite(t *testing.T) *TestSuite {
 		EventStore:       mocks.NewMockEventStore(),
 	}
 
-	// Initialize Chat Use Cases (they take EventStore, not repositories)
-	suite.CreateChat = chatapp.NewCreateChatUseCase(suite.EventStore)
+	// Initialize Chat Use Cases
+	// CreateChat uses ChatRepo which updates both event store and read model
+	suite.CreateChat = chatapp.NewCreateChatUseCase(suite.ChatRepo)
 	suite.AddParticipant = chatapp.NewAddParticipantUseCase(suite.EventStore)
 	suite.ConvertToTask = chatapp.NewConvertToTaskUseCase(suite.EventStore)
 	suite.ChangeStatus = chatapp.NewChangeStatusUseCase(suite.EventStore)

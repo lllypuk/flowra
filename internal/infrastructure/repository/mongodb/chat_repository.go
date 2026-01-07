@@ -184,15 +184,15 @@ func (r *MongoChatRepository) updateReadModel(ctx context.Context, chat *chatdom
 		"chat_id":      chat.ID().String(),
 		"workspace_id": chat.WorkspaceID().String(),
 		"type":         string(chat.Type()),
+		"title":        chat.Title(), // Always save title for all chat types
 		"is_public":    chat.IsPublic(),
 		"created_by":   chat.CreatedBy().String(),
 		"created_at":   chat.CreatedAt(),
 		"participants": participantStrs,
 	}
 
-	// Добавляем дополнительные поля для typed чатов
+	// Добавляем дополнительные поля для typed чатов (task/bug/epic)
 	if chat.Type() != chatdomain.TypeDiscussion {
-		doc["title"] = chat.Title()
 		doc["status"] = chat.Status()
 		doc["priority"] = chat.Priority()
 
@@ -463,18 +463,31 @@ func (r *MongoChatReadModelRepository) documentToReadModel(doc bson.M) (*chatapp
 		createdAt = createdAtVal
 	}
 
-	// Преобразуем участников
+	// Read title (may be empty for discussions)
+	var title string
+	if titleVal, titleOk := doc["title"].(string); titleOk {
+		title = titleVal
+	}
+
+	// Преобразуем участников из списка user ID строк
 	var participants []chatdomain.Participant
-	// Примечание: read model не хранит полную информацию о участниках (роль и т.д.)
-	// Для полной информации используйте Load() на aggregate через event sourcing
 	if participantsVal, participantOk := doc["participants"].(bson.A); participantOk {
-		_ = participantsVal // Требует полного восстановления из событий
+		for _, pVal := range participantsVal {
+			if userIDStr, strOk := pVal.(string); strOk {
+				// Read model хранит только user IDs, создаем минимальный Participant
+				participants = append(participants, chatdomain.NewParticipant(
+					uuid.UUID(userIDStr),
+					chatdomain.RoleMember, // Role not stored in read model
+				))
+			}
+		}
 	}
 
 	rm := &chatapp.ReadModel{
 		ID:           uuid.UUID(chatIDStr),
 		WorkspaceID:  uuid.UUID(workspaceIDStr),
 		Type:         chatdomain.Type(chatType),
+		Title:        title,
 		IsPublic:     isPublic,
 		CreatedBy:    uuid.UUID(createdByStr),
 		CreatedAt:    createdAt,

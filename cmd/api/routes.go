@@ -260,6 +260,7 @@ func registerPageRoutes(e *echo.Echo, c *Container) {
 	partials.GET("/workspace/create-form", c.TemplateHandler.WorkspaceCreateForm)
 	partials.POST("/workspace/create", c.TemplateHandler.WorkspaceCreate)
 	partials.GET("/workspace/:id/members", c.TemplateHandler.WorkspaceMembersPartial)
+	partials.GET("/workspace/:id/members-options", c.TemplateHandler.WorkspaceMembersOptionsPartial)
 	partials.PUT("/workspace/:id/members/:user_id/role", c.TemplateHandler.UpdateMemberRolePartial)
 	partials.GET("/workspace/:id/invite-form", c.TemplateHandler.WorkspaceInviteForm)
 

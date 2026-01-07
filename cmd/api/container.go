@@ -614,7 +614,8 @@ func (c *Container) createWorkspaceService() *service.WorkspaceService {
 // createChatService creates the chat service with all dependencies.
 func (c *Container) createChatService() *service.ChatService {
 	// Create use cases
-	createUC := chatapp.NewCreateChatUseCase(c.EventStore)
+	// CreateChatUseCase uses ChatRepo which updates both event store AND read model
+	createUC := chatapp.NewCreateChatUseCase(c.ChatRepo)
 	getUC := chatapp.NewGetChatUseCase(c.EventStore)
 	listUC := chatapp.NewListChatsUseCase(c.ChatQueryRepo, c.EventStore)
 	renameUC := chatapp.NewRenameChatUseCase(c.EventStore)

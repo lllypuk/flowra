@@ -761,6 +761,58 @@ func (h *TemplateHandler) WorkspaceMembersPartial(c echo.Context) error {
 	return h.RenderPartial(c, "workspace/members-partial", data)
 }
 
+// WorkspaceMembersOptionsPartial returns workspace members as <option> elements for select dropdowns.
+// This is used by the chat creation form to populate the participants select.
+func (h *TemplateHandler) WorkspaceMembersOptionsPartial(c echo.Context) error {
+	user := h.getUserView(c)
+	if user == nil {
+		return c.String(http.StatusUnauthorized, "Unauthorized")
+	}
+
+	// Check if services are available
+	if h.memberService == nil {
+		return c.String(http.StatusServiceUnavailable, "Service unavailable")
+	}
+
+	workspaceID, err := uuid.ParseUUID(c.Param("id"))
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid workspace ID")
+	}
+
+	userID, err := uuid.ParseUUID(user.ID)
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid user ID")
+	}
+
+	// Verify user is a member of this workspace
+	_, err = h.memberService.GetMember(c.Request().Context(), workspaceID, userID)
+	if err != nil {
+		return c.String(http.StatusForbidden, "Not a member of this workspace")
+	}
+
+	members, _, err := h.memberService.ListMembers(c.Request().Context(), workspaceID, 0, defaultPageLimit)
+	if err != nil {
+		h.logger.Error("failed to list members", slog.String("error", err.Error()))
+		return c.String(http.StatusInternalServerError, "Failed to load members")
+	}
+
+	// Build <option> elements HTML, excluding the current user
+	var options bytes.Buffer
+	for _, m := range members {
+		memberUserID := m.UserID().String()
+		// Skip current user (they shouldn't add themselves as participant)
+		if memberUserID == user.ID {
+			continue
+		}
+		// TODO: get actual username/display name from user service
+		displayName := "User " + memberUserID[:8]
+		options.WriteString(fmt.Sprintf(`<option value="%s">%s</option>`, memberUserID, displayName))
+	}
+
+	c.Response().Header().Set("Content-Type", "text/html; charset=utf-8")
+	return c.HTMLBlob(http.StatusOK, options.Bytes())
+}
+
 // UpdateMemberRolePartial handles role update for HTMX and returns the updated member row.
 func (h *TemplateHandler) UpdateMemberRolePartial(c echo.Context) error {
 	user := h.getUserView(c)

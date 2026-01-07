@@ -15,8 +15,8 @@ import (
 // TestCreateChatUseCase_Success_Discussion tests creating a Discussion chat
 func TestCreateChatUseCase_Success_Discussion(t *testing.T) {
 	// Arrange
-	eventStore := newTestEventStore()
-	useCase := chat.NewCreateChatUseCase(eventStore)
+	chatRepo := newTestChatRepo()
+	useCase := chat.NewCreateChatUseCase(chatRepo)
 
 	workspaceID := generateUUID(t)
 	creatorID := generateUUID(t)
@@ -51,8 +51,8 @@ func TestCreateChatUseCase_Success_Discussion(t *testing.T) {
 // TestCreateChatUseCase_Success_Task tests creating a Task chat with title
 func TestCreateChatUseCase_Success_Task(t *testing.T) {
 	// Arrange
-	eventStore := newTestEventStore()
-	useCase := chat.NewCreateChatUseCase(eventStore)
+	chatRepo := newTestChatRepo()
+	useCase := chat.NewCreateChatUseCase(chatRepo)
 
 	workspaceID := generateUUID(t)
 	creatorID := generateUUID(t)
@@ -88,8 +88,8 @@ func TestCreateChatUseCase_Success_Task(t *testing.T) {
 // TestCreateChatUseCase_Success_Bug tests creating a Bug chat
 func TestCreateChatUseCase_Success_Bug(t *testing.T) {
 	// Arrange
-	eventStore := newTestEventStore()
-	useCase := chat.NewCreateChatUseCase(eventStore)
+	chatRepo := newTestChatRepo()
+	useCase := chat.NewCreateChatUseCase(chatRepo)
 
 	workspaceID := generateUUID(t)
 	creatorID := generateUUID(t)
@@ -126,8 +126,8 @@ func TestCreateChatUseCase_Success_Bug(t *testing.T) {
 // TestCreateChatUseCase_Success_Epic tests creating an Epic chat
 func TestCreateChatUseCase_Success_Epic(t *testing.T) {
 	// Arrange
-	eventStore := newTestEventStore()
-	useCase := chat.NewCreateChatUseCase(eventStore)
+	chatRepo := newTestChatRepo()
+	useCase := chat.NewCreateChatUseCase(chatRepo)
 
 	workspaceID := generateUUID(t)
 	creatorID := generateUUID(t)
@@ -163,8 +163,8 @@ func TestCreateChatUseCase_Success_Epic(t *testing.T) {
 // TestCreateChatUseCase_ValidationError_InvalidWorkspaceID tests validation error for invalid workspace ID
 func TestCreateChatUseCase_ValidationError_InvalidWorkspaceID(t *testing.T) {
 	// Arrange
-	eventStore := newTestEventStore()
-	useCase := chat.NewCreateChatUseCase(eventStore)
+	chatRepo := newTestChatRepo()
+	useCase := chat.NewCreateChatUseCase(chatRepo)
 
 	cmd := chat.CreateChatCommand{
 		WorkspaceID: uuid.UUID(""),
@@ -180,15 +180,15 @@ func TestCreateChatUseCase_ValidationError_InvalidWorkspaceID(t *testing.T) {
 	assert.Nil(t, result.Value)
 	require.ErrorContains(t, err, "validation failed")
 
-	// EventStore should not be called
-	assertEventStoreCallCount(t, eventStore, "SaveEvents", 0)
+	// ChatRepo should not be called (validation fails before save)
+	assertChatRepoCallCount(t, chatRepo, "Save", 0)
 }
 
 // TestCreateChatUseCase_ValidationError_InvalidCreatedBy tests validation error for invalid CreatedBy
 func TestCreateChatUseCase_ValidationError_InvalidCreatedBy(t *testing.T) {
 	// Arrange
-	eventStore := newTestEventStore()
-	useCase := chat.NewCreateChatUseCase(eventStore)
+	chatRepo := newTestChatRepo()
+	useCase := chat.NewCreateChatUseCase(chatRepo)
 
 	cmd := chat.CreateChatCommand{
 		WorkspaceID: generateUUID(t),
@@ -202,14 +202,14 @@ func TestCreateChatUseCase_ValidationError_InvalidCreatedBy(t *testing.T) {
 	// Assert
 	executeAndAssertError(t, err)
 	assert.Nil(t, result.Value)
-	assertEventStoreCallCount(t, eventStore, "SaveEvents", 0)
+	assertChatRepoCallCount(t, chatRepo, "Save", 0)
 }
 
 // TestCreateChatUseCase_ValidationError_MissingTitleForTypedChat tests validation error when title is missing for Task
 func TestCreateChatUseCase_ValidationError_MissingTitleForTypedChat(t *testing.T) {
 	// Arrange
-	eventStore := newTestEventStore()
-	useCase := chat.NewCreateChatUseCase(eventStore)
+	chatRepo := newTestChatRepo()
+	useCase := chat.NewCreateChatUseCase(chatRepo)
 
 	cmd := chat.CreateChatCommand{
 		WorkspaceID: generateUUID(t),
@@ -226,18 +226,18 @@ func TestCreateChatUseCase_ValidationError_MissingTitleForTypedChat(t *testing.T
 	executeAndAssertError(t, err)
 	assert.Nil(t, result.Value)
 	require.ErrorContains(t, err, "validation failed")
-	assertEventStoreCallCount(t, eventStore, "SaveEvents", 0)
+	assertChatRepoCallCount(t, chatRepo, "Save", 0)
 }
 
-// TestCreateChatUseCase_EventStoreError tests handling of EventStore error
-func TestCreateChatUseCase_EventStoreError(t *testing.T) {
+// TestCreateChatUseCase_RepoError tests handling of repository error
+func TestCreateChatUseCase_RepoError(t *testing.T) {
 	// Arrange
-	eventStore := newTestEventStore()
-	useCase := chat.NewCreateChatUseCase(eventStore)
+	chatRepo := newTestChatRepo()
+	useCase := chat.NewCreateChatUseCase(chatRepo)
 
-	// Setup EventStore to fail
-	storeError := errors.New("database error")
-	setEventStoreError(eventStore, storeError)
+	// Setup ChatRepo to fail
+	repoError := errors.New("database error")
+	chatRepo.SetFailureNext(repoError)
 
 	cmd := chat.CreateChatCommand{
 		WorkspaceID: generateUUID(t),

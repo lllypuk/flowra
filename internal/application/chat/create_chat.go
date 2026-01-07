@@ -10,13 +10,13 @@ import (
 
 // CreateChatUseCase обрабатывает создание нового чата
 type CreateChatUseCase struct {
-	eventStore appcore.EventStore
+	chatRepo CommandRepository
 }
 
 // NewCreateChatUseCase создает новый CreateChatUseCase
-func NewCreateChatUseCase(eventStore appcore.EventStore) *CreateChatUseCase {
+func NewCreateChatUseCase(chatRepo CommandRepository) *CreateChatUseCase {
 	return &CreateChatUseCase{
-		eventStore: eventStore,
+		chatRepo: chatRepo,
 	}
 }
 
@@ -54,8 +54,21 @@ func (uc *CreateChatUseCase) Execute(ctx context.Context, cmd CreateChatCommand)
 		}
 	}
 
-	// Сохранение событий
-	return saveAggregate(ctx, uc.eventStore, chatAggregate, chatAggregate.ID().String())
+	// Capture events before saving (for response)
+	uncommittedEvents := chatAggregate.GetUncommittedEvents()
+
+	// Сохранение через репозиторий (обновляет и event store, и read model)
+	if err := uc.chatRepo.Save(ctx, chatAggregate); err != nil {
+		return Result{}, fmt.Errorf("failed to save chat: %w", err)
+	}
+
+	return Result{
+		Result: appcore.Result[*chat.Chat]{
+			Value:   chatAggregate,
+			Version: chatAggregate.Version(),
+		},
+		Events: convertToInterfaceSlice(uncommittedEvents),
+	}, nil
 }
 
 func (uc *CreateChatUseCase) validate(cmd CreateChatCommand) error {
