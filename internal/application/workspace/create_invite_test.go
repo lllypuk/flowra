@@ -17,7 +17,7 @@ func TestCreateInviteUseCase_Execute_Success(t *testing.T) {
 	useCase := workspace.NewCreateInviteUseCase(repo)
 
 	// Создаем существующий workspace
-	existingWs, _ := domainworkspace.NewWorkspace("Test Workspace", "keycloak-group-id", uuid.NewUUID())
+	existingWs, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
 	_ = repo.Save(context.Background(), existingWs)
 
 	cmd := workspace.CreateInviteCommand{
@@ -60,7 +60,7 @@ func TestCreateInviteUseCase_Execute_WithCustomExpiresAt(t *testing.T) {
 	useCase := workspace.NewCreateInviteUseCase(repo)
 
 	// Создаем существующий workspace
-	existingWs, _ := domainworkspace.NewWorkspace("Test Workspace", "keycloak-group-id", uuid.NewUUID())
+	existingWs, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
 	_ = repo.Save(context.Background(), existingWs)
 
 	customExpiresAt := time.Now().Add(24 * time.Hour)
@@ -206,7 +206,7 @@ func TestCreateInviteUseCase_Execute_SaveError(t *testing.T) {
 	repo := newMockWorkspaceRepository()
 
 	// Создаем существующий workspace
-	existingWs, _ := domainworkspace.NewWorkspace("Test Workspace", "keycloak-group-id", uuid.NewUUID())
+	existingWs, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
 	_ = repo.Save(context.Background(), existingWs)
 
 	// Устанавливаем ошибку сохранения

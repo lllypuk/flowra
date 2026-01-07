@@ -48,7 +48,7 @@ eventbus:
 
 log:
   level: "info" # debug | info | warn | error
-  format: "json" # json | text
+  format: "text" # json | text
 
 websocket:
   read_buffer_size: 1024

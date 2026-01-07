@@ -16,7 +16,7 @@ func TestUpdateWorkspaceUseCase_Execute_Success(t *testing.T) {
 	useCase := workspace.NewUpdateWorkspaceUseCase(repo)
 
 	// Создаем существующий workspace
-	existingWs, _ := domainworkspace.NewWorkspace("Old Name", "keycloak-group-id", uuid.NewUUID())
+	existingWs, _ := domainworkspace.NewWorkspace("Old Name", "", "keycloak-group-id", uuid.NewUUID())
 	_ = repo.Save(context.Background(), existingWs)
 
 	cmd := workspace.UpdateWorkspaceCommand{
@@ -111,7 +111,7 @@ func TestUpdateWorkspaceUseCase_Execute_SaveError(t *testing.T) {
 	repo := newMockWorkspaceRepository()
 
 	// Создаем существующий workspace
-	existingWs, _ := domainworkspace.NewWorkspace("Old Name", "keycloak-group-id", uuid.NewUUID())
+	existingWs, _ := domainworkspace.NewWorkspace("Old Name", "", "keycloak-group-id", uuid.NewUUID())
 	_ = repo.Save(context.Background(), existingWs)
 
 	// Устанавливаем ошибку сохранения

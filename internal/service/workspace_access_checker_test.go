@@ -73,7 +73,7 @@ func (m *mockWorkspaceQueryRepository) addMember(member *workspace.Member) {
 // Helper to create test workspace
 func createTestWorkspace(t *testing.T, name string, createdBy uuid.UUID) *workspace.Workspace {
 	t.Helper()
-	ws, err := workspace.NewWorkspace(name, "keycloak-group-"+name, createdBy)
+	ws, err := workspace.NewWorkspace(name, "", "keycloak-group-"+name, createdBy)
 	require.NoError(t, err)
 	return ws
 }

@@ -89,7 +89,7 @@ func (m *mockMemberQueryRepository) CountMembers(ctx context.Context, workspaceI
 
 // createMemberTestWorkspace creates a test workspace for member service testing
 func createMemberTestWorkspace(ownerID uuid.UUID, name string) *workspace.Workspace {
-	ws, _ := workspace.NewWorkspace(name, "keycloak-group-id", ownerID)
+	ws, _ := workspace.NewWorkspace(name, "", "keycloak-group-id", ownerID)
 	return ws
 }
 

@@ -29,7 +29,7 @@ func TestRealWorkspaceAccessChecker_Integration_GetMembership(t *testing.T) {
 
 		// Create workspace
 		creatorID := uuid.NewUUID()
-		ws, err := workspace.NewWorkspace("Integration Test Workspace", "keycloak-group-1", creatorID)
+		ws, err := workspace.NewWorkspace("Integration Test Workspace", "", "keycloak-group-1", creatorID)
 		require.NoError(t, err)
 
 		err = repo.Save(ctx, ws)
@@ -63,7 +63,7 @@ func TestRealWorkspaceAccessChecker_Integration_GetMembership(t *testing.T) {
 
 		// Create workspace
 		ownerID := uuid.NewUUID()
-		ws, err := workspace.NewWorkspace("Owner Test Workspace", "keycloak-group-2", ownerID)
+		ws, err := workspace.NewWorkspace("Owner Test Workspace", "", "keycloak-group-2", ownerID)
 		require.NoError(t, err)
 
 		err = repo.Save(ctx, ws)
@@ -93,7 +93,7 @@ func TestRealWorkspaceAccessChecker_Integration_GetMembership(t *testing.T) {
 
 		// Create workspace
 		creatorID := uuid.NewUUID()
-		ws, err := workspace.NewWorkspace("Admin Test Workspace", "keycloak-group-3", creatorID)
+		ws, err := workspace.NewWorkspace("Admin Test Workspace", "", "keycloak-group-3", creatorID)
 		require.NoError(t, err)
 
 		err = repo.Save(ctx, ws)
@@ -124,7 +124,7 @@ func TestRealWorkspaceAccessChecker_Integration_GetMembership(t *testing.T) {
 
 		// Create workspace
 		creatorID := uuid.NewUUID()
-		ws, err := workspace.NewWorkspace("No Member Workspace", "keycloak-group-4", creatorID)
+		ws, err := workspace.NewWorkspace("No Member Workspace", "", "keycloak-group-4", creatorID)
 		require.NoError(t, err)
 
 		err = repo.Save(ctx, ws)
@@ -170,7 +170,7 @@ func TestRealWorkspaceAccessChecker_Integration_WorkspaceExists(t *testing.T) {
 
 		// Create workspace
 		creatorID := uuid.NewUUID()
-		ws, err := workspace.NewWorkspace("Existing Workspace", "keycloak-group-5", creatorID)
+		ws, err := workspace.NewWorkspace("Existing Workspace", "", "keycloak-group-5", creatorID)
 		require.NoError(t, err)
 
 		err = repo.Save(ctx, ws)
@@ -213,7 +213,7 @@ func TestRealWorkspaceAccessChecker_Integration_MultipleMembers(t *testing.T) {
 
 		// Create workspace
 		creatorID := uuid.NewUUID()
-		ws, err := workspace.NewWorkspace("Multi Member Workspace", "keycloak-group-6", creatorID)
+		ws, err := workspace.NewWorkspace("Multi Member Workspace", "", "keycloak-group-6", creatorID)
 		require.NoError(t, err)
 
 		err = repo.Save(ctx, ws)

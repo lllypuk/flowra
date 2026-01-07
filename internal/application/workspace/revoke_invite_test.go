@@ -17,7 +17,7 @@ func TestRevokeInviteUseCase_Execute_Success(t *testing.T) {
 	useCase := workspace.NewRevokeInviteUseCase(repo)
 
 	// Создаем workspace с инвайтом
-	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "keycloak-group-id", uuid.NewUUID())
+	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
 	expiresAt := time.Now().Add(24 * time.Hour)
 	invite, _ := ws.CreateInvite(uuid.NewUUID(), expiresAt, 0)
 	_ = repo.Save(context.Background(), ws)
@@ -80,7 +80,7 @@ func TestRevokeInviteUseCase_Execute_AlreadyRevoked(t *testing.T) {
 	useCase := workspace.NewRevokeInviteUseCase(repo)
 
 	// Создаем workspace с уже отозванным инвайтом
-	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "keycloak-group-id", uuid.NewUUID())
+	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
 	expiresAt := time.Now().Add(24 * time.Hour)
 	invite, _ := ws.CreateInvite(uuid.NewUUID(), expiresAt, 0)
 	_ = invite.Revoke()
@@ -143,7 +143,7 @@ func TestRevokeInviteUseCase_Execute_SaveError(t *testing.T) {
 	repo := newMockWorkspaceRepository()
 
 	// Создаем workspace с инвайтом
-	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "keycloak-group-id", uuid.NewUUID())
+	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
 	expiresAt := time.Now().Add(24 * time.Hour)
 	invite, _ := ws.CreateInvite(uuid.NewUUID(), expiresAt, 0)
 	_ = repo.Save(context.Background(), ws)

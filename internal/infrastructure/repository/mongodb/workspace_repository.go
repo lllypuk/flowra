@@ -201,6 +201,7 @@ func (r *MongoWorkspaceRepository) FindInviteByToken(
 type workspaceDocument struct {
 	WorkspaceID     string           `bson:"workspace_id"`
 	Name            string           `bson:"name"`
+	Description     string           `bson:"description"`
 	KeycloakGroupID string           `bson:"keycloak_group_id"`
 	CreatedBy       string           `bson:"created_by"`
 	CreatedAt       time.Time        `bson:"created_at"`
@@ -242,6 +243,7 @@ func (r *MongoWorkspaceRepository) workspaceToDocument(ws *workspacedomain.Works
 	return workspaceDocument{
 		WorkspaceID:     ws.ID().String(),
 		Name:            ws.Name(),
+		Description:     ws.Description(),
 		KeycloakGroupID: ws.KeycloakGroupID(),
 		CreatedBy:       ws.CreatedBy().String(),
 		CreatedAt:       ws.CreatedAt(),
@@ -279,6 +281,7 @@ func (r *MongoWorkspaceRepository) documentToWorkspace(doc *workspaceDocument) (
 	return workspacedomain.Reconstruct(
 		id,
 		doc.Name,
+		doc.Description,
 		doc.KeycloakGroupID,
 		createdBy,
 		doc.CreatedAt,

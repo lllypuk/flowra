@@ -52,7 +52,7 @@ func (uc *CreateWorkspaceUseCase) Execute(
 	}
 
 	// Создание workspace
-	ws, err := workspace.NewWorkspace(cmd.Name, keycloakGroupID, cmd.CreatedBy)
+	ws, err := workspace.NewWorkspace(cmd.Name, cmd.Description, keycloakGroupID, cmd.CreatedBy)
 	if err != nil {
 		// Rollback: удаляем группу в Keycloak
 		_ = uc.keycloakClient.DeleteGroup(ctx, keycloakGroupID)

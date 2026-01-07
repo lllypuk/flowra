@@ -121,7 +121,7 @@ func (m *mockWSServiceQueryRepo) CountMembers(ctx context.Context, workspaceID u
 
 // createWSServiceTestWorkspace creates a test workspace for service testing
 func createWSServiceTestWorkspace(ownerID uuid.UUID, name string) *workspace.Workspace {
-	ws, _ := workspace.NewWorkspace(name, "keycloak-group-id", ownerID)
+	ws, _ := workspace.NewWorkspace(name, "", "keycloak-group-id", ownerID)
 	return ws
 }
 

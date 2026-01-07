@@ -164,7 +164,7 @@ func TestWorkspace_Get_NotFound(t *testing.T) {
 	client := suite.NewHTTPClient(testUser.Token)
 
 	// Get non-existent workspace - will get 403 because user is not member
-	nonExistentWs, err := workspace.NewWorkspace("NonExistent", "Test", testUser.ID)
+	nonExistentWs, err := workspace.NewWorkspace("NonExistent", "", "keycloak-group-test", testUser.ID)
 	require.NoError(t, err)
 	resp := client.Get("/workspaces/" + nonExistentWs.ID().String())
 

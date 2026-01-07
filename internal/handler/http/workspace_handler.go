@@ -849,9 +849,9 @@ func (m *MockWorkspaceService) AddWorkspace(ws *workspace.Workspace, memberCount
 func (m *MockWorkspaceService) CreateWorkspace(
 	_ context.Context,
 	ownerID uuid.UUID,
-	name, _ string,
+	name, description string,
 ) (*workspace.Workspace, error) {
-	ws, err := workspace.NewWorkspace(name, "keycloak-group-"+uuid.NewUUID().String(), ownerID)
+	ws, err := workspace.NewWorkspace(name, description, "keycloak-group-"+uuid.NewUUID().String(), ownerID)
 	if err != nil {
 		return nil, err
 	}
