@@ -47,7 +47,7 @@ eventbus:
   redis_channel_prefix: "events."
 
 log:
-  level: "debug" # debug | info | warn | error
+  level: "info" # debug | info | warn | error
   format: "json" # json | text
 
 websocket:
