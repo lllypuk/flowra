@@ -124,6 +124,7 @@ type RedisConfig struct {
 //
 //nolint:golines // Struct tags require longer lines for readability
 type KeycloakConfig struct {
+	Enabled       bool      `yaml:"enabled" env:"KEYCLOAK_ENABLED"`
 	URL           string    `yaml:"url" env:"KEYCLOAK_URL"`
 	Realm         string    `yaml:"realm" env:"KEYCLOAK_REALM"`
 	ClientID      string    `yaml:"client_id" env:"KEYCLOAK_CLIENT_ID"`

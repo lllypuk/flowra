@@ -550,9 +550,9 @@ func (c *Container) setupHTTPHandlers() {
 
 // createWorkspaceService creates the workspace service with all dependencies.
 func (c *Container) createWorkspaceService() *service.WorkspaceService {
-	// Create Keycloak client or NoOp if not configured
+	// Create Keycloak client or NoOp if not configured/enabled
 	var keycloakClient wsapp.KeycloakClient
-	if c.Config.Keycloak.URL != "" && c.Config.Keycloak.AdminUsername != "" {
+	if c.Config.Keycloak.Enabled && c.Config.Keycloak.URL != "" && c.Config.Keycloak.AdminUsername != "" {
 		c.Logger.Debug("using real Keycloak GroupClient for workspace service",
 			slog.String("url", c.Config.Keycloak.URL),
 			slog.String("realm", c.Config.Keycloak.Realm),

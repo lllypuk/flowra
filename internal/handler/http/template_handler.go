@@ -577,7 +577,7 @@ func (h *TemplateHandler) WorkspaceCreate(c echo.Context) error {
 		UnreadCount: 0,
 	}
 
-	return h.RenderPartial(c, "components/workspace_card.html", data)
+	return h.RenderPartial(c, "workspace_card", data)
 }
 
 // WorkspaceMembers renders the workspace members page.

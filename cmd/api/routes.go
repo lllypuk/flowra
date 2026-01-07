@@ -258,6 +258,7 @@ func registerPageRoutes(e *echo.Echo, c *Container) {
 	partials := e.Group("/partials", httphandler.RequireAuth)
 	partials.GET("/workspaces", c.TemplateHandler.WorkspaceListPartial)
 	partials.GET("/workspace/create-form", c.TemplateHandler.WorkspaceCreateForm)
+	partials.POST("/workspace/create", c.TemplateHandler.WorkspaceCreate)
 	partials.GET("/workspace/:id/members", c.TemplateHandler.WorkspaceMembersPartial)
 	partials.GET("/workspace/:id/invite-form", c.TemplateHandler.WorkspaceInviteForm)
 
