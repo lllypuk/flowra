@@ -23,6 +23,7 @@ func SetupRoutes(c *Container) *httpserver.Router {
 		AuthMiddleware: middleware.Auth(middleware.AuthConfig{
 			Logger:         c.Logger,
 			TokenValidator: c.TokenValidator,
+			UserResolver:   c.UserResolver,
 			SkipPaths: []string{
 				"/health",
 				"/ready",
@@ -35,7 +36,6 @@ func SetupRoutes(c *Container) *httpserver.Router {
 			},
 			// Session cookie support for HTMX frontend
 			SessionCookieName: "flowra_session",
-			MockSessionToken:  "mock-session-token",
 		}),
 		WorkspaceMiddleware: middleware.WorkspaceAccess(middleware.WorkspaceConfig{
 			Logger:           c.Logger,

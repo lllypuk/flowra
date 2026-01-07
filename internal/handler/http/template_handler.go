@@ -1,6 +1,7 @@
 package httphandler
 
 import (
+	"context"
 	"embed"
 	"fmt"
 	"html/template"
@@ -149,12 +150,28 @@ type UserView struct {
 	AvatarURL   string
 }
 
+// OAuthClient defines the interface for OAuth operations.
+type OAuthClient interface {
+	// AuthorizationURL generates the OAuth authorization URL.
+	AuthorizationURL(redirectURI, state string) string
+	// ExchangeCode exchanges an authorization code for tokens.
+	ExchangeCode(ctx context.Context, code, redirectURI string) (*OAuthTokenResponse, error)
+}
+
+// OAuthTokenResponse represents OAuth token response.
+type OAuthTokenResponse struct {
+	AccessToken  string
+	RefreshToken string
+	ExpiresIn    int
+}
+
 // TemplateHandler provides handlers for rendering HTML pages.
 type TemplateHandler struct {
 	renderer         *TemplateRenderer
 	logger           *slog.Logger
 	workspaceService WorkspaceService
 	memberService    MemberService
+	oauthClient      OAuthClient
 }
 
 // NewTemplateHandler creates a new template handler.
@@ -180,6 +197,11 @@ func NewTemplateHandler(
 func (h *TemplateHandler) SetServices(workspaceService WorkspaceService, memberService MemberService) {
 	h.workspaceService = workspaceService
 	h.memberService = memberService
+}
+
+// SetOAuthClient sets the OAuth client for authentication.
+func (h *TemplateHandler) SetOAuthClient(client OAuthClient) {
+	h.oauthClient = client
 }
 
 // render is a helper to render a template with common page data.
@@ -269,9 +291,18 @@ func (h *TemplateHandler) LoginPage(c echo.Context) error {
 	state := generateState()
 	setStateCookie(c, state)
 
-	// Build auth URL (for now using a placeholder)
-	// When real Keycloak is integrated, this will be the actual OAuth URL
-	authURL := "/auth/callback?code=mock-code&state=" + state
+	// Build auth URL
+	var authURL string
+	redirectURI := GetRedirectURI(c)
+
+	if h.oauthClient != nil {
+		// Use real Keycloak OAuth URL
+		authURL = h.oauthClient.AuthorizationURL(redirectURI, state)
+	} else {
+		// Fallback to mock for development without Keycloak
+		h.logger.Warn("OAuth client not configured, using mock auth flow")
+		authURL = "/auth/callback?code=mock-code&state=" + state
+	}
 
 	// Template expects AuthURL and Error at top level
 	data := map[string]any{
@@ -303,14 +334,37 @@ func (h *TemplateHandler) AuthCallback(c echo.Context) error {
 		return h.renderCallback(c, "", "Invalid state parameter. Please try again.")
 	}
 
-	// For mock mode, create a simple session
-	// In production, this would exchange the code for tokens with Keycloak
+	// Exchange code for tokens
+	if h.oauthClient != nil {
+		// Real OAuth flow with Keycloak
+		redirectURI := GetRedirectURI(c)
+		tokens, err := h.oauthClient.ExchangeCode(c.Request().Context(), code, redirectURI)
+		if err != nil {
+			h.logger.Error("failed to exchange code for tokens",
+				slog.String("error", err.Error()),
+			)
+			return h.renderCallback(c, "", "Authentication failed. Please try again.")
+		}
+
+		// Store access token in session cookie
+		setSessionCookie(c, tokens.AccessToken, tokens.ExpiresIn)
+
+		// Get redirect URL or default to workspaces
+		redirectURL := getRedirectCookie(c)
+		if redirectURL == "" {
+			redirectURL = "/workspaces"
+		}
+		clearRedirectCookie(c)
+
+		return h.renderCallback(c, redirectURL, "")
+	}
+
+	// Fallback mock mode (only when OAuth client is not configured)
 	if code == "mock-code" {
-		// Create a mock session (in real implementation, call auth service)
+		h.logger.Warn("using mock authentication flow")
 		const mockExpiresIn = 3600 // 1 hour
 		setSessionCookie(c, "mock-session-token", mockExpiresIn)
 
-		// Get redirect URL or default to workspaces
 		redirectURL := getRedirectCookie(c)
 		if redirectURL == "" {
 			redirectURL = "/workspaces"

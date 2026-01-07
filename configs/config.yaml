@@ -31,6 +31,8 @@ keycloak:
   realm: "flowra"
   client_id: "flowra-backend"
   client_secret: "flowra-dev-secret-change-in-production"
+  # Audience for JWT validation. Empty = skip validation. Set to client_id after configuring audience mapper.
+  jwt_audience: ""
   admin_username: "admin"
   admin_password: "admin123"
   jwt:

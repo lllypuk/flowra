@@ -98,7 +98,12 @@ type Container struct {
 
 	// Auth middleware components
 	TokenValidator middleware.TokenValidator
+	UserResolver   middleware.UserResolver
 	AccessChecker  middleware.WorkspaceAccessChecker
+	JWTValidator   keycloak.JWTValidator // for cleanup on shutdown
+
+	// OAuth client (for Keycloak integration)
+	OAuthClient *keycloak.OAuthClient
 }
 
 // Ensure Container implements httpserver.HealthChecker.
@@ -515,6 +520,12 @@ func (c *Container) setupHTTPHandlers() {
 	authService := c.createAuthService()
 	c.AuthHandler = httphandler.NewAuthHandler(authService, c.createUserRepoAdapter())
 
+	// Inject OAuth client into template handler for login/callback
+	if c.TemplateHandler != nil && c.OAuthClient != nil {
+		c.TemplateHandler.SetOAuthClient(&oauthClientAdapter{client: c.OAuthClient})
+		c.Logger.Debug("OAuth client injected into template handler")
+	}
+
 	// === 7. WebSocket Handler (unchanged) ===
 	c.WSHandler = wshandler.NewHandler(
 		c.Hub,
@@ -526,8 +537,16 @@ func (c *Container) setupHTTPHandlers() {
 		}),
 	)
 
-	// === 8. Token Validator (unchanged) ===
-	c.TokenValidator = middleware.NewStaticTokenValidator(c.Config.Auth.JWTSecret)
+	// === 8. Token Validator and User Resolver ===
+	c.setupTokenValidator()
+	c.setupUserResolver()
+
+	// Configure page auth middleware with token validator and user resolver
+	httphandler.SetPageAuthConfig(&httphandler.PageAuthConfig{
+		TokenValidator: c.TokenValidator,
+		UserResolver:   c.UserResolver,
+		Logger:         c.Logger,
+	})
 
 	// === 9. Notification Service and Template Handler ===
 	c.setupNotificationTemplateHandler()
@@ -622,8 +641,8 @@ func (c *Container) createAuthService() httphandler.AuthService {
 		return httphandler.NewMockAuthService()
 	}
 
-	// Create real auth service with Keycloak
-	oauthClient := keycloak.NewOAuthClient(keycloak.OAuthClientConfig{
+	// Create OAuth client (store in container for reuse)
+	c.OAuthClient = keycloak.NewOAuthClient(keycloak.OAuthClientConfig{
 		KeycloakURL:  c.Config.Keycloak.URL,
 		Realm:        c.Config.Keycloak.Realm,
 		ClientID:     c.Config.Keycloak.ClientID,
@@ -641,7 +660,7 @@ func (c *Container) createAuthService() httphandler.AuthService {
 	)
 
 	return service.NewAuthService(service.AuthServiceConfig{
-		OAuthClient: oauthClient,
+		OAuthClient: c.OAuthClient,
 		TokenStore:  tokenStore,
 		UserRepo:    c.UserRepo,
 		Logger:      c.Logger,
@@ -1014,6 +1033,99 @@ func (c *Container) createUserRepoAdapter() httphandler.UserRepository {
 	return &userRepoAdapter{repo: c.UserRepo}
 }
 
+// setupTokenValidator configures the JWT token validator.
+// Uses KeycloakValidatorAdapter when Keycloak is enabled, otherwise falls back to static validator.
+func (c *Container) setupTokenValidator() {
+	if c.Config.Keycloak.Enabled && c.Config.Keycloak.URL != "" {
+		// Create Keycloak JWT validator
+		// JWTAudience is separate from ClientID: empty = skip audience validation
+		jwtValidator, err := keycloak.NewJWTValidator(keycloak.JWTValidatorConfig{
+			KeycloakURL:     c.Config.Keycloak.URL,
+			Realm:           c.Config.Keycloak.Realm,
+			ClientID:        c.Config.Keycloak.JWTAudience, // Use JWTAudience for validation, not OAuth ClientID
+			Leeway:          c.Config.Keycloak.JWT.Leeway,
+			RefreshInterval: c.Config.Keycloak.JWT.RefreshInterval,
+			Logger:          c.Logger,
+		})
+		if err != nil {
+			c.Logger.Warn("failed to create Keycloak JWT validator, falling back to static validator",
+				slog.String("error", err.Error()),
+			)
+			c.TokenValidator = middleware.NewStaticTokenValidator(c.Config.Auth.JWTSecret)
+			return
+		}
+
+		// Store for cleanup
+		c.JWTValidator = jwtValidator
+
+		// Wrap with adapter
+		c.TokenValidator = middleware.NewKeycloakValidatorAdapter(jwtValidator)
+
+		c.Logger.Info("token validator initialized with Keycloak",
+			slog.String("url", c.Config.Keycloak.URL),
+			slog.String("realm", c.Config.Keycloak.Realm),
+		)
+	} else {
+		c.Logger.Warn("Keycloak not enabled, using static token validator (development mode)")
+		c.TokenValidator = middleware.NewStaticTokenValidator(c.Config.Auth.JWTSecret)
+	}
+}
+
+// setupUserResolver configures the user resolver for mapping external IDs to internal IDs.
+func (c *Container) setupUserResolver() {
+	c.UserResolver = &userResolver{
+		userRepo: c.UserRepo,
+		logger:   c.Logger,
+	}
+	c.Logger.Debug("user resolver initialized")
+}
+
+// userResolver implements middleware.UserResolver.
+type userResolver struct {
+	userRepo *mongodb.MongoUserRepository
+	logger   *slog.Logger
+}
+
+// ResolveUser finds or creates a user by external ID and returns their internal ID.
+func (r *userResolver) ResolveUser(ctx context.Context, externalID, username, email string) (uuid.UUID, error) {
+	// Try to find existing user by external ID
+	existingUser, err := r.userRepo.FindByExternalID(ctx, externalID)
+	if err == nil {
+		return existingUser.ID(), nil
+	}
+
+	// User not found - create new user
+	r.logger.InfoContext(ctx, "creating new user from Keycloak",
+		slog.String("external_id", externalID),
+		slog.String("username", username),
+		slog.String("email", email),
+	)
+
+	newUser, createErr := user.NewUser(externalID, username, email, username)
+	if createErr != nil {
+		r.logger.ErrorContext(ctx, "failed to create user",
+			slog.String("external_id", externalID),
+			slog.String("error", createErr.Error()),
+		)
+		return uuid.UUID(""), createErr
+	}
+
+	if saveErr := r.userRepo.Save(ctx, newUser); saveErr != nil {
+		r.logger.ErrorContext(ctx, "failed to save user",
+			slog.String("external_id", externalID),
+			slog.String("error", saveErr.Error()),
+		)
+		return uuid.UUID(""), saveErr
+	}
+
+	r.logger.InfoContext(ctx, "user created successfully",
+		slog.String("user_id", newUser.ID().String()),
+		slog.String("external_id", externalID),
+	)
+
+	return newUser.ID(), nil
+}
+
 // userRepoAdapter adapts MongoUserRepository to httphandler.UserRepository.
 type userRepoAdapter struct {
 	repo *mongodb.MongoUserRepository
@@ -1035,6 +1147,15 @@ func (c *Container) Close() error {
 	c.Logger.Info("closing container resources...")
 
 	var errs []error
+
+	// Close JWT Validator (stops JWKS refresh goroutine)
+	if c.JWTValidator != nil {
+		if err := c.JWTValidator.Close(); err != nil {
+			errs = append(errs, fmt.Errorf("jwt validator close: %w", err))
+		} else {
+			c.Logger.Debug("jwt validator closed")
+		}
+	}
 
 	// Close Hub
 	if c.Hub != nil {
@@ -1186,4 +1307,30 @@ func (c *Container) GetHealthStatus(ctx context.Context) []httpserver.ComponentS
 	statuses = append(statuses, eventBusStatus)
 
 	return statuses
+}
+
+// oauthClientAdapter adapts keycloak.OAuthClient to httphandler.OAuthClient interface.
+type oauthClientAdapter struct {
+	client *keycloak.OAuthClient
+}
+
+// AuthorizationURL implements httphandler.OAuthClient.
+func (a *oauthClientAdapter) AuthorizationURL(redirectURI, state string) string {
+	return a.client.AuthorizationURL(redirectURI, state)
+}
+
+// ExchangeCode implements httphandler.OAuthClient.
+func (a *oauthClientAdapter) ExchangeCode(
+	ctx context.Context,
+	code, redirectURI string,
+) (*httphandler.OAuthTokenResponse, error) {
+	resp, err := a.client.ExchangeCode(ctx, code, redirectURI)
+	if err != nil {
+		return nil, err
+	}
+	return &httphandler.OAuthTokenResponse{
+		AccessToken:  resp.AccessToken,
+		RefreshToken: resp.RefreshToken,
+		ExpiresIn:    resp.ExpiresIn,
+	}, nil
 }

@@ -13,10 +13,10 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/static/css/custom.css">
 
-    {{if and (not .Error) .RedirectURL}}
+    {{if .RedirectURL}}{{if eq .Error ""}}
     <!-- Auto-redirect via meta refresh as fallback -->
     <meta http-equiv="refresh" content="0;url={{.RedirectURL}}">
-    {{end}}
+    {{end}}{{end}}
 </head>
 <body>
     {{template "navbar" .}}
