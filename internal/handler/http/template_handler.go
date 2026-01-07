@@ -525,7 +525,7 @@ func (h *TemplateHandler) WorkspaceListPartial(c echo.Context) error {
 		workspaceViews = append(workspaceViews, WorkspaceViewData{
 			ID:          ws.ID().String(),
 			Name:        ws.Name(),
-			Description: "", // Description not in domain model yet
+			Description: ws.Description(),
 			MemberCount: memberCount,
 			CreatedAt:   ws.CreatedAt(),
 			UnreadCount: 0, // TODO: implement unread count
@@ -576,7 +576,7 @@ func (h *TemplateHandler) WorkspaceView(c echo.Context) error {
 		"Workspace": WorkspaceViewData{
 			ID:          ws.ID().String(),
 			Name:        ws.Name(),
-			Description: "",
+			Description: ws.Description(),
 			MemberCount: memberCount,
 			CreatedAt:   ws.CreatedAt(),
 		},
@@ -683,7 +683,7 @@ func (h *TemplateHandler) WorkspaceMembers(c echo.Context) error {
 		"Workspace": WorkspaceViewData{
 			ID:          ws.ID().String(),
 			Name:        ws.Name(),
-			Description: "",
+			Description: ws.Description(),
 			MemberCount: memberCount,
 			CreatedAt:   ws.CreatedAt(),
 		},
@@ -883,7 +883,7 @@ func (h *TemplateHandler) WorkspaceSettings(c echo.Context) error {
 		"Workspace": WorkspaceViewData{
 			ID:          ws.ID().String(),
 			Name:        ws.Name(),
-			Description: "",
+			Description: ws.Description(),
 			MemberCount: memberCount,
 			CreatedAt:   ws.CreatedAt(),
 		},
