@@ -23,15 +23,11 @@ func loadAggregate(ctx context.Context, eventStore appcore.EventStore, chatID uu
 	}
 
 	chatAggregate := &chat.Chat{}
-	for i, evt := range events {
-		fmt.Printf("[DEBUG] loadAggregate: applying event %d, type=%T, eventType=%s\n", i, evt, evt.EventType())
+	for _, evt := range events {
 		if applyErr := chatAggregate.Apply(evt); applyErr != nil {
 			return nil, fmt.Errorf("failed to apply event: %w", applyErr)
 		}
 	}
-
-	fmt.Printf("[DEBUG] loadAggregate: chat loaded, id=%s, version=%d, participants=%d\n",
-		chatAggregate.ID().String(), chatAggregate.Version(), len(chatAggregate.Participants()))
 
 	return chatAggregate, nil
 }

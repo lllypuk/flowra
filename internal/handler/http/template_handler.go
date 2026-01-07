@@ -123,16 +123,7 @@ func (r *TemplateRenderer) Render(w io.Writer, name string, data any, _ echo.Con
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	r.logger.Info("TemplateRenderer.Render: executing template", slog.String("name", name))
-
-	err := r.templates.ExecuteTemplate(w, name, data)
-	if err != nil {
-		r.logger.Error("TemplateRenderer.Render: template execution failed",
-			slog.String("name", name),
-			slog.String("error", err.Error()),
-		)
-	}
-	return err
+	return r.templates.ExecuteTemplate(w, name, data)
 }
 
 // Flash represents flash message data for templates.

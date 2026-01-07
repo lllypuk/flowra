@@ -219,57 +219,32 @@ func (h *ChatTemplateHandler) ChatLayout(c echo.Context) error {
 
 // ChatView renders the chat page with a specific chat selected.
 func (h *ChatTemplateHandler) ChatView(c echo.Context) error {
-	h.logger.Info("ChatView: starting",
-		slog.String("workspace_id_param", c.Param("workspace_id")),
-		slog.String("chat_id_param", c.Param("chat_id")),
-	)
-
 	user := h.getUserView(c)
 	if user == nil {
-		h.logger.Info("ChatView: user not found, redirecting to login")
 		return c.Redirect(http.StatusFound, "/login")
 	}
 
-	h.logger.Info("ChatView: user found", slog.String("user_id", user.ID))
-
 	workspaceID, err := uuid.ParseUUID(c.Param("workspace_id"))
 	if err != nil {
-		h.logger.Error("ChatView: failed to parse workspace_id", slog.String("error", err.Error()))
 		return h.renderNotFound(c)
 	}
 
 	chatID, err := uuid.ParseUUID(c.Param("chat_id"))
 	if err != nil {
-		h.logger.Error("ChatView: failed to parse chat_id", slog.String("error", err.Error()))
 		return h.renderNotFound(c)
 	}
 
 	userID, err := uuid.ParseUUID(user.ID)
 	if err != nil {
-		h.logger.Error("ChatView: failed to parse user_id", slog.String("error", err.Error()))
 		return h.renderNotFound(c)
 	}
-
-	h.logger.Info("ChatView: loading chat data",
-		slog.String("chat_id", chatID.String()),
-		slog.String("user_id", userID.String()),
-	)
 
 	// Load chat data
 	chatData, err := h.loadChatViewData(c.Request().Context(), chatID, userID)
 	if err != nil {
-		h.logger.Error("ChatView: failed to load chat",
-			slog.String("chat_id", chatID.String()),
-			slog.String("user_id", userID.String()),
-			slog.String("error", err.Error()),
-		)
+		h.logger.Error("failed to load chat", slog.String("error", err.Error()))
 		return h.renderNotFound(c)
 	}
-
-	h.logger.Info("ChatView: chat loaded successfully",
-		slog.String("chat_id", chatData.ID),
-		slog.String("chat_title", chatData.Title),
-	)
 
 	workspaceData := WorkspaceViewData{
 		ID: workspaceID.String(),
@@ -760,19 +735,7 @@ func (h *ChatTemplateHandler) render(c echo.Context, template, title string, dat
 		Data:  data,
 	}
 
-	h.logger.Info("ChatTemplateHandler.render: rendering template",
-		slog.String("template", template),
-		slog.String("title", title),
-	)
-
-	err := c.Render(http.StatusOK, template, pageData)
-	if err != nil {
-		h.logger.Error("ChatTemplateHandler.render: failed to render template",
-			slog.String("template", template),
-			slog.String("error", err.Error()),
-		)
-	}
-	return err
+	return c.Render(http.StatusOK, template, pageData)
 }
 
 func (h *ChatTemplateHandler) renderPartial(c echo.Context, template string, data any) error {

@@ -29,8 +29,6 @@
 
         <div
             class="chat-layout {{with .Data.Chat}}{{if .IsTaskChat}}with-task-sidebar{{end}}{{end}}"
-            hx-ext="ws"
-            ws-connect="/ws?token={{.Data.Token}}"
         >
             <!-- Chat List Sidebar -->
             <aside class="chat-sidebar">

@@ -148,10 +148,6 @@ func (s *MongoEventStore) SaveEvents(
 
 // LoadEvents загружает все события для агрегата
 func (s *MongoEventStore) LoadEvents(ctx context.Context, aggregateID string) ([]event.DomainEvent, error) {
-	s.logger.InfoContext(ctx, "LoadEvents: starting",
-		slog.String("aggregate_id", aggregateID),
-	)
-
 	filter := bson.M{"aggregate_id": aggregateID}
 	opts := options.Find().SetSort(bson.D{{Key: "version", Value: 1}})
 
@@ -174,23 +170,9 @@ func (s *MongoEventStore) LoadEvents(ctx context.Context, aggregateID string) ([
 		return nil, fmt.Errorf("failed to decode events: %w", err)
 	}
 
-	s.logger.InfoContext(ctx, "LoadEvents: found documents",
-		slog.String("aggregate_id", aggregateID),
-		slog.Int("docs_count", len(docs)),
-	)
-
 	// Если нет документов, возвращаем ошибку
 	if len(docs) == 0 {
 		return nil, appcore.ErrAggregateNotFound
-	}
-
-	// Log each document for debugging
-	for i, doc := range docs {
-		s.logger.InfoContext(ctx, "LoadEvents: document",
-			slog.Int("index", i),
-			slog.String("event_type", doc.EventType),
-			slog.Int("version", doc.Version),
-		)
 	}
 
 	// Десериализуем события через сериализатор
@@ -203,11 +185,6 @@ func (s *MongoEventStore) LoadEvents(ctx context.Context, aggregateID string) ([
 		)
 		return nil, err
 	}
-
-	s.logger.InfoContext(ctx, "LoadEvents: deserialized events",
-		slog.String("aggregate_id", aggregateID),
-		slog.Int("events_count", len(events)),
-	)
 
 	return events, nil
 }
