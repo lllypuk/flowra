@@ -885,10 +885,7 @@ func (m *MockWorkspaceService) ListUserWorkspaces(
 		return []*workspace.Workspace{}, total, nil
 	}
 
-	end := offset + limit
-	if end > total {
-		end = total
-	}
+	end := min(offset+limit, total)
 
 	return all[offset:end], total, nil
 }
@@ -1024,10 +1021,7 @@ func (m *MockMemberService) ListMembers(
 		return []*workspace.Member{}, total, nil
 	}
 
-	end := offset + limit
-	if end > total {
-		end = total
-	}
+	end := min(offset+limit, total)
 
 	return members[offset:end], total, nil
 }

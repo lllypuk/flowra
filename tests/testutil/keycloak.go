@@ -78,7 +78,7 @@ type KeycloakUserInfo struct {
 	Groups            []string `json:"groups,omitempty"`
 	RealmAccess       struct {
 		Roles []string `json:"roles"`
-	} `json:"realm_access,omitempty"`
+	} `json:"realm_access"`
 }
 
 // GetSharedKeycloakContainer returns a singleton Keycloak container.
@@ -430,7 +430,7 @@ func (c *SharedKeycloakContainer) ClientExists(ctx context.Context) (bool, error
 		return false, nil
 	}
 
-	var clients []map[string]interface{}
+	var clients []map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&clients); err != nil {
 		return false, err
 	}

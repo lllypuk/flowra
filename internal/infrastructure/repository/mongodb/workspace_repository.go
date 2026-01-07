@@ -2,7 +2,9 @@ package mongodb
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -18,17 +20,36 @@ import (
 type MongoWorkspaceRepository struct {
 	collection        *mongo.Collection
 	membersCollection *mongo.Collection
+	logger            *slog.Logger
+}
+
+// WorkspaceRepoOption configures MongoWorkspaceRepository.
+type WorkspaceRepoOption func(*MongoWorkspaceRepository)
+
+// WithWorkspaceRepoLogger sets the logger for workspace repository.
+func WithWorkspaceRepoLogger(logger *slog.Logger) WorkspaceRepoOption {
+	return func(r *MongoWorkspaceRepository) {
+		r.logger = logger
+	}
 }
 
 // NewMongoWorkspaceRepository создает новый MongoDB Workspace Repository
 func NewMongoWorkspaceRepository(
 	collection *mongo.Collection,
 	membersCollection *mongo.Collection,
+	opts ...WorkspaceRepoOption,
 ) *MongoWorkspaceRepository {
-	return &MongoWorkspaceRepository{
+	r := &MongoWorkspaceRepository{
 		collection:        collection,
 		membersCollection: membersCollection,
+		logger:            slog.Default(),
 	}
+
+	for _, opt := range opts {
+		opt(r)
+	}
+
+	return r
 }
 
 // FindByID находит рабочее пространство по ID
@@ -41,6 +62,12 @@ func (r *MongoWorkspaceRepository) FindByID(ctx context.Context, id uuid.UUID) (
 	var doc workspaceDocument
 	err := r.collection.FindOne(ctx, filter).Decode(&doc)
 	if err != nil {
+		if !errors.Is(err, mongo.ErrNoDocuments) {
+			r.logger.ErrorContext(ctx, "failed to find workspace by ID",
+				slog.String("workspace_id", id.String()),
+				slog.String("error", err.Error()),
+			)
+		}
 		return nil, HandleMongoError(err, "workspace")
 	}
 
@@ -60,6 +87,12 @@ func (r *MongoWorkspaceRepository) FindByKeycloakGroup(
 	var doc workspaceDocument
 	err := r.collection.FindOne(ctx, filter).Decode(&doc)
 	if err != nil {
+		if !errors.Is(err, mongo.ErrNoDocuments) {
+			r.logger.ErrorContext(ctx, "failed to find workspace by Keycloak group",
+				slog.String("keycloak_group_id", keycloakGroupID),
+				slog.String("error", err.Error()),
+			)
+		}
 		return nil, HandleMongoError(err, "workspace")
 	}
 
@@ -81,6 +114,13 @@ func (r *MongoWorkspaceRepository) Save(ctx context.Context, workspace *workspac
 	update := bson.M{"$set": doc}
 
 	_, err := r.collection.UpdateOne(ctx, filter, update, UpsertOptions())
+	if err != nil {
+		r.logger.ErrorContext(ctx, "failed to save workspace",
+			slog.String("workspace_id", workspace.ID().String()),
+			slog.String("name", workspace.Name()),
+			slog.String("error", err.Error()),
+		)
+	}
 	return HandleMongoError(err, "workspace")
 }
 
@@ -94,6 +134,10 @@ func (r *MongoWorkspaceRepository) Delete(ctx context.Context, id uuid.UUID) err
 	filter := bson.M{"workspace_id": id.String()}
 	result, err := r.collection.DeleteOne(ctx, filter)
 	if err != nil {
+		r.logger.ErrorContext(ctx, "failed to delete workspace",
+			slog.String("workspace_id", id.String()),
+			slog.String("error", err.Error()),
+		)
 		return HandleMongoError(err, "workspace")
 	}
 

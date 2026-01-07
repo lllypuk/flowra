@@ -514,7 +514,7 @@ func (l *Loader) setFieldFromEnv(field reflect.Value, value string) error {
 
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		// Check if it's a time.Duration
-		if field.Type() == reflect.TypeOf(time.Duration(0)) {
+		if field.Type() == reflect.TypeFor[time.Duration]() {
 			d, err := time.ParseDuration(value)
 			if err != nil {
 				return fmt.Errorf("%w: %s", ErrInvalidDuration, value)

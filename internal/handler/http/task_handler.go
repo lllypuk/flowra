@@ -820,14 +820,8 @@ func (m *MockTaskService) ListTasks(_ context.Context, filters taskapp.Filters) 
 	}
 
 	// Apply pagination
-	start := filters.Offset
-	if start > len(result) {
-		start = len(result)
-	}
-	end := start + filters.Limit
-	if end > len(result) {
-		end = len(result)
-	}
+	start := min(filters.Offset, len(result))
+	end := min(start+filters.Limit, len(result))
 
 	return result[start:end], nil
 }

@@ -290,7 +290,7 @@ func TestRedisEventBus_EventSerialization(t *testing.T) {
 		case de := <-received:
 			// Check if we can access payload through interface
 			if payloader, ok := de.(interface{ Payload() json.RawMessage }); ok {
-				var parsed map[string]interface{}
+				var parsed map[string]any
 				unmarshalErr := json.Unmarshal(payloader.Payload(), &parsed)
 				require.NoError(t, unmarshalErr)
 				assert.Equal(t, "payload content", parsed["message"])

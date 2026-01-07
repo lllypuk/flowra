@@ -108,10 +108,7 @@ func (m *MockTaskDetailMemberService) ListWorkspaceMembers(
 	if offset >= len(members) {
 		return []httphandler.MemberViewData{}, nil
 	}
-	end := offset + limit
-	if end > len(members) {
-		end = len(members)
-	}
+	end := min(offset+limit, len(members))
 	return members[offset:end], nil
 }
 

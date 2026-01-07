@@ -200,7 +200,7 @@ func (e *testPayloadEvent) Payload() json.RawMessage {
 	return e.payload
 }
 
-func newTestPayloadEvent(eventType, aggregateID string, payload interface{}) *testPayloadEvent {
+func newTestPayloadEvent(eventType, aggregateID string, payload any) *testPayloadEvent {
 	data, _ := json.Marshal(payload)
 	return &testPayloadEvent{
 		BaseEvent: event.NewBaseEvent(
@@ -250,7 +250,7 @@ func TestNotificationHandler_HandleParticipantAdded(t *testing.T) {
 		evt := newTestPayloadEvent(
 			chat.EventTypeParticipantAdded,
 			"chat-123",
-			map[string]interface{}{
+			map[string]any{
 				"UserID": userID.String(),
 				"Role":   "member",
 			},
@@ -272,7 +272,7 @@ func TestNotificationHandler_HandleParticipantAdded(t *testing.T) {
 
 		userID := uuid.NewUUID()
 		// Create event with same user as metadata user ID
-		payload := map[string]interface{}{
+		payload := map[string]any{
 			"UserID": userID.String(),
 			"Role":   "member",
 		}
@@ -336,7 +336,7 @@ func TestNotificationHandler_HandleMessageCreated(t *testing.T) {
 		evt := newTestPayloadEvent(
 			message.EventTypeMessageCreated,
 			"msg-123",
-			map[string]interface{}{
+			map[string]any{
 				"ChatID":   "chat-456",
 				"AuthorID": authorID.String(),
 				"Content":  "Hello @john, how are you?",
@@ -370,7 +370,7 @@ func TestNotificationHandler_HandleMessageCreated(t *testing.T) {
 		evt := newTestPayloadEvent(
 			message.EventTypeMessageCreated,
 			"msg-123",
-			map[string]interface{}{
+			map[string]any{
 				"ChatID":   "chat-456",
 				"AuthorID": authorID.String(),
 				"Content":  "Hey @alice and @bob, check this out!",
@@ -400,7 +400,7 @@ func TestNotificationHandler_HandleMessageCreated(t *testing.T) {
 		evt := newTestPayloadEvent(
 			message.EventTypeMessageCreated,
 			"msg-123",
-			map[string]interface{}{
+			map[string]any{
 				"ChatID":   "chat-456",
 				"AuthorID": authorID.String(),
 				"Content":  "@alice @alice @alice hello!",
@@ -429,7 +429,7 @@ func TestNotificationHandler_HandleMessageCreated(t *testing.T) {
 		evt := newTestPayloadEvent(
 			message.EventTypeMessageCreated,
 			"msg-123",
-			map[string]interface{}{
+			map[string]any{
 				"ChatID":   "chat-456",
 				"AuthorID": authorID.String(),
 				"Content":  "Note to @me: remember this",
@@ -451,7 +451,7 @@ func TestNotificationHandler_HandleMessageCreated(t *testing.T) {
 		evt := newTestPayloadEvent(
 			message.EventTypeMessageCreated,
 			"msg-123",
-			map[string]interface{}{
+			map[string]any{
 				"ChatID":   "chat-456",
 				"AuthorID": "author-123",
 				"Content":  "Hello @john!",
@@ -476,7 +476,7 @@ func TestNotificationHandler_HandleMessageCreated(t *testing.T) {
 		evt := newTestPayloadEvent(
 			message.EventTypeMessageCreated,
 			"msg-123",
-			map[string]interface{}{
+			map[string]any{
 				"ChatID":   "chat-456",
 				"AuthorID": "author-123",
 				"Content":  "Hello, world!",
@@ -502,7 +502,7 @@ func TestNotificationHandler_HandleTaskCreated(t *testing.T) {
 		evt := newTestPayloadEvent(
 			task.EventTypeTaskCreated,
 			"task-123",
-			map[string]interface{}{
+			map[string]any{
 				"Title":      "Important Task",
 				"AssigneeID": assigneeID.String(),
 				"CreatedBy":  creatorID.String(),
@@ -528,7 +528,7 @@ func TestNotificationHandler_HandleTaskCreated(t *testing.T) {
 		evt := newTestPayloadEvent(
 			task.EventTypeTaskCreated,
 			"task-123",
-			map[string]interface{}{
+			map[string]any{
 				"Title":      "My Task",
 				"AssigneeID": userID.String(),
 				"CreatedBy":  userID.String(),
@@ -550,7 +550,7 @@ func TestNotificationHandler_HandleTaskCreated(t *testing.T) {
 		evt := newTestPayloadEvent(
 			task.EventTypeTaskCreated,
 			"task-123",
-			map[string]interface{}{
+			map[string]any{
 				"Title":     "Unassigned Task",
 				"CreatedBy": "creator-123",
 			},
@@ -573,7 +573,7 @@ func TestNotificationHandler_HandleTaskCreated(t *testing.T) {
 		evt := newTestPayloadEvent(
 			task.EventTypeTaskCreated,
 			"task-123",
-			map[string]interface{}{
+			map[string]any{
 				"Title":      longTitle,
 				"AssigneeID": assigneeID.String(),
 				"CreatedBy":  "other-user",
@@ -601,7 +601,7 @@ func TestNotificationHandler_HandleTaskAssigneeChanged(t *testing.T) {
 		evt := newTestPayloadEvent(
 			task.EventTypeAssigneeChanged,
 			"task-123",
-			map[string]interface{}{
+			map[string]any{
 				"NewAssignee": newAssigneeID.String(),
 				"ChangedBy":   changerID.String(),
 			},
@@ -625,7 +625,7 @@ func TestNotificationHandler_HandleTaskAssigneeChanged(t *testing.T) {
 		evt := newTestPayloadEvent(
 			task.EventTypeAssigneeChanged,
 			"task-123",
-			map[string]interface{}{
+			map[string]any{
 				"NewAssignee": userID.String(),
 				"ChangedBy":   userID.String(),
 			},
@@ -646,7 +646,7 @@ func TestNotificationHandler_HandleTaskAssigneeChanged(t *testing.T) {
 		evt := newTestPayloadEvent(
 			task.EventTypeAssigneeChanged,
 			"task-123",
-			map[string]interface{}{
+			map[string]any{
 				"OldAssignee": "old-assignee-id",
 				"ChangedBy":   "changer-id",
 			},
@@ -673,7 +673,7 @@ func TestNotificationHandler_HandleChatCreated(t *testing.T) {
 		evt := newTestPayloadEvent(
 			chat.EventTypeChatCreated,
 			"chat-123",
-			map[string]interface{}{
+			map[string]any{
 				"WorkspaceID": uuid.NewUUID().String(),
 				"Type":        "general",
 				"IsPublic":    true,
@@ -703,7 +703,7 @@ func TestNotificationHandler_HandleTaskStatusChanged(t *testing.T) {
 		evt := newTestPayloadEvent(
 			task.EventTypeStatusChanged,
 			"task-123",
-			map[string]interface{}{
+			map[string]any{
 				"OldStatus": "todo",
 				"NewStatus": "in_progress",
 				"ChangedBy": uuid.NewUUID().String(),
@@ -744,7 +744,7 @@ func TestNotificationHandler_HandleUnknownEvent(t *testing.T) {
 		uc := notification.NewCreateNotificationUseCase(repo)
 		handler := eventbus.NewNotificationHandler(uc)
 
-		evt := newTestPayloadEvent("unknown.event", "agg-123", map[string]interface{}{})
+		evt := newTestPayloadEvent("unknown.event", "agg-123", map[string]any{})
 
 		err := handler.Handle(context.Background(), evt)
 		require.NoError(t, err)
@@ -765,7 +765,7 @@ func TestNotificationHandler_RepositoryError(t *testing.T) {
 		evt := newTestPayloadEvent(
 			task.EventTypeTaskCreated,
 			"task-123",
-			map[string]interface{}{
+			map[string]any{
 				"Title":      "Test Task",
 				"AssigneeID": assigneeID.String(),
 				"CreatedBy":  "other-user",
@@ -793,7 +793,7 @@ func TestNotificationHandler_HandleMessageCreatedErrors(t *testing.T) {
 		evt := newTestPayloadEvent(
 			message.EventTypeMessageCreated,
 			"msg-123",
-			map[string]interface{}{
+			map[string]any{
 				"ChatID":   "chat-456",
 				"AuthorID": uuid.NewUUID().String(),
 				"Content":  "Hello @john!",
@@ -848,7 +848,7 @@ func TestNotificationHandler_AsEventHandler(t *testing.T) {
 		assert.NotNil(t, fn)
 
 		// Should be callable
-		evt := newTestPayloadEvent("unknown.event", "agg-123", map[string]interface{}{})
+		evt := newTestPayloadEvent("unknown.event", "agg-123", map[string]any{})
 		err := fn(context.Background(), evt)
 		require.NoError(t, err)
 	})
@@ -878,7 +878,7 @@ func TestLoggingHandler_Handle(t *testing.T) {
 		evt := newTestPayloadEvent(
 			message.EventTypeMessageCreated,
 			"msg-123",
-			map[string]interface{}{
+			map[string]any{
 				"Content": "Hello, world!",
 			},
 		)
@@ -897,7 +897,7 @@ func TestLoggingHandler_Handle(t *testing.T) {
 		logger := slog.New(slog.NewJSONHandler(&buf, nil))
 		handler := eventbus.NewLoggingHandler(logger)
 
-		payload := map[string]interface{}{"data": "test"}
+		payload := map[string]any{"data": "test"}
 		data, _ := json.Marshal(payload)
 		evt := &testPayloadEvent{
 			BaseEvent: event.NewBaseEvent(
@@ -928,7 +928,7 @@ func TestLoggingHandler_Handle(t *testing.T) {
 		for i := range largeContent {
 			largeContent[i] = 'x'
 		}
-		payload := map[string]interface{}{"data": string(largeContent)}
+		payload := map[string]any{"data": string(largeContent)}
 		data, _ := json.Marshal(payload)
 		evt := &testPayloadEvent{
 			BaseEvent: event.NewBaseEvent("test.event", "agg-123", "Test", 1, event.Metadata{}),
@@ -945,7 +945,7 @@ func TestLoggingHandler_Handle(t *testing.T) {
 
 	t.Run("returns no error", func(t *testing.T) {
 		handler := eventbus.NewLoggingHandler(nil)
-		evt := newTestPayloadEvent("test.event", "agg-123", map[string]interface{}{})
+		evt := newTestPayloadEvent("test.event", "agg-123", map[string]any{})
 
 		err := handler.Handle(context.Background(), evt)
 		require.NoError(t, err)
@@ -958,7 +958,7 @@ func TestLoggingHandler_AsEventHandler(t *testing.T) {
 		fn := handler.AsEventHandler()
 		assert.NotNil(t, fn)
 
-		evt := newTestPayloadEvent("test.event", "agg-123", map[string]interface{}{})
+		evt := newTestPayloadEvent("test.event", "agg-123", map[string]any{})
 		err := fn(context.Background(), evt)
 		require.NoError(t, err)
 	})
@@ -994,7 +994,7 @@ func TestDeadLetterHandler_Handle(t *testing.T) {
 			eventbus.WithDeadLetterQueueKey("test:dlq:store"),
 		)
 
-		evt := newTestPayloadEvent("test.event", "agg-123", map[string]interface{}{"key": "value"})
+		evt := newTestPayloadEvent("test.event", "agg-123", map[string]any{"key": "value"})
 		originalErr := errors.New("handler failed: database timeout")
 
 		handler.Handle(ctx, evt, originalErr)
@@ -1015,7 +1015,7 @@ func TestDeadLetterHandler_Handle(t *testing.T) {
 			eventbus.WithDeadLetterQueueKey("test:dlq:payload"),
 		)
 
-		evt := newTestPayloadEvent("test.event", "agg-456", map[string]interface{}{
+		evt := newTestPayloadEvent("test.event", "agg-456", map[string]any{
 			"important": "data",
 			"count":     42,
 		})
@@ -1025,7 +1025,7 @@ func TestDeadLetterHandler_Handle(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, entries, 1)
 
-		var payload map[string]interface{}
+		var payload map[string]any
 		err = json.Unmarshal(entries[0].Payload, &payload)
 		require.NoError(t, err)
 		assert.Equal(t, "data", payload["important"])
@@ -1039,7 +1039,7 @@ func TestDeadLetterHandler_Handle(t *testing.T) {
 
 		// Add 5 events
 		for i := range 5 {
-			evt := newTestPayloadEvent("test.event", "agg-"+string(rune('0'+i)), map[string]interface{}{})
+			evt := newTestPayloadEvent("test.event", "agg-"+string(rune('0'+i)), map[string]any{})
 			handler.Handle(ctx, evt, errors.New("failed"))
 		}
 
@@ -1071,7 +1071,7 @@ func TestDeadLetterHandler_GetDeadLetters(t *testing.T) {
 
 		// Add 5 events
 		for i := range 5 {
-			evt := newTestPayloadEvent("test.event", "agg-"+string(rune('a'+i)), map[string]interface{}{})
+			evt := newTestPayloadEvent("test.event", "agg-"+string(rune('a'+i)), map[string]any{})
 			handler.Handle(ctx, evt, errors.New("failed"))
 		}
 
@@ -1086,7 +1086,7 @@ func TestDeadLetterHandler_GetDeadLetters(t *testing.T) {
 		)
 
 		for range 15 {
-			evt := newTestPayloadEvent("test.event", "agg-x", map[string]interface{}{})
+			evt := newTestPayloadEvent("test.event", "agg-x", map[string]any{})
 			handler.Handle(ctx, evt, errors.New("failed"))
 		}
 
@@ -1107,7 +1107,7 @@ func TestDeadLetterHandler_ClearDeadLetters(t *testing.T) {
 
 		// Add some events
 		for range 3 {
-			evt := newTestPayloadEvent("test.event", "agg-y", map[string]interface{}{})
+			evt := newTestPayloadEvent("test.event", "agg-y", map[string]any{})
 			handler.Handle(ctx, evt, errors.New("failed"))
 		}
 
@@ -1143,7 +1143,7 @@ func TestDeadLetterHandler_QueueLength(t *testing.T) {
 
 		// Add events
 		for range 5 {
-			evt := newTestPayloadEvent("test.event", "agg-z", map[string]interface{}{})
+			evt := newTestPayloadEvent("test.event", "agg-z", map[string]any{})
 			handler.Handle(ctx, evt, errors.New("failed"))
 		}
 

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -387,12 +388,7 @@ func IsSystemAdmin(c echo.Context) bool {
 // HasRole checks if the current user has the specified role.
 func HasRole(c echo.Context, role string) bool {
 	roles := GetRoles(c)
-	for _, r := range roles {
-		if r == role {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(roles, role)
 }
 
 // HasAnyRole checks if the current user has any of the specified roles.

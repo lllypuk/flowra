@@ -212,8 +212,8 @@ func (v *jwtValidator) extractClaims(claims jwt.MapClaims) (*TokenClaims, error)
 	tc.SessionState, _ = claims["session_state"].(string)
 
 	// Extract realm roles from realm_access.roles
-	if realmAccess, realmOK := claims["realm_access"].(map[string]interface{}); realmOK {
-		if roles, rolesOK := realmAccess["roles"].([]interface{}); rolesOK {
+	if realmAccess, realmOK := claims["realm_access"].(map[string]any); realmOK {
+		if roles, rolesOK := realmAccess["roles"].([]any); rolesOK {
 			tc.RealmRoles = make([]string, 0, len(roles))
 			for _, role := range roles {
 				if r, roleOK := role.(string); roleOK {
@@ -224,7 +224,7 @@ func (v *jwtValidator) extractClaims(claims jwt.MapClaims) (*TokenClaims, error)
 	}
 
 	// Extract groups
-	if groups, groupsOK := claims["groups"].([]interface{}); groupsOK {
+	if groups, groupsOK := claims["groups"].([]any); groupsOK {
 		tc.Groups = make([]string, 0, len(groups))
 		for _, group := range groups {
 			if g, groupOK := group.(string); groupOK {

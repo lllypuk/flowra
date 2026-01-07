@@ -2,7 +2,9 @@ package mongodb
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log/slog"
 	"regexp"
 	"time"
 
@@ -19,13 +21,31 @@ import (
 // MongoMessageRepository реализует messageapp.Repository (application layer interface)
 type MongoMessageRepository struct {
 	collection *mongo.Collection
+	logger     *slog.Logger
+}
+
+// MessageRepoOption configures MongoMessageRepository.
+type MessageRepoOption func(*MongoMessageRepository)
+
+// WithMessageRepoLogger sets the logger for message repository.
+func WithMessageRepoLogger(logger *slog.Logger) MessageRepoOption {
+	return func(r *MongoMessageRepository) {
+		r.logger = logger
+	}
 }
 
 // NewMongoMessageRepository создает новый MongoDB Message Repository
-func NewMongoMessageRepository(collection *mongo.Collection) *MongoMessageRepository {
-	return &MongoMessageRepository{
+func NewMongoMessageRepository(collection *mongo.Collection, opts ...MessageRepoOption) *MongoMessageRepository {
+	r := &MongoMessageRepository{
 		collection: collection,
+		logger:     slog.Default(),
 	}
+
+	for _, opt := range opts {
+		opt(r)
+	}
+
+	return r
 }
 
 // FindByID находит сообщение по ID
@@ -38,6 +58,12 @@ func (r *MongoMessageRepository) FindByID(ctx context.Context, id uuid.UUID) (*m
 	var doc messageDocument
 	err := r.collection.FindOne(ctx, filter).Decode(&doc)
 	if err != nil {
+		if !errors.Is(err, mongo.ErrNoDocuments) {
+			r.logger.ErrorContext(ctx, "failed to find message by ID",
+				slog.String("message_id", id.String()),
+				slog.String("error", err.Error()),
+			)
+		}
 		return nil, HandleMongoError(err, "message")
 	}
 
@@ -61,6 +87,10 @@ func (r *MongoMessageRepository) FindByChatID(
 
 	cursor, err := r.collection.Find(ctx, filter, opts)
 	if err != nil {
+		r.logger.ErrorContext(ctx, "failed to find messages by chat ID",
+			slog.String("chat_id", chatID.String()),
+			slog.String("error", err.Error()),
+		)
 		return nil, HandleMongoError(err, "messages")
 	}
 	defer cursor.Close(ctx)
@@ -69,11 +99,19 @@ func (r *MongoMessageRepository) FindByChatID(
 	for cursor.Next(ctx) {
 		var doc messageDocument
 		if decodeErr := cursor.Decode(&doc); decodeErr != nil {
+			r.logger.WarnContext(ctx, "failed to decode message document",
+				slog.String("chat_id", chatID.String()),
+				slog.String("error", decodeErr.Error()),
+			)
 			continue // Пропускаем некорректные документы
 		}
 
 		msg, docErr := r.documentToMessage(&doc)
 		if docErr != nil {
+			r.logger.WarnContext(ctx, "skipping invalid message document",
+				slog.String("chat_id", chatID.String()),
+				slog.String("error", docErr.Error()),
+			)
 			continue
 		}
 
@@ -81,6 +119,10 @@ func (r *MongoMessageRepository) FindByChatID(
 	}
 
 	if err = cursor.Err(); err != nil {
+		r.logger.ErrorContext(ctx, "cursor error while reading messages",
+			slog.String("chat_id", chatID.String()),
+			slog.String("error", err.Error()),
+		)
 		return nil, fmt.Errorf("cursor error: %w", err)
 	}
 
@@ -164,6 +206,13 @@ func (r *MongoMessageRepository) Save(ctx context.Context, message *messagedomai
 	filter := bson.M{"message_id": message.ID().String()}
 	update := bson.M{"$set": doc}
 	_, err := r.collection.UpdateOne(ctx, filter, update, UpsertOptions())
+	if err != nil {
+		r.logger.ErrorContext(ctx, "failed to save message",
+			slog.String("message_id", message.ID().String()),
+			slog.String("chat_id", message.ChatID().String()),
+			slog.String("error", err.Error()),
+		)
+	}
 	return HandleMongoError(err, "message")
 }
 
@@ -176,6 +225,10 @@ func (r *MongoMessageRepository) Delete(ctx context.Context, id uuid.UUID) error
 	filter := bson.M{"message_id": id.String()}
 	result, err := r.collection.DeleteOne(ctx, filter)
 	if err != nil {
+		r.logger.ErrorContext(ctx, "failed to delete message",
+			slog.String("message_id", id.String()),
+			slog.String("error", err.Error()),
+		)
 		return HandleMongoError(err, "message")
 	}
 

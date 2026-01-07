@@ -340,7 +340,11 @@ func (c *Container) setupRedis(ctx context.Context) error {
 
 // setupEventStore initializes the event store.
 func (c *Container) setupEventStore() {
-	c.EventStore = eventstore.NewMongoEventStore(c.MongoDB, c.MongoDBName)
+	c.EventStore = eventstore.NewMongoEventStore(
+		c.MongoDB,
+		c.MongoDBName,
+		eventstore.WithLogger(c.Logger),
+	)
 	c.Logger.Debug("event store initialized")
 }
 
@@ -372,37 +376,50 @@ func (c *Container) setupRepositories() {
 	db := c.MongoDB.Database(c.MongoDBName)
 
 	// User repository
-	c.UserRepo = mongodb.NewMongoUserRepository(db.Collection("users"))
+	c.UserRepo = mongodb.NewMongoUserRepository(
+		db.Collection("users"),
+		mongodb.WithUserRepoLogger(c.Logger),
+	)
 
 	// Workspace repository
 	c.WorkspaceRepo = mongodb.NewMongoWorkspaceRepository(
 		db.Collection("workspaces"),
 		db.Collection("workspace_members"),
+		mongodb.WithWorkspaceRepoLogger(c.Logger),
 	)
 
 	// Chat repository (event sourced - command side)
 	c.ChatRepo = mongodb.NewMongoChatRepository(
 		c.EventStore,
 		db.Collection("chats_read_model"),
+		mongodb.WithChatRepoLogger(c.Logger),
 	)
 
 	// Chat read model repository (query side)
 	c.ChatQueryRepo = mongodb.NewMongoChatReadModelRepository(
 		db.Collection("chats_read_model"),
 		c.EventStore,
+		mongodb.WithChatReadModelRepoLogger(c.Logger),
 	)
 
 	// Message repository
-	c.MessageRepo = mongodb.NewMongoMessageRepository(db.Collection("messages"))
+	c.MessageRepo = mongodb.NewMongoMessageRepository(
+		db.Collection("messages"),
+		mongodb.WithMessageRepoLogger(c.Logger),
+	)
 
 	// Task repository (event sourced)
 	c.TaskRepo = mongodb.NewMongoTaskRepository(
 		c.EventStore,
 		db.Collection("tasks_read_model"),
+		mongodb.WithTaskRepoLogger(c.Logger),
 	)
 
 	// Notification repository
-	c.NotificationRepo = mongodb.NewMongoNotificationRepository(db.Collection("notifications"))
+	c.NotificationRepo = mongodb.NewMongoNotificationRepository(
+		db.Collection("notifications"),
+		mongodb.WithNotificationRepoLogger(c.Logger),
+	)
 
 	c.Logger.Debug("repositories initialized")
 }

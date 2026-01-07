@@ -76,8 +76,7 @@ func TestDefaultHandlerConfig(t *testing.T) {
 func TestHandler_HandleWebSocket(t *testing.T) {
 	t.Run("rejects unauthenticated request", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -98,8 +97,7 @@ func TestHandler_HandleWebSocket(t *testing.T) {
 
 	t.Run("accepts authenticated request from context", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -133,8 +131,7 @@ func TestHandler_HandleWebSocket(t *testing.T) {
 
 	t.Run("accepts request with token in query param", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -169,8 +166,7 @@ func TestHandler_HandleWebSocket(t *testing.T) {
 
 	t.Run("accepts request with token in Authorization header", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -207,8 +203,7 @@ func TestHandler_HandleWebSocket(t *testing.T) {
 
 	t.Run("rejects request with invalid token", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -277,8 +272,7 @@ func TestHandler_RegisterRoutes(t *testing.T) {
 func TestHandler_Integration(t *testing.T) {
 	t.Run("full connection lifecycle", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -316,7 +310,7 @@ func TestHandler_Integration(t *testing.T) {
 		require.NoError(t, writeErr)
 
 		// Receive pong
-		var response map[string]interface{}
+		var response map[string]any
 		err = conn.ReadJSON(&response)
 		require.NoError(t, err)
 		assert.Equal(t, "pong", response["type"])

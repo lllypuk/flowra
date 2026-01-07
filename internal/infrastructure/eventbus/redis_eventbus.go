@@ -412,10 +412,7 @@ func (b *RedisEventBus) executeHandler(
 			}
 
 			// Calculate next backoff with exponential growth
-			backoff = time.Duration(float64(backoff) * b.retryConfig.BackoffFactor)
-			if backoff > b.retryConfig.MaxBackoff {
-				backoff = b.retryConfig.MaxBackoff
-			}
+			backoff = min(time.Duration(float64(backoff)*b.retryConfig.BackoffFactor), b.retryConfig.MaxBackoff)
 		}
 
 		if err := handler(ctx, evt); err != nil {

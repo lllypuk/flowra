@@ -42,10 +42,7 @@ func (m *MockKeycloakUserClient) ListUsers(_ context.Context, first, limit int) 
 		return []keycloak.User{}, nil
 	}
 
-	end := first + limit
-	if end > len(m.users) {
-		end = len(m.users)
-	}
+	end := min(first+limit, len(m.users))
 
 	return m.users[first:end], nil
 }

@@ -72,10 +72,7 @@ func (m *MockBoardTaskService) ListTasks(
 	if offset >= len(result) {
 		return []*taskapp.ReadModel{}, nil
 	}
-	end := offset + limit
-	if end > len(result) {
-		end = len(result)
-	}
+	end := min(offset+limit, len(result))
 	return result[offset:end], nil
 }
 
@@ -136,10 +133,7 @@ func (m *MockBoardMemberService) ListWorkspaceMembers(
 	if offset >= len(members) {
 		return []httphandler.MemberViewData{}, nil
 	}
-	end := offset + limit
-	if end > len(members) {
-		end = len(members)
-	}
+	end := min(offset+limit, len(members))
 	return members[offset:end], nil
 }
 

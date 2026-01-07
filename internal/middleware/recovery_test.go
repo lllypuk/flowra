@@ -43,12 +43,12 @@ func TestRecovery(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 
 	// Check response body
-	var response map[string]interface{}
+	var response map[string]any
 	err := json.Unmarshal(rec.Body.Bytes(), &response)
 	require.NoError(t, err)
 	assert.Equal(t, false, response["success"])
 
-	errorObj := response["error"].(map[string]interface{})
+	errorObj := response["error"].(map[string]any)
 	assert.Equal(t, "INTERNAL_ERROR", errorObj["code"])
 	assert.Equal(t, "An internal error occurred", errorObj["message"])
 

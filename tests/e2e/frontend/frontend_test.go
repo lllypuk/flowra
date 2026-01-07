@@ -14,13 +14,22 @@ import (
 
 // Test configuration
 const (
-	baseURL            = "http://localhost:8080"
-	defaultTimeout     = 30 * time.Second
-	keycloakUser       = "testuser"
-	keycloakPassword   = "password"
-	headless           = true
-	slowMo             = 0 // Set to 100 for debugging
+	baseURL          = "http://localhost:8080"
+	defaultTimeout   = 30 * time.Second
+	keycloakUser     = "testuser"
+	keycloakPassword = "password"
+	defaultHeadless  = true
+	slowMo           = 0 // Set to 100 for debugging
 )
+
+// isHeadless returns whether browser should run in headless mode.
+// Set HEADLESS=false environment variable to run with visible browser.
+func isHeadless() bool {
+	if val := os.Getenv("HEADLESS"); val == "false" || val == "0" {
+		return false
+	}
+	return defaultHeadless
+}
 
 // TestSuite holds the Playwright context for frontend tests.
 type TestSuite struct {
@@ -41,7 +50,7 @@ func setupTestSuite(t *testing.T) *TestSuite {
 	require.NoError(t, err, "Failed to start Playwright")
 
 	browser, err := pw.Chromium.Launch(playwright.BrowserTypeLaunchOptions{
-		Headless: playwright.Bool(headless),
+		Headless: playwright.Bool(isHeadless()),
 		SlowMo:   playwright.Float(slowMo),
 	})
 	require.NoError(t, err, "Failed to launch browser")
@@ -87,7 +96,7 @@ func loginAsTestUser(t *testing.T, page playwright.Page) {
 	require.NoError(t, err, "Failed to click SSO button")
 
 	// Wait for Keycloak login form
-	err = page.WaitForSelector("#username", playwright.PageWaitForSelectorOptions{
+	_, err = page.WaitForSelector("#username", playwright.PageWaitForSelectorOptions{
 		Timeout: playwright.Float(float64(defaultTimeout.Milliseconds())),
 	})
 	require.NoError(t, err, "Keycloak login form not found")
@@ -218,7 +227,7 @@ func TestFrontend_CreateWorkspace(t *testing.T) {
 	require.NoError(t, err)
 
 	// Wait for modal
-	err = page.WaitForSelector("dialog[open]")
+	_, err = page.WaitForSelector("dialog[open]")
 	require.NoError(t, err, "Create workspace modal should open")
 
 	// Fill form
@@ -435,7 +444,7 @@ func TestFrontend_NotificationDropdown(t *testing.T) {
 	require.NoError(t, err)
 
 	// Wait for dropdown to load
-	err = page.WaitForSelector(".notification-dropdown ul[role=listbox]")
+	_, err = page.WaitForSelector(".notification-dropdown ul[role=listbox]")
 	require.NoError(t, err, "Notification dropdown should open")
 }
 
@@ -556,8 +565,10 @@ func TestFrontend_MobileLayout(t *testing.T) {
 
 	// Create page with mobile viewport
 	context, err := suite.browser.NewContext(playwright.BrowserNewContextOptions{
-		ViewportWidth:  playwright.Int(375),
-		ViewportHeight: playwright.Int(667),
+		Viewport: &playwright.Size{
+			Width:  375,
+			Height: 667,
+		},
 	})
 	require.NoError(t, err)
 	defer context.Close()
@@ -587,8 +598,10 @@ func TestFrontend_TabletLayout(t *testing.T) {
 
 	// Create page with tablet viewport
 	context, err := suite.browser.NewContext(playwright.BrowserNewContextOptions{
-		ViewportWidth:  playwright.Int(768),
-		ViewportHeight: playwright.Int(1024),
+		Viewport: &playwright.Size{
+			Width:  768,
+			Height: 1024,
+		},
 	})
 	require.NoError(t, err)
 	defer context.Close()

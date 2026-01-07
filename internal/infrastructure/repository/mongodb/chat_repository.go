@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -23,14 +24,36 @@ import (
 type MongoChatRepository struct {
 	eventStore    appcore.EventStore
 	readModelColl *mongo.Collection
+	logger        *slog.Logger
+}
+
+// ChatRepoOption configures MongoChatRepository.
+type ChatRepoOption func(*MongoChatRepository)
+
+// WithChatRepoLogger sets the logger for chat repository.
+func WithChatRepoLogger(logger *slog.Logger) ChatRepoOption {
+	return func(r *MongoChatRepository) {
+		r.logger = logger
+	}
 }
 
 // NewMongoChatRepository создает новый MongoDB Chat Repository
-func NewMongoChatRepository(eventStore appcore.EventStore, readModelColl *mongo.Collection) *MongoChatRepository {
-	return &MongoChatRepository{
+func NewMongoChatRepository(
+	eventStore appcore.EventStore,
+	readModelColl *mongo.Collection,
+	opts ...ChatRepoOption,
+) *MongoChatRepository {
+	r := &MongoChatRepository{
 		eventStore:    eventStore,
 		readModelColl: readModelColl,
+		logger:        slog.Default(),
 	}
+
+	for _, opt := range opts {
+		opt(r)
+	}
+
+	return r
 }
 
 // Load загружает Chat из event store путем восстановления состояния из событий (event sourcing)
@@ -45,6 +68,10 @@ func (r *MongoChatRepository) Load(ctx context.Context, chatID uuid.UUID) (*chat
 		if errors.Is(err, appcore.ErrAggregateNotFound) {
 			return nil, errs.ErrNotFound
 		}
+		r.logger.ErrorContext(ctx, "failed to load events from event store",
+			slog.String("chat_id", chatID.String()),
+			slog.String("error", err.Error()),
+		)
 		return nil, fmt.Errorf("failed to load events for chat %s: %w", chatID, err)
 	}
 
@@ -56,6 +83,11 @@ func (r *MongoChatRepository) Load(ctx context.Context, chatID uuid.UUID) (*chat
 	chat := &chatdomain.Chat{}
 	for _, domainEvent := range events {
 		if chatErr := chat.Apply(domainEvent); chatErr != nil {
+			r.logger.ErrorContext(ctx, "failed to apply event to chat aggregate",
+				slog.String("chat_id", chatID.String()),
+				slog.String("event_type", domainEvent.EventType()),
+				slog.String("error", chatErr.Error()),
+			)
 			return nil, fmt.Errorf("failed to apply event: %w", chatErr)
 		}
 	}
@@ -82,17 +114,29 @@ func (r *MongoChatRepository) Save(ctx context.Context, chat *chatdomain.Chat) e
 	err := r.eventStore.SaveEvents(ctx, chat.ID().String(), uncommittedEvents, expectedVersion)
 	if err != nil {
 		if errors.Is(err, appcore.ErrConcurrencyConflict) {
+			r.logger.WarnContext(ctx, "concurrency conflict while saving chat events",
+				slog.String("chat_id", chat.ID().String()),
+				slog.Int("expected_version", expectedVersion),
+				slog.Int("events_count", len(uncommittedEvents)),
+			)
 			return errs.ErrConcurrentModification
 		}
+		r.logger.ErrorContext(ctx, "failed to save chat events to event store",
+			slog.String("chat_id", chat.ID().String()),
+			slog.Int("events_count", len(uncommittedEvents)),
+			slog.String("error", err.Error()),
+		)
 		return fmt.Errorf("failed to save events: %w", err)
 	}
 
 	// 2. Обновляем read model (денормализованное представление)
 	err = r.updateReadModel(ctx, chat)
 	if err != nil {
-		// Логируем ошибку, но не падаем (read model можно пересчитать)
-		// TODO: добавить proper logging когда будет настроен logger
-		_ = err // ignore read model update errors
+		r.logger.ErrorContext(ctx, "failed to update chat read model",
+			slog.String("chat_id", chat.ID().String()),
+			slog.String("error", err.Error()),
+		)
+		// Не падаем - read model можно пересчитать
 	}
 
 	// 3. Помечаем события как committed
@@ -112,6 +156,10 @@ func (r *MongoChatRepository) GetEvents(ctx context.Context, chatID uuid.UUID) (
 		if errors.Is(err, appcore.ErrAggregateNotFound) {
 			return nil, errs.ErrNotFound
 		}
+		r.logger.ErrorContext(ctx, "failed to get chat events",
+			slog.String("chat_id", chatID.String()),
+			slog.String("error", err.Error()),
+		)
 		return nil, err
 	}
 
@@ -175,17 +223,36 @@ func (r *MongoChatRepository) updateReadModel(ctx context.Context, chat *chatdom
 type MongoChatReadModelRepository struct {
 	collection *mongo.Collection
 	eventStore appcore.EventStore
+	logger     *slog.Logger
+}
+
+// ChatReadModelRepoOption configures MongoChatReadModelRepository.
+type ChatReadModelRepoOption func(*MongoChatReadModelRepository)
+
+// WithChatReadModelRepoLogger sets the logger for chat read model repository.
+func WithChatReadModelRepoLogger(logger *slog.Logger) ChatReadModelRepoOption {
+	return func(r *MongoChatReadModelRepository) {
+		r.logger = logger
+	}
 }
 
 // NewMongoChatReadModelRepository создает новый MongoDB Chat Read Model Repository
 func NewMongoChatReadModelRepository(
 	collection *mongo.Collection,
 	eventStore appcore.EventStore,
+	opts ...ChatReadModelRepoOption,
 ) *MongoChatReadModelRepository {
-	return &MongoChatReadModelRepository{
+	r := &MongoChatReadModelRepository{
 		collection: collection,
 		eventStore: eventStore,
+		logger:     slog.Default(),
 	}
+
+	for _, opt := range opts {
+		opt(r)
+	}
+
+	return r
 }
 
 // FindByID находит чат по ID из read model
@@ -198,6 +265,12 @@ func (r *MongoChatReadModelRepository) FindByID(ctx context.Context, chatID uuid
 	var doc bson.M
 	err := r.collection.FindOne(ctx, filter).Decode(&doc)
 	if err != nil {
+		if !errors.Is(err, mongo.ErrNoDocuments) {
+			r.logger.ErrorContext(ctx, "failed to find chat by ID",
+				slog.String("chat_id", chatID.String()),
+				slog.String("error", err.Error()),
+			)
+		}
 		return nil, HandleMongoError(err, "chat")
 	}
 
@@ -237,6 +310,10 @@ func (r *MongoChatReadModelRepository) FindByWorkspace(
 
 	cursor, err := r.collection.Find(ctx, filter, opts)
 	if err != nil {
+		r.logger.ErrorContext(ctx, "failed to find chats by workspace",
+			slog.String("workspace_id", workspaceID.String()),
+			slog.String("error", err.Error()),
+		)
 		return nil, HandleMongoError(err, "chats")
 	}
 	defer cursor.Close(ctx)
@@ -245,11 +322,19 @@ func (r *MongoChatReadModelRepository) FindByWorkspace(
 	for cursor.Next(ctx) {
 		var doc bson.M
 		if decodeErr := cursor.Decode(&doc); decodeErr != nil {
+			r.logger.ErrorContext(ctx, "failed to decode chat read model",
+				slog.String("workspace_id", workspaceID.String()),
+				slog.String("error", decodeErr.Error()),
+			)
 			return nil, fmt.Errorf("failed to decode chat read model: %w", decodeErr)
 		}
 
 		rm, docErr := r.documentToReadModel(doc)
 		if docErr != nil {
+			r.logger.WarnContext(ctx, "skipping invalid chat document",
+				slog.String("workspace_id", workspaceID.String()),
+				slog.String("error", docErr.Error()),
+			)
 			continue // Пропускаем некорректные документы
 		}
 
@@ -257,6 +342,10 @@ func (r *MongoChatReadModelRepository) FindByWorkspace(
 	}
 
 	if err = cursor.Err(); err != nil {
+		r.logger.ErrorContext(ctx, "cursor error while reading chats",
+			slog.String("workspace_id", workspaceID.String()),
+			slog.String("error", err.Error()),
+		)
 		return nil, fmt.Errorf("cursor error: %w", err)
 	}
 
@@ -285,6 +374,10 @@ func (r *MongoChatReadModelRepository) FindByParticipant(
 
 	cursor, err := r.collection.Find(ctx, filter, opts)
 	if err != nil {
+		r.logger.ErrorContext(ctx, "failed to find chats by participant",
+			slog.String("user_id", userID.String()),
+			slog.String("error", err.Error()),
+		)
 		return nil, HandleMongoError(err, "chats")
 	}
 	defer cursor.Close(ctx)
@@ -293,11 +386,19 @@ func (r *MongoChatReadModelRepository) FindByParticipant(
 	for cursor.Next(ctx) {
 		var doc bson.M
 		if decodeErr := cursor.Decode(&doc); decodeErr != nil {
+			r.logger.WarnContext(ctx, "failed to decode chat document",
+				slog.String("user_id", userID.String()),
+				slog.String("error", decodeErr.Error()),
+			)
 			continue
 		}
 
 		rm, docErr := r.documentToReadModel(doc)
 		if docErr != nil {
+			r.logger.WarnContext(ctx, "skipping invalid chat document",
+				slog.String("user_id", userID.String()),
+				slog.String("error", docErr.Error()),
+			)
 			continue
 		}
 
@@ -320,6 +421,10 @@ func (r *MongoChatReadModelRepository) Count(ctx context.Context, workspaceID uu
 	filter := bson.M{"workspace_id": workspaceID.String()}
 	count, err := r.collection.CountDocuments(ctx, filter)
 	if err != nil {
+		r.logger.ErrorContext(ctx, "failed to count chats in workspace",
+			slog.String("workspace_id", workspaceID.String()),
+			slog.String("error", err.Error()),
+		)
 		return 0, HandleMongoError(err, "chats")
 	}
 

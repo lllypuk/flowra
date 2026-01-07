@@ -70,7 +70,22 @@
         // Handle HTMX errors
         document.body.addEventListener('htmx:responseError', function(evt) {
             console.error('HTMX Error:', evt.detail);
-            var message = getErrorMessage(evt.detail.xhr);
+            var xhr = evt.detail.xhr;
+
+            // Check for HX-Redirect header (used for auth redirects)
+            var redirectUrl = xhr.getResponseHeader('Hx-Redirect') || xhr.getResponseHeader('HX-Redirect');
+            if (redirectUrl) {
+                window.location.href = redirectUrl;
+                return;
+            }
+
+            // For 401 errors without redirect, go to login
+            if (xhr.status === 401) {
+                window.location.href = '/login';
+                return;
+            }
+
+            var message = getErrorMessage(xhr);
             showToast(message, 'error');
         });
 

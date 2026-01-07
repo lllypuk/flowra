@@ -60,14 +60,8 @@ func (m *MockNotificationTemplateService) ListNotifications(
 	total := len(filtered)
 
 	// Apply pagination
-	start := query.Offset
-	if start > len(filtered) {
-		start = len(filtered)
-	}
-	end := start + query.Limit
-	if end > len(filtered) {
-		end = len(filtered)
-	}
+	start := min(query.Offset, len(filtered))
+	end := min(start+query.Limit, len(filtered))
 
 	return notifapp.ListResult{
 		Notifications: filtered[start:end],

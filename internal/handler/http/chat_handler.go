@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
@@ -476,13 +477,7 @@ func validateCreateChatRequest(req *CreateChatRequest) error {
 	// Validate type if provided
 	if req.Type != "" {
 		validTypes := []string{"discussion", chatTypeTask, chatTypeBug, chatTypeEpic, "direct", "group", "channel"}
-		valid := false
-		for _, t := range validTypes {
-			if req.Type == t {
-				valid = true
-				break
-			}
-		}
+		valid := slices.Contains(validTypes, req.Type)
 		if !valid {
 			return ErrInvalidChatType
 		}
@@ -525,10 +520,7 @@ func parseChatPagination(c echo.Context) (int, int) {
 
 	if limitStr := c.QueryParam("limit"); limitStr != "" {
 		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
-			limit = l
-			if limit > maxChatListLimit {
-				limit = maxChatListLimit
-			}
+			limit = min(l, maxChatListLimit)
 		}
 	}
 
@@ -776,14 +768,8 @@ func (m *MockChatService) ListChats(_ context.Context, query chatapp.ListChatsQu
 
 	// Apply pagination
 	total := len(chats)
-	start := query.Offset
-	if start > total {
-		start = total
-	}
-	end := start + query.Limit
-	if end > total {
-		end = total
-	}
+	start := min(query.Offset, total)
+	end := min(start+query.Limit, total)
 
 	return &chatapp.ListChatsResult{
 		Chats:   chats[start:end],

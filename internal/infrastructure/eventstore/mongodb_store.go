@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -21,19 +22,37 @@ type MongoEventStore struct {
 	database   *mongo.Database
 	collection *mongo.Collection
 	serializer *EventSerializer
+	logger     *slog.Logger
+}
+
+// Option configures MongoEventStore.
+type Option func(*MongoEventStore)
+
+// WithLogger sets the logger for event store.
+func WithLogger(logger *slog.Logger) Option {
+	return func(s *MongoEventStore) {
+		s.logger = logger
+	}
 }
 
 // NewMongoEventStore создает новый MongoDB Event Store
-func NewMongoEventStore(client *mongo.Client, databaseName string) *MongoEventStore {
+func NewMongoEventStore(client *mongo.Client, databaseName string, opts ...Option) *MongoEventStore {
 	database := client.Database(databaseName)
 	collection := database.Collection("events")
 
-	return &MongoEventStore{
+	s := &MongoEventStore{
 		client:     client,
 		database:   database,
 		collection: collection,
 		serializer: NewEventSerializer(),
+		logger:     slog.Default(),
 	}
+
+	for _, opt := range opts {
+		opt(s)
+	}
+
+	return s
 }
 
 // SaveEvents сохраняет события для агрегата с оптимистичной блокировкой
@@ -50,6 +69,10 @@ func (s *MongoEventStore) SaveEvents(
 	// Запускаем сессию для транзакции
 	session, err := s.client.StartSession()
 	if err != nil {
+		s.logger.ErrorContext(ctx, "failed to start MongoDB session for event store",
+			slog.String("aggregate_id", aggregateID),
+			slog.String("error", err.Error()),
+		)
 		return fmt.Errorf("failed to start session: %w", err)
 	}
 	defer session.EndSession(ctx)
@@ -59,16 +82,30 @@ func (s *MongoEventStore) SaveEvents(
 		// 1. Проверяем текущую версию (оптимистичная блокировка)
 		currentVersion, errVersion := s.getCurrentVersion(txCtx, aggregateID)
 		if errVersion != nil {
+			s.logger.ErrorContext(ctx, "failed to get current version for aggregate",
+				slog.String("aggregate_id", aggregateID),
+				slog.String("error", errVersion.Error()),
+			)
 			return nil, errVersion
 		}
 
 		if currentVersion != expectedVersion {
+			s.logger.WarnContext(ctx, "concurrency conflict in event store",
+				slog.String("aggregate_id", aggregateID),
+				slog.Int("expected_version", expectedVersion),
+				slog.Int("current_version", currentVersion),
+			)
 			return nil, appcore.ErrConcurrencyConflict
 		}
 
 		// 2. Сериализуем события
 		documents, errSerialize := s.serializer.SerializeMany(events)
 		if errSerialize != nil {
+			s.logger.ErrorContext(ctx, "failed to serialize events",
+				slog.String("aggregate_id", aggregateID),
+				slog.Int("events_count", len(events)),
+				slog.String("error", errSerialize.Error()),
+			)
 			return nil, errSerialize
 		}
 
@@ -83,13 +120,30 @@ func (s *MongoEventStore) SaveEvents(
 		if errInsert != nil {
 			// Проверяем ошибку дублирования ключа (конфликт concurrency)
 			if mongo.IsDuplicateKeyError(errInsert) {
+				s.logger.WarnContext(ctx, "duplicate key error in event store (concurrency)",
+					slog.String("aggregate_id", aggregateID),
+					slog.Int("events_count", len(events)),
+				)
 				return nil, appcore.ErrConcurrencyConflict
 			}
+			s.logger.ErrorContext(ctx, "failed to insert events to event store",
+				slog.String("aggregate_id", aggregateID),
+				slog.Int("events_count", len(events)),
+				slog.String("error", errInsert.Error()),
+			)
 			return nil, fmt.Errorf("failed to insert events: %w", errInsert)
 		}
 
 		return nil, nil //nolint:nilnil // Transaction success returns nil for both values
 	})
+
+	if err != nil && !errors.Is(err, appcore.ErrConcurrencyConflict) {
+		s.logger.ErrorContext(ctx, "event store transaction failed",
+			slog.String("aggregate_id", aggregateID),
+			slog.Int("events_count", len(events)),
+			slog.String("error", err.Error()),
+		)
+	}
 
 	return err
 }
@@ -101,12 +155,20 @@ func (s *MongoEventStore) LoadEvents(ctx context.Context, aggregateID string) ([
 
 	cursor, err := s.collection.Find(ctx, filter, opts)
 	if err != nil {
+		s.logger.ErrorContext(ctx, "failed to find events in event store",
+			slog.String("aggregate_id", aggregateID),
+			slog.String("error", err.Error()),
+		)
 		return nil, fmt.Errorf("failed to find events: %w", err)
 	}
 	defer cursor.Close(ctx)
 
 	var docs []*EventDocument
 	if err = cursor.All(ctx, &docs); err != nil {
+		s.logger.ErrorContext(ctx, "failed to decode events from event store",
+			slog.String("aggregate_id", aggregateID),
+			slog.String("error", err.Error()),
+		)
 		return nil, fmt.Errorf("failed to decode events: %w", err)
 	}
 
@@ -118,6 +180,11 @@ func (s *MongoEventStore) LoadEvents(ctx context.Context, aggregateID string) ([
 	// Десериализуем события
 	events, err := s.deserializeMany(docs)
 	if err != nil {
+		s.logger.ErrorContext(ctx, "failed to deserialize events from event store",
+			slog.String("aggregate_id", aggregateID),
+			slog.Int("docs_count", len(docs)),
+			slog.String("error", err.Error()),
+		)
 		return nil, err
 	}
 

@@ -1,4 +1,4 @@
-.PHONY: help dev build test lint docker-up docker-down docker-logs migrate-up migrate-down clean deps test-e2e test-e2e-docker test-e2e-short test-all test-repository test-integration test-integration-keycloak
+.PHONY: help dev build test lint docker-up docker-down docker-logs migrate-up migrate-down clean deps test-e2e test-e2e-docker test-e2e-short test-all test-repository test-integration test-integration-keycloak test-e2e-frontend test-e2e-frontend-headed playwright-install
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -41,6 +41,15 @@ test-e2e-docker: ## Run E2E tests with docker-compose MongoDB
 
 test-e2e-short: ## Run E2E tests in short mode
 	go test -tags=e2e -v -short -timeout=5m ./tests/e2e/...
+
+test-e2e-frontend: ## Run frontend E2E tests (requires running server on localhost:8080)
+	go test -tags=e2e -v -timeout=5m ./tests/e2e/frontend/...
+
+test-e2e-frontend-headed: ## Run frontend E2E tests with visible browser (for debugging)
+	HEADLESS=false go test -tags=e2e -v -timeout=5m ./tests/e2e/frontend/...
+
+playwright-install: ## Install Playwright browsers for frontend E2E tests
+	go run github.com/playwright-community/playwright-go/cmd/playwright@latest install chromium
 
 test-all: ## Run all tests (unit + integration + e2e)
 	go test -v -race -coverprofile=coverage.out ./internal/...

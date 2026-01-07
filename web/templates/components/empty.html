@@ -16,7 +16,7 @@
 {{end}}
 
 {{define "empty-workspaces"}}
-{{template "empty" dict "Title" "No workspaces yet" "Message" "Create your first workspace to get started" "Action" (dict "URL" "/workspaces/new" "Label" "+ Create Workspace")}}
+{{template "empty" dict "Title" "No workspaces yet" "Message" "Create your first workspace to get started" "Action" (dict "URL" "#" "HxGet" "/partials/workspace/create-form" "HxTarget" "#modal-container" "Label" "+ Create Workspace")}}
 {{end}}
 
 {{define "empty-chats"}}

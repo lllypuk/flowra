@@ -381,10 +381,7 @@ func (h *NotificationTemplateHandler) parseNotificationPagination(c echo.Context
 
 	if limitStr := c.QueryParam("limit"); limitStr != "" {
 		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
-			limit = l
-			if limit > maxNotificationTemplateListLimit {
-				limit = maxNotificationTemplateListLimit
-			}
+			limit = min(l, maxNotificationTemplateListLimit)
 		}
 	}
 

@@ -2,7 +2,9 @@ package mongodb
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -17,13 +19,34 @@ import (
 // MongoNotificationRepository реализует notificationapp.Repository (application layer interface)
 type MongoNotificationRepository struct {
 	collection *mongo.Collection
+	logger     *slog.Logger
+}
+
+// NotificationRepoOption configures MongoNotificationRepository.
+type NotificationRepoOption func(*MongoNotificationRepository)
+
+// WithNotificationRepoLogger sets the logger for notification repository.
+func WithNotificationRepoLogger(logger *slog.Logger) NotificationRepoOption {
+	return func(r *MongoNotificationRepository) {
+		r.logger = logger
+	}
 }
 
 // NewMongoNotificationRepository создает новый MongoDB Notification Repository
-func NewMongoNotificationRepository(collection *mongo.Collection) *MongoNotificationRepository {
-	return &MongoNotificationRepository{
+func NewMongoNotificationRepository(
+	collection *mongo.Collection,
+	opts ...NotificationRepoOption,
+) *MongoNotificationRepository {
+	r := &MongoNotificationRepository{
 		collection: collection,
+		logger:     slog.Default(),
 	}
+
+	for _, opt := range opts {
+		opt(r)
+	}
+
+	return r
 }
 
 // notificationDocument представляет структуру документа в MongoDB
@@ -97,6 +120,12 @@ func (r *MongoNotificationRepository) FindByID(
 	var doc notificationDocument
 	err := r.collection.FindOne(ctx, filter).Decode(&doc)
 	if err != nil {
+		if !errors.Is(err, mongo.ErrNoDocuments) {
+			r.logger.ErrorContext(ctx, "failed to find notification by ID",
+				slog.String("notification_id", id.String()),
+				slog.String("error", err.Error()),
+			)
+		}
 		return nil, HandleMongoError(err, "notification")
 	}
 
@@ -359,6 +388,14 @@ func (r *MongoNotificationRepository) Save(ctx context.Context, notification *no
 	update := bson.M{"$set": doc}
 
 	_, err := r.collection.UpdateOne(ctx, filter, update, UpsertOptions())
+	if err != nil {
+		r.logger.ErrorContext(ctx, "failed to save notification",
+			slog.String("notification_id", notification.ID().String()),
+			slog.String("user_id", notification.UserID().String()),
+			slog.String("type", string(notification.Type())),
+			slog.String("error", err.Error()),
+		)
+	}
 	return HandleMongoError(err, "notification")
 }
 
@@ -384,6 +421,10 @@ func (r *MongoNotificationRepository) SaveBatch(
 
 	_, err := r.collection.InsertMany(ctx, docs)
 	if err != nil {
+		r.logger.ErrorContext(ctx, "failed to save notifications batch",
+			slog.Int("count", len(notifications)),
+			slog.String("error", err.Error()),
+		)
 		return HandleMongoError(err, "notifications")
 	}
 
@@ -399,6 +440,10 @@ func (r *MongoNotificationRepository) Delete(ctx context.Context, id uuid.UUID) 
 	filter := bson.M{"notification_id": id.String()}
 	result, err := r.collection.DeleteOne(ctx, filter)
 	if err != nil {
+		r.logger.ErrorContext(ctx, "failed to delete notification",
+			slog.String("notification_id", id.String()),
+			slog.String("error", err.Error()),
+		)
 		return HandleMongoError(err, "notification")
 	}
 

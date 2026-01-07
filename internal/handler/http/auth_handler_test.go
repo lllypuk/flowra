@@ -238,7 +238,7 @@ func TestAuthHandler_Me(t *testing.T) {
 		assert.True(t, resp.Success)
 
 		// Check that user data is in the response
-		dataMap, ok := resp.Data.(map[string]interface{})
+		dataMap, ok := resp.Data.(map[string]any)
 		require.True(t, ok, "data should be a map")
 		assert.Equal(t, testUser.Email(), dataMap["email"])
 		assert.Equal(t, testUser.Username(), dataMap["username"])
@@ -312,7 +312,7 @@ func TestAuthHandler_Refresh(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, resp.Success)
 
-		dataMap, ok := resp.Data.(map[string]interface{})
+		dataMap, ok := resp.Data.(map[string]any)
 		require.True(t, ok, "data should be a map")
 		assert.NotEmpty(t, dataMap["access_token"])
 		assert.NotEmpty(t, dataMap["refresh_token"])
