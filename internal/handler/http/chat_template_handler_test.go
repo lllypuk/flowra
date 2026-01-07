@@ -37,6 +37,32 @@ func (m *MockChatTemplateService) AddChat(c *chatapp.Chat) {
 	m.chats[c.ID] = c
 }
 
+// CreateChat implements ChatTemplateService.
+func (m *MockChatTemplateService) CreateChat(
+	_ context.Context,
+	cmd chatapp.CreateChatCommand,
+) (chatapp.Result, error) {
+	c, err := chat.NewChat(cmd.WorkspaceID, cmd.Type, cmd.IsPublic, cmd.CreatedBy)
+	if err != nil {
+		return chatapp.Result{}, err
+	}
+	if cmd.Title != "" {
+		_ = c.Rename(cmd.Title, cmd.CreatedBy)
+	}
+	m.chats[c.ID()] = &chatapp.Chat{
+		ID:          c.ID(),
+		WorkspaceID: c.WorkspaceID(),
+		Type:        c.Type(),
+		Title:       c.Title(),
+		IsPublic:    c.IsPublic(),
+		CreatedBy:   c.CreatedBy(),
+		CreatedAt:   c.CreatedAt(),
+	}
+	result := chatapp.Result{}
+	result.Value = c
+	return result, nil
+}
+
 // GetChat implements ChatTemplateService.
 func (m *MockChatTemplateService) GetChat(
 	_ context.Context,

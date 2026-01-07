@@ -14,7 +14,10 @@ server:
   shutdown_timeout: 10s
 
 mongodb:
-  uri: "mongodb://admin:admin123@localhost:27017"
+  # DEV: No auth for local development with replica set
+  # PROD: Use authenticated URI, e.g.:
+  #   uri: "mongodb://user:password@host:27017/?replicaSet=rs0&authSource=admin"
+  uri: "mongodb://localhost:27017/?replicaSet=rs0"
   database: "flowra"
   timeout: 10s
   max_pool_size: 100

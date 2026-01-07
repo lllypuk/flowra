@@ -10,6 +10,7 @@ import (
 	"github.com/labstack/echo/v4"
 	chatapp "github.com/lllypuk/flowra/internal/application/chat"
 	messageapp "github.com/lllypuk/flowra/internal/application/message"
+	chatdomain "github.com/lllypuk/flowra/internal/domain/chat"
 	"github.com/lllypuk/flowra/internal/domain/message"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 	"github.com/lllypuk/flowra/internal/middleware"
@@ -26,6 +27,9 @@ const (
 // ChatTemplateService defines the interface for chat operations needed by templates.
 // Declared on the consumer side per project guidelines.
 type ChatTemplateService interface {
+	// CreateChat creates a new chat.
+	CreateChat(ctx context.Context, cmd chatapp.CreateChatCommand) (chatapp.Result, error)
+
 	// GetChat gets a chat by ID.
 	GetChat(ctx context.Context, query chatapp.GetChatQuery) (*chatapp.GetChatResult, error)
 
@@ -166,6 +170,7 @@ func (h *ChatTemplateHandler) SetupChatRoutes(e *echo.Echo) {
 	partials.GET("/messages/:message_id/edit", h.MessageEditForm)
 	partials.GET("/chats/:chat_id/participants", h.ParticipantsPartial)
 	partials.GET("/chat/create-form", h.ChatCreateForm)
+	partials.POST("/chat/create", h.ChatCreate)
 	partials.GET("/chats/search", h.ChatSearchPartial)
 }
 
@@ -214,32 +219,57 @@ func (h *ChatTemplateHandler) ChatLayout(c echo.Context) error {
 
 // ChatView renders the chat page with a specific chat selected.
 func (h *ChatTemplateHandler) ChatView(c echo.Context) error {
+	h.logger.Info("ChatView: starting",
+		slog.String("workspace_id_param", c.Param("workspace_id")),
+		slog.String("chat_id_param", c.Param("chat_id")),
+	)
+
 	user := h.getUserView(c)
 	if user == nil {
+		h.logger.Info("ChatView: user not found, redirecting to login")
 		return c.Redirect(http.StatusFound, "/login")
 	}
 
+	h.logger.Info("ChatView: user found", slog.String("user_id", user.ID))
+
 	workspaceID, err := uuid.ParseUUID(c.Param("workspace_id"))
 	if err != nil {
+		h.logger.Error("ChatView: failed to parse workspace_id", slog.String("error", err.Error()))
 		return h.renderNotFound(c)
 	}
 
 	chatID, err := uuid.ParseUUID(c.Param("chat_id"))
 	if err != nil {
+		h.logger.Error("ChatView: failed to parse chat_id", slog.String("error", err.Error()))
 		return h.renderNotFound(c)
 	}
 
 	userID, err := uuid.ParseUUID(user.ID)
 	if err != nil {
+		h.logger.Error("ChatView: failed to parse user_id", slog.String("error", err.Error()))
 		return h.renderNotFound(c)
 	}
+
+	h.logger.Info("ChatView: loading chat data",
+		slog.String("chat_id", chatID.String()),
+		slog.String("user_id", userID.String()),
+	)
 
 	// Load chat data
 	chatData, err := h.loadChatViewData(c.Request().Context(), chatID, userID)
 	if err != nil {
-		h.logger.Error("failed to load chat", slog.String("error", err.Error()))
+		h.logger.Error("ChatView: failed to load chat",
+			slog.String("chat_id", chatID.String()),
+			slog.String("user_id", userID.String()),
+			slog.String("error", err.Error()),
+		)
 		return h.renderNotFound(c)
 	}
+
+	h.logger.Info("ChatView: chat loaded successfully",
+		slog.String("chat_id", chatData.ID),
+		slog.String("chat_title", chatData.Title),
+	)
 
 	workspaceData := WorkspaceViewData{
 		ID: workspaceID.String(),
@@ -542,6 +572,87 @@ func (h *ChatTemplateHandler) ChatCreateForm(c echo.Context) error {
 	return h.renderPartial(c, "chat/create-form", data)
 }
 
+// ChatCreate handles POST /partials/chat/create and returns HTML partial.
+func (h *ChatTemplateHandler) ChatCreate(c echo.Context) error {
+	user := h.getUserView(c)
+	if user == nil {
+		//nolint:canonicalheader // HTMX uses non-canonical header names
+		c.Response().Header().Set("HX-Retarget", "#modal-container")
+		return c.String(http.StatusUnauthorized, `<div class="error">Unauthorized</div>`)
+	}
+
+	if h.chatService == nil {
+		//nolint:canonicalheader // HTMX uses non-canonical header names
+		c.Response().Header().Set("HX-Retarget", "#modal-container")
+		return c.String(http.StatusServiceUnavailable, `<div class="error">Service unavailable</div>`)
+	}
+
+	userID, err := uuid.ParseUUID(user.ID)
+	if err != nil {
+		//nolint:canonicalheader // HTMX uses non-canonical header names
+		c.Response().Header().Set("HX-Retarget", "#modal-container")
+		return c.String(http.StatusBadRequest, `<div class="error">Invalid user ID</div>`)
+	}
+
+	workspaceIDStr := c.FormValue("workspace_id")
+	workspaceID, err := uuid.ParseUUID(workspaceIDStr)
+	if err != nil {
+		//nolint:canonicalheader // HTMX uses non-canonical header names
+		c.Response().Header().Set("HX-Retarget", "#modal-container")
+		return c.String(http.StatusBadRequest, `<div class="error">Invalid workspace ID</div>`)
+	}
+
+	name := c.FormValue("name")
+	if name == "" {
+		//nolint:canonicalheader // HTMX uses non-canonical header names
+		c.Response().Header().Set("HX-Retarget", "#modal-container")
+		return c.String(http.StatusBadRequest, `<div class="error">Chat name is required</div>`)
+	}
+
+	chatType := c.FormValue("type")
+	if chatType == "" {
+		chatType = "discussion"
+	}
+
+	isPublic := c.FormValue("is_public") == "true"
+
+	// Parse chat type to domain type
+	var domainType chatdomain.Type
+	switch chatType {
+	case "task":
+		domainType = chatdomain.TypeTask
+	case "bug":
+		domainType = chatdomain.TypeBug
+	case "epic":
+		domainType = chatdomain.TypeEpic
+	default:
+		domainType = chatdomain.TypeDiscussion
+	}
+
+	cmd := chatapp.CreateChatCommand{
+		WorkspaceID: workspaceID,
+		Title:       name,
+		Type:        domainType,
+		IsPublic:    isPublic,
+		CreatedBy:   userID,
+	}
+
+	result, err := h.chatService.CreateChat(c.Request().Context(), cmd)
+	if err != nil {
+		h.logger.Error("failed to create chat", slog.String("error", err.Error()))
+		//nolint:canonicalheader // HTMX uses non-canonical header names
+		c.Response().Header().Set("HX-Retarget", "#modal-container")
+		return c.String(http.StatusInternalServerError, `<div class="error">Failed to create chat</div>`)
+	}
+
+	// Redirect to the new chat
+	chatURL := "/workspaces/" + workspaceID.String() + "/chats/" + result.Value.ID().String()
+
+	//nolint:canonicalheader // HTMX uses non-canonical header names
+	c.Response().Header().Set("HX-Redirect", chatURL)
+	return c.NoContent(http.StatusOK)
+}
+
 // ChatSearchPartial returns filtered chat list based on search query.
 func (h *ChatTemplateHandler) ChatSearchPartial(c echo.Context) error {
 	user := h.getUserView(c)
@@ -649,7 +760,19 @@ func (h *ChatTemplateHandler) render(c echo.Context, template, title string, dat
 		Data:  data,
 	}
 
-	return c.Render(http.StatusOK, template, pageData)
+	h.logger.Info("ChatTemplateHandler.render: rendering template",
+		slog.String("template", template),
+		slog.String("title", title),
+	)
+
+	err := c.Render(http.StatusOK, template, pageData)
+	if err != nil {
+		h.logger.Error("ChatTemplateHandler.render: failed to render template",
+			slog.String("template", template),
+			slog.String("error", err.Error()),
+		)
+	}
+	return err
 }
 
 func (h *ChatTemplateHandler) renderPartial(c echo.Context, template string, data any) error {

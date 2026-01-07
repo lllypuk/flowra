@@ -4,52 +4,52 @@ import "time"
 
 // BaseEvent базовая реализация DomainEvent
 type BaseEvent struct {
-	eventType     string
-	aggregateID   string
-	aggregateType string
-	occurredAt    time.Time
-	version       int
-	metadata      Metadata
+	EType         string    `json:"event_type" bson:"event_type"`
+	AggID         string    `json:"aggregate_id" bson:"aggregate_id"`
+	AggType       string    `json:"aggregate_type" bson:"aggregate_type"`
+	OccAt         time.Time `json:"occurred_at" bson:"occurred_at"`
+	Ver           int       `json:"version" bson:"version"`
+	EventMetadata Metadata  `json:"metadata" bson:"metadata"`
 }
 
 // NewBaseEvent создает новое базовое событие
 func NewBaseEvent(eventType, aggregateID, aggregateType string, version int, metadata Metadata) BaseEvent {
 	return BaseEvent{
-		eventType:     eventType,
-		aggregateID:   aggregateID,
-		aggregateType: aggregateType,
-		occurredAt:    time.Now(),
-		version:       version,
-		metadata:      metadata,
+		EType:         eventType,
+		AggID:         aggregateID,
+		AggType:       aggregateType,
+		OccAt:         time.Now(),
+		Ver:           version,
+		EventMetadata: metadata,
 	}
 }
 
 // EventType возвращает тип события
 func (e BaseEvent) EventType() string {
-	return e.eventType
+	return e.EType
 }
 
 // AggregateID возвращает ID агрегата
 func (e BaseEvent) AggregateID() string {
-	return e.aggregateID
+	return e.AggID
 }
 
 // AggregateType возвращает тип агрегата
 func (e BaseEvent) AggregateType() string {
-	return e.aggregateType
+	return e.AggType
 }
 
 // OccurredAt возвращает время возникновения события
 func (e BaseEvent) OccurredAt() time.Time {
-	return e.occurredAt
+	return e.OccAt
 }
 
 // Version возвращает версию агрегата
 func (e BaseEvent) Version() int {
-	return e.version
+	return e.Ver
 }
 
 // Metadata возвращает метаданные события
 func (e BaseEvent) Metadata() Metadata {
-	return e.metadata
+	return e.EventMetadata
 }

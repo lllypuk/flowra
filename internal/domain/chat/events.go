@@ -26,13 +26,13 @@ const (
 
 // Created событие создания чата
 type Created struct {
-	event.BaseEvent
+	event.BaseEvent `bson:",inline"`
 
-	WorkspaceID uuid.UUID
-	Type        Type
-	IsPublic    bool
-	CreatedBy   uuid.UUID
-	CreatedAt   time.Time
+	WorkspaceID uuid.UUID `json:"workspace_id" bson:"workspace_id"`
+	Type        Type      `json:"type" bson:"type"`
+	IsPublic    bool      `json:"is_public" bson:"is_public"`
+	CreatedBy   uuid.UUID `json:"created_by" bson:"created_by"`
+	CreatedAt   time.Time `json:"created_at" bson:"created_at"`
 }
 
 // NewChatCreated создает новое событие ChatCreated
@@ -56,11 +56,11 @@ func NewChatCreated(
 
 // ParticipantAdded событие добавления участника
 type ParticipantAdded struct {
-	event.BaseEvent
+	event.BaseEvent `bson:",inline"`
 
-	UserID   uuid.UUID
-	Role     Role
-	JoinedAt time.Time
+	UserID   uuid.UUID `json:"user_id" bson:"user_id"`
+	Role     Role      `json:"role" bson:"role"`
+	JoinedAt time.Time `json:"joined_at" bson:"joined_at"`
 }
 
 // NewParticipantAdded создает новое событие ParticipantAdded
@@ -81,9 +81,9 @@ func NewParticipantAdded(
 
 // ParticipantRemoved событие удаления участника
 type ParticipantRemoved struct {
-	event.BaseEvent
+	event.BaseEvent `bson:",inline"`
 
-	UserID uuid.UUID
+	UserID uuid.UUID `json:"user_id" bson:"user_id"`
 }
 
 // NewParticipantRemoved создает новое событие ParticipantRemoved
@@ -100,11 +100,11 @@ func NewParticipantRemoved(
 
 // TypeChanged событие изменения типа чата
 type TypeChanged struct {
-	event.BaseEvent
+	event.BaseEvent `bson:",inline"`
 
-	OldType Type
-	NewType Type
-	Title   string
+	OldType Type   `json:"old_type" bson:"old_type"`
+	NewType Type   `json:"new_type" bson:"new_type"`
+	Title   string `json:"title" bson:"title"`
 }
 
 // NewChatTypeChanged создает новое событие ChatTypeChanged
@@ -127,11 +127,11 @@ func NewChatTypeChanged(
 
 // StatusChanged событие изменения статуса
 type StatusChanged struct {
-	event.BaseEvent
+	event.BaseEvent `bson:",inline"`
 
-	OldStatus string
-	NewStatus string
-	ChangedBy uuid.UUID
+	OldStatus string    `json:"old_status" bson:"old_status"`
+	NewStatus string    `json:"new_status" bson:"new_status"`
+	ChangedBy uuid.UUID `json:"changed_by" bson:"changed_by"`
 }
 
 // NewStatusChanged создает событие StatusChanged
@@ -158,10 +158,10 @@ func NewStatusChanged(
 
 // UserAssigned событие назначения пользователя
 type UserAssigned struct {
-	event.BaseEvent
+	event.BaseEvent `bson:",inline"`
 
-	AssigneeID uuid.UUID
-	AssignedBy uuid.UUID
+	AssigneeID uuid.UUID `json:"assignee_id" bson:"assignee_id"`
+	AssignedBy uuid.UUID `json:"assigned_by" bson:"assigned_by"`
 }
 
 // NewUserAssigned создает событие UserAssigned
@@ -185,10 +185,10 @@ func NewUserAssigned(
 
 // AssigneeRemoved событие снятия assignee
 type AssigneeRemoved struct {
-	event.BaseEvent
+	event.BaseEvent `bson:",inline"`
 
-	PreviousAssigneeID uuid.UUID
-	RemovedBy          uuid.UUID
+	PreviousAssigneeID uuid.UUID `json:"previous_assignee_id" bson:"previous_assignee_id"`
+	RemovedBy          uuid.UUID `json:"removed_by" bson:"removed_by"`
 }
 
 // NewAssigneeRemoved создает событие AssigneeRemoved
@@ -212,11 +212,11 @@ func NewAssigneeRemoved(
 
 // PrioritySet событие установки приоритета
 type PrioritySet struct {
-	event.BaseEvent
+	event.BaseEvent `bson:",inline"`
 
-	OldPriority string
-	NewPriority string
-	ChangedBy   uuid.UUID
+	OldPriority string    `json:"old_priority" bson:"old_priority"`
+	NewPriority string    `json:"new_priority" bson:"new_priority"`
+	ChangedBy   uuid.UUID `json:"changed_by" bson:"changed_by"`
 }
 
 // NewPrioritySet создает событие PrioritySet
@@ -243,11 +243,11 @@ func NewPrioritySet(
 
 // DueDateSet событие установки дедлайна
 type DueDateSet struct {
-	event.BaseEvent
+	event.BaseEvent `bson:",inline"`
 
-	OldDueDate *time.Time
-	NewDueDate time.Time
-	ChangedBy  uuid.UUID
+	OldDueDate *time.Time `json:"old_due_date,omitempty" bson:"old_due_date,omitempty"`
+	NewDueDate time.Time  `json:"new_due_date" bson:"new_due_date"`
+	ChangedBy  uuid.UUID  `json:"changed_by" bson:"changed_by"`
 }
 
 // NewDueDateSet создает событие DueDateSet
@@ -275,10 +275,10 @@ func NewDueDateSet(
 
 // DueDateRemoved событие снятия дедлайна
 type DueDateRemoved struct {
-	event.BaseEvent
+	event.BaseEvent `bson:",inline"`
 
-	PreviousDueDate time.Time
-	RemovedBy       uuid.UUID
+	PreviousDueDate time.Time `json:"previous_due_date" bson:"previous_due_date"`
+	RemovedBy       uuid.UUID `json:"removed_by" bson:"removed_by"`
 }
 
 // NewDueDateRemoved создает событие DueDateRemoved
@@ -304,11 +304,11 @@ func NewDueDateRemoved(
 
 // Renamed событие переименования чата
 type Renamed struct {
-	event.BaseEvent
+	event.BaseEvent `bson:",inline"`
 
-	OldTitle  string
-	NewTitle  string
-	RenamedBy uuid.UUID
+	OldTitle  string    `json:"old_title" bson:"old_title"`
+	NewTitle  string    `json:"new_title" bson:"new_title"`
+	RenamedBy uuid.UUID `json:"renamed_by" bson:"renamed_by"`
 }
 
 // NewChatRenamed создает событие Renamed
@@ -335,11 +335,11 @@ func NewChatRenamed(
 
 // SeveritySet событие установки severity для Bug
 type SeveritySet struct {
-	event.BaseEvent
+	event.BaseEvent `bson:",inline"`
 
-	OldSeverity string
-	NewSeverity string
-	ChangedBy   uuid.UUID
+	OldSeverity string    `json:"old_severity" bson:"old_severity"`
+	NewSeverity string    `json:"new_severity" bson:"new_severity"`
+	ChangedBy   uuid.UUID `json:"changed_by" bson:"changed_by"`
 }
 
 // NewSeveritySet создает событие SeveritySet
@@ -366,10 +366,10 @@ func NewSeveritySet(
 
 // Deleted событие удаления чата (soft delete)
 type Deleted struct {
-	event.BaseEvent
+	event.BaseEvent `bson:",inline"`
 
-	DeletedBy uuid.UUID
-	DeletedAt time.Time
+	DeletedBy uuid.UUID `json:"deleted_by" bson:"deleted_by"`
+	DeletedAt time.Time `json:"deleted_at" bson:"deleted_at"`
 }
 
 // NewChatDeleted создает событие Deleted

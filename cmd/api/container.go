@@ -710,6 +710,17 @@ type chatTemplateServiceAdapter struct {
 	chatService *service.ChatService
 }
 
+// CreateChat implements ChatTemplateService.
+func (a *chatTemplateServiceAdapter) CreateChat(
+	ctx context.Context,
+	cmd chatapp.CreateChatCommand,
+) (chatapp.Result, error) {
+	if a.chatService == nil {
+		return chatapp.Result{}, chatapp.ErrChatNotFound
+	}
+	return a.chatService.CreateChat(ctx, cmd)
+}
+
 // GetChat implements ChatTemplateService.
 func (a *chatTemplateServiceAdapter) GetChat(
 	ctx context.Context,

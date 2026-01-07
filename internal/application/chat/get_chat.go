@@ -10,6 +10,11 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
+// debug logging - remove after debugging
+func debugf(format string, args ...any) {
+	fmt.Printf("[DEBUG GetChat] "+format+"\n", args...)
+}
+
 // GetChatUseCase - use case для получения чата
 type GetChatUseCase struct {
 	eventStore appcore.EventStore
@@ -24,19 +29,36 @@ func NewGetChatUseCase(eventStore appcore.EventStore) *GetChatUseCase {
 
 // Execute - выполнить запрос
 func (uc *GetChatUseCase) Execute(ctx context.Context, query GetChatQuery) (*GetChatResult, error) {
+	debugf("Execute: starting, chatID=%s, requestedBy=%s", query.ChatID, query.RequestedBy)
+
 	// 1. Validate input
 	if err := uc.validate(query); err != nil {
+		debugf("Execute: validation failed: %v", err)
 		return nil, fmt.Errorf("validation failed: %w", err)
 	}
 
 	// 2. Load chat from event store
+	debugf("Execute: loading aggregate")
 	chatAggregate, err := loadAggregate(ctx, uc.eventStore, query.ChatID)
 	if err != nil {
+		debugf("Execute: failed to load aggregate: %v", err)
 		return nil, fmt.Errorf("failed to load chat: %w", err)
 	}
 
+	debugf("Execute: aggregate loaded, id=%s, isPublic=%v, participantsCount=%d",
+		chatAggregate.ID(), chatAggregate.IsPublic(), len(chatAggregate.Participants()))
+
+	// Log participants
+	for i, p := range chatAggregate.Participants() {
+		debugf("Execute: participant[%d]: userID=%s, role=%s", i, p.UserID(), p.Role())
+	}
+
 	// 3. Check access permissions (public or participant)
-	if !chatAggregate.IsPublic() && !chatAggregate.HasParticipant(query.RequestedBy) {
+	hasParticipant := chatAggregate.HasParticipant(query.RequestedBy)
+	debugf("Execute: checking access - isPublic=%v, hasParticipant=%v", chatAggregate.IsPublic(), hasParticipant)
+
+	if !chatAggregate.IsPublic() && !hasParticipant {
+		debugf("Execute: access denied")
 		return nil, errors.New("access denied: user is not a participant")
 	}
 
@@ -46,6 +68,7 @@ func (uc *GetChatUseCase) Execute(ctx context.Context, query GetChatQuery) (*Get
 	// 5. Calculate permissions
 	permissions := calculatePermissions(chatAggregate, query.RequestedBy)
 
+	debugf("Execute: success")
 	return &GetChatResult{
 		Chat:        chatDTO,
 		Permissions: permissions,

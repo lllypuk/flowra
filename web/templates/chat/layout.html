@@ -28,7 +28,7 @@
         {{template "navbar" .}}
 
         <div
-            class="chat-layout {{if and .Data.Chat .Data.Chat.IsTaskChat}}with-task-sidebar{{end}}"
+            class="chat-layout {{with .Data.Chat}}{{if .IsTaskChat}}with-task-sidebar{{end}}{{end}}"
             hx-ext="ws"
             ws-connect="/ws?token={{.Data.Token}}"
         >
@@ -79,11 +79,11 @@
             </main>
 
             <!-- Task Sidebar (for task/bug/epic chats) -->
-            {{if and .Data.Chat .Data.Chat.IsTaskChat}}
+            {{with .Data.Chat}}{{if .IsTaskChat}}
             <aside class="task-sidebar">
-                {{template "chat/task-sidebar" .}}
+                {{template "chat/task-sidebar" $}}
             </aside>
-            {{end}}
+            {{end}}{{end}}
 
             <!-- Modal container -->
             <div id="modal-container"></div>

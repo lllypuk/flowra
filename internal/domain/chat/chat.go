@@ -2,6 +2,7 @@ package chat
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"time"
 
@@ -591,6 +592,8 @@ func (c *Chat) Apply(e event.DomainEvent) error {
 }
 
 func (c *Chat) applyCreated(evt *Created) {
+	fmt.Printf("[DEBUG Chat.applyCreated] AggregateID=%s, WorkspaceID=%s, Type=%s, IsPublic=%v, CreatedBy=%s, Version=%d\n",
+		evt.AggregateID(), evt.WorkspaceID, evt.Type, evt.IsPublic, evt.CreatedBy, evt.Version())
 	c.id = uuid.UUID(evt.AggregateID())
 	c.workspaceID = evt.WorkspaceID
 	c.chatType = evt.Type
@@ -598,11 +601,16 @@ func (c *Chat) applyCreated(evt *Created) {
 	c.createdBy = evt.CreatedBy
 	c.createdAt = evt.CreatedAt
 	c.version = evt.Version()
+	fmt.Printf("[DEBUG Chat.applyCreated] After apply: id=%s, workspaceID=%s, type=%s, isPublic=%v\n",
+		c.id, c.workspaceID, c.chatType, c.isPublic)
 }
 
 func (c *Chat) applyParticipantAdded(evt *ParticipantAdded) {
+	fmt.Printf("[DEBUG Chat.applyParticipantAdded] UserID=%s, Role=%s, Version=%d\n",
+		evt.UserID, evt.Role, evt.Version())
 	c.addParticipantInternal(evt.UserID, evt.Role)
 	c.version = evt.Version()
+	fmt.Printf("[DEBUG Chat.applyParticipantAdded] After apply: participantsCount=%d\n", len(c.participants))
 }
 
 // applyParticipantRemoved удаляет участника.

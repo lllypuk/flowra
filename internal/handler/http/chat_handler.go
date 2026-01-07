@@ -50,21 +50,21 @@ var (
 
 // CreateChatRequest represents the request to create a chat.
 type CreateChatRequest struct {
-	Name           string      `json:"name"`
-	Type           string      `json:"type"`
-	IsPublic       bool        `json:"is_public"`
-	ParticipantIDs []uuid.UUID `json:"participant_ids"`
+	Name           string      `json:"name" form:"name"`
+	Type           string      `json:"type" form:"type"`
+	IsPublic       bool        `json:"is_public" form:"is_public"`
+	ParticipantIDs []uuid.UUID `json:"participant_ids" form:"participant_ids"`
 }
 
 // UpdateChatRequest represents the request to update a chat.
 type UpdateChatRequest struct {
-	Name string `json:"name"`
+	Name string `json:"name" form:"name"`
 }
 
 // AddParticipantRequest represents the request to add a participant.
 type AddParticipantRequest struct {
-	UserID uuid.UUID `json:"user_id"`
-	Role   string    `json:"role"`
+	UserID uuid.UUID `json:"user_id" form:"user_id"`
+	Role   string    `json:"role" form:"role"`
 }
 
 // ChatResponse represents a chat in API responses.

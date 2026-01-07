@@ -11,10 +11,11 @@
         </header>
 
         <form
-            hx-post="/api/v1/workspaces/{{.WorkspaceID}}/chats"
-            hx-target="#chat-list"
-            hx-swap="afterbegin"
-            hx-on::after-request="if(event.detail.successful) { this.closest('dialog').remove(); }"
+            id="create-chat-form"
+            method="post"
+            action="/partials/chat/create"
+            hx-post="/partials/chat/create"
+            hx-boost="false"
         >
             <input type="hidden" name="workspace_id" value="{{.WorkspaceID}}" />
 
@@ -96,6 +97,11 @@
 
 <script>
     (function () {
+        // Ensure HTMX processes the dynamically loaded form
+        if (typeof htmx !== 'undefined') {
+            htmx.process(document.getElementById('create-chat-modal'));
+        }
+
         var visibilityRadios = document.querySelectorAll(
             'input[name="is_public"]',
         );
