@@ -8,7 +8,7 @@
         <hgroup>
             <h3>{{.Name}}</h3>
             {{if .Description}}
-            <p>{{truncate .Description 100}}</p>
+            <p>{{.Description | truncate 100}}</p>
             {{end}}
         </hgroup>
     </header>
