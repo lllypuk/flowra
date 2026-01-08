@@ -2,26 +2,26 @@ package user
 
 import "github.com/lllypuk/flowra/internal/domain/uuid"
 
-// Query базовый интерфейс запросов
+// Query bazovyy interface zaprosov
 type Query interface {
 	QueryName() string
 }
 
-// GetUserQuery - получение пользователя по ID
+// GetUserQuery - retrieval user po ID
 type GetUserQuery struct {
 	UserID uuid.UUID
 }
 
 func (q GetUserQuery) QueryName() string { return "GetUser" }
 
-// GetUserByUsernameQuery - поиск по username
+// GetUserByUsernameQuery - search po username
 type GetUserByUsernameQuery struct {
 	Username string
 }
 
 func (q GetUserByUsernameQuery) QueryName() string { return "GetUserByUsername" }
 
-// ListUsersQuery - список пользователей с пагинацией
+// ListUsersQuery - list users s paginatsiey
 type ListUsersQuery struct {
 	Offset int
 	Limit  int

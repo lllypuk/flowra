@@ -14,7 +14,7 @@ const (
 	EventTypeNotificationDeleted = "notification.deleted"
 )
 
-// Created событие создания уведомления
+// Created event creating uvedomleniya
 type Created struct {
 	event.BaseEvent
 
@@ -25,7 +25,7 @@ type Created struct {
 	ResourceID string
 }
 
-// NewNotificationCreated создает новое событие NotificationCreated
+// NewNotificationCreated creates new event NotificationCreated
 func NewNotificationCreated(
 	notificationID, userID uuid.UUID,
 	typ Type,
@@ -48,7 +48,7 @@ func NewNotificationCreated(
 	}
 }
 
-// Read событие прочтения уведомления
+// Read event prochteniya uvedomleniya
 type Read struct {
 	event.BaseEvent
 
@@ -56,7 +56,7 @@ type Read struct {
 	ReadAt time.Time
 }
 
-// NewNotificationRead создает новое событие NotificationRead
+// NewNotificationRead creates new event NotificationRead
 func NewNotificationRead(
 	notificationID, userID uuid.UUID,
 	readAt time.Time,
@@ -69,14 +69,14 @@ func NewNotificationRead(
 	}
 }
 
-// Deleted событие удаления уведомления
+// Deleted event removing uvedomleniya
 type Deleted struct {
 	event.BaseEvent
 
 	UserID uuid.UUID
 }
 
-// NewNotificationDeleted создает новое событие NotificationDeleted
+// NewNotificationDeleted creates new event NotificationDeleted
 func NewNotificationDeleted(
 	notificationID, userID uuid.UUID,
 	metadata event.Metadata,

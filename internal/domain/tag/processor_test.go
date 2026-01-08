@@ -32,7 +32,7 @@ func TestProcessTags_EntityCreation(t *testing.T) {
 			name:       "create task",
 			entityType: "",
 			tags: []tag.ParsedTag{
-				{Key: "task", Value: "Реализовать авторизацию"},
+				{Key: "task", Value: "Implement authorization"},
 			},
 			wantCommands: 1,
 			wantErrors:   0,
@@ -40,14 +40,14 @@ func TestProcessTags_EntityCreation(t *testing.T) {
 				taskCmd, ok := cmd.(tag.CreateTaskCommand)
 				assert.True(t, ok, "command should be CreateTaskCommand")
 				assert.Equal(t, chatID, taskCmd.ChatID)
-				assert.Equal(t, "Реализовать авторизацию", taskCmd.Title)
+				assert.Equal(t, "Implement authorization", taskCmd.Title)
 			},
 		},
 		{
 			name:       "create bug",
 			entityType: "",
 			tags: []tag.ParsedTag{
-				{Key: "bug", Value: "Ошибка при логине"},
+				{Key: "bug", Value: "Login error"},
 			},
 			wantCommands: 1,
 			wantErrors:   0,
@@ -55,14 +55,14 @@ func TestProcessTags_EntityCreation(t *testing.T) {
 				bugCmd, ok := cmd.(tag.CreateBugCommand)
 				assert.True(t, ok, "command should be CreateBugCommand")
 				assert.Equal(t, chatID, bugCmd.ChatID)
-				assert.Equal(t, "Ошибка при логине", bugCmd.Title)
+				assert.Equal(t, "Login error", bugCmd.Title)
 			},
 		},
 		{
 			name:       "create epic",
 			entityType: "",
 			tags: []tag.ParsedTag{
-				{Key: "epic", Value: "Новая фича"},
+				{Key: "epic", Value: "New feature"},
 			},
 			wantCommands: 1,
 			wantErrors:   0,
@@ -70,21 +70,21 @@ func TestProcessTags_EntityCreation(t *testing.T) {
 				epicCmd, ok := cmd.(tag.CreateEpicCommand)
 				assert.True(t, ok, "command should be CreateEpicCommand")
 				assert.Equal(t, chatID, epicCmd.ChatID)
-				assert.Equal(t, "Новая фича", epicCmd.Title)
+				assert.Equal(t, "New feature", epicCmd.Title)
 			},
 		},
 		{
 			name:       "task with leading/trailing spaces",
 			entityType: "",
 			tags: []tag.ParsedTag{
-				{Key: "task", Value: "   Много пробелов   "},
+				{Key: "task", Value: "   Many spaces   "},
 			},
 			wantCommands: 1,
 			wantErrors:   0,
 			checkCommand: func(t *testing.T, cmd tag.Command) {
 				taskCmd, ok := cmd.(tag.CreateTaskCommand)
 				assert.True(t, ok)
-				assert.Equal(t, "Много пробелов", taskCmd.Title, "spaces should be trimmed")
+				assert.Equal(t, "Many spaces", taskCmd.Title, "spaces should be trimmed")
 			},
 		},
 		{

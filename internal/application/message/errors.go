@@ -116,12 +116,12 @@ var (
 )
 
 const (
-	// MaxContentLength максимальная длина сообщения (10k символов)
+	// MaxContentLength is the maximum message length (10k characters)
 	MaxContentLength = 10000
-	// MaxFileSize максимальный размер файла (10 MB)
+	// MaxFileSize is the maximum file size (10 MB)
 	MaxFileSize = 10 << 20
-	// DefaultLimit количество сообщений по умолчанию
+	// DefaultLimit is the default number of messages to fetch
 	DefaultLimit = 50
-	// MaxLimit максимальное количество сообщений за раз
+	// MaxLimit is the maximum number of messages per request
 	MaxLimit = 100
 )

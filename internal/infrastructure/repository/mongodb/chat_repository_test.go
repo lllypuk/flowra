@@ -20,8 +20,8 @@ import (
 
 // Helper functions
 
-// setupTestRepository создает тестовые репозитории с mock event store
-// Возвращает также readModelColl для тестов read model
+// setupTestRepository creates testovye repozitorii s mock event store
+// returns takzhe readModelColl for tests read model
 func setupTestRepository(t *testing.T) (
 	*mongodb.MongoChatRepository,
 	*mongodb.MongoChatReadModelRepository,
@@ -32,11 +32,11 @@ func setupTestRepository(t *testing.T) (
 
 	eventStore := mocks.NewMockEventStore()
 
-	// Используем testcontainers для MongoDB 6
+	// ispolzuem testcontainers for MongoDB 6
 	_, db := testutil.SetupTestMongoDBWithClient(t)
 	readModelColl := db.Collection("chat_read_model")
 
-	// Создаем индексы
+	// Creating indexes
 	ctx := context.Background()
 	indexModel := mongo.IndexModel{
 		Keys: bson.D{{Key: "chat_id", Value: 1}},
@@ -49,17 +49,17 @@ func setupTestRepository(t *testing.T) (
 	return commandRepo, queryRepo, eventStore, readModelColl
 }
 
-// addChatToReadModel добавляет чат в read model для тестов
+// addChatToReadModel adds chat in read model for tests
 func addChatToReadModel(ctx context.Context, t *testing.T, coll *mongo.Collection, c *chat.Chat) {
 	t.Helper()
 
-	// Преобразуем участников в строки
+	// preobrazuem participants in stroki
 	participantStrs := make([]string, len(c.Participants()))
 	for i, p := range c.Participants() {
 		participantStrs[i] = p.UserID().String()
 	}
 
-	// Формируем документ для read model
+	// formiruem dokument for read model
 	doc := bson.M{
 		"chat_id":      c.ID().String(),
 		"workspace_id": c.WorkspaceID().String(),
@@ -70,7 +70,7 @@ func addChatToReadModel(ctx context.Context, t *testing.T, coll *mongo.Collectio
 		"participants": participantStrs,
 	}
 
-	// Добавляем дополнительные поля для typed чатов
+	// dobavlyaem dopolnitelnye fields for typed chats
 	if c.Type() != chat.TypeDiscussion {
 		doc["title"] = c.Title()
 		doc["status"] = c.Status()
@@ -95,7 +95,7 @@ func addChatToReadModel(ctx context.Context, t *testing.T, coll *mongo.Collectio
 
 // Tests for MongoChatRepository (Command Repository)
 
-// TestMongoChatRepository_Load_SaveRoundTrip проверяет сохранение и загрузку чата
+// TestMongoChatRepository_Load_SaveRoundTrip checks save and load chat
 func TestMongoChatRepository_Load_SaveRoundTrip(t *testing.T) {
 	commandRepo, _, eventStore, _ := setupTestRepository(t)
 	if commandRepo == nil {
@@ -104,13 +104,13 @@ func TestMongoChatRepository_Load_SaveRoundTrip(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Создаем новый чат
+	// Creating New chat
 	workspaceID := uuid.NewUUID()
 	userID := uuid.NewUUID()
 	c, err := chat.NewChat(workspaceID, chat.TypeDiscussion, false, userID)
 	require.NoError(t, err)
 
-	// Добавляем участника
+	// dobavlyaem participant
 	err = c.AddParticipant(uuid.NewUUID(), chat.RoleMember)
 	require.NoError(t, err)
 
@@ -118,7 +118,7 @@ func TestMongoChatRepository_Load_SaveRoundTrip(t *testing.T) {
 	err = commandRepo.Save(ctx, c)
 	require.NoError(t, err)
 
-	// Проверяем, что события были сохранены
+	// Checking, that event byli sav
 	assert.NotEmpty(t, eventStore.AllEvents()[c.ID().String()])
 
 	// Load
@@ -132,7 +132,7 @@ func TestMongoChatRepository_Load_SaveRoundTrip(t *testing.T) {
 	assert.Len(t, loaded.Participants(), len(c.Participants()))
 }
 
-// TestMongoChatRepository_Load_NotFound проверяет обработку missing chat
+// TestMongoChatRepository_Load_NotFound checks work missing chat
 func TestMongoChatRepository_Load_NotFound(t *testing.T) {
 	commandRepo, _, _, _ := setupTestRepository(t)
 	if commandRepo == nil {
@@ -145,7 +145,7 @@ func TestMongoChatRepository_Load_NotFound(t *testing.T) {
 	assert.Equal(t, errs.ErrNotFound, err)
 }
 
-// TestMongoChatRepository_Load_InvalidInput проверяет валидацию входных данных
+// TestMongoChatRepository_Load_InvalidInput checks valid vhodnyh dannyh
 func TestMongoChatRepository_Load_InvalidInput(t *testing.T) {
 	commandRepo, _, _, _ := setupTestRepository(t)
 	if commandRepo == nil {
@@ -159,7 +159,7 @@ func TestMongoChatRepository_Load_InvalidInput(t *testing.T) {
 	assert.Equal(t, errs.ErrInvalidInput, err)
 }
 
-// TestMongoChatRepository_Save_NoChanges проверяет сохранение без изменений
+// TestMongoChatRepository_Save_NoChanges checks save bez izmeneniy
 func TestMongoChatRepository_Save_NoChanges(t *testing.T) {
 	commandRepo, _, eventStore, _ := setupTestRepository(t)
 	if commandRepo == nil {
@@ -187,7 +187,7 @@ func TestMongoChatRepository_Save_NoChanges(t *testing.T) {
 	assert.Equal(t, eventCountBefore, eventCountAfter)
 }
 
-// TestMongoChatRepository_Save_InvalidInput проверяет валидацию nil чата
+// TestMongoChatRepository_Save_InvalidInput checks valid nil chat
 func TestMongoChatRepository_Save_InvalidInput(t *testing.T) {
 	commandRepo, _, _, _ := setupTestRepository(t)
 	if commandRepo == nil {
@@ -196,12 +196,12 @@ func TestMongoChatRepository_Save_InvalidInput(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Nil chat
+	// nil chat
 	err := commandRepo.Save(ctx, nil)
 	assert.Equal(t, errs.ErrInvalidInput, err)
 }
 
-// TestMongoChatRepository_GetEvents проверяет получение событий чата
+// TestMongoChatRepository_GetEvents checks retrieval events chat
 func TestMongoChatRepository_GetEvents(t *testing.T) {
 	commandRepo, _, _, _ := setupTestRepository(t)
 	if commandRepo == nil {
@@ -210,21 +210,21 @@ func TestMongoChatRepository_GetEvents(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Создаем чат
+	// Creating chat
 	workspaceID := uuid.NewUUID()
 	userID := uuid.NewUUID()
 	c, err := chat.NewChat(workspaceID, chat.TypeDiscussion, false, userID)
 	require.NoError(t, err)
 
-	// Добавляем участника
+	// dobavlyaem participant
 	err = c.AddParticipant(uuid.NewUUID(), chat.RoleMember)
 	require.NoError(t, err)
 
-	// Сохраняем
+	// Saving
 	err = commandRepo.Save(ctx, c)
 	require.NoError(t, err)
 
-	// Получаем события
+	// poluchaem event
 	events, err := commandRepo.GetEvents(ctx, c.ID())
 	require.NoError(t, err)
 
@@ -232,7 +232,7 @@ func TestMongoChatRepository_GetEvents(t *testing.T) {
 	assert.GreaterOrEqual(t, len(events), 2) // ChatCreated + ParticipantAdded
 }
 
-// TestMongoChatRepository_GetEvents_NotFound проверяет обработку несуществующего чата
+// TestMongoChatRepository_GetEvents_NotFound checks work existing chat
 func TestMongoChatRepository_GetEvents_NotFound(t *testing.T) {
 	commandRepo, _, _, _ := setupTestRepository(t)
 	if commandRepo == nil {
@@ -245,7 +245,7 @@ func TestMongoChatRepository_GetEvents_NotFound(t *testing.T) {
 	assert.Equal(t, errs.ErrNotFound, err)
 }
 
-// TestMongoChatRepository_GetEvents_InvalidInput проверяет валидацию входных данных
+// TestMongoChatRepository_GetEvents_InvalidInput checks valid vhodnyh dannyh
 func TestMongoChatRepository_GetEvents_InvalidInput(t *testing.T) {
 	commandRepo, _, _, _ := setupTestRepository(t)
 	if commandRepo == nil {
@@ -258,7 +258,7 @@ func TestMongoChatRepository_GetEvents_InvalidInput(t *testing.T) {
 	assert.Equal(t, errs.ErrInvalidInput, err)
 }
 
-// TestMongoChatRepository_TypedChats проверяет работу с typed чатами</parameter>
+// TestMongoChatRepository_TypedChats checks work s typed chatami</parameter>
 func TestMongoChatRepository_TypedChats(t *testing.T) {
 	commandRepo, _, _, _ := setupTestRepository(t)
 	if commandRepo == nil {
@@ -270,7 +270,7 @@ func TestMongoChatRepository_TypedChats(t *testing.T) {
 	workspaceID := uuid.NewUUID()
 	userID := uuid.NewUUID()
 
-	// Тестируем Task чат - создаем Discussion и конвертируем в Task
+	// Testing Task chat - creating Discussion and convert to Task
 	taskChat, err := chat.NewChat(workspaceID, chat.TypeDiscussion, false, userID)
 	require.NoError(t, err)
 
@@ -291,7 +291,7 @@ func TestMongoChatRepository_TypedChats(t *testing.T) {
 	assert.Equal(t, "Medium", loaded.Priority())
 }
 
-// TestMongoChatRepository_ParticipantManagement проверяет управление участниками
+// TestMongoChatRepository_participantManagement checks upravlenie uchastnikami
 func TestMongoChatRepository_ParticipantManagement(t *testing.T) {
 	commandRepo, _, _, _ := setupTestRepository(t)
 	if commandRepo == nil {
@@ -306,7 +306,7 @@ func TestMongoChatRepository_ParticipantManagement(t *testing.T) {
 	c, err := chat.NewChat(workspaceID, chat.TypeDiscussion, false, userID)
 	require.NoError(t, err)
 
-	// Добавляем участников
+	// dobavlyaem participants
 	participant1 := uuid.NewUUID()
 	participant2 := uuid.NewUUID()
 
@@ -319,23 +319,23 @@ func TestMongoChatRepository_ParticipantManagement(t *testing.T) {
 	err = commandRepo.Save(ctx, c)
 	require.NoError(t, err)
 
-	// Загружаем и проверяем
+	// Loading and checking
 	loaded, err := commandRepo.Load(ctx, c.ID())
 	require.NoError(t, err)
 
-	assert.Len(t, loaded.Participants(), 3) // Создатель + 2 участника
+	assert.Len(t, loaded.Participants(), 3) // sozdatel + 2 participant
 	assert.True(t, loaded.HasParticipant(userID))
 	assert.True(t, loaded.HasParticipant(participant1))
 	assert.True(t, loaded.HasParticipant(participant2))
 
-	// Удаляем участника из загруженного агрегата
+	// udalyaem participant from load aggregate
 	err = loaded.RemoveParticipant(participant1)
 	require.NoError(t, err)
 
 	err = commandRepo.Save(ctx, loaded)
 	require.NoError(t, err)
 
-	// Загружаем снова
+	// Loading snova
 	loaded, err = commandRepo.Load(ctx, c.ID())
 	require.NoError(t, err)
 
@@ -343,7 +343,7 @@ func TestMongoChatRepository_ParticipantManagement(t *testing.T) {
 	assert.False(t, loaded.HasParticipant(participant1))
 }
 
-// TestMongoChatRepository_ChatStatusChanges проверяет изменение статуса чата
+// TestMongoChatRepository_ChatStatusChanges checks change status chat
 func TestMongoChatRepository_ChatStatusChanges(t *testing.T) {
 	commandRepo, _, _, _ := setupTestRepository(t)
 	if commandRepo == nil {
@@ -355,7 +355,7 @@ func TestMongoChatRepository_ChatStatusChanges(t *testing.T) {
 	workspaceID := uuid.NewUUID()
 	userID := uuid.NewUUID()
 
-	// Создаем Discussion чат и конвертируем в Task
+	// Creating Discussion chat and convert to Task
 	c, err := chat.NewChat(workspaceID, chat.TypeDiscussion, false, userID)
 	require.NoError(t, err)
 
@@ -365,20 +365,20 @@ func TestMongoChatRepository_ChatStatusChanges(t *testing.T) {
 	err = commandRepo.Save(ctx, c)
 	require.NoError(t, err)
 
-	// Изменяем статус
+	// izmenyaem status
 	err = c.ChangeStatus("In Progress", userID)
 	require.NoError(t, err)
 
 	err = commandRepo.Save(ctx, c)
 	require.NoError(t, err)
 
-	// Загружаем и проверяем
+	// Loading and checking
 	loaded, err := commandRepo.Load(ctx, c.ID())
 	require.NoError(t, err)
 
 	assert.Equal(t, "In Progress", loaded.Status())
 
-	// Изменяем приоритет используя loaded агрегат
+	// izmenyaem prioritet ispolzuya loaded aggregate
 	err = loaded.SetPriority("High", userID)
 	require.NoError(t, err)
 
@@ -393,7 +393,7 @@ func TestMongoChatRepository_ChatStatusChanges(t *testing.T) {
 
 // Tests for MongoChatReadModelRepository (Query Repository)
 
-// TestMongoChatReadModelRepository_FindByWorkspace проверяет поиск чатов по workspace
+// TestMongoChatReadModelRepository_FindByWorkspace checks search chats po workspace
 func TestMongoChatReadModelRepository_FindByWorkspace(t *testing.T) {
 	_, queryRepo, _, readModelColl := setupTestRepository(t)
 	if queryRepo == nil {
@@ -405,7 +405,7 @@ func TestMongoChatReadModelRepository_FindByWorkspace(t *testing.T) {
 	workspaceID := uuid.NewUUID()
 	userID := uuid.NewUUID()
 
-	// Создаем несколько чатов в одном workspace
+	// Creating several chats in odnom workspace
 	for range 3 {
 		c, err := chat.NewChat(workspaceID, chat.TypeDiscussion, false, userID)
 		require.NoError(t, err)
@@ -413,7 +413,7 @@ func TestMongoChatReadModelRepository_FindByWorkspace(t *testing.T) {
 		addChatToReadModel(ctx, t, readModelColl, c)
 	}
 
-	// Создаем чат в другом workspace
+	// Creating chat in drugom workspace
 	otherWorkspaceID := uuid.NewUUID()
 	otherChat, err := chat.NewChat(otherWorkspaceID, chat.TypeDiscussion, false, userID)
 	require.NoError(t, err)
@@ -436,7 +436,7 @@ func TestMongoChatReadModelRepository_FindByWorkspace(t *testing.T) {
 	}
 }
 
-// TestMongoChatReadModelRepository_FindByWorkspace_WithTypeFilter проверяет фильтрацию по типу
+// TestMongoChatReadModelRepository_FindByWorkspace_WithTypeFilter checks filtratsiyu po tipu
 func TestMongoChatReadModelRepository_FindByWorkspace_WithTypeFilter(t *testing.T) {
 	_, queryRepo, _, readModelColl := setupTestRepository(t)
 	if queryRepo == nil {
@@ -448,7 +448,7 @@ func TestMongoChatReadModelRepository_FindByWorkspace_WithTypeFilter(t *testing.
 	workspaceID := uuid.NewUUID()
 	userID := uuid.NewUUID()
 
-	// Создаем чаты разных типов
+	// Creating chaty raznyh tipov
 	taskChat, err := chat.NewChat(workspaceID, chat.TypeTask, false, userID)
 	require.NoError(t, err)
 	addChatToReadModel(ctx, t, readModelColl, taskChat)
@@ -472,7 +472,7 @@ func TestMongoChatReadModelRepository_FindByWorkspace_WithTypeFilter(t *testing.
 	assert.Equal(t, chat.TypeTask, chats[0].Type)
 }
 
-// TestMongoChatReadModelRepository_FindByParticipant проверяет поиск чатов по участнику
+// TestMongoChatReadModelRepository_FindByparticipant checks search chats po uchastniku
 func TestMongoChatReadModelRepository_FindByParticipant(t *testing.T) {
 	_, queryRepo, _, readModelColl := setupTestRepository(t)
 	if queryRepo == nil {
@@ -484,21 +484,21 @@ func TestMongoChatReadModelRepository_FindByParticipant(t *testing.T) {
 	workspaceID := uuid.NewUUID()
 	userID := uuid.NewUUID()
 
-	// Создаем несколько чатов и добавляем пользователя
+	// Creating several chats and dobavlyaem user
 	participantID := uuid.NewUUID()
 
 	for range 3 {
 		c, err := chat.NewChat(workspaceID, chat.TypeTask, false, userID)
 		require.NoError(t, err)
 
-		// Добавляем участника
+		// dobavlyaem participant
 		err = c.AddParticipant(participantID, chat.RoleMember)
 		require.NoError(t, err)
 
 		addChatToReadModel(ctx, t, readModelColl, c)
 	}
 
-	// Добавляем чат без этого участника
+	// dobavlyaem chat bez it is participant
 	otherChat, err := chat.NewChat(workspaceID, chat.TypeTask, false, userID)
 	require.NoError(t, err)
 	addChatToReadModel(ctx, t, readModelColl, otherChat)
@@ -510,7 +510,7 @@ func TestMongoChatReadModelRepository_FindByParticipant(t *testing.T) {
 	assert.Len(t, chats, 3)
 }
 
-// TestMongoChatReadModelRepository_Count проверяет подсчет чатов
+// TestMongoChatReadModelRepository_Count checks podschet chats
 func TestMongoChatReadModelRepository_Count(t *testing.T) {
 	_, queryRepo, _, readModelColl := setupTestRepository(t)
 	if queryRepo == nil {
@@ -522,7 +522,7 @@ func TestMongoChatReadModelRepository_Count(t *testing.T) {
 	workspaceID := uuid.NewUUID()
 	userID := uuid.NewUUID()
 
-	// Добавляем чаты в workspace
+	// dobavlyaem chaty in workspace
 	for range 5 {
 		c, err := chat.NewChat(workspaceID, chat.TypeTask, false, userID)
 		require.NoError(t, err)
@@ -530,7 +530,7 @@ func TestMongoChatReadModelRepository_Count(t *testing.T) {
 		addChatToReadModel(ctx, t, readModelColl, c)
 	}
 
-	// Добавляем чат в другой workspace
+	// dobavlyaem chat in drugoy workspace
 	otherWorkspaceID := uuid.NewUUID()
 	otherChat, err := chat.NewChat(otherWorkspaceID, chat.TypeTask, false, userID)
 	require.NoError(t, err)
@@ -543,7 +543,7 @@ func TestMongoChatReadModelRepository_Count(t *testing.T) {
 	assert.GreaterOrEqual(t, count, 5)
 }
 
-// TestMongoChatRepository_InputValidation проверяет валидацию входных данных
+// TestMongoChatRepository_InputValidation checks valid vhodnyh dannyh
 func TestMongoChatRepository_InputValidation(t *testing.T) {
 	commandRepo, queryRepo, _, _ := setupTestRepository(t)
 	if commandRepo == nil || queryRepo == nil {
@@ -552,29 +552,29 @@ func TestMongoChatRepository_InputValidation(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Load с нулевым UUID
+	// Load s nulevym UUID
 	_, err := commandRepo.Load(ctx, uuid.UUID(""))
 	assert.Equal(t, errs.ErrInvalidInput, err)
 
-	// Save с nil чатом
+	// Save s nil chatom
 	err = commandRepo.Save(ctx, nil)
 	assert.Equal(t, errs.ErrInvalidInput, err)
 
-	// FindByWorkspace с нулевым UUID
+	// FindByWorkspace s nulevym UUID
 	filters := chatapp.Filters{Offset: 0, Limit: 10}
 	_, err = queryRepo.FindByWorkspace(ctx, uuid.UUID(""), filters)
 	assert.Equal(t, errs.ErrInvalidInput, err)
 
-	// FindByParticipant с нулевым UUID
+	// FindByparticipant s nulevym UUID
 	_, err = queryRepo.FindByParticipant(ctx, uuid.UUID(""), 0, 10)
 	assert.Equal(t, errs.ErrInvalidInput, err)
 
-	// Count с нулевым UUID
+	// Count s nulevym UUID
 	_, err = queryRepo.Count(ctx, uuid.UUID(""))
 	assert.Equal(t, errs.ErrInvalidInput, err)
 }
 
-// TestMongoChatRepository_ComplexWorkflow проверяет сложный workflow создания и обновления чата
+// TestMongoChatRepository_ComplexWorkflow checks slozhnyy workflow creating and updating chat
 func TestMongoChatRepository_ComplexWorkflow(t *testing.T) {
 	commandRepo, queryRepo, _, _ := setupTestRepository(t)
 	if commandRepo == nil || queryRepo == nil {
@@ -586,7 +586,7 @@ func TestMongoChatRepository_ComplexWorkflow(t *testing.T) {
 	workspaceID := uuid.NewUUID()
 	creatorID := uuid.NewUUID()
 
-	// 1. Создаем Discussion чат и конвертируем в Task
+	// 1. Creating Discussion chat and convert to Task
 	c, err := chat.NewChat(workspaceID, chat.TypeDiscussion, false, creatorID)
 	require.NoError(t, err)
 
@@ -599,7 +599,7 @@ func TestMongoChatRepository_ComplexWorkflow(t *testing.T) {
 	err = commandRepo.Save(ctx, c)
 	require.NoError(t, err)
 
-	// Назначаем исполнителя
+	// value ispolnitelya
 	assigneeID := uuid.NewUUID()
 	err = c.AssignUser(&assigneeID, creatorID)
 	require.NoError(t, err)
@@ -607,7 +607,7 @@ func TestMongoChatRepository_ComplexWorkflow(t *testing.T) {
 	err = commandRepo.Save(ctx, c)
 	require.NoError(t, err)
 
-	// Устанавливаем срок
+	// Setting srok
 	dueDate := time.Now().Add(24 * time.Hour)
 	err = c.SetDueDate(&dueDate, creatorID)
 	require.NoError(t, err)
@@ -615,7 +615,7 @@ func TestMongoChatRepository_ComplexWorkflow(t *testing.T) {
 	err = commandRepo.Save(ctx, c)
 	require.NoError(t, err)
 
-	// Добавляем участников
+	// dobavlyaem participants
 	participantID := uuid.NewUUID()
 	err = c.AddParticipant(participantID, chat.RoleMember)
 	require.NoError(t, err)
@@ -623,28 +623,28 @@ func TestMongoChatRepository_ComplexWorkflow(t *testing.T) {
 	err = commandRepo.Save(ctx, c)
 	require.NoError(t, err)
 
-	// Изменяем статус
+	// izmenyaem status
 	err = c.ChangeStatus("In Progress", creatorID)
 	require.NoError(t, err)
 
 	err = commandRepo.Save(ctx, c)
 	require.NoError(t, err)
 
-	// Загружаем финальное состояние
+	// Loading finalnoe state
 	loaded, err := commandRepo.Load(ctx, c.ID())
 	require.NoError(t, err)
 
-	// Проверяем все изменения
+	// Checking all changing
 	assert.Equal(t, chat.TypeTask, loaded.Type())
 	assert.Equal(t, "Complex Task", loaded.Title())
 	assert.Equal(t, "Medium", loaded.Priority())
 	assert.Equal(t, "In Progress", loaded.Status())
 	assert.Equal(t, assigneeID, *loaded.AssigneeID())
-	assert.Len(t, loaded.Participants(), 2) // Создатель + участник
+	assert.Len(t, loaded.Participants(), 2) // sozdatel + uchastnik
 
-	// Проверяем события
+	// Checking event
 	events, err := commandRepo.GetEvents(ctx, c.ID())
 	require.NoError(t, err)
 
-	assert.GreaterOrEqual(t, len(events), 6) // Минимум 6 событий для такого workflow
+	assert.GreaterOrEqual(t, len(events), 6) // minimum 6 events for takogo workflow
 }

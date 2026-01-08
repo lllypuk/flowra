@@ -8,12 +8,12 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/notification"
 )
 
-// ListNotificationsUseCase обрабатывает получение списка notifications пользователя
+// ListNotificationsUseCase handles retrieval list notifications user
 type ListNotificationsUseCase struct {
 	notificationRepo Repository
 }
 
-// NewListNotificationsUseCase создает новый use case для получения списка notifications
+// NewListNotificationsUseCase creates New use case for receiv list notifications
 func NewListNotificationsUseCase(
 	notificationRepo Repository,
 ) *ListNotificationsUseCase {
@@ -22,17 +22,17 @@ func NewListNotificationsUseCase(
 	}
 }
 
-// Execute выполняет получение списка notifications пользователя
+// Execute performs retrieval list notifications user
 func (uc *ListNotificationsUseCase) Execute(
 	ctx context.Context,
 	query ListNotificationsQuery,
 ) (ListResult, error) {
-	// Валидация
+	// validation
 	if err := uc.validate(query); err != nil {
 		return ListResult{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Дефолтные значения для пагинации
+	// defoltnye values for paginatsii
 	limit := query.Limit
 	if limit == 0 || limit > 100 {
 		limit = 50
@@ -40,7 +40,7 @@ func (uc *ListNotificationsUseCase) Execute(
 
 	offset := max(query.Offset, 0)
 
-	// Получение notifications
+	// retrieval notifications
 	var notifications []*notification.Notification
 	var err error
 
@@ -63,13 +63,13 @@ func (uc *ListNotificationsUseCase) Execute(
 		return ListResult{}, fmt.Errorf("failed to fetch notifications: %w", err)
 	}
 
-	// Получаем общее количество (для пагинации)
+	// poluchaem obschee count (for paginatsii)
 	var totalCount int
 	if query.UnreadOnly {
 		totalCount, err = uc.notificationRepo.CountUnreadByUserID(ctx, query.UserID)
 	} else {
-		// Для всех notifications мы можем использовать длину результата
-		// В реальном приложении здесь должен быть отдельный метод CountByUserID
+		// for all notifications my mozhem user length result
+		// in realnom prilozhenii zdes dolzhen byt otdelnyy method CountByUserID
 		totalCount = len(notifications)
 	}
 
@@ -85,7 +85,7 @@ func (uc *ListNotificationsUseCase) Execute(
 	}, nil
 }
 
-// validate проверяет валидность запроса
+// validate validates request
 func (uc *ListNotificationsUseCase) validate(query ListNotificationsQuery) error {
 	if err := appcore.ValidateUUID("userID", query.UserID); err != nil {
 		return err

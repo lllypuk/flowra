@@ -6,12 +6,12 @@ import (
 	domainUUID "github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// CreateChatCommandBuilder создает builder для CreateChatCommand
+// CreateChatCommandBuilder creates builder for CreateChatCommand
 type CreateChatCommandBuilder struct {
 	cmd chatapp.CreateChatCommand
 }
 
-// NewCreateChatCommandBuilder создает новый builder
+// NewCreateChatCommandBuilder creates New builder
 func NewCreateChatCommandBuilder() *CreateChatCommandBuilder {
 	return &CreateChatCommandBuilder{
 		cmd: chatapp.CreateChatCommand{
@@ -23,53 +23,53 @@ func NewCreateChatCommandBuilder() *CreateChatCommandBuilder {
 	}
 }
 
-// WithWorkspace устанавливает workspace ID (accepts domain UUID)
+// WithWorkspace sets workspace ID (accepts domain UUID)
 func (b *CreateChatCommandBuilder) WithWorkspace(id domainUUID.UUID) *CreateChatCommandBuilder {
 	b.cmd.WorkspaceID = id
 	return b
 }
 
-// WithTitle устанавливает title
+// WithTitle sets title
 func (b *CreateChatCommandBuilder) WithTitle(title string) *CreateChatCommandBuilder {
 	b.cmd.Title = title
 	return b
 }
 
-// AsTask устанавливает тип как Task
+// AsTask sets type as Task
 func (b *CreateChatCommandBuilder) AsTask() *CreateChatCommandBuilder {
 	b.cmd.Type = chat.TypeTask
 	return b
 }
 
-// AsBug устанавливает тип как Bug
+// AsBug sets type as Bug
 func (b *CreateChatCommandBuilder) AsBug() *CreateChatCommandBuilder {
 	b.cmd.Type = chat.TypeBug
 	return b
 }
 
-// AsEpic устанавливает тип как Epic
+// AsEpic sets type as Epic
 func (b *CreateChatCommandBuilder) AsEpic() *CreateChatCommandBuilder {
 	b.cmd.Type = chat.TypeEpic
 	return b
 }
 
-// CreatedBy устанавливает creator ID (accepts domain UUID)
+// CreatedBy sets creator ID (accepts domain UUID)
 func (b *CreateChatCommandBuilder) CreatedBy(userID domainUUID.UUID) *CreateChatCommandBuilder {
 	b.cmd.CreatedBy = userID
 	return b
 }
 
-// Build возвращает готовую команду
+// Build returns prepared command
 func (b *CreateChatCommandBuilder) Build() chatapp.CreateChatCommand {
 	return b.cmd
 }
 
-// AddParticipantCommandBuilder создает builder для AddParticipantCommand
+// AddParticipantCommandBuilder creates builder for AddParticipantCommand
 type AddParticipantCommandBuilder struct {
 	cmd chatapp.AddParticipantCommand
 }
 
-// NewAddParticipantCommandBuilder создает новый builder (accepts domain UUID)
+// NewAddParticipantCommandBuilder creates New builder (accepts domain UUID)
 func NewAddParticipantCommandBuilder(chatID domainUUID.UUID, userID domainUUID.UUID) *AddParticipantCommandBuilder {
 	return &AddParticipantCommandBuilder{
 		cmd: chatapp.AddParticipantCommand{
@@ -81,29 +81,29 @@ func NewAddParticipantCommandBuilder(chatID domainUUID.UUID, userID domainUUID.U
 	}
 }
 
-// WithRole устанавливает роль
+// WithRole sets role
 func (b *AddParticipantCommandBuilder) WithRole(role chat.Role) *AddParticipantCommandBuilder {
 	b.cmd.Role = role
 	return b
 }
 
-// AddedBy устанавливает ID пользователя, добавившего участника (accepts domain UUID)
+// AddedBy sets ID user, who added participant (accepts domain UUID)
 func (b *AddParticipantCommandBuilder) AddedBy(userID domainUUID.UUID) *AddParticipantCommandBuilder {
 	b.cmd.AddedBy = userID
 	return b
 }
 
-// Build возвращает готовую команду
+// Build returns prepared command
 func (b *AddParticipantCommandBuilder) Build() chatapp.AddParticipantCommand {
 	return b.cmd
 }
 
-// ConvertToTaskCommandBuilder создает builder для ConvertToTaskCommand
+// ConvertToTaskCommandBuilder creates builder for ConvertToTaskCommand
 type ConvertToTaskCommandBuilder struct {
 	cmd chatapp.ConvertToTaskCommand
 }
 
-// NewConvertToTaskCommandBuilder создает новый builder (accepts domain UUID)
+// NewConvertToTaskCommandBuilder creates New builder (accepts domain UUID)
 func NewConvertToTaskCommandBuilder(chatID domainUUID.UUID) *ConvertToTaskCommandBuilder {
 	return &ConvertToTaskCommandBuilder{
 		cmd: chatapp.ConvertToTaskCommand{
@@ -114,29 +114,29 @@ func NewConvertToTaskCommandBuilder(chatID domainUUID.UUID) *ConvertToTaskComman
 	}
 }
 
-// WithTitle устанавливает title
+// WithTitle sets title
 func (b *ConvertToTaskCommandBuilder) WithTitle(title string) *ConvertToTaskCommandBuilder {
 	b.cmd.Title = title
 	return b
 }
 
-// ConvertedBy устанавливает ID пользователя, конвертировавшего чат (accepts domain UUID)
+// ConvertedBy sets ID user, who converted chat (accepts domain UUID)
 func (b *ConvertToTaskCommandBuilder) ConvertedBy(userID domainUUID.UUID) *ConvertToTaskCommandBuilder {
 	b.cmd.ConvertedBy = userID
 	return b
 }
 
-// Build возвращает готовую команду
+// Build returns prepared command
 func (b *ConvertToTaskCommandBuilder) Build() chatapp.ConvertToTaskCommand {
 	return b.cmd
 }
 
-// ChangeStatusCommandBuilder создает builder для ChangeStatusCommand
+// ChangeStatusCommandBuilder creates builder for ChangeStatusCommand
 type ChangeStatusCommandBuilder struct {
 	cmd chatapp.ChangeStatusCommand
 }
 
-// NewChangeStatusCommandBuilder создает новый builder (accepts domain UUID)
+// NewChangeStatusCommandBuilder creates New builder (accepts domain UUID)
 func NewChangeStatusCommandBuilder(chatID domainUUID.UUID) *ChangeStatusCommandBuilder {
 	return &ChangeStatusCommandBuilder{
 		cmd: chatapp.ChangeStatusCommand{
@@ -147,29 +147,29 @@ func NewChangeStatusCommandBuilder(chatID domainUUID.UUID) *ChangeStatusCommandB
 	}
 }
 
-// WithStatus устанавливает статус
+// WithStatus sets status
 func (b *ChangeStatusCommandBuilder) WithStatus(status string) *ChangeStatusCommandBuilder {
 	b.cmd.Status = status
 	return b
 }
 
-// ChangedBy устанавливает ID пользователя, изменившего статус (accepts domain UUID)
+// ChangedBy sets ID user, who changed status (accepts domain UUID)
 func (b *ChangeStatusCommandBuilder) ChangedBy(userID domainUUID.UUID) *ChangeStatusCommandBuilder {
 	b.cmd.ChangedBy = userID
 	return b
 }
 
-// Build возвращает готовую команду
+// Build returns prepared command
 func (b *ChangeStatusCommandBuilder) Build() chatapp.ChangeStatusCommand {
 	return b.cmd
 }
 
-// AssignUserCommandBuilder создает builder для AssignUserCommand
+// AssignUserCommandBuilder creates builder for AssignUserCommand
 type AssignUserCommandBuilder struct {
 	cmd chatapp.AssignUserCommand
 }
 
-// NewAssignUserCommandBuilder создает новый builder (accepts domain UUID)
+// NewAssignUserCommandBuilder creates New builder (accepts domain UUID)
 func NewAssignUserCommandBuilder(chatID domainUUID.UUID) *AssignUserCommandBuilder {
 	return &AssignUserCommandBuilder{
 		cmd: chatapp.AssignUserCommand{
@@ -180,19 +180,19 @@ func NewAssignUserCommandBuilder(chatID domainUUID.UUID) *AssignUserCommandBuild
 	}
 }
 
-// AssignTo устанавливает ID assignee (accepts domain UUID)
+// AssignTo sets ID assignee (accepts domain UUID)
 func (b *AssignUserCommandBuilder) AssignTo(userID domainUUID.UUID) *AssignUserCommandBuilder {
 	b.cmd.AssigneeID = &userID
 	return b
 }
 
-// AssignedBy устанавливает ID пользователя, который назначил (accepts domain UUID)
+// AssignedBy sets ID user, who assigned (accepts domain UUID)
 func (b *AssignUserCommandBuilder) AssignedBy(userID domainUUID.UUID) *AssignUserCommandBuilder {
 	b.cmd.AssignedBy = userID
 	return b
 }
 
-// Build возвращает готовую команду
+// Build returns prepared command
 func (b *AssignUserCommandBuilder) Build() chatapp.AssignUserCommand {
 	return b.cmd
 }

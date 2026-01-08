@@ -10,26 +10,26 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/task"
 )
 
-// ChangeStatusUseCase обрабатывает изменение статуса задачи
+// ChangeStatusUseCase handles change status tasks
 type ChangeStatusUseCase struct {
 	eventStore appcore.EventStore
 }
 
-// NewChangeStatusUseCase создает новый use case для изменения статуса
+// NewChangeStatusUseCase creates New use case for changing status
 func NewChangeStatusUseCase(eventStore appcore.EventStore) *ChangeStatusUseCase {
 	return &ChangeStatusUseCase{
 		eventStore: eventStore,
 	}
 }
 
-// Execute изменяет статус задачи
+// Execute izmenyaet status tasks
 func (uc *ChangeStatusUseCase) Execute(ctx context.Context, cmd ChangeStatusCommand) (TaskResult, error) {
-	// 1. Валидация команды
+	// 1. validation commands
 	if err := uc.validate(cmd); err != nil {
 		return TaskResult{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// 2. Загрузка событий из Event Store
+	// 2. Loading events from Event Store
 	events, err := uc.eventStore.LoadEvents(ctx, cmd.TaskID.String())
 	if err != nil {
 		if errors.Is(err, appcore.ErrAggregateNotFound) {
@@ -42,11 +42,11 @@ func (uc *ChangeStatusUseCase) Execute(ctx context.Context, cmd ChangeStatusComm
 		return TaskResult{}, ErrTaskNotFound
 	}
 
-	// 3. Восстановление агрегата из событий
+	// 3. Restoration aggregate from events
 	aggregate := task.NewTaskAggregate(cmd.TaskID)
 	aggregate.ReplayEvents(events)
 
-	// 4. Выполнение бизнес-операции
+	// 4. performing biznes-operatsii
 	err = aggregate.ChangeStatus(cmd.NewStatus, cmd.ChangedBy)
 	if err != nil {
 		if errors.Is(err, errs.ErrInvalidTransition) {
@@ -55,10 +55,10 @@ func (uc *ChangeStatusUseCase) Execute(ctx context.Context, cmd ChangeStatusComm
 		return TaskResult{}, fmt.Errorf("failed to change status: %w", err)
 	}
 
-	// 5. Получение только новых событий
+	// 5. retrieval only New events
 	newEvents := aggregate.UncommittedEvents()
 
-	// Если новых событий нет (идемпотентность), возвращаем успех
+	// if no new events (idempotent), return success
 	if len(newEvents) == 0 {
 		return TaskResult{
 			TaskID:  cmd.TaskID,
@@ -69,7 +69,7 @@ func (uc *ChangeStatusUseCase) Execute(ctx context.Context, cmd ChangeStatusComm
 		}, nil
 	}
 
-	// 6. Сохранение новых событий
+	// 6. storage New events
 	expectedVersion := len(events)
 	if saveErr := uc.eventStore.SaveEvents(ctx, cmd.TaskID.String(), newEvents, expectedVersion); saveErr != nil {
 		if errors.Is(saveErr, appcore.ErrConcurrencyConflict) {
@@ -78,11 +78,11 @@ func (uc *ChangeStatusUseCase) Execute(ctx context.Context, cmd ChangeStatusComm
 		return TaskResult{}, fmt.Errorf("failed to save events: %w", saveErr)
 	}
 
-	// 7. Возврат результата
+	// 7. vozvrat result
 	return NewSuccessResult(cmd.TaskID, expectedVersion+len(newEvents), newEvents), nil
 }
 
-// validate проверяет корректность команды
+// validate checks command correctness
 func (uc *ChangeStatusUseCase) validate(cmd ChangeStatusCommand) error {
 	if cmd.TaskID.IsZero() {
 		return ErrInvalidTaskID
@@ -103,7 +103,7 @@ func (uc *ChangeStatusUseCase) validate(cmd ChangeStatusCommand) error {
 	return nil
 }
 
-// isValidStatus проверяет валидность статуса
+// isValidStatus validates status
 func isValidStatus(status task.Status) bool {
 	return status == task.StatusBacklog ||
 		status == task.StatusToDo ||

@@ -6,20 +6,20 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// GetMessageQuery - получение сообщения по ID
+// GetMessageQuery - retrieval messages po ID
 type GetMessageQuery struct {
 	MessageID uuid.UUID
 }
 
-// ListMessagesQuery - список сообщений в чате
+// ListMessagesQuery - list soobscheniy in chate
 type ListMessagesQuery struct {
 	ChatID uuid.UUID
 	Limit  int        // default: 50, max: 100
-	Offset int        // для offset-based pagination
-	Before *time.Time // для cursor-based pagination
+	Offset int        // for offset-based pagination
+	Before *time.Time // for cursor-based pagination
 }
 
-// GetThreadQuery - получение треда (ответов на сообщение)
+// GetThreadQuery - retrieval treda (response on message)
 type GetThreadQuery struct {
 	ParentMessageID uuid.UUID
 }

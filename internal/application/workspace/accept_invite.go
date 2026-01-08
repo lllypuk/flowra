@@ -7,7 +7,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/workspace"
 )
 
-// AcceptInviteUseCase - use case для принятия инвайта
+// AcceptInviteUseCase - use case for prinyatiya invayta
 type AcceptInviteUseCase struct {
 	appcore.BaseUseCase
 
@@ -15,7 +15,7 @@ type AcceptInviteUseCase struct {
 	keycloakClient KeycloakClient
 }
 
-// NewAcceptInviteUseCase создает новый AcceptInviteUseCase
+// NewAcceptInviteUseCase creates New AcceptInviteUseCase
 func NewAcceptInviteUseCase(
 	workspaceRepo Repository,
 	keycloakClient KeycloakClient,
@@ -26,61 +26,61 @@ func NewAcceptInviteUseCase(
 	}
 }
 
-// Execute выполняет принятие инвайта
+// Execute performs prinyatie invayta
 func (uc *AcceptInviteUseCase) Execute(
 	ctx context.Context,
 	cmd AcceptInviteCommand,
 ) (Result, error) {
-	// Валидация контекста
+	// context validation
 	if err := uc.ValidateContext(ctx); err != nil {
 		return Result{}, uc.WrapError("validate context", err)
 	}
 
-	// Валидация команды
+	// validation commands
 	if err := uc.validate(cmd); err != nil {
 		return Result{}, uc.WrapError("validation failed", err)
 	}
 
-	// Поиск инвайта по токену
+	// search invayta po tokenu
 	invite, err := uc.workspaceRepo.FindInviteByToken(ctx, cmd.Token)
 	if err != nil {
 		return Result{}, uc.WrapError("find invite", ErrInviteNotFound)
 	}
 
-	// Проверка валидности инвайта
+	// check valid invayta
 	if !invite.IsValid() {
 		if invite.IsRevoked() {
 			return Result{}, uc.WrapError("validate invite", ErrInviteRevoked)
 		}
-		// Инвайт истек или достигнут лимит использований
+		// invayt expired or dostignut limit ispolzovaniy
 		return Result{}, uc.WrapError("validate invite", ErrInviteExpired)
 	}
 
-	// Поиск workspace
+	// Searching workspace
 	ws, err := uc.workspaceRepo.FindByID(ctx, invite.WorkspaceID())
 	if err != nil {
 		return Result{}, uc.WrapError("find workspace", ErrWorkspaceNotFound)
 	}
 
-	// Использование инвайта (увеличение счетчика)
+	// use invayta (uvelichenie schetchika)
 	if errUse := invite.Use(); errUse != nil {
 		return Result{}, uc.WrapError("use invite", errUse)
 	}
 
-	// Сохранение workspace с обновленным инвайтом
+	// save workspace s obnovlennym invaytom
 	if errSave := uc.workspaceRepo.Save(ctx, ws); errSave != nil {
 		return Result{}, uc.WrapError("save workspace", errSave)
 	}
 
-	// Добавление пользователя в группу Keycloak
+	// Adding user in groups Keycloak
 	errKeycloak := uc.keycloakClient.AddUserToGroup(
 		ctx,
 		cmd.UserID.String(),
 		ws.KeycloakGroupID(),
 	)
 	if errKeycloak != nil {
-		// Откатываем использование инвайта? Нет, т.к. уже сохранили.
-		// В реальном приложении нужна транзакционность или saga pattern
+		// otkatyvaem use invayta? no, t.to. uzhe sav.
+		// in realnom prilozhenii nuzhna tranzaktsionnost or saga pattern
 		return Result{}, uc.WrapError("add user to Keycloak group", ErrKeycloakUserAddFailed)
 	}
 
@@ -91,7 +91,7 @@ func (uc *AcceptInviteUseCase) Execute(
 	}, nil
 }
 
-// validate проверяет валидность команды
+// validate validates commands
 func (uc *AcceptInviteUseCase) validate(cmd AcceptInviteCommand) error {
 	if err := appcore.ValidateRequired("token", cmd.Token); err != nil {
 		return err

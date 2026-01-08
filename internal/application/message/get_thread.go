@@ -7,35 +7,35 @@ import (
 	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
-// GetThreadUseCase обрабатывает получение треда (ответов на сообщение)
+// GetThreadUseCase handles retrieval treda (response on message)
 type GetThreadUseCase struct {
 	messageRepo Repository
 }
 
-// NewGetThreadUseCase создает новый GetThreadUseCase
+// NewGetThreadUseCase creates New GetThreadUseCase
 func NewGetThreadUseCase(messageRepo Repository) *GetThreadUseCase {
 	return &GetThreadUseCase{
 		messageRepo: messageRepo,
 	}
 }
 
-// Execute выполняет получение треда
+// Execute performs retrieval treda
 func (uc *GetThreadUseCase) Execute(
 	ctx context.Context,
 	query GetThreadQuery,
 ) (ListResult, error) {
-	// Валидация
+	// validation
 	if err := uc.validate(query); err != nil {
 		return ListResult{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Проверяем, что parent message существует
+	// Checking, that parent message suschestvuet
 	parentMsg, err := uc.messageRepo.FindByID(ctx, query.ParentMessageID)
 	if err != nil {
 		return ListResult{}, ErrParentNotFound
 	}
 
-	// Загрузка ответов в треде
+	// Loading response in thread
 	messages, err := uc.messageRepo.FindThread(ctx, parentMsg.ID())
 	if err != nil {
 		return ListResult{}, fmt.Errorf("failed to find thread messages: %w", err)

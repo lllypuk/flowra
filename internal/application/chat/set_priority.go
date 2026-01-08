@@ -8,19 +8,19 @@ import (
 	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
-// SetPriorityUseCase обрабатывает установку приоритета
+// SetPriorityUseCase handles setting priority
 type SetPriorityUseCase struct {
 	eventStore appcore.EventStore
 }
 
-// NewSetPriorityUseCase создает новый SetPriorityUseCase
+// NewSetPriorityUseCase creates a new SetPriorityUseCase
 func NewSetPriorityUseCase(eventStore appcore.EventStore) *SetPriorityUseCase {
 	return &SetPriorityUseCase{
 		eventStore: eventStore,
 	}
 }
 
-// Execute выполняет установку приоритета
+// Execute performs setting the priority
 func (uc *SetPriorityUseCase) Execute(ctx context.Context, cmd SetPriorityCommand) (Result, error) {
 	if err := uc.validate(cmd); err != nil {
 		return Result{}, fmt.Errorf("validation failed: %w", err)

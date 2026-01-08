@@ -6,31 +6,31 @@ import (
 	"github.com/google/uuid"
 )
 
-// Processor обрабатывает распарсенные теги и генерирует команды
+// Processor handles rasparsennye tags and generiruet commands
 type Processor struct {
 	parser *Parser
 }
 
-// NewProcessor создает новый процессор тегов
+// NewProcessor creates New protsessor tegov
 func NewProcessor() *Processor {
 	return &Processor{
 		parser: NewParser(),
 	}
 }
 
-// ProcessMessage обрабатывает сообщение с тегами и возвращает результат
-// currentEntityType - тип текущей активной сущности в чате ("Task", "Bug", "Epic")
-// Может быть пустой строкой, если нет активной сущности
-// Если в сообщении создается новая сущность, Entity Management Tags применяются к ней
+// ProcessMessage handles message s tegami and returns result
+// currentEntityType - type tekuschey aktivnoy entity in chate ("Task", "Bug", "Epic")
+// mozhet byt empty strokoy, if no aktivnoy entity
+// if in soobschenii sozdaetsya New suschnost, Entity Management Tags primenyayutsya to ney
 func (p *Processor) ProcessMessage(
 	chatID uuid.UUID,
 	message string,
 	currentEntityType string,
 ) *ProcessingResult {
-	// Парсим сообщение
+	// parsim message
 	parseResult := p.parser.Parse(message)
 
-	// Обрабатываем теги
+	// obrabatyvaem tags
 	result := p.ProcessTags(chatID, parseResult.Tags, currentEntityType)
 	result.OriginalMessage = message
 	result.PlainText = parseResult.PlainText
@@ -38,10 +38,10 @@ func (p *Processor) ProcessMessage(
 	return result
 }
 
-// ProcessTags обрабатывает теги и возвращает результат
-// currentEntityType - тип текущей активной сущности в чате ("Task", "Bug", "Epic")
-// Может быть пустой строкой, если нет активной сущности
-// Если в сообщении создается новая сущность, Entity Management Tags применяются к ней
+// ProcessTags handles tags and returns result
+// currentEntityType - type tekuschey aktivnoy entity in chate ("Task", "Bug", "Epic")
+// mozhet byt empty strokoy, if no aktivnoy entity
+// if in soobschenii sozdaetsya New suschnost, Entity Management Tags primenyayutsya to ney
 //
 //nolint:gocognit,funlen // Complexity justified: sequential tag processing logic
 func (p *Processor) ProcessTags(
@@ -54,7 +54,7 @@ func (p *Processor) ProcessTags(
 		Errors:      []TagError{},
 	}
 
-	// Отслеживаем тип сущности для Entity Management Tags
+	// otslezhivaem type entity for Entity Management Tags
 	entityType := currentEntityType
 
 	for _, tag := range parsedTags {
@@ -80,7 +80,7 @@ func (p *Processor) ProcessTags(
 				Command:  cmd,
 				Success:  true,
 			})
-			// Если создали сущность, используем ее тип для последующих тегов
+			// if sozdali suschnost, ispolzuem ee type for posleduyuschih tegov
 			entityType = "Task"
 
 		case "bug":
@@ -171,7 +171,7 @@ func (p *Processor) ProcessTags(
 			cmd := AssignUserCommand{
 				ChatID:   chatID,
 				Username: tag.Value,
-				UserID:   nil, // Будет резолвлен на уровне service
+				UserID:   nil, // budet rezolvlen on urovne service
 			}
 			result.AppliedTags = append(result.AppliedTags, TagApplication{
 				TagKey:   tag.Key,

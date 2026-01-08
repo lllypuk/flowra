@@ -8,20 +8,20 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/event"
 )
 
-// InMemoryEventStore реализует EventStore в памяти для тестирования
+// InMemoryEventStore realizuet EventStore in pamyati for testing
 type InMemoryEventStore struct {
 	mu     sync.RWMutex
 	events map[string][]event.DomainEvent
 }
 
-// NewInMemoryEventStore создает новый in-memory event store
+// NewInMemoryEventStore creates New in-memory event store
 func NewInMemoryEventStore() *InMemoryEventStore {
 	return &InMemoryEventStore{
 		events: make(map[string][]event.DomainEvent),
 	}
 }
 
-// SaveEvents сохраняет события для агрегата
+// SaveEvents saves event for aggregate
 func (s *InMemoryEventStore) SaveEvents(
 	_ context.Context,
 	aggregateID string,
@@ -35,19 +35,19 @@ func (s *InMemoryEventStore) SaveEvents(
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Проверка optimistic locking
+	// check optimistic locking
 	currentVersion := len(s.events[aggregateID])
 	if currentVersion != expectedVersion {
 		return appcore.ErrConcurrencyConflict
 	}
 
-	// Сохраняем события
+	// Saving event
 	s.events[aggregateID] = append(s.events[aggregateID], events...)
 
 	return nil
 }
 
-// LoadEvents загружает все события для агрегата
+// LoadEvents loads all event for aggregate
 func (s *InMemoryEventStore) LoadEvents(
 	_ context.Context,
 	aggregateID string,
@@ -60,14 +60,14 @@ func (s *InMemoryEventStore) LoadEvents(
 		return nil, appcore.ErrAggregateNotFound
 	}
 
-	// Возвращаем копию чтобы избежать race conditions
+	// return a copy to avoid race conditions
 	result := make([]event.DomainEvent, len(events))
 	copy(result, events)
 
 	return result, nil
 }
 
-// GetVersion возвращает текущую версию агрегата
+// GetVersion returns current version aggregate
 func (s *InMemoryEventStore) GetVersion(
 	_ context.Context,
 	aggregateID string,
@@ -83,7 +83,7 @@ func (s *InMemoryEventStore) GetVersion(
 	return len(events), nil
 }
 
-// Clear очищает все события (для тестов)
+// Clear clears all event (for tests)
 func (s *InMemoryEventStore) Clear() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -91,7 +91,7 @@ func (s *InMemoryEventStore) Clear() {
 	s.events = make(map[string][]event.DomainEvent)
 }
 
-// GetAllAggregateIDs возвращает все ID агрегатов (для тестов)
+// GetAllAggregateIDs returns all ID agregatov (for tests)
 func (s *InMemoryEventStore) GetAllAggregateIDs() []string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

@@ -44,7 +44,7 @@ func TestCreateTaskUseCase_Success(t *testing.T) {
 	assert.Equal(t, 1, result.Version)
 	require.Len(t, result.Events, 1)
 
-	// Проверяем событие
+	// Checking event
 	event, ok := result.Events[0].(*task.Created)
 	require.True(t, ok, "Expected *task.Created event")
 	assert.Equal(t, chatID, event.ChatID)
@@ -56,7 +56,7 @@ func TestCreateTaskUseCase_Success(t *testing.T) {
 	assert.NotNil(t, event.DueDate)
 	assert.Equal(t, userID, event.CreatedBy)
 
-	// Проверяем, что события сохранены в Event Store
+	// Checking, that event sav in Event Store
 	storedEvents, err := store.LoadEvents(context.Background(), result.TaskID.String())
 	require.NoError(t, err)
 	assert.Len(t, storedEvents, 1)
@@ -70,10 +70,10 @@ func TestCreateTaskUseCase_WithDefaults(t *testing.T) {
 	cmd := taskapp.CreateTaskCommand{
 		ChatID: uuid.NewUUID(),
 		Title:  "Simple task",
-		// EntityType не указан - должен стать TypeTask
-		// Priority не указан - должен стать PriorityMedium
-		// AssigneeID не указан
-		// DueDate не указан
+		// EntityType not ukazan - dolzhen stat TypeTask
+		// Priority not ukazan - dolzhen stat PriorityMedium
+		// AssigneeID not ukazan
+		// DueDate not ukazan
 		CreatedBy: uuid.NewUUID(),
 	}
 
@@ -151,7 +151,7 @@ func TestCreateTaskUseCase_ValidationErrors(t *testing.T) {
 			name: "Title too long",
 			cmd: taskapp.CreateTaskCommand{
 				ChatID:    uuid.NewUUID(),
-				Title:     string(make([]byte, 501)), // 501 символ
+				Title:     string(make([]byte, 501)), // 501 simvol
 				CreatedBy: uuid.NewUUID(),
 			},
 			expectedErr: taskapp.ErrInvalidTitle,
@@ -171,7 +171,7 @@ func TestCreateTaskUseCase_ValidationErrors(t *testing.T) {
 			cmd: taskapp.CreateTaskCommand{
 				ChatID:    uuid.NewUUID(),
 				Title:     "Test",
-				Priority:  "Urgent", // не существует
+				Priority:  "Urgent", // not suschestvuet
 				CreatedBy: uuid.NewUUID(),
 			},
 			expectedErr: taskapp.ErrInvalidPriority,

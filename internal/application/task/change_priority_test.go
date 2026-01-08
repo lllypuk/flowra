@@ -19,7 +19,7 @@ func TestChangePriorityUseCase_Success(t *testing.T) {
 	createUseCase := taskapp.NewCreateTaskUseCase(store)
 	priorityUseCase := taskapp.NewChangePriorityUseCase(store)
 
-	// Создаем задачу с Medium priority (default)
+	// Creating task s Medium priority (default)
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
@@ -28,7 +28,7 @@ func TestChangePriorityUseCase_Success(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// Меняем приоритет
+	// menyaem prioritet
 	userID := uuid.NewUUID()
 	priorityCmd := taskapp.ChangePriorityCommand{
 		TaskID:    createResult.TaskID,
@@ -86,7 +86,7 @@ func TestChangePriorityUseCase_AllPriorities(t *testing.T) {
 
 			// Assert
 			if priority == task.PriorityLow {
-				// Идемпотентность - тот же приоритет
+				// idempotentnost - tot zhe prioritet
 				require.NoError(t, err)
 				assert.Empty(t, result.Events)
 			} else {
@@ -114,7 +114,7 @@ func TestChangePriorityUseCase_Idempotent(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// Act: Повторная установка того же приоритета
+	// Act: povtornaya setting togo zhe priority
 	priorityCmd := taskapp.ChangePriorityCommand{
 		TaskID:    createResult.TaskID,
 		Priority:  task.PriorityHigh,
@@ -124,7 +124,7 @@ func TestChangePriorityUseCase_Idempotent(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.Empty(t, result.Events, "No new events for idempotent operation")
+	assert.Empty(t, result.Events, "No New events for idempotent operation")
 	assert.Equal(t, 1, result.Version, "Version should not change")
 	assert.True(t, result.IsSuccess())
 	assert.Equal(t, "Priority unchanged (idempotent operation)", result.Message)
@@ -171,7 +171,7 @@ func TestChangePriorityUseCase_MultiplePriorityChanges(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 4, result3.Version)
 
-	// Проверяем полную историю
+	// Checking full history
 	storedEvents, err := store.LoadEvents(context.Background(), createResult.TaskID.String())
 	require.NoError(t, err)
 	assert.Len(t, storedEvents, 4) // Created + 3x PriorityChanged
@@ -262,7 +262,7 @@ func TestChangePriorityUseCase_TaskNotFound(t *testing.T) {
 	useCase := taskapp.NewChangePriorityUseCase(store)
 
 	cmd := taskapp.ChangePriorityCommand{
-		TaskID:    uuid.NewUUID(), // не существует
+		TaskID:    uuid.NewUUID(), // not suschestvuet
 		Priority:  task.PriorityHigh,
 		ChangedBy: uuid.NewUUID(),
 	}

@@ -8,21 +8,21 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
-// listDocuments выполняет общую логику получения списка документов с пагинацией.
-// T - тип документа для декодирования
-// R - тип результата (domain объект)
+// listDocuments performs obschuyu logiku receiv list dokumentov s paginatsiey.
+// T - type dokumenta for dekodirovaniya
+// R - type result (domain object)
 //
-// Параметры:
-//   - ctx: контекст выполнения
-//   - collection: MongoDB коллекция
-//   - offset: смещение для пагинации
-//   - limit: лимит документов (если 0, используется DefaultPaginationLimit)
-//   - decoder: функция преобразования документа в domain объект
-//   - collectionName: название коллекции для сообщений об ошибках
+// parameters:
+// - ctx: text vypolneniya
+// - collection: MongoDB kollektsiya
+// - offset: smeschenie for paginatsii
+// - limit: limit dokumentov (if 0, used DefaultPaginationLimit)
+// - decoder: function conversion dokumenta in domain object
+// - collectionName: nazvanie kollektsii for soobscheniy ob error
 //
-// Возвращает:
-//   - срез domain объектов (никогда не nil)
-//   - ошибку при проблемах с запросом
+// returns:
+// - srez domain obektov (never not nil)
+// - error at problemah s zaprosom
 func listDocuments[T any, R any](
 	ctx context.Context,
 	collection *mongo.Collection,
@@ -44,12 +44,12 @@ func listDocuments[T any, R any](
 	for cursor.Next(ctx) {
 		var doc T
 		if decodeErr := cursor.Decode(&doc); decodeErr != nil {
-			continue // пропускаем некорректные документы
+			continue // propuskaem nekorrektnye dokumenty
 		}
 
 		item, docErr := decoder(&doc)
 		if docErr != nil {
-			continue // пропускаем документы, которые не удалось преобразовать
+			continue // propuskaem dokumenty, kotorye not udalos convert
 		}
 
 		results = append(results, item)
@@ -59,7 +59,7 @@ func listDocuments[T any, R any](
 		return nil, fmt.Errorf("cursor error: %w", err)
 	}
 
-	// Гарантируем возврат пустого среза вместо nil
+	// garantiruem vozvrat pustogo sreza vmesto nil
 	if results == nil {
 		results = make([]R, 0)
 	}

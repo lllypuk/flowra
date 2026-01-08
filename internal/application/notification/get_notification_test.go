@@ -15,7 +15,7 @@ func TestGetNotificationUseCase_Execute_Success(t *testing.T) {
 	repo := newMockNotificationRepository()
 	userID := uuid.NewUUID()
 
-	// Создаем notification
+	// Creating notification
 	notif, _ := domainnotification.NewNotification(
 		userID,
 		domainnotification.TypeTaskAssigned,
@@ -82,7 +82,7 @@ func TestGetNotificationUseCase_Execute_AccessDenied(t *testing.T) {
 	userID := uuid.NewUUID()
 	otherUserID := uuid.NewUUID()
 
-	// Создаем notification для другого пользователя
+	// Creating notification for other user
 	notif, _ := domainnotification.NewNotification(
 		userID,
 		domainnotification.TypeTaskAssigned,
@@ -96,7 +96,7 @@ func TestGetNotificationUseCase_Execute_AccessDenied(t *testing.T) {
 
 	query := notification.GetNotificationQuery{
 		NotificationID: notif.ID(),
-		UserID:         otherUserID, // другой пользователь
+		UserID:         otherUserID, // drugoy user
 	}
 
 	// Act

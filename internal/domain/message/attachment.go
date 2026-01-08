@@ -5,7 +5,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// Attachment представляет файловое вложение к сообщению
+// Attachment represents faylovoe attachment to soobscheniyu
 type Attachment struct {
 	fileID   uuid.UUID
 	fileName string
@@ -13,7 +13,7 @@ type Attachment struct {
 	mimeType string
 }
 
-// NewAttachment создает новое вложение
+// NewAttachment creates new attachment
 func NewAttachment(fileID uuid.UUID, fileName string, fileSize int64, mimeType string) (Attachment, error) {
 	if fileID.IsZero() {
 		return Attachment{}, errs.ErrInvalidInput
@@ -36,28 +36,28 @@ func NewAttachment(fileID uuid.UUID, fileName string, fileSize int64, mimeType s
 	}, nil
 }
 
-// FileID возвращает ID файла
+// FileID returns ID fayla
 func (a Attachment) FileID() uuid.UUID {
 	return a.fileID
 }
 
-// FileName возвращает имя файла
+// FileName returns imya fayla
 func (a Attachment) FileName() string {
 	return a.fileName
 }
 
-// FileSize возвращает размер файла в байтах
+// FileSize returns size fayla in baytah
 func (a Attachment) FileSize() int64 {
 	return a.fileSize
 }
 
-// MimeType возвращает MIME тип файла
+// MimeType returns MIME type fayla
 func (a Attachment) MimeType() string {
 	return a.mimeType
 }
 
-// ReconstructAttachment восстанавливает вложение из хранилища.
-// Используется репозиториями для гидрации объекта без валидации бизнес-правил.
+// ReconstructAttachment reconstructs attachment from save.
+// Used by repositories for hydration obekta without validation business rules.
 func ReconstructAttachment(fileID uuid.UUID, fileName string, fileSize int64, mimeType string) Attachment {
 	return Attachment{
 		fileID:   fileID,

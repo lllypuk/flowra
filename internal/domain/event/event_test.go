@@ -79,7 +79,7 @@ func TestBaseEvent_ImplementsDomainEvent(t *testing.T) {
 	metadata := eventDomain.NewMetadata("user-1", "corr-1", "cause-1")
 	event := eventDomain.NewBaseEvent("test.event", "agg-1", "Test", 1, metadata)
 
-	// Act & Assert - проверка, что BaseEvent реализует интерфейс DomainEvent
+	// Act & Assert - verify that BaseEvent implements the DomainEvent interface
 	var _ eventDomain.DomainEvent = event
 	require.NotNil(t, event)
 }

@@ -15,7 +15,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
-// setupTestNotificationRepository создает тестовый репозиторий уведомлений
+// setupTestNotificationRepository creates test repozitoriy uvedomleniy
 func setupTestNotificationRepository(t *testing.T) *mongodb.MongoNotificationRepository {
 	t.Helper()
 
@@ -25,7 +25,7 @@ func setupTestNotificationRepository(t *testing.T) *mongodb.MongoNotificationRep
 	return mongodb.NewMongoNotificationRepository(coll)
 }
 
-// createTestNotification создает тестовое уведомление
+// createTestNotification creates testovoe notification
 func createTestNotification(
 	t *testing.T,
 	userID uuid.UUID,
@@ -39,7 +39,7 @@ func createTestNotification(
 	return notif
 }
 
-// createTestNotificationWithResource создает тестовое уведомление с ресурсом
+// createTestNotificationWithResource creates testovoe notification s resursom
 func createTestNotificationWithResource(
 	t *testing.T,
 	userID uuid.UUID,
@@ -53,7 +53,7 @@ func createTestNotificationWithResource(
 	return notif
 }
 
-// TestMongoNotificationRepository_Save_And_FindByID проверяет сохранение и поиск уведомления по ID
+// TestMongoNotificationRepository_Save_And_FindByID checks save and search uvedomleniya po ID
 func TestMongoNotificationRepository_Save_And_FindByID(t *testing.T) {
 	repo := setupTestNotificationRepository(t)
 	ctx := context.Background()
@@ -90,7 +90,7 @@ func TestMongoNotificationRepository_Save_And_FindByID(t *testing.T) {
 	assert.WithinDuration(t, notif.CreatedAt(), loaded.CreatedAt(), time.Millisecond)
 }
 
-// TestMongoNotificationRepository_FindByID_NotFound проверяет поиск несуществующего уведомления
+// TestMongoNotificationRepository_FindByID_NotFound checks search existing uvedomleniya
 func TestMongoNotificationRepository_FindByID_NotFound(t *testing.T) {
 	repo := setupTestNotificationRepository(t)
 	ctx := context.Background()
@@ -100,7 +100,7 @@ func TestMongoNotificationRepository_FindByID_NotFound(t *testing.T) {
 	assert.ErrorIs(t, err, errs.ErrNotFound)
 }
 
-// TestMongoNotificationRepository_FindByUserID проверяет поиск уведомлений пользователя
+// TestMongoNotificationRepository_FindByUserID checks search uvedomleniy user
 func TestMongoNotificationRepository_FindByUserID(t *testing.T) {
 	repo := setupTestNotificationRepository(t)
 	ctx := context.Background()
@@ -144,7 +144,7 @@ func TestMongoNotificationRepository_FindByUserID(t *testing.T) {
 	assert.Len(t, notifications, 2)
 }
 
-// TestMongoNotificationRepository_FindByUserID_Empty проверяет пустой результат
+// TestMongoNotificationRepository_FindByUserID_Empty checks empty result
 func TestMongoNotificationRepository_FindByUserID_Empty(t *testing.T) {
 	repo := setupTestNotificationRepository(t)
 	ctx := context.Background()
@@ -158,7 +158,7 @@ func TestMongoNotificationRepository_FindByUserID_Empty(t *testing.T) {
 	assert.Empty(t, notifications)
 }
 
-// TestMongoNotificationRepository_FindUnreadByUserID проверяет поиск непрочитанных уведомлений
+// TestMongoNotificationRepository_FindUnreadByUserID checks search unread uvedomleniy
 func TestMongoNotificationRepository_FindUnreadByUserID(t *testing.T) {
 	repo := setupTestNotificationRepository(t)
 	ctx := context.Background()
@@ -204,7 +204,7 @@ func TestMongoNotificationRepository_FindUnreadByUserID(t *testing.T) {
 	}
 }
 
-// TestMongoNotificationRepository_CountUnreadByUserID проверяет подсчет непрочитанных уведомлений
+// TestMongoNotificationRepository_CountUnreadByUserID checks podschet unread uvedomleniy
 func TestMongoNotificationRepository_CountUnreadByUserID(t *testing.T) {
 	repo := setupTestNotificationRepository(t)
 	ctx := context.Background()
@@ -218,7 +218,7 @@ func TestMongoNotificationRepository_CountUnreadByUserID(t *testing.T) {
 			userID,
 			notificationdomain.TypeChatMessage,
 			"New Message",
-			"You have a new message",
+			"You have a New message",
 		)
 		err := repo.Save(ctx, notif)
 		require.NoError(t, err)
@@ -245,7 +245,7 @@ func TestMongoNotificationRepository_CountUnreadByUserID(t *testing.T) {
 	assert.Equal(t, 4, count)
 }
 
-// TestMongoNotificationRepository_MarkAsRead проверяет отметку уведомления как прочитанного
+// TestMongoNotificationRepository_MarkAsRead checks otmetku uvedomleniya as read
 func TestMongoNotificationRepository_MarkAsRead(t *testing.T) {
 	repo := setupTestNotificationRepository(t)
 	ctx := context.Background()
@@ -279,7 +279,7 @@ func TestMongoNotificationRepository_MarkAsRead(t *testing.T) {
 	assert.NotNil(t, loaded.ReadAt())
 }
 
-// TestMongoNotificationRepository_MarkAsRead_AlreadyRead проверяет повторную отметку
+// TestMongoNotificationRepository_MarkAsRead_AlreadyRead checks povtornuyu otmetku
 func TestMongoNotificationRepository_MarkAsRead_AlreadyRead(t *testing.T) {
 	repo := setupTestNotificationRepository(t)
 	ctx := context.Background()
@@ -304,7 +304,7 @@ func TestMongoNotificationRepository_MarkAsRead_AlreadyRead(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// TestMongoNotificationRepository_MarkAsRead_NotFound проверяет ошибку для несуществующего уведомления
+// TestMongoNotificationRepository_MarkAsRead_NotFound checks error for existing uvedomleniya
 func TestMongoNotificationRepository_MarkAsRead_NotFound(t *testing.T) {
 	repo := setupTestNotificationRepository(t)
 	ctx := context.Background()
@@ -314,7 +314,7 @@ func TestMongoNotificationRepository_MarkAsRead_NotFound(t *testing.T) {
 	assert.ErrorIs(t, err, errs.ErrNotFound)
 }
 
-// TestMongoNotificationRepository_MarkAllAsRead проверяет отметку всех уведомлений как прочитанных
+// TestMongoNotificationRepository_MarkAllAsRead checks otmetku all uvedomleniy as prochitannyh
 func TestMongoNotificationRepository_MarkAllAsRead(t *testing.T) {
 	repo := setupTestNotificationRepository(t)
 	ctx := context.Background()
@@ -363,7 +363,7 @@ func TestMongoNotificationRepository_MarkAllAsRead(t *testing.T) {
 	assert.Len(t, unread, 2)
 }
 
-// TestMongoNotificationRepository_MarkManyAsRead проверяет отметку нескольких уведомлений
+// TestMongoNotificationRepository_MarkManyAsRead checks otmetku neskolkih uvedomleniy
 func TestMongoNotificationRepository_MarkManyAsRead(t *testing.T) {
 	repo := setupTestNotificationRepository(t)
 	ctx := context.Background()
@@ -395,7 +395,7 @@ func TestMongoNotificationRepository_MarkManyAsRead(t *testing.T) {
 	assert.Equal(t, 2, count)
 }
 
-// TestMongoNotificationRepository_MarkManyAsRead_Empty проверяет пустой список
+// TestMongoNotificationRepository_MarkManyAsRead_Empty checks empty list
 func TestMongoNotificationRepository_MarkManyAsRead_Empty(t *testing.T) {
 	repo := setupTestNotificationRepository(t)
 	ctx := context.Background()
@@ -405,7 +405,7 @@ func TestMongoNotificationRepository_MarkManyAsRead_Empty(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// TestMongoNotificationRepository_Delete проверяет удаление уведомления
+// TestMongoNotificationRepository_Delete checks delete uvedomleniya
 func TestMongoNotificationRepository_Delete(t *testing.T) {
 	repo := setupTestNotificationRepository(t)
 	ctx := context.Background()
@@ -432,7 +432,7 @@ func TestMongoNotificationRepository_Delete(t *testing.T) {
 	assert.ErrorIs(t, err, errs.ErrNotFound)
 }
 
-// TestMongoNotificationRepository_Delete_NotFound проверяет удаление несуществующего уведомления
+// TestMongoNotificationRepository_Delete_NotFound checks delete existing uvedomleniya
 func TestMongoNotificationRepository_Delete_NotFound(t *testing.T) {
 	repo := setupTestNotificationRepository(t)
 	ctx := context.Background()
@@ -442,7 +442,7 @@ func TestMongoNotificationRepository_Delete_NotFound(t *testing.T) {
 	assert.ErrorIs(t, err, errs.ErrNotFound)
 }
 
-// TestMongoNotificationRepository_DeleteByUserID проверяет удаление всех уведомлений пользователя
+// TestMongoNotificationRepository_DeleteByUserID checks delete all uvedomleniy user
 func TestMongoNotificationRepository_DeleteByUserID(t *testing.T) {
 	repo := setupTestNotificationRepository(t)
 	ctx := context.Background()
@@ -477,7 +477,7 @@ func TestMongoNotificationRepository_DeleteByUserID(t *testing.T) {
 	assert.Len(t, notifications, 1)
 }
 
-// TestMongoNotificationRepository_DeleteOlderThan проверяет удаление старых уведомлений
+// TestMongoNotificationRepository_DeleteOlderThan checks delete staryh uvedomleniy
 func TestMongoNotificationRepository_DeleteOlderThan(t *testing.T) {
 	db := testutil.SetupTestMongoDB(t)
 	coll := db.Collection("notifications")
@@ -513,7 +513,7 @@ func TestMongoNotificationRepository_DeleteOlderThan(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// TestMongoNotificationRepository_DeleteReadOlderThan проверяет удаление прочитанных старых уведомлений
+// TestMongoNotificationRepository_DeleteReadOlderThan checks delete prochitannyh staryh uvedomleniy
 func TestMongoNotificationRepository_DeleteReadOlderThan(t *testing.T) {
 	db := testutil.SetupTestMongoDB(t)
 	coll := db.Collection("notifications")
@@ -561,7 +561,7 @@ func TestMongoNotificationRepository_DeleteReadOlderThan(t *testing.T) {
 	assert.Equal(t, "Old unread notification", notifications[0].Title())
 }
 
-// TestMongoNotificationRepository_SaveBatch проверяет пакетное сохранение уведомлений
+// TestMongoNotificationRepository_SaveBatch checks paketnoe save uvedomleniy
 func TestMongoNotificationRepository_SaveBatch(t *testing.T) {
 	repo := setupTestNotificationRepository(t)
 	ctx := context.Background()
@@ -591,7 +591,7 @@ func TestMongoNotificationRepository_SaveBatch(t *testing.T) {
 	assert.Len(t, loaded, 5)
 }
 
-// TestMongoNotificationRepository_SaveBatch_Empty проверяет пустой пакет
+// TestMongoNotificationRepository_SaveBatch_Empty checks empty paket
 func TestMongoNotificationRepository_SaveBatch_Empty(t *testing.T) {
 	repo := setupTestNotificationRepository(t)
 	ctx := context.Background()
@@ -601,7 +601,7 @@ func TestMongoNotificationRepository_SaveBatch_Empty(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// TestMongoNotificationRepository_SaveBatch_WithNil проверяет пакет с nil элементом
+// TestMongoNotificationRepository_SaveBatch_WithNil checks paket s nil elementom
 func TestMongoNotificationRepository_SaveBatch_WithNil(t *testing.T) {
 	repo := setupTestNotificationRepository(t)
 	ctx := context.Background()
@@ -617,7 +617,7 @@ func TestMongoNotificationRepository_SaveBatch_WithNil(t *testing.T) {
 	assert.ErrorIs(t, err, errs.ErrInvalidInput)
 }
 
-// TestMongoNotificationRepository_FindByType проверяет поиск по типу уведомления
+// TestMongoNotificationRepository_FindByType checks search po tipu uvedomleniya
 func TestMongoNotificationRepository_FindByType(t *testing.T) {
 	repo := setupTestNotificationRepository(t)
 	ctx := context.Background()
@@ -665,7 +665,7 @@ func TestMongoNotificationRepository_FindByType(t *testing.T) {
 	assert.Len(t, taskCreatedLimited, 2)
 }
 
-// TestMongoNotificationRepository_FindByResourceID проверяет поиск по ID ресурса
+// TestMongoNotificationRepository_FindByResourceID checks search po ID resursa
 func TestMongoNotificationRepository_FindByResourceID(t *testing.T) {
 	repo := setupTestNotificationRepository(t)
 	ctx := context.Background()
@@ -710,7 +710,7 @@ func TestMongoNotificationRepository_FindByResourceID(t *testing.T) {
 	}
 }
 
-// TestMongoNotificationRepository_FindByResourceID_Empty проверяет пустой результат
+// TestMongoNotificationRepository_FindByResourceID_Empty checks empty result
 func TestMongoNotificationRepository_FindByResourceID_Empty(t *testing.T) {
 	repo := setupTestNotificationRepository(t)
 	ctx := context.Background()
@@ -722,7 +722,7 @@ func TestMongoNotificationRepository_FindByResourceID_Empty(t *testing.T) {
 	assert.Empty(t, notifications)
 }
 
-// TestMongoNotificationRepository_CountByType проверяет подсчет по типам
+// TestMongoNotificationRepository_CountByType checks podschet po tipam
 func TestMongoNotificationRepository_CountByType(t *testing.T) {
 	repo := setupTestNotificationRepository(t)
 	ctx := context.Background()
@@ -760,7 +760,7 @@ func TestMongoNotificationRepository_CountByType(t *testing.T) {
 	assert.Equal(t, 3, counts[notificationdomain.TypeTaskStatusChanged])
 }
 
-// TestMongoNotificationRepository_CountByType_Empty проверяет пустой результат
+// TestMongoNotificationRepository_CountByType_Empty checks empty result
 func TestMongoNotificationRepository_CountByType_Empty(t *testing.T) {
 	repo := setupTestNotificationRepository(t)
 	ctx := context.Background()
@@ -774,7 +774,7 @@ func TestMongoNotificationRepository_CountByType_Empty(t *testing.T) {
 	assert.Empty(t, counts)
 }
 
-// TestMongoNotificationRepository_InputValidation проверяет валидацию входных данных
+// TestMongoNotificationRepository_InputValidation checks valid vhodnyh dannyh
 func TestMongoNotificationRepository_InputValidation(t *testing.T) {
 	repo := setupTestNotificationRepository(t)
 	ctx := context.Background()
@@ -845,7 +845,7 @@ func TestMongoNotificationRepository_InputValidation(t *testing.T) {
 	})
 }
 
-// TestMongoNotificationRepository_Save_Update проверяет обновление существующего уведомления
+// TestMongoNotificationRepository_Save_Update checks update existing uvedomleniya
 func TestMongoNotificationRepository_Save_Update(t *testing.T) {
 	repo := setupTestNotificationRepository(t)
 	ctx := context.Background()
@@ -875,7 +875,7 @@ func TestMongoNotificationRepository_Save_Update(t *testing.T) {
 	assert.True(t, loaded.IsRead())
 }
 
-// TestMongoNotificationRepository_IsolationBetweenUsers проверяет изоляцию данных между пользователями
+// TestMongoNotificationRepository_IsolationBetweenUsers checks izolyatsiyu dannyh between user
 func TestMongoNotificationRepository_IsolationBetweenUsers(t *testing.T) {
 	repo := setupTestNotificationRepository(t)
 	ctx := context.Background()

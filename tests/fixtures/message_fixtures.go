@@ -5,12 +5,12 @@ import (
 	domainUUID "github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// SendMessageCommandBuilder создает builder для SendMessageCommand
+// SendMessageCommandBuilder creates builder for SendMessageCommand
 type SendMessageCommandBuilder struct {
 	cmd messageapp.SendMessageCommand
 }
 
-// NewSendMessageCommandBuilder создает новый builder (accepts domain UUID)
+// NewSendMessageCommandBuilder creates New builder (accepts domain UUID)
 func NewSendMessageCommandBuilder(chatID domainUUID.UUID, authorID domainUUID.UUID) *SendMessageCommandBuilder {
 	return &SendMessageCommandBuilder{
 		cmd: messageapp.SendMessageCommand{
@@ -21,23 +21,23 @@ func NewSendMessageCommandBuilder(chatID domainUUID.UUID, authorID domainUUID.UU
 	}
 }
 
-// WithContent устанавливает content
+// WithContent sets content
 func (b *SendMessageCommandBuilder) WithContent(content string) *SendMessageCommandBuilder {
 	b.cmd.Content = content
 	return b
 }
 
-// Build возвращает готовую команду
+// Build returns prepared command
 func (b *SendMessageCommandBuilder) Build() messageapp.SendMessageCommand {
 	return b.cmd
 }
 
-// EditMessageCommandBuilder создает builder для EditMessageCommand
+// EditMessageCommandBuilder creates builder for EditMessageCommand
 type EditMessageCommandBuilder struct {
 	cmd messageapp.EditMessageCommand
 }
 
-// NewEditMessageCommandBuilder создает новый builder (accepts domain UUID)
+// NewEditMessageCommandBuilder creates New builder (accepts domain UUID)
 func NewEditMessageCommandBuilder(messageID domainUUID.UUID, userID domainUUID.UUID) *EditMessageCommandBuilder {
 	return &EditMessageCommandBuilder{
 		cmd: messageapp.EditMessageCommand{
@@ -48,23 +48,23 @@ func NewEditMessageCommandBuilder(messageID domainUUID.UUID, userID domainUUID.U
 	}
 }
 
-// WithContent устанавливает content
+// WithContent sets content
 func (b *EditMessageCommandBuilder) WithContent(content string) *EditMessageCommandBuilder {
 	b.cmd.Content = content
 	return b
 }
 
-// Build возвращает готовую команду
+// Build returns prepared command
 func (b *EditMessageCommandBuilder) Build() messageapp.EditMessageCommand {
 	return b.cmd
 }
 
-// DeleteMessageCommandBuilder создает builder для DeleteMessageCommand
+// DeleteMessageCommandBuilder creates builder for DeleteMessageCommand
 type DeleteMessageCommandBuilder struct {
 	cmd messageapp.DeleteMessageCommand
 }
 
-// NewDeleteMessageCommandBuilder создает новый builder (accepts domain UUID)
+// NewDeleteMessageCommandBuilder creates New builder (accepts domain UUID)
 func NewDeleteMessageCommandBuilder(messageID domainUUID.UUID, userID domainUUID.UUID) *DeleteMessageCommandBuilder {
 	return &DeleteMessageCommandBuilder{
 		cmd: messageapp.DeleteMessageCommand{
@@ -74,7 +74,7 @@ func NewDeleteMessageCommandBuilder(messageID domainUUID.UUID, userID domainUUID
 	}
 }
 
-// Build возвращает готовую команду
+// Build returns prepared command
 func (b *DeleteMessageCommandBuilder) Build() messageapp.DeleteMessageCommand {
 	return b.cmd
 }

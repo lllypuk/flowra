@@ -15,7 +15,7 @@ func TestUpdateWorkspaceUseCase_Execute_Success(t *testing.T) {
 	repo := newMockWorkspaceRepository()
 	useCase := workspace.NewUpdateWorkspaceUseCase(repo)
 
-	// Создаем существующий workspace
+	// Creating existing workspace
 	existingWs, _ := domainworkspace.NewWorkspace("Old Name", "", "keycloak-group-id", uuid.NewUUID())
 	_ = repo.Save(context.Background(), existingWs)
 
@@ -110,11 +110,11 @@ func TestUpdateWorkspaceUseCase_Execute_SaveError(t *testing.T) {
 	// Arrange
 	repo := newMockWorkspaceRepository()
 
-	// Создаем существующий workspace
+	// Creating existing workspace
 	existingWs, _ := domainworkspace.NewWorkspace("Old Name", "", "keycloak-group-id", uuid.NewUUID())
 	_ = repo.Save(context.Background(), existingWs)
 
-	// Устанавливаем ошибку сохранения
+	// Setting error saving
 	repo.saveError = errors.New("database error")
 
 	useCase := workspace.NewUpdateWorkspaceUseCase(repo)

@@ -7,47 +7,47 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/workspace"
 )
 
-// UpdateWorkspaceUseCase - use case для обновления workspace
+// UpdateWorkspaceUseCase - use case for updating workspace
 type UpdateWorkspaceUseCase struct {
 	appcore.BaseUseCase
 
 	workspaceRepo Repository
 }
 
-// NewUpdateWorkspaceUseCase создает новый UpdateWorkspaceUseCase
+// NewUpdateWorkspaceUseCase creates New UpdateWorkspaceUseCase
 func NewUpdateWorkspaceUseCase(workspaceRepo Repository) *UpdateWorkspaceUseCase {
 	return &UpdateWorkspaceUseCase{
 		workspaceRepo: workspaceRepo,
 	}
 }
 
-// Execute выполняет обновление workspace
+// Execute performs update workspace
 func (uc *UpdateWorkspaceUseCase) Execute(
 	ctx context.Context,
 	cmd UpdateWorkspaceCommand,
 ) (Result, error) {
-	// Валидация контекста
+	// context validation
 	if err := uc.ValidateContext(ctx); err != nil {
 		return Result{}, uc.WrapError("validate context", err)
 	}
 
-	// Валидация команды
+	// validation commands
 	if err := uc.validate(cmd); err != nil {
 		return Result{}, uc.WrapError("validation failed", err)
 	}
 
-	// Поиск workspace
+	// Searching workspace
 	ws, err := uc.workspaceRepo.FindByID(ctx, cmd.WorkspaceID)
 	if err != nil {
 		return Result{}, uc.WrapError("find workspace", ErrWorkspaceNotFound)
 	}
 
-	// Обновление названия
+	// update nazvaniya
 	if errUpdate := ws.UpdateName(cmd.Name); errUpdate != nil {
 		return Result{}, uc.WrapError("update workspace name", errUpdate)
 	}
 
-	// Сохранение
+	// storage
 	if errSave := uc.workspaceRepo.Save(ctx, ws); errSave != nil {
 		return Result{}, uc.WrapError("save workspace", errSave)
 	}
@@ -59,7 +59,7 @@ func (uc *UpdateWorkspaceUseCase) Execute(
 	}, nil
 }
 
-// validate проверяет валидность команды
+// validate validates commands
 func (uc *UpdateWorkspaceUseCase) validate(cmd UpdateWorkspaceCommand) error {
 	if err := appcore.ValidateUUID("workspaceID", cmd.WorkspaceID); err != nil {
 		return err

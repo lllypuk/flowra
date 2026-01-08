@@ -68,7 +68,7 @@ func TestNewUser_EmptyEmail(t *testing.T) {
 }
 
 func TestNewUser_EmptyDisplayName_Allowed(t *testing.T) {
-	// Arrange - display name может быть пустым
+	// Arrange - display name mozhet byt pustym
 	keycloakID := "external-123"
 	username := "john_doe"
 	email := "john@example.com"
@@ -124,7 +124,7 @@ func TestUser_UpdateProfile_Success(t *testing.T) {
 	oldUpdatedAt := user.UpdatedAt()
 	newDisplayName := "John Smith"
 
-	// Небольшая задержка чтобы UpdatedAt изменился
+	// small delay to UpdatedAt changed
 	time.Sleep(10 * time.Millisecond)
 
 	// Act
@@ -142,7 +142,7 @@ func TestUser_UpdateProfile_NothingToUpdate(t *testing.T) {
 	oldDisplayName := user.DisplayName()
 	oldUpdatedAt := user.UpdatedAt()
 
-	// Act - ничего не передаем
+	// Act - nichego not before
 	err := user.UpdateProfile(nil, nil)
 
 	// Assert
@@ -158,7 +158,7 @@ func TestUser_SetAdmin_GrantRights(t *testing.T) {
 	assert.False(t, user.IsSystemAdmin())
 	oldUpdatedAt := user.UpdatedAt()
 
-	// Небольшая задержка
+	// small delay
 	time.Sleep(10 * time.Millisecond)
 
 	// Act
@@ -186,7 +186,7 @@ func TestUser_SetAdmin_RevokeRights(t *testing.T) {
 	assert.True(t, user.IsSystemAdmin())
 	oldUpdatedAt := user.UpdatedAt()
 
-	// Небольшая задержка
+	// small delay
 	time.Sleep(10 * time.Millisecond)
 
 	// Act
@@ -245,7 +245,7 @@ func TestUser_AllGetters(t *testing.T) {
 }
 
 func TestUser_IsActive(t *testing.T) {
-	t.Run("new user is active by default", func(t *testing.T) {
+	t.Run("New user is active by default", func(t *testing.T) {
 		user, err := userDomain.NewUser("ext-123", "john", "john@example.com", "John Doe")
 		require.NoError(t, err)
 		assert.True(t, user.IsActive())
@@ -302,11 +302,11 @@ func TestUser_UpdateFromSync(t *testing.T) {
 
 		time.Sleep(10 * time.Millisecond)
 
-		updated := user.UpdateFromSync("new_user", "new@example.com", "New Name", true)
+		updated := user.UpdateFromSync("new_user", "New@example.com", "New Name", true)
 
 		assert.True(t, updated)
 		assert.Equal(t, "new_user", user.Username())
-		assert.Equal(t, "new@example.com", user.Email())
+		assert.Equal(t, "New@example.com", user.Email())
 		assert.Equal(t, "New Name", user.DisplayName())
 		assert.True(t, user.IsActive())
 		assert.True(t, user.UpdatedAt().After(oldUpdatedAt))
@@ -320,11 +320,11 @@ func TestUser_UpdateFromSync(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 
 		// Only email changed
-		updated := user.UpdateFromSync("same_user", "new@example.com", "Same Name", true)
+		updated := user.UpdateFromSync("same_user", "New@example.com", "Same Name", true)
 
 		assert.True(t, updated)
 		assert.Equal(t, "same_user", user.Username())
-		assert.Equal(t, "new@example.com", user.Email())
+		assert.Equal(t, "New@example.com", user.Email())
 		assert.True(t, user.UpdatedAt().After(oldUpdatedAt))
 	})
 

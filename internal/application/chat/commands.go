@@ -7,19 +7,19 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// CreateChatCommand содержит данные для создания нового чата
+// CreateChatCommand contains data for creating a new chat
 type CreateChatCommand struct {
 	WorkspaceID uuid.UUID
-	Title       string    // для typed чатов (Task/Bug/Epic)
+	Title       string    // for typed chats (Task/Bug/Epic)
 	Type        chat.Type // Discussion, Task, Bug, Epic
-	IsPublic    bool      // публичный или приватный
+	IsPublic    bool      // public or private
 	CreatedBy   uuid.UUID
 }
 
-// CommandName возвращает имя команды
+// CommandName returns the command name
 func (c CreateChatCommand) CommandName() string { return "CreateChat" }
 
-// AddParticipantCommand содержит данные для добавления участника
+// AddParticipantCommand contains data for adding a participant
 type AddParticipantCommand struct {
 	ChatID  uuid.UUID
 	UserID  uuid.UUID
@@ -27,105 +27,105 @@ type AddParticipantCommand struct {
 	AddedBy uuid.UUID
 }
 
-// CommandName возвращает имя команды
+// CommandName returns the command name
 func (c AddParticipantCommand) CommandName() string { return "AddParticipant" }
 
-// RemoveParticipantCommand содержит данные для удаления участника
+// RemoveParticipantCommand contains data for removing a participant
 type RemoveParticipantCommand struct {
 	ChatID    uuid.UUID
 	UserID    uuid.UUID
 	RemovedBy uuid.UUID
 }
 
-// CommandName возвращает имя команды
+// CommandName returns the command name
 func (c RemoveParticipantCommand) CommandName() string { return "RemoveParticipant" }
 
-// ConvertToTaskCommand содержит данные для конвертации чата в Task
+// ConvertToTaskCommand contains data for converting a chat to Task
 type ConvertToTaskCommand struct {
 	ChatID      uuid.UUID
-	Title       string // новый заголовок
+	Title       string // new title
 	ConvertedBy uuid.UUID
 }
 
-// CommandName возвращает имя команды
+// CommandName returns the command name
 func (c ConvertToTaskCommand) CommandName() string { return "ConvertToTask" }
 
-// ConvertToBugCommand содержит данные для конвертации чата в Bug
+// ConvertToBugCommand contains data for converting a chat to Bug
 type ConvertToBugCommand struct {
 	ChatID      uuid.UUID
-	Title       string // новый заголовок
+	Title       string // new title
 	ConvertedBy uuid.UUID
 }
 
-// CommandName возвращает имя команды
+// CommandName returns the command name
 func (c ConvertToBugCommand) CommandName() string { return "ConvertToBug" }
 
-// ConvertToEpicCommand содержит данные для конвертации чата в Epic
+// ConvertToEpicCommand contains data for converting a chat to Epic
 type ConvertToEpicCommand struct {
 	ChatID      uuid.UUID
-	Title       string // новый заголовок
+	Title       string // new title
 	ConvertedBy uuid.UUID
 }
 
-// CommandName возвращает имя команды
+// CommandName returns the command name
 func (c ConvertToEpicCommand) CommandName() string { return "ConvertToEpic" }
 
-// ChangeStatusCommand содержит данные для изменения статуса
+// ChangeStatusCommand contains data for changing status
 type ChangeStatusCommand struct {
 	ChatID    uuid.UUID
-	Status    string // зависит от типа чата
+	Status    string // depends on chat type
 	ChangedBy uuid.UUID
 }
 
-// CommandName возвращает имя команды
+// CommandName returns the command name
 func (c ChangeStatusCommand) CommandName() string { return "ChangeStatus" }
 
-// AssignUserCommand содержит данные для назначения пользователя
+// AssignUserCommand contains data for assigning a user
 type AssignUserCommand struct {
 	ChatID     uuid.UUID
-	AssigneeID *uuid.UUID // nil = снять assignee
+	AssigneeID *uuid.UUID // nil = remove assignee
 	AssignedBy uuid.UUID
 }
 
-// CommandName возвращает имя команды
+// CommandName returns the command name
 func (c AssignUserCommand) CommandName() string { return "AssignUser" }
 
-// SetPriorityCommand содержит данные для установки приоритета
+// SetPriorityCommand contains data for setting priority
 type SetPriorityCommand struct {
 	ChatID   uuid.UUID
 	Priority string // Low, Medium, High, Critical
 	SetBy    uuid.UUID
 }
 
-// CommandName возвращает имя команды
+// CommandName returns the command name
 func (c SetPriorityCommand) CommandName() string { return "SetPriority" }
 
-// SetDueDateCommand содержит данные для установки дедлайна
+// SetDueDateCommand contains data for setting a deadline
 type SetDueDateCommand struct {
 	ChatID  uuid.UUID
-	DueDate *time.Time // nil = снять дедлайн
+	DueDate *time.Time // nil = remove deadline
 	SetBy   uuid.UUID
 }
 
-// CommandName возвращает имя команды
+// CommandName returns the command name
 func (c SetDueDateCommand) CommandName() string { return "SetDueDate" }
 
-// RenameChatCommand содержит данные для переименования чата
+// RenameChatCommand contains data for renaming a chat
 type RenameChatCommand struct {
 	ChatID    uuid.UUID
 	NewTitle  string
 	RenamedBy uuid.UUID
 }
 
-// CommandName возвращает имя команды
+// CommandName returns the command name
 func (c RenameChatCommand) CommandName() string { return "RenameChat" }
 
-// SetSeverityCommand содержит данные для установки severity (только для Bug)
+// SetSeverityCommand contains data for setting severity (only for Bug)
 type SetSeverityCommand struct {
 	ChatID   uuid.UUID
 	Severity string // Minor, Major, Critical, Blocker
 	SetBy    uuid.UUID
 }
 
-// CommandName возвращает имя команды
+// CommandName returns the command name
 func (c SetSeverityCommand) CommandName() string { return "SetSeverity" }

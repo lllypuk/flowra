@@ -17,7 +17,7 @@ const (
 	EventTypeInviteRevoked    = "workspace.invite.revoked"
 )
 
-// Created событие создания рабочего пространства
+// Created event creating workspace prostranstva
 type Created struct {
 	event.BaseEvent
 
@@ -26,7 +26,7 @@ type Created struct {
 	CreatedBy       uuid.UUID
 }
 
-// NewWorkspaceCreated создает новое событие WorkspaceCreated
+// NewWorkspaceCreated creates new event WorkspaceCreated
 func NewWorkspaceCreated(
 	workspaceID uuid.UUID,
 	name, keycloakGroupID string,
@@ -41,14 +41,14 @@ func NewWorkspaceCreated(
 	}
 }
 
-// Updated событие обновления рабочего пространства
+// Updated event updating workspace prostranstva
 type Updated struct {
 	event.BaseEvent
 
 	Name string
 }
 
-// NewWorkspaceUpdated создает новое событие WorkspaceUpdated
+// NewWorkspaceUpdated creates new event WorkspaceUpdated
 func NewWorkspaceUpdated(workspaceID uuid.UUID, name string, metadata event.Metadata) *Updated {
 	return &Updated{
 		BaseEvent: event.NewBaseEvent(EventTypeWorkspaceUpdated, workspaceID.String(), "Workspace", 1, metadata),
@@ -56,19 +56,19 @@ func NewWorkspaceUpdated(workspaceID uuid.UUID, name string, metadata event.Meta
 	}
 }
 
-// Deleted событие удаления рабочего пространства
+// Deleted event removing workspace prostranstva
 type Deleted struct {
 	event.BaseEvent
 }
 
-// NewWorkspaceDeleted создает новое событие WorkspaceDeleted
+// NewWorkspaceDeleted creates new event WorkspaceDeleted
 func NewWorkspaceDeleted(workspaceID uuid.UUID, metadata event.Metadata) *Deleted {
 	return &Deleted{
 		BaseEvent: event.NewBaseEvent(EventTypeWorkspaceDeleted, workspaceID.String(), "Workspace", 1, metadata),
 	}
 }
 
-// InviteCreated событие создания приглашения
+// InviteCreated event creating priglasheniya
 type InviteCreated struct {
 	event.BaseEvent
 
@@ -79,7 +79,7 @@ type InviteCreated struct {
 	MaxUses     int
 }
 
-// NewInviteCreated создает новое событие InviteCreated
+// NewInviteCreated creates new event InviteCreated
 func NewInviteCreated(
 	inviteID, workspaceID uuid.UUID,
 	token string,
@@ -98,7 +98,7 @@ func NewInviteCreated(
 	}
 }
 
-// InviteUsed событие использования приглашения
+// InviteUsed event ispolzovaniya priglasheniya
 type InviteUsed struct {
 	event.BaseEvent
 
@@ -107,7 +107,7 @@ type InviteUsed struct {
 	UsedCount   int
 }
 
-// NewInviteUsed создает новое событие InviteUsed
+// NewInviteUsed creates new event InviteUsed
 func NewInviteUsed(inviteID, workspaceID, usedBy uuid.UUID, usedCount int, metadata event.Metadata) *InviteUsed {
 	return &InviteUsed{
 		BaseEvent:   event.NewBaseEvent(EventTypeInviteUsed, inviteID.String(), "Invite", 1, metadata),
@@ -117,7 +117,7 @@ func NewInviteUsed(inviteID, workspaceID, usedBy uuid.UUID, usedCount int, metad
 	}
 }
 
-// InviteRevoked событие отмены приглашения
+// InviteRevoked event otmeny priglasheniya
 type InviteRevoked struct {
 	event.BaseEvent
 
@@ -125,7 +125,7 @@ type InviteRevoked struct {
 	RevokedBy   uuid.UUID
 }
 
-// NewInviteRevoked создает новое событие InviteRevoked
+// NewInviteRevoked creates new event InviteRevoked
 func NewInviteRevoked(inviteID, workspaceID, revokedBy uuid.UUID, metadata event.Metadata) *InviteRevoked {
 	return &InviteRevoked{
 		BaseEvent:   event.NewBaseEvent(EventTypeInviteRevoked, inviteID.String(), "Invite", 1, metadata),

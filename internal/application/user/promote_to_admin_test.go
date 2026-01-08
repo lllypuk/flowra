@@ -15,12 +15,12 @@ func TestPromoteToAdminUseCase_Execute_Success(t *testing.T) {
 	repo := newMockUserRepository()
 	useCase := user.NewPromoteToAdminUseCase(repo)
 
-	// Создаем администратора
+	// Creating administrator
 	admin, _ := domainuser.NewUser("external-admin", "admin", "admin@example.com", "Admin User")
 	admin.SetAdmin(true)
 	_ = repo.Save(context.Background(), admin)
 
-	// Создаем обычного пользователя
+	// Creating regular user
 	regularUser, _ := domainuser.NewUser("external-user", "user", "user@example.com", "Regular User")
 	_ = repo.Save(context.Background(), regularUser)
 
@@ -47,7 +47,7 @@ func TestPromoteToAdminUseCase_Execute_PromoterNotAdmin(t *testing.T) {
 	repo := newMockUserRepository()
 	useCase := user.NewPromoteToAdminUseCase(repo)
 
-	// Создаем двух обычных пользователей
+	// Creating dvuh obychnyh users
 	user1, _ := domainuser.NewUser("external-1", "user1", "user1@example.com", "User 1")
 	user2, _ := domainuser.NewUser("external-2", "user2", "user2@example.com", "User 2")
 	_ = repo.Save(context.Background(), user1)
@@ -55,7 +55,7 @@ func TestPromoteToAdminUseCase_Execute_PromoterNotAdmin(t *testing.T) {
 
 	cmd := user.PromoteToAdminCommand{
 		UserID:     user2.ID(),
-		PromotedBy: user1.ID(), // user1 не администратор
+		PromotedBy: user1.ID(), // user1 not administrator
 	}
 
 	// Act
@@ -72,7 +72,7 @@ func TestPromoteToAdminUseCase_Execute_PromoterNotFound(t *testing.T) {
 	repo := newMockUserRepository()
 	useCase := user.NewPromoteToAdminUseCase(repo)
 
-	// Создаем обычного пользователя
+	// Creating regular user
 	regularUser, _ := domainuser.NewUser("external-user", "user", "user@example.com", "Regular User")
 	_ = repo.Save(context.Background(), regularUser)
 
@@ -80,7 +80,7 @@ func TestPromoteToAdminUseCase_Execute_PromoterNotFound(t *testing.T) {
 
 	cmd := user.PromoteToAdminCommand{
 		UserID:     regularUser.ID(),
-		PromotedBy: nonExistentUser.ID(), // не существует
+		PromotedBy: nonExistentUser.ID(), // not suschestvuet
 	}
 
 	// Act
@@ -97,7 +97,7 @@ func TestPromoteToAdminUseCase_Execute_TargetUserNotFound(t *testing.T) {
 	repo := newMockUserRepository()
 	useCase := user.NewPromoteToAdminUseCase(repo)
 
-	// Создаем администратора
+	// Creating administrator
 	admin, _ := domainuser.NewUser("external-admin", "admin", "admin@example.com", "Admin User")
 	admin.SetAdmin(true)
 	_ = repo.Save(context.Background(), admin)
@@ -105,7 +105,7 @@ func TestPromoteToAdminUseCase_Execute_TargetUserNotFound(t *testing.T) {
 	nonExistentUser, _ := domainuser.NewUser("external-fake", "fake", "fake@example.com", "Fake")
 
 	cmd := user.PromoteToAdminCommand{
-		UserID:     nonExistentUser.ID(), // не существует
+		UserID:     nonExistentUser.ID(), // not suschestvuet
 		PromotedBy: admin.ID(),
 	}
 
@@ -123,12 +123,12 @@ func TestPromoteToAdminUseCase_Execute_AlreadyAdmin(t *testing.T) {
 	repo := newMockUserRepository()
 	useCase := user.NewPromoteToAdminUseCase(repo)
 
-	// Создаем администратора
+	// Creating administrator
 	admin1, _ := domainuser.NewUser("external-admin1", "admin1", "admin1@example.com", "Admin 1")
 	admin1.SetAdmin(true)
 	_ = repo.Save(context.Background(), admin1)
 
-	// Создаем еще одного администратора
+	// Creating esche odnogo administrator
 	admin2, _ := domainuser.NewUser("external-admin2", "admin2", "admin2@example.com", "Admin 2")
 	admin2.SetAdmin(true)
 	_ = repo.Save(context.Background(), admin2)
@@ -146,7 +146,7 @@ func TestPromoteToAdminUseCase_Execute_AlreadyAdmin(t *testing.T) {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	// Должно работать нормально, даже если уже администратор
+	// dolzhno work normalno, dazhe if uzhe administrator
 	if !result.Value.IsSystemAdmin() {
 		t.Error("expected user to remain admin")
 	}

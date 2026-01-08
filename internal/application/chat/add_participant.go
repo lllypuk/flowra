@@ -8,19 +8,19 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/chat"
 )
 
-// AddParticipantUseCase обрабатывает добавление участника в чат
+// AddParticipantUseCase handles adding a participant to a chat
 type AddParticipantUseCase struct {
 	eventStore appcore.EventStore
 }
 
-// NewAddParticipantUseCase создает новый AddParticipantUseCase
+// NewAddParticipantUseCase creates a new AddParticipantUseCase
 func NewAddParticipantUseCase(eventStore appcore.EventStore) *AddParticipantUseCase {
 	return &AddParticipantUseCase{
 		eventStore: eventStore,
 	}
 }
 
-// Execute выполняет добавление участника
+// Execute performs adding a participant
 func (uc *AddParticipantUseCase) Execute(ctx context.Context, cmd AddParticipantCommand) (Result, error) {
 	if err := uc.validate(cmd); err != nil {
 		return Result{}, fmt.Errorf("validation failed: %w", err)
@@ -31,7 +31,7 @@ func (uc *AddParticipantUseCase) Execute(ctx context.Context, cmd AddParticipant
 		return Result{}, err
 	}
 
-	// Domain layer сам управляет событиями
+	// Domain layer manages events itself
 	if addErr := chatAggregate.AddParticipant(cmd.UserID, cmd.Role); addErr != nil {
 		return Result{}, fmt.Errorf("failed to add participant: %w", addErr)
 	}

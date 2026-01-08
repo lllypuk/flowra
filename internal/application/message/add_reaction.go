@@ -9,13 +9,13 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/message"
 )
 
-// AddReactionUseCase обрабатывает добавление реакции к сообщению
+// AddReactionUseCase handles adding reactions to message
 type AddReactionUseCase struct {
 	messageRepo Repository
 	eventBus    event.Bus
 }
 
-// NewAddReactionUseCase создает новый AddReactionUseCase
+// NewAddReactionUseCase creates New AddReactionUseCase
 func NewAddReactionUseCase(
 	messageRepo Repository,
 	eventBus event.Bus,
@@ -26,38 +26,38 @@ func NewAddReactionUseCase(
 	}
 }
 
-// Execute выполняет добавление реакции
+// Execute performs adding reactions
 func (uc *AddReactionUseCase) Execute(
 	ctx context.Context,
 	cmd AddReactionCommand,
 ) (Result, error) {
-	// Валидация
+	// validation
 	if err := uc.validate(cmd); err != nil {
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Загрузка сообщения
+	// load message
 	msg, err := uc.messageRepo.FindByID(ctx, cmd.MessageID)
 	if err != nil {
 		return Result{}, ErrMessageNotFound
 	}
 
-	// Проверка, что сообщение не удалено
+	// check that message is not deleted
 	if msg.IsDeleted() {
 		return Result{}, ErrMessageDeleted
 	}
 
-	// Добавление реакции
+	// add reaction
 	if addErr := msg.AddReaction(cmd.UserID, cmd.Emoji); addErr != nil {
 		return Result{}, addErr
 	}
 
-	// Сохранение
+	// save
 	if saveErr := uc.messageRepo.Save(ctx, msg); saveErr != nil {
 		return Result{}, fmt.Errorf("failed to save message: %w", saveErr)
 	}
 
-	// Публикация события
+	// publish event
 	evt := message.NewReactionAdded(msg.ID(), cmd.UserID, cmd.Emoji, 1, event.Metadata{
 		UserID: cmd.UserID.String(),
 	})

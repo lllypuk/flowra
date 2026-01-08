@@ -1,24 +1,24 @@
 package tag
 
-// ErrorSeverity определяет серьезность ошибки
+// ErrorSeverity defines sereznost error
 type ErrorSeverity int
 
 const (
-	// ErrorSeverityError - ошибка, применение невозможно (❌)
+	// ErrorSeverityError - error, applying nevozmozhno (❌)
 	ErrorSeverityError ErrorSeverity = iota
-	// ErrorSeverityWarning - предупреждение, применено с замечанием (⚠️)
+	// ErrorSeverityWarning - warning, primeneno s zamechaniem (⚠️)
 	ErrorSeverityWarning
 )
 
-// ProcessingResult содержит результат обработки тегов в сообщении
+// ProcessingResult contains result work tegov in soobschenii
 type ProcessingResult struct {
 	OriginalMessage string
-	PlainText       string           // Текст без тегов
-	AppliedTags     []TagApplication // Успешно примененные теги
-	Errors          []TagError       // Ошибки валидации и применения
+	PlainText       string           // tekst bez tegov
+	AppliedTags     []TagApplication // successfully primenennye tags
+	Errors          []TagError       // oshibki valid and primeneniya
 }
 
-// TagApplication представляет успешно примененный тег
+// TagApplication represents successfully primenennyy teg
 //
 //nolint:revive // TagApplication is intentional - represents tag processing application
 type TagApplication struct {
@@ -28,7 +28,7 @@ type TagApplication struct {
 	Success  bool
 }
 
-// TagError представляет ошибку валидации или применения тега
+// TagError represents error valid or primeneniya tega
 //
 //nolint:revive // TagError is intentional - represents tag processing error
 type TagError struct {
@@ -38,17 +38,17 @@ type TagError struct {
 	Severity ErrorSeverity
 }
 
-// HasTags возвращает true если были обработаны какие-либо теги
+// HasTags returns true if byli work as-libo tags
 func (pr *ProcessingResult) HasTags() bool {
 	return len(pr.AppliedTags) > 0 || len(pr.Errors) > 0
 }
 
-// HasErrors возвращает true если есть ошибки
+// HasErrors returns true if est error
 func (pr *ProcessingResult) HasErrors() bool {
 	return len(pr.Errors) > 0
 }
 
-// SuccessCount возвращает количество успешно примененных тегов
+// SuccessCount returns count successfully primenennyh tegov
 func (pr *ProcessingResult) SuccessCount() int {
 	count := 0
 	for _, applied := range pr.AppliedTags {

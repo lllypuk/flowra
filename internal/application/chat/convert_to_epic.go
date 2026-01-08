@@ -8,21 +8,21 @@ import (
 	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
-// ConvertToEpicUseCase обрабатывает конвертацию чата в Epic
+// ConvertToEpicUseCase handles converting a chat to Epic
 type ConvertToEpicUseCase struct {
 	eventStore appcore.EventStore
 }
 
-// NewConvertToEpicUseCase создает новый ConvertToEpicUseCase
+// NewConvertToEpicUseCase creates a new ConvertToEpicUseCase
 func NewConvertToEpicUseCase(eventStore appcore.EventStore) *ConvertToEpicUseCase {
 	return &ConvertToEpicUseCase{
 		eventStore: eventStore,
 	}
 }
 
-// Execute выполняет конвертацию в Epic
+// Execute performs conversion to Epic
 func (uc *ConvertToEpicUseCase) Execute(ctx context.Context, cmd ConvertToEpicCommand) (Result, error) {
-	// Валидация
+	// Validation
 	if err := uc.validate(cmd); err != nil {
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}

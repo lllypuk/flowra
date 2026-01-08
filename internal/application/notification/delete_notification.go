@@ -7,12 +7,12 @@ import (
 	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
-// DeleteNotificationUseCase обрабатывает удаление notification
+// DeleteNotificationUseCase handles deletion notification
 type DeleteNotificationUseCase struct {
 	notificationRepo Repository
 }
 
-// NewDeleteNotificationUseCase создает новый use case для удаления notification
+// NewDeleteNotificationUseCase creates New use case for removing notification
 func NewDeleteNotificationUseCase(
 	notificationRepo Repository,
 ) *DeleteNotificationUseCase {
@@ -21,28 +21,28 @@ func NewDeleteNotificationUseCase(
 	}
 }
 
-// Execute выполняет удаление notification
+// Execute performs deletion notification
 func (uc *DeleteNotificationUseCase) Execute(
 	ctx context.Context,
 	cmd DeleteNotificationCommand,
 ) error {
-	// Валидация
+	// validation
 	if err := uc.validate(cmd); err != nil {
 		return fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Получение notification для проверки принадлежности
+	// retrieval notification for proverki prinadlezhnosti
 	notif, err := uc.notificationRepo.FindByID(ctx, cmd.NotificationID)
 	if err != nil {
 		return fmt.Errorf("failed to find notification: %w", ErrNotificationNotFound)
 	}
 
-	// Проверка принадлежности
+	// check prinadlezhnosti
 	if notif.UserID() != cmd.UserID {
 		return ErrNotificationAccessDenied
 	}
 
-	// Удаление
+	// deletion
 	if deleteErr := uc.notificationRepo.Delete(ctx, cmd.NotificationID); deleteErr != nil {
 		return fmt.Errorf("failed to delete notification: %w", deleteErr)
 	}
@@ -50,7 +50,7 @@ func (uc *DeleteNotificationUseCase) Execute(
 	return nil
 }
 
-// validate проверяет валидность команды
+// validate validates commands
 func (uc *DeleteNotificationUseCase) validate(cmd DeleteNotificationCommand) error {
 	if err := appcore.ValidateUUID("notificationID", cmd.NotificationID); err != nil {
 		return err

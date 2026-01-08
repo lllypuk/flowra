@@ -11,7 +11,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// loadAggregate загружает Chat агрегат из event store
+// loadAggregate loads Chat aggregate from event store
 func loadAggregate(ctx context.Context, eventStore appcore.EventStore, chatID uuid.UUID) (*chat.Chat, error) {
 	events, err := eventStore.LoadEvents(ctx, chatID.String())
 	if err != nil {
@@ -32,7 +32,7 @@ func loadAggregate(ctx context.Context, eventStore appcore.EventStore, chatID uu
 	return chatAggregate, nil
 }
 
-// saveAggregate сохраняет новые события агрегата
+// saveAggregate saves new events from the aggregate
 func saveAggregate(
 	ctx context.Context,
 	eventStore appcore.EventStore,
@@ -41,7 +41,7 @@ func saveAggregate(
 ) (Result, error) {
 	newEvents := chatAggregate.GetUncommittedEvents()
 	if len(newEvents) == 0 {
-		// Нет изменений - возвращаем текущее состояние
+		// No changes - return current state
 		return Result{
 			Result: appcore.Result[*chat.Chat]{
 				Value:   chatAggregate,
@@ -53,7 +53,7 @@ func saveAggregate(
 
 	currentVersion, _ := eventStore.GetVersion(ctx, aggregateID)
 
-	// Конвертируем []event.DomainEvent в []event.DomainEvent (уже правильный тип)
+	// Convert []event.DomainEvent to []event.DomainEvent (already correct type)
 	if err := eventStore.SaveEvents(ctx, aggregateID, newEvents, currentVersion); err != nil {
 		if errors.Is(err, appcore.ErrConcurrencyConflict) {
 			return Result{}, appcore.ErrConcurrentUpdate
@@ -72,7 +72,7 @@ func saveAggregate(
 	}, nil
 }
 
-// convertToInterfaceSlice конвертирует []event.DomainEvent в []interface{}
+// convertToInterfaceSlice converts []event.DomainEvent to []interface{}
 func convertToInterfaceSlice(events []event.DomainEvent) []any {
 	result := make([]any, len(events))
 	for i, evt := range events {

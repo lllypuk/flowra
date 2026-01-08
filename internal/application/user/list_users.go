@@ -8,37 +8,37 @@ import (
 )
 
 const (
-	// MaxListLimit максимальное количество пользователей в одном запросе
+	// MaxListLimit maximum count users in odnom zaprose
 	MaxListLimit = 100
 )
 
-// ListUsersUseCase обрабатывает получение списка пользователей
+// ListUsersUseCase handles retrieval list users
 type ListUsersUseCase struct {
 	userRepo Repository
 }
 
-// NewListUsersUseCase создает новый ListUsersUseCase
+// NewListUsersUseCase creates New ListUsersUseCase
 func NewListUsersUseCase(userRepo Repository) *ListUsersUseCase {
 	return &ListUsersUseCase{userRepo: userRepo}
 }
 
-// Execute выполняет получение списка пользователей
+// Execute performs retrieval list users
 func (uc *ListUsersUseCase) Execute(
 	ctx context.Context,
 	query ListUsersQuery,
 ) (UsersListResult, error) {
-	// Валидация
+	// validation
 	if err := uc.validate(query); err != nil {
 		return UsersListResult{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Получение общего количества
+	// retrieval obschego kolichestva
 	totalCount, err := uc.userRepo.Count(ctx)
 	if err != nil {
 		return UsersListResult{}, fmt.Errorf("failed to get users count: %w", err)
 	}
 
-	// Получение списка пользователей
+	// retrieval list users
 	users, err := uc.userRepo.List(ctx, query.Offset, query.Limit)
 	if err != nil {
 		return UsersListResult{}, fmt.Errorf("failed to list users: %w", err)

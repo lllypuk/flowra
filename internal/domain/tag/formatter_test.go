@@ -123,12 +123,12 @@ func TestGenerateBotResponse(t *testing.T) {
 					{
 						TagKey:   "severity",
 						TagValue: "Critical",
-						Error:    errors.New("Severity is only applicable to Bugs"),
+						Error:    errors.New("severity is only applicable to Bugs"),
 						Severity: tag.ErrorSeverityWarning,
 					},
 				},
 			},
-			expected: "⚠️ Severity is only applicable to Bugs",
+			expected: "⚠️ severity is only applicable to Bugs",
 		},
 	}
 
@@ -266,7 +266,7 @@ func TestFormatSuccess_AllCommandTypes(t *testing.T) {
 				Command:  tag.SetSeverityCommand{ChatID: chatID, Severity: "Critical"},
 				Success:  true,
 			},
-			expected: "✅ Severity set to Critical",
+			expected: "✅ severity set to Critical",
 		},
 	}
 
@@ -324,7 +324,7 @@ func TestProcessingResult_HelperMethods(t *testing.T) {
 			AppliedTags: []tag.TagApplication{
 				{TagKey: "task", Success: true},
 				{TagKey: "bug", Success: true},
-				{TagKey: "epic", Success: false}, // не должен считаться
+				{TagKey: "epic", Success: false}, // not dolzhen schitatsya
 			},
 		}
 		assert.Equal(t, 2, result.SuccessCount())

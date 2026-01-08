@@ -8,21 +8,21 @@ import (
 	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
-// ConvertToTaskUseCase обрабатывает конвертацию чата в Task
+// ConvertToTaskUseCase handles converting a chat to Task
 type ConvertToTaskUseCase struct {
 	eventStore appcore.EventStore
 }
 
-// NewConvertToTaskUseCase создает новый ConvertToTaskUseCase
+// NewConvertToTaskUseCase creates a new ConvertToTaskUseCase
 func NewConvertToTaskUseCase(eventStore appcore.EventStore) *ConvertToTaskUseCase {
 	return &ConvertToTaskUseCase{
 		eventStore: eventStore,
 	}
 }
 
-// Execute выполняет конвертацию в Task
+// Execute performs converting to Task
 func (uc *ConvertToTaskUseCase) Execute(ctx context.Context, cmd ConvertToTaskCommand) (Result, error) {
-	// Валидация
+	// Validation
 	if err := uc.validate(cmd); err != nil {
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}

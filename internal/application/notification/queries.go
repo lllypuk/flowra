@@ -2,30 +2,30 @@ package notification
 
 import "github.com/lllypuk/flowra/internal/domain/uuid"
 
-// Query базовый интерфейс запросов
+// Query bazovyy interface zaprosov
 type Query interface {
 	QueryName() string
 }
 
-// GetNotificationQuery - получение notification по ID
+// GetNotificationQuery - retrieval notification po ID
 type GetNotificationQuery struct {
 	NotificationID uuid.UUID
-	UserID         uuid.UUID // проверка, что notification принадлежит пользователю
+	UserID         uuid.UUID // check that notification prinadlezhit user
 }
 
 func (q GetNotificationQuery) QueryName() string { return "GetNotification" }
 
-// ListNotificationsQuery - список notifications пользователя
+// ListNotificationsQuery - list notifications user
 type ListNotificationsQuery struct {
 	UserID     uuid.UUID
-	UnreadOnly bool // фильтр только непрочитанных
+	UnreadOnly bool // filter only unread
 	Limit      int
 	Offset     int
 }
 
 func (q ListNotificationsQuery) QueryName() string { return "ListNotifications" }
 
-// CountUnreadQuery - количество непрочитанных
+// CountUnreadQuery - count unread
 type CountUnreadQuery struct {
 	UserID uuid.UUID
 }

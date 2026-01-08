@@ -9,13 +9,13 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/message"
 )
 
-// EditMessageUseCase обрабатывает редактирование сообщения
+// EditMessageUseCase handles editing messages
 type EditMessageUseCase struct {
 	messageRepo Repository
 	eventBus    event.Bus
 }
 
-// NewEditMessageUseCase создает новый EditMessageUseCase
+// NewEditMessageUseCase creates New EditMessageUseCase
 func NewEditMessageUseCase(
 	messageRepo Repository,
 	eventBus event.Bus,
@@ -26,38 +26,38 @@ func NewEditMessageUseCase(
 	}
 }
 
-// Execute выполняет редактирование сообщения
+// Execute performs editing messages
 func (uc *EditMessageUseCase) Execute(
 	ctx context.Context,
 	cmd EditMessageCommand,
 ) (Result, error) {
-	// Валидация
+	// validation
 	if err := uc.validate(cmd); err != nil {
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Загрузка сообщения
+	// load message
 	msg, err := uc.messageRepo.FindByID(ctx, cmd.MessageID)
 	if err != nil {
 		return Result{}, ErrMessageNotFound
 	}
 
-	// Проверка, что сообщение не удалено
+	// check that message is not deleted
 	if msg.IsDeleted() {
 		return Result{}, ErrMessageDeleted
 	}
 
-	// Редактирование (авторизация внутри domain метода)
+	// edit (authorization inside domain method)
 	if editErr := msg.EditContent(cmd.Content, cmd.EditorID); editErr != nil {
 		return Result{}, editErr
 	}
 
-	// Сохранение
+	// save
 	if saveErr := uc.messageRepo.Save(ctx, msg); saveErr != nil {
 		return Result{}, fmt.Errorf("failed to save message: %w", saveErr)
 	}
 
-	// Публикация события
+	// publish event
 	evt := message.NewEdited(msg.ID(), cmd.Content, 1, event.Metadata{
 		UserID:    cmd.EditorID.String(),
 		Timestamp: *msg.EditedAt(),

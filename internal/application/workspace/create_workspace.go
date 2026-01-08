@@ -8,7 +8,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/workspace"
 )
 
-// CreateWorkspaceUseCase - use case для создания workspace
+// CreateWorkspaceUseCase - use case for creating workspace
 type CreateWorkspaceUseCase struct {
 	appcore.BaseUseCase
 
@@ -16,7 +16,7 @@ type CreateWorkspaceUseCase struct {
 	keycloakClient KeycloakClient
 }
 
-// NewCreateWorkspaceUseCase создает новый CreateWorkspaceUseCase
+// NewCreateWorkspaceUseCase creates New CreateWorkspaceUseCase
 func NewCreateWorkspaceUseCase(
 	workspaceRepo Repository,
 	keycloakClient KeycloakClient,
@@ -27,22 +27,22 @@ func NewCreateWorkspaceUseCase(
 	}
 }
 
-// Execute выполняет создание workspace
+// Execute performs creation workspace
 func (uc *CreateWorkspaceUseCase) Execute(
 	ctx context.Context,
 	cmd CreateWorkspaceCommand,
 ) (Result, error) {
-	// Валидация контекста
+	// context validation
 	if err := uc.ValidateContext(ctx); err != nil {
 		return Result{}, uc.WrapError("validate context", err)
 	}
 
-	// Валидация команды
+	// validation commands
 	if err := uc.validate(cmd); err != nil {
 		return Result{}, uc.WrapError("validation failed", err)
 	}
 
-	// Создание группы в Keycloak
+	// creation groups in Keycloak
 	keycloakGroupID, err := uc.keycloakClient.CreateGroup(ctx, cmd.Name)
 	if err != nil {
 		return Result{}, uc.WrapError(
@@ -51,31 +51,31 @@ func (uc *CreateWorkspaceUseCase) Execute(
 		)
 	}
 
-	// Создание workspace
+	// creation workspace
 	ws, err := workspace.NewWorkspace(cmd.Name, cmd.Description, keycloakGroupID, cmd.CreatedBy)
 	if err != nil {
-		// Rollback: удаляем группу в Keycloak
+		// Rollback: udalyaem groups in Keycloak
 		_ = uc.keycloakClient.DeleteGroup(ctx, keycloakGroupID)
 		return Result{}, uc.WrapError("create workspace entity", err)
 	}
 
-	// Сохранение workspace
+	// storage workspace
 	if errSave := uc.workspaceRepo.Save(ctx, ws); errSave != nil {
-		// Rollback: удаляем группу в Keycloak
+		// Rollback: udalyaem groups in Keycloak
 		_ = uc.keycloakClient.DeleteGroup(ctx, keycloakGroupID)
 		return Result{}, uc.WrapError("save workspace", errSave)
 	}
 
-	// Добавление создателя как владельца workspace
+	// Adding sozdatelya as vladeltsa workspace
 	ownerMember := workspace.NewMember(cmd.CreatedBy, ws.ID(), workspace.RoleOwner)
 	if errMember := uc.workspaceRepo.AddMember(ctx, &ownerMember); errMember != nil {
-		// Workspace создан, но член не добавлен - это критичная ошибка
-		// TODO: возможно нужен rollback workspace
+		// Workspace sozdan, no chlen not dobavlen - it is kritichnaya error
+		// TODO: vozmozhno nuzhen rollback workspace
 		return Result{}, uc.WrapError("add owner member", errMember)
 	}
 
-	// Добавление создателя в группу Keycloak
-	// Не критично, можно залогировать, но не откатываем workspace
+	// Adding sozdatelya in groups Keycloak
+	// not kritichno, mozhno log, no not otkatyvaem workspace
 	_ = uc.keycloakClient.AddUserToGroup(ctx, cmd.CreatedBy.String(), keycloakGroupID)
 
 	return Result{
@@ -85,7 +85,7 @@ func (uc *CreateWorkspaceUseCase) Execute(
 	}, nil
 }
 
-// validate проверяет валидность команды
+// validate validates commands
 func (uc *CreateWorkspaceUseCase) validate(cmd CreateWorkspaceCommand) error {
 	if err := appcore.ValidateRequired("name", cmd.Name); err != nil {
 		return err

@@ -9,7 +9,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/workspace"
 )
 
-// MockWorkspaceRepository реализует репозиторий workspaces для тестирования
+// MockWorkspaceRepository implements the workspaces repository for testing
 type MockWorkspaceRepository struct {
 	mu                   sync.RWMutex
 	workspaces           map[uuid.UUID]*workspace.Workspace
@@ -21,7 +21,7 @@ type MockWorkspaceRepository struct {
 	FindError            error
 }
 
-// NewMockWorkspaceRepository создает новый mock репозиторий
+// NewMockWorkspaceRepository creates a new mock repository
 func NewMockWorkspaceRepository() *MockWorkspaceRepository {
 	return &MockWorkspaceRepository{
 		workspaces:           make(map[uuid.UUID]*workspace.Workspace),
@@ -32,7 +32,7 @@ func NewMockWorkspaceRepository() *MockWorkspaceRepository {
 	}
 }
 
-// FindByID находит workspace по ID
+// FindByID finds a workspace by ID
 func (r *MockWorkspaceRepository) FindByID(
 	_ context.Context,
 	id uuid.UUID,
@@ -54,7 +54,7 @@ func (r *MockWorkspaceRepository) FindByID(
 	return ws, nil
 }
 
-// FindByKeycloakGroup находит workspace по Keycloak group ID
+// FindByKeycloakGroup finds a workspace by Keycloak group ID
 func (r *MockWorkspaceRepository) FindByKeycloakGroup(
 	_ context.Context,
 	keycloakGroupID string,
@@ -76,7 +76,7 @@ func (r *MockWorkspaceRepository) FindByKeycloakGroup(
 	return ws, nil
 }
 
-// Save сохраняет workspace
+// Save saves a workspace
 func (r *MockWorkspaceRepository) Save(_ context.Context, ws *workspace.Workspace) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -90,7 +90,7 @@ func (r *MockWorkspaceRepository) Save(_ context.Context, ws *workspace.Workspac
 	r.workspaces[ws.ID()] = ws
 	r.workspacesByKeycloak[ws.KeycloakGroupID()] = ws
 
-	// Сохраняем инвайты
+	// Save invites
 	for _, invite := range ws.Invites() {
 		r.invitesByToken[invite.Token()] = invite
 	}
@@ -98,7 +98,7 @@ func (r *MockWorkspaceRepository) Save(_ context.Context, ws *workspace.Workspac
 	return nil
 }
 
-// Delete удаляет workspace
+// Delete deletes a workspace
 func (r *MockWorkspaceRepository) Delete(_ context.Context, id uuid.UUID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -113,7 +113,7 @@ func (r *MockWorkspaceRepository) Delete(_ context.Context, id uuid.UUID) error 
 	delete(r.workspacesByKeycloak, ws.KeycloakGroupID())
 	delete(r.workspaces, id)
 
-	// Удаляем членов workspace
+	// Delete workspace members
 	for key, member := range r.members {
 		if member.WorkspaceID() == id {
 			delete(r.members, key)
@@ -123,7 +123,7 @@ func (r *MockWorkspaceRepository) Delete(_ context.Context, id uuid.UUID) error 
 	return nil
 }
 
-// List возвращает список workspaces
+// List returns a list of workspaces
 func (r *MockWorkspaceRepository) List(
 	_ context.Context,
 	offset, limit int,
@@ -146,7 +146,7 @@ func (r *MockWorkspaceRepository) List(
 	return allWorkspaces[offset:end], nil
 }
 
-// Count возвращает количество workspaces
+// Count returns the number of workspaces
 func (r *MockWorkspaceRepository) Count(_ context.Context) (int, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -156,7 +156,7 @@ func (r *MockWorkspaceRepository) Count(_ context.Context) (int, error) {
 	return len(r.workspaces), nil
 }
 
-// FindInviteByToken находит invite по токену
+// FindInviteByToken finds an invite by token
 func (r *MockWorkspaceRepository) FindInviteByToken(
 	_ context.Context,
 	token string,
@@ -174,7 +174,7 @@ func (r *MockWorkspaceRepository) FindInviteByToken(
 	return invite, nil
 }
 
-// GetMember возвращает члена workspace
+// GetMember returns a workspace member
 func (r *MockWorkspaceRepository) GetMember(
 	_ context.Context,
 	workspaceID, userID uuid.UUID,
@@ -193,7 +193,7 @@ func (r *MockWorkspaceRepository) GetMember(
 	return member, nil
 }
 
-// IsMember проверяет, является ли пользователь членом workspace
+// IsMember checks if a user is a workspace member
 func (r *MockWorkspaceRepository) IsMember(
 	_ context.Context,
 	workspaceID, userID uuid.UUID,
@@ -208,7 +208,7 @@ func (r *MockWorkspaceRepository) IsMember(
 	return ok, nil
 }
 
-// ListWorkspacesByUser возвращает workspaces пользователя
+// ListWorkspacesByUser returns a user's workspaces
 func (r *MockWorkspaceRepository) ListWorkspacesByUser(
 	_ context.Context,
 	userID uuid.UUID,
@@ -239,7 +239,7 @@ func (r *MockWorkspaceRepository) ListWorkspacesByUser(
 	return result[offset:end], nil
 }
 
-// CountWorkspacesByUser возвращает количество workspaces пользователя
+// CountWorkspacesByUser returns the number of user's workspaces
 func (r *MockWorkspaceRepository) CountWorkspacesByUser(
 	_ context.Context,
 	userID uuid.UUID,
@@ -258,7 +258,7 @@ func (r *MockWorkspaceRepository) CountWorkspacesByUser(
 	return count, nil
 }
 
-// ListMembers возвращает членов workspace
+// ListMembers returns workspace members
 func (r *MockWorkspaceRepository) ListMembers(
 	_ context.Context,
 	workspaceID uuid.UUID,
@@ -284,7 +284,7 @@ func (r *MockWorkspaceRepository) ListMembers(
 	return result[offset:end], nil
 }
 
-// CountMembers возвращает количество членов workspace
+// CountMembers returns the number of workspace members
 func (r *MockWorkspaceRepository) CountMembers(
 	_ context.Context,
 	workspaceID uuid.UUID,
@@ -303,7 +303,7 @@ func (r *MockWorkspaceRepository) CountMembers(
 	return count, nil
 }
 
-// AddMember добавляет члена в workspace
+// AddMember adds a member to a workspace
 func (r *MockWorkspaceRepository) AddMember(
 	_ context.Context,
 	member *workspace.Member,
@@ -322,7 +322,7 @@ func (r *MockWorkspaceRepository) AddMember(
 	return nil
 }
 
-// RemoveMember удаляет члена из workspace
+// RemoveMember removes a member from a workspace
 func (r *MockWorkspaceRepository) RemoveMember(
 	_ context.Context,
 	workspaceID, userID uuid.UUID,
@@ -340,14 +340,14 @@ func (r *MockWorkspaceRepository) RemoveMember(
 	return nil
 }
 
-// GetCallCount возвращает количество вызовов метода
+// GetCallCount returns the number of method calls
 func (r *MockWorkspaceRepository) GetCallCount(method string) int {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.calls[method]
 }
 
-// Reset очищает все данные
+// Reset clears all data
 func (r *MockWorkspaceRepository) Reset() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -361,7 +361,7 @@ func (r *MockWorkspaceRepository) Reset() {
 	r.FindError = nil
 }
 
-// GetAll возвращает все workspaces
+// GetAll returns all workspaces
 func (r *MockWorkspaceRepository) GetAll() []*workspace.Workspace {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -373,7 +373,7 @@ func (r *MockWorkspaceRepository) GetAll() []*workspace.Workspace {
 	return workspaces
 }
 
-// GetAllMembers возвращает всех членов
+// GetAllMembers returns all members
 func (r *MockWorkspaceRepository) GetAllMembers() []*workspace.Member {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

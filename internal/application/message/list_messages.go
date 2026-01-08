@@ -7,35 +7,35 @@ import (
 	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
-// ListMessagesUseCase обрабатывает получение списка сообщений в чате
+// ListMessagesUseCase handles retrieval list soobscheniy in chate
 type ListMessagesUseCase struct {
 	messageRepo Repository
 }
 
-// NewListMessagesUseCase создает новый ListMessagesUseCase
+// NewListMessagesUseCase creates New ListMessagesUseCase
 func NewListMessagesUseCase(messageRepo Repository) *ListMessagesUseCase {
 	return &ListMessagesUseCase{
 		messageRepo: messageRepo,
 	}
 }
 
-// Execute выполняет получение списка сообщений
+// Execute performs retrieval list soobscheniy
 func (uc *ListMessagesUseCase) Execute(
 	ctx context.Context,
 	query ListMessagesQuery,
 ) (ListResult, error) {
-	// Валидация
+	// validation
 	if err := uc.validate(&query); err != nil {
 		return ListResult{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Подготовка пагинации
+	// podgotovka paginatsii
 	pagination := Pagination{
 		Limit:  query.Limit,
 		Offset: query.Offset,
 	}
 
-	// Загрузка сообщений
+	// Loading soobscheniy
 	messages, err := uc.messageRepo.FindByChatID(ctx, query.ChatID, pagination)
 	if err != nil {
 		return ListResult{}, fmt.Errorf("failed to find messages: %w", err)
@@ -51,7 +51,7 @@ func (uc *ListMessagesUseCase) validate(query *ListMessagesQuery) error {
 		return err
 	}
 
-	// Установка дефолтных значений
+	// setting defoltnyh values
 	if query.Limit == 0 {
 		query.Limit = DefaultLimit
 	}

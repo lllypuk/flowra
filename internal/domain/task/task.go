@@ -9,12 +9,12 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// Aggregate представляет Task aggregate с поддержкой Event Sourcing
+// Aggregate represents Task aggregate s podderzhkoy Event Sourcing
 type Aggregate struct {
-	// Идентификатор aggregate
+	// identifikator aggregate
 	id uuid.UUID
 
-	// Текущее состояние (восстанавливается из событий)
+	// current state (is reconstructed from events)
 	chatID       uuid.UUID
 	title        string
 	entityType   EntityType
@@ -26,13 +26,13 @@ type Aggregate struct {
 	createdAt    time.Time
 	createdBy    uuid.UUID
 
-	// Event Sourcing поля
+	// Event Sourcing fields
 	version            int
 	uncommittedEvents  []event.DomainEvent
 	appliedEventCounts int
 }
 
-// NewTaskAggregate создает новый пустой агрегат
+// NewTaskAggregate creates New empty aggregate
 func NewTaskAggregate(id uuid.UUID) *Aggregate {
 	return &Aggregate{
 		id:                id,
@@ -41,7 +41,7 @@ func NewTaskAggregate(id uuid.UUID) *Aggregate {
 	}
 }
 
-// Create создает новую задачу (генерирует событие TaskCreated)
+// Create creates New zadachu (generiruet event TaskCreated)
 func (a *Aggregate) Create(
 	chatID uuid.UUID,
 	title string,
@@ -51,18 +51,18 @@ func (a *Aggregate) Create(
 	dueDate *time.Time,
 	createdBy uuid.UUID,
 ) error {
-	// Проверка, что задача еще не создана
+	// check that task esche not sozdana
 	if a.version > 0 {
 		return errs.ErrAlreadyExists
 	}
 
-	// Создаем событие
+	// Creating event
 	evt := NewTaskCreated(
 		a.id,
 		chatID,
 		title,
 		entityType,
-		StatusToDo, // начальный статус всегда "To Do"
+		StatusToDo, // nachalnyy status always "To Do"
 		priority,
 		assigneeID,
 		dueDate,
@@ -73,24 +73,24 @@ func (a *Aggregate) Create(
 		},
 	)
 
-	// Применяем событие
+	// primenyaem event
 	a.apply(evt)
 
 	return nil
 }
 
-// ChangeStatus изменяет статус задачи
+// ChangeStatus izmenyaet status tasks
 func (a *Aggregate) ChangeStatus(newStatus Status, changedBy uuid.UUID) error {
 	if a.version == 0 {
 		return errs.ErrNotFound
 	}
 
-	// Проверка валидности перехода
+	// check valid perehoda
 	if !a.isValidStatusTransition(newStatus) {
 		return errs.ErrInvalidTransition
 	}
 
-	// Если статус не меняется, ничего не делаем
+	// if status not menyaetsya, nichego not delaem
 	if a.status == newStatus {
 		return nil
 	}
@@ -113,13 +113,13 @@ func (a *Aggregate) ChangeStatus(newStatus Status, changedBy uuid.UUID) error {
 	return nil
 }
 
-// Assign назначает исполнителя
+// Assign value ispolnitelya
 func (a *Aggregate) Assign(assigneeID *uuid.UUID, assignedBy uuid.UUID) error {
 	if a.version == 0 {
 		return errs.ErrNotFound
 	}
 
-	// Если assignee не меняется, ничего не делаем
+	// if assignee not menyaetsya, nichego not delaem
 	if a.assignedTo != nil && assigneeID != nil && *a.assignedTo == *assigneeID {
 		return nil
 	}
@@ -146,13 +146,13 @@ func (a *Aggregate) Assign(assigneeID *uuid.UUID, assignedBy uuid.UUID) error {
 	return nil
 }
 
-// ChangePriority изменяет приоритет
+// ChangePriority izmenyaet prioritet
 func (a *Aggregate) ChangePriority(newPriority Priority, changedBy uuid.UUID) error {
 	if a.version == 0 {
 		return errs.ErrNotFound
 	}
 
-	// Если приоритет не меняется, ничего не делаем
+	// if prioritet not menyaetsya, nichego not delaem
 	if a.priority == newPriority {
 		return nil
 	}
@@ -175,13 +175,13 @@ func (a *Aggregate) ChangePriority(newPriority Priority, changedBy uuid.UUID) er
 	return nil
 }
 
-// SetDueDate устанавливает или изменяет дедлайн
+// SetDueDate sets or izmenyaet deadline
 func (a *Aggregate) SetDueDate(newDueDate *time.Time, changedBy uuid.UUID) error {
 	if a.version == 0 {
 		return errs.ErrNotFound
 	}
 
-	// Если дата не меняется, ничего не делаем
+	// if date not menyaetsya, nichego not delaem
 	if a.dueDate != nil && newDueDate != nil && a.dueDate.Equal(*newDueDate) {
 		return nil
 	}
@@ -208,13 +208,13 @@ func (a *Aggregate) SetDueDate(newDueDate *time.Time, changedBy uuid.UUID) error
 	return nil
 }
 
-// apply применяет событие к агрегату и добавляет его в uncommittedEvents
+// apply primenyaet event to agregatu and adds ego in uncommittedEvents
 func (a *Aggregate) apply(evt event.DomainEvent) {
 	a.applyChange(evt)
 	a.uncommittedEvents = append(a.uncommittedEvents, evt)
 }
 
-// applyChange применяет изменения из события к состоянию агрегата
+// applyChange primenyaet changing from event to sostoyaniyu aggregate
 func (a *Aggregate) applyChange(evt event.DomainEvent) {
 	switch e := evt.(type) {
 	case *Created:
@@ -252,47 +252,47 @@ func (a *Aggregate) applyChange(evt event.DomainEvent) {
 	a.appliedEventCounts++
 }
 
-// ReplayEvents восстанавливает состояние агрегата из событий
+// ReplayEvents reconstructs state aggregate from events
 func (a *Aggregate) ReplayEvents(events []event.DomainEvent) {
 	for _, evt := range events {
 		a.applyChange(evt)
 	}
 }
 
-// UncommittedEvents возвращает события, которые еще не были сохранены
+// UncommittedEvents returns event, kotorye esche not byli sav
 func (a *Aggregate) UncommittedEvents() []event.DomainEvent {
 	return a.uncommittedEvents
 }
 
-// MarkEventsAsCommitted очищает список несохраненных событий
+// MarkEventsAsCommitted clears list sav events
 func (a *Aggregate) MarkEventsAsCommitted() {
 	a.uncommittedEvents = make([]event.DomainEvent, 0)
 }
 
-// Version возвращает текущую версию агрегата
+// Version returns current version aggregate
 func (a *Aggregate) Version() int {
 	return a.version
 }
 
-// isValidStatusTransition проверяет валидность перехода между статусами
+// isValidStatusTransition validates perehoda between statusami
 func (a *Aggregate) isValidStatusTransition(newStatus Status) bool {
-	// Если статус не меняется, это всегда валидно
+	// if status not menyaetsya, it is always valid
 	if a.status == newStatus {
 		return true
 	}
 
-	// Из Cancelled можно вернуться только в Backlog
+	// from Cancelled mozhno vernutsya only in Backlog
 	if a.status == StatusCancelled {
 		return newStatus == StatusBacklog
 	}
 
-	// Из Done можно вернуться в InReview (reopening)
+	// from Done mozhno vernutsya in InReview (reopening)
 	if a.status == StatusDone {
 		return newStatus == StatusInReview || newStatus == StatusCancelled
 	}
 
-	// Стандартные переходы вперед
-	transitions := map[Status][]Status{ //nolint:exhaustive // StatusDone и StatusCancelled обрабатываются выше
+	// standartnye perehody before
+	transitions := map[Status][]Status{ //nolint:exhaustive // StatusDone and StatusCancelled obrabatyvayutsya above
 		StatusBacklog:    {StatusToDo, StatusCancelled},
 		StatusToDo:       {StatusInProgress, StatusBacklog, StatusCancelled},
 		StatusInProgress: {StatusInReview, StatusToDo, StatusCancelled},
@@ -309,32 +309,32 @@ func (a *Aggregate) isValidStatusTransition(newStatus Status) bool {
 
 // Getters
 
-// ID возвращает ID агрегата
+// ID returns ID aggregate
 func (a *Aggregate) ID() uuid.UUID { return a.id }
 
-// ChatID возвращает ID чата
+// ChatID returns ID chat
 func (a *Aggregate) ChatID() uuid.UUID { return a.chatID }
 
-// Title возвращает заголовок
+// Title returns zagolovok
 func (a *Aggregate) Title() string { return a.title }
 
-// EntityType возвращает тип сущности
+// EntityType returns type entity
 func (a *Aggregate) EntityType() EntityType { return a.entityType }
 
-// Status возвращает статус
+// Status returns status
 func (a *Aggregate) Status() Status { return a.status }
 
-// Priority возвращает приоритет
+// Priority returns prioritet
 func (a *Aggregate) Priority() Priority { return a.priority }
 
-// AssignedTo возвращает ID назначенного пользователя
+// AssignedTo returns ID value user
 func (a *Aggregate) AssignedTo() *uuid.UUID { return a.assignedTo }
 
-// DueDate возвращает дедлайн
+// DueDate returns deadline
 func (a *Aggregate) DueDate() *time.Time { return a.dueDate }
 
-// CreatedAt возвращает время создания
+// CreatedAt returns creation time
 func (a *Aggregate) CreatedAt() time.Time { return a.createdAt }
 
-// CreatedBy возвращает ID создателя
+// CreatedBy returns creator ID
 func (a *Aggregate) CreatedBy() uuid.UUID { return a.createdBy }

@@ -2,7 +2,7 @@ package event
 
 import "time"
 
-// BaseEvent базовая реализация DomainEvent
+// BaseEvent is a base implementation of DomainEvent
 type BaseEvent struct {
 	EType         string    `json:"event_type"     bson:"event_type"`
 	AggID         string    `json:"aggregate_id"   bson:"aggregate_id"`
@@ -12,7 +12,7 @@ type BaseEvent struct {
 	EventMetadata Metadata  `json:"metadata"       bson:"metadata"`
 }
 
-// NewBaseEvent создает новое базовое событие
+// NewBaseEvent creates a new base event
 func NewBaseEvent(eventType, aggregateID, aggregateType string, version int, metadata Metadata) BaseEvent {
 	return BaseEvent{
 		EType:         eventType,
@@ -24,32 +24,32 @@ func NewBaseEvent(eventType, aggregateID, aggregateType string, version int, met
 	}
 }
 
-// EventType возвращает тип события
+// EventType returns the event type
 func (e BaseEvent) EventType() string {
 	return e.EType
 }
 
-// AggregateID возвращает ID агрегата
+// AggregateID returns the aggregate ID
 func (e BaseEvent) AggregateID() string {
 	return e.AggID
 }
 
-// AggregateType возвращает тип агрегата
+// AggregateType returns the aggregate type
 func (e BaseEvent) AggregateType() string {
 	return e.AggType
 }
 
-// OccurredAt возвращает время возникновения события
+// OccurredAt returns the time when the event occurred
 func (e BaseEvent) OccurredAt() time.Time {
 	return e.OccAt
 }
 
-// Version возвращает версию агрегата
+// Version returns the aggregate version
 func (e BaseEvent) Version() int {
 	return e.Ver
 }
 
-// Metadata возвращает метаданные события
+// Metadata returns the event metadata
 func (e BaseEvent) Metadata() Metadata {
 	return e.EventMetadata
 }

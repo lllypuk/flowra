@@ -15,7 +15,7 @@ func TestGetUserUseCase_Execute_Success(t *testing.T) {
 	repo := newMockUserRepository()
 	useCase := user.NewGetUserUseCase(repo)
 
-	// Создаем пользователя
+	// Creating user
 	existingUser, _ := domainuser.NewUser("external-123", "testuser", "test@example.com", "Test User")
 	_ = repo.Save(context.Background(), existingUser)
 

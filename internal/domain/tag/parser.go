@@ -9,12 +9,12 @@ const (
 	hashAndSpaceOffset = 2
 )
 
-// Parser парсит теги из текста сообщения
+// Parser parsit tags from text messages
 type Parser struct {
 	knownTags map[string]Definition
 }
 
-// NewParser создает новый парсер с зарегистрированными системными тегами
+// NewParser creates New parser s zaregistrirovannymi sistemnymi tegami
 func NewParser() *Parser {
 	parser := &Parser{
 		knownTags: make(map[string]Definition),
@@ -47,13 +47,13 @@ func NewParser() *Parser {
 		Name:          "status",
 		RequiresValue: true,
 		ValueType:     ValueTypeEnum,
-		AllowedValues: nil, // Зависит от типа сущности, будет валидироваться отдельно
+		AllowedValues: nil, // zavisit ot type entity, budet valid otdelno
 		Validator:     noValidation,
 	})
 
 	parser.registerTag(Definition{
 		Name:          "assignee",
-		RequiresValue: false, // Может быть пустым (снять assignee)
+		RequiresValue: false, // mozhet byt pustym (snyat assignee)
 		ValueType:     ValueTypeUsername,
 		Validator:     validateUsername,
 	})
@@ -68,7 +68,7 @@ func NewParser() *Parser {
 
 	parser.registerTag(Definition{
 		Name:          "due",
-		RequiresValue: false, // Может быть пустым (снять due_date)
+		RequiresValue: false, // mozhet byt pustym (snyat due_date)
 		ValueType:     ValueTypeDate,
 		Validator:     validateISODate,
 	})
@@ -92,29 +92,29 @@ func NewParser() *Parser {
 	return parser
 }
 
-// registerTag регистрирует определение тега
+// registerTag registriruet definition tega
 func (p *Parser) registerTag(def Definition) {
 	p.knownTags[def.Name] = def
 }
 
-// isKnownTag проверяет, является ли тег известным
+// isKnownTag checks, is li teg izvestnym
 func (p *Parser) isKnownTag(name string) bool {
 	_, exists := p.knownTags[name]
 	return exists
 }
 
-// GetTagDefinition возвращает определение тега по имени
+// GetTagDefinition returns definition tega po imeni
 func (p *Parser) GetTagDefinition(name string) (Definition, bool) {
 	def, exists := p.knownTags[name]
 	return def, exists
 }
 
-// Parse парсит текст сообщения и извлекает теги
-// Правила парсинга:
-// 1. Строка начинается с # → парсить теги до конца строки или до текста
-// 2. Строка не начинается с # → обычный текст, теги не парсятся
-// 3. После обычного текста новая строка с # → парсить теги
-// 4. Пустые строки игнорируются
+// Parse parsit text messages and izvlekaet tags
+// pravila parsinga:
+// 1. String starts s # → parse tags before end stroki or before text
+// 2. stroka does not start s # → regular text, tags not parsyatsya
+// 3. after regular text New stroka s # → parse tags
+// 4. pustye stroki ignoriruyutsya
 func (p *Parser) Parse(content string) ParseResult {
 	lines := strings.Split(content, "\n")
 	result := ParseResult{Tags: []ParsedTag{}}
@@ -124,24 +124,24 @@ func (p *Parser) Parse(content string) ParseResult {
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
 
-		// Пустые строки пропускаем
+		// pustye stroki propuskaem
 		if trimmed == "" {
 			continue
 		}
 
-		// Проверяем, начинается ли строка с #
+		// Checking, nachinaetsya li stroka s #
 		if strings.HasPrefix(trimmed, "#") && (inTagMode || i > 0) {
-			// Парсим теги на этой строке
+			// parsim tags on it is stroke
 			tags, remaining := p.parseTagsFromLine(trimmed)
 			result.Tags = append(result.Tags, tags...)
 
-			// Если есть текст после тегов на той же строке
+			// if est text after tegov on toy zhe stroke
 			if remaining != "" {
 				result.PlainText += remaining + "\n"
 				inTagMode = false
 			}
 		} else {
-			// Обычный текст
+			// obychnyy text
 			result.PlainText += line + "\n"
 			inTagMode = false
 		}
@@ -151,8 +151,8 @@ func (p *Parser) Parse(content string) ParseResult {
 	return result
 }
 
-// parseTagsFromLine парсит все теги на одной строке
-// Возвращает список распарсенных тегов и оставшийся текст
+// parseTagsFromLine parsit all tags on one stroke
+// returns list rasparsennyh tegov and ostavshiysya text
 func (p *Parser) parseTagsFromLine(line string) ([]ParsedTag, string) {
 	tags := []ParsedTag{}
 	remaining := line
@@ -161,17 +161,17 @@ func (p *Parser) parseTagsFromLine(line string) ([]ParsedTag, string) {
 		tag, rest := p.parseOneTag(remaining)
 
 		if tag != nil {
-			// Проверяем, является ли тег известным
+			// Checking, is li teg izvestnym
 			if p.isKnownTag(tag.Key) {
 				tags = append(tags, *tag)
 			}
-			// Неизвестные теги игнорируются (MVP), но тоже парсятся
+			// neizvestnye tags ignoriruyutsya (MVP), no tozhe parsyatsya
 		}
 
 		remaining = strings.TrimSpace(rest)
 
-		// Если остаток не начинается с #, это текст - прекращаем парсинг тегов
-		// Remaining будет возвращен как plaintext
+		// if ostatok does not start s #, it is text - prekraschaem parsing tegov
+		// Remaining budet vozvraschen as plaintext
 		if remaining != "" && !strings.HasPrefix(remaining, "#") {
 			break
 		}
@@ -180,68 +180,68 @@ func (p *Parser) parseTagsFromLine(line string) ([]ParsedTag, string) {
 	return tags, remaining
 }
 
-// parseOneTag парсит один тег из начала строки
-// Возвращает ParsedTag и оставшуюся часть строки
+// parseOneTag parsit one teg from nachala stroki
+// returns ParsedTag and ostavshuyusya chast stroki
 func (p *Parser) parseOneTag(s string) (*ParsedTag, string) {
-	// s начинается с #
+	// s nachinaetsya s #
 	if !strings.HasPrefix(s, "#") {
 		return nil, s
 	}
 
-	// Убираем # в начале
+	// ubiraem # in nachale
 	withoutHash := s[1:]
 
-	// Находим конец имени тега (до пробела)
+	// nahodim konets imeni tega (before probela)
 	parts := strings.SplitN(withoutHash, " ", maxTagParts)
 	tagName := parts[0]
 
-	// Если тег в конце строки или следующий символ не пробел
+	// if teg in kontse stroki or next simvol not probel
 	if len(parts) == 1 {
 		return &ParsedTag{Key: tagName, Value: ""}, ""
 	}
 
 	rest := parts[1]
 
-	// Если сразу после пробела идёт #, то значение пустое
+	// if srazu after probela idyot #, to value pustoe
 	if strings.HasPrefix(rest, "#") {
 		return &ParsedTag{Key: tagName, Value: ""}, rest
 	}
 
-	// Value тега - это всё между именем тега и следующим валидным тегом (или концом строки)
-	// Spec строка 114: "Значение тега — это всё между именем тега и следующим #"
-	// Валидный тег: пробел + # + lowercase буква (a-z)
+	// Value tega - it is vsyo between name tega and sleduyuschim valid tegom (or kontsom stroki)
+	// Spec stroka 114: "value tega — it is vsyo between name tega and sleduyuschim #"
+	// validnyy teg: probel + # + lowercase bukva (a-z)
 
 	var value string
 	var remaining string
 
-	// Ищем следующий валидный тег
+	// ischem next valid teg
 	searchStart := 0
 	for {
 		nextHashIndex := strings.Index(rest[searchStart:], " #")
 		if nextHashIndex == -1 {
-			// Нет следующего #, всё остальное — значение
+			// no sleduyuschego #, vsyo ostalnoe — value
 			value = strings.TrimSpace(rest)
 			remaining = ""
 			break
 		}
 
-		// Проверяем, что после # идет lowercase буква a-z (валидное имя тега)
-		actualIndex := searchStart + nextHashIndex + hashAndSpaceOffset // +2 для пробела и #
+		// Checking, that after # idet lowercase bukva a-z (valid imya tega)
+		actualIndex := searchStart + nextHashIndex + hashAndSpaceOffset // +2 for probela and #
 		if actualIndex < len(rest) {
 			nextChar := rest[actualIndex]
-			// Проверяем что первый символ - латинская буква a-z
+			// Checking that first simvol - latinskaya bukva a-z
 			if nextChar >= 'a' && nextChar <= 'z' {
-				// Это валидный тег
+				// eto valid teg
 				value = strings.TrimSpace(rest[:searchStart+nextHashIndex])
 				remaining = strings.TrimSpace(rest[searchStart+nextHashIndex:])
 				break
 			}
 		}
 
-		// Это не валидный тег (например #123), продолжаем поиск
+		// eto not valid teg (naprimer #123), prodolzhaem search
 		searchStart = actualIndex
 		if searchStart >= len(rest) {
-			// Достигли конца строки
+			// dostigli end stroki
 			value = strings.TrimSpace(rest)
 			remaining = ""
 			break

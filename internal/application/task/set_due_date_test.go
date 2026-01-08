@@ -28,8 +28,8 @@ func TestSetDueDateUseCase_Success(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// Устанавливаем дедлайн
-	dueDate := time.Now().Add(7 * 24 * time.Hour) // через неделю
+	// Setting deadline
+	dueDate := time.Now().Add(7 * 24 * time.Hour) // via nedelyu
 	userID := uuid.NewUUID()
 	dueDateCmd := taskapp.SetDueDateCommand{
 		TaskID:    createResult.TaskID,
@@ -60,7 +60,7 @@ func TestSetDueDateUseCase_RemoveDueDate(t *testing.T) {
 	createUseCase := taskapp.NewCreateTaskUseCase(store)
 	dueDateUseCase := taskapp.NewSetDueDateUseCase(store)
 
-	// Создаем задачу с дедлайном
+	// Creating task s dedlaynom
 	dueDate := time.Now().Add(7 * 24 * time.Hour)
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
@@ -71,7 +71,7 @@ func TestSetDueDateUseCase_RemoveDueDate(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// Act: Снимаем дедлайн (nil)
+	// Act: snimaem deadline (nil)
 	dueDateCmd := taskapp.SetDueDateCommand{
 		TaskID:    createResult.TaskID,
 		DueDate:   nil,
@@ -105,7 +105,7 @@ func TestSetDueDateUseCase_Idempotent(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// Act: Повторная установка той же даты
+	// Act: povtornaya setting toy zhe daty
 	dueDateCmd := taskapp.SetDueDateCommand{
 		TaskID:    createResult.TaskID,
 		DueDate:   &dueDate,
@@ -115,7 +115,7 @@ func TestSetDueDateUseCase_Idempotent(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.Empty(t, result.Events, "No new events for idempotent operation")
+	assert.Empty(t, result.Events, "No New events for idempotent operation")
 	assert.Equal(t, 1, result.Version, "Version should not change")
 	assert.True(t, result.IsSuccess())
 	assert.Equal(t, "Due date unchanged (idempotent operation)", result.Message)
@@ -127,7 +127,7 @@ func TestSetDueDateUseCase_IdempotentRemove(t *testing.T) {
 	createUseCase := taskapp.NewCreateTaskUseCase(store)
 	dueDateUseCase := taskapp.NewSetDueDateUseCase(store)
 
-	// Создаем задачу без дедлайна
+	// Creating task bez deadline
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
@@ -136,7 +136,7 @@ func TestSetDueDateUseCase_IdempotentRemove(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// Act: Пытаемся снять дедлайн, когда его нет
+	// Act: pytaemsya snyat deadline, when ego no
 	dueDateCmd := taskapp.SetDueDateCommand{
 		TaskID:    createResult.TaskID,
 		DueDate:   nil,
@@ -164,7 +164,7 @@ func TestSetDueDateUseCase_PastDate(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// Act: Устанавливаем дату в прошлом (просроченная задача)
+	// Act: Setting datu in proshlom (prosrochennaya task)
 	pastDate := time.Now().Add(-7 * 24 * time.Hour)
 	dueDateCmd := taskapp.SetDueDateCommand{
 		TaskID:    createResult.TaskID,
@@ -173,7 +173,7 @@ func TestSetDueDateUseCase_PastDate(t *testing.T) {
 	}
 	result, err := dueDateUseCase.Execute(context.Background(), dueDateCmd)
 
-	// Assert: Должно быть успешно (дата в прошлом допустима)
+	// Assert: dolzhno byt successfully (date in proshlom dopustima)
 	require.NoError(t, err)
 	assert.Len(t, result.Events, 1)
 
@@ -225,7 +225,7 @@ func TestSetDueDateUseCase_MultipleDateChanges(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 4, result3.Version)
 
-	// Проверяем полную историю
+	// Checking full history
 	storedEvents, err := store.LoadEvents(context.Background(), createResult.TaskID.String())
 	require.NoError(t, err)
 	assert.Len(t, storedEvents, 4) // Created + 3x DueDateChanged
@@ -290,7 +290,7 @@ func TestSetDueDateUseCase_TaskNotFound(t *testing.T) {
 
 	dueDate := time.Now().Add(7 * 24 * time.Hour)
 	cmd := taskapp.SetDueDateCommand{
-		TaskID:    uuid.NewUUID(), // не существует
+		TaskID:    uuid.NewUUID(), // not suschestvuet
 		DueDate:   &dueDate,
 		ChangedBy: uuid.NewUUID(),
 	}

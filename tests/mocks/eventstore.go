@@ -8,7 +8,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/event"
 )
 
-// MockEventStore реализует appcore.EventStore для тестирования
+// MockEventStore implements appcore.EventStore for testing
 type MockEventStore struct {
 	mu        sync.RWMutex
 	events    map[string][]event.DomainEvent
@@ -18,7 +18,7 @@ type MockEventStore struct {
 	failError error
 }
 
-// NewMockEventStore создает новый mock event store
+// NewMockEventStore creates a new mock event store
 func NewMockEventStore() *MockEventStore {
 	return &MockEventStore{
 		events:   make(map[string][]event.DomainEvent),
@@ -27,7 +27,7 @@ func NewMockEventStore() *MockEventStore {
 	}
 }
 
-// SaveEvents сохраняет события для агрегата
+// SaveEvents saves events for an aggregate
 func (s *MockEventStore) SaveEvents(
 	ctx context.Context,
 	aggregateID string,
@@ -39,29 +39,29 @@ func (s *MockEventStore) SaveEvents(
 
 	s.calls["SaveEvents"]++
 
-	// Проверка на ошибку (если она установлена)
+	// Check for error (if set)
 	if s.failNext {
 		s.failNext = false
 		return s.failError
 	}
 
-	// Проверка версии (optimistic locking)
+	// Version check (optimistic locking)
 	currentVersion, exists := s.versions[aggregateID]
 	if exists && currentVersion != expectedVersion {
 		return appcore.ErrConcurrencyConflict
 	}
 
-	// Сохранение событий
+	// Save events
 	s.events[aggregateID] = append(s.events[aggregateID], events...)
 
-	// Обновление версии
+	// Update version
 	newVersion := expectedVersion + len(events)
 	s.versions[aggregateID] = newVersion
 
 	return nil
 }
 
-// LoadEvents загружает все события для агрегата
+// LoadEvents loads all events for an aggregate
 func (s *MockEventStore) LoadEvents(ctx context.Context, aggregateID string) ([]event.DomainEvent, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -73,11 +73,11 @@ func (s *MockEventStore) LoadEvents(ctx context.Context, aggregateID string) ([]
 		return nil, appcore.ErrAggregateNotFound
 	}
 
-	// Возвращаем копию
+	// Return a copy
 	return append([]event.DomainEvent{}, events...), nil
 }
 
-// GetVersion возвращает текущую версию агрегата
+// GetVersion returns the current version of an aggregate
 func (s *MockEventStore) GetVersion(ctx context.Context, aggregateID string) (int, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -92,19 +92,19 @@ func (s *MockEventStore) GetVersion(ctx context.Context, aggregateID string) (in
 	return version, nil
 }
 
-// GetCallCount возвращает количество вызовов метода
+// GetCallCount returns the number of method calls
 func (s *MockEventStore) GetCallCount(method string) int {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.calls[method]
 }
 
-// AllEvents возвращает все события (для тестов)
+// AllEvents returns all events (for tests)
 func (s *MockEventStore) AllEvents() map[string][]event.DomainEvent {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	// Возвращаем копию
+	// Return a copy
 	result := make(map[string][]event.DomainEvent)
 	for k, v := range s.events {
 		result[k] = append([]event.DomainEvent{}, v...)
@@ -112,7 +112,7 @@ func (s *MockEventStore) AllEvents() map[string][]event.DomainEvent {
 	return result
 }
 
-// SetFailureNext установить ошибку для следующего вызова
+// SetFailureNext sets an error for the next call
 func (s *MockEventStore) SetFailureNext(err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -120,7 +120,7 @@ func (s *MockEventStore) SetFailureNext(err error) {
 	s.failError = err
 }
 
-// Reset очищает store
+// Reset clears the store
 func (s *MockEventStore) Reset() {
 	s.mu.Lock()
 	defer s.mu.Unlock()

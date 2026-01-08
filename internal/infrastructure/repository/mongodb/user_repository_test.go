@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// setupTestUserRepository создает тестовый репозиторий пользователей
+// setupTestUserRepository creates test repozitoriy users
 func setupTestUserRepository(t *testing.T) *mongodb.MongoUserRepository {
 	t.Helper()
 
@@ -24,7 +24,7 @@ func setupTestUserRepository(t *testing.T) *mongodb.MongoUserRepository {
 	return mongodb.NewMongoUserRepository(coll)
 }
 
-// createTestUser создает тестового пользователя с уникальными данными
+// createTestUser creates testovogo user with unique dannymi
 func createTestUser(t *testing.T, suffix string) *userdomain.User {
 	t.Helper()
 
@@ -38,7 +38,7 @@ func createTestUser(t *testing.T, suffix string) *userdomain.User {
 	return user
 }
 
-// TestMongoUserRepository_Save_And_FindByID проверяет сохранение и поиск пользователя по ID
+// TestMongoUserRepository_Save_And_FindByID checks save and search user po ID
 func TestMongoUserRepository_Save_And_FindByID(t *testing.T) {
 	repo := setupTestUserRepository(t)
 	ctx := context.Background()
@@ -62,7 +62,7 @@ func TestMongoUserRepository_Save_And_FindByID(t *testing.T) {
 	assert.Equal(t, user.IsSystemAdmin(), loaded.IsSystemAdmin())
 }
 
-// TestMongoUserRepository_FindByID_NotFound проверяет поиск несуществующего пользователя
+// TestMongoUserRepository_FindByID_NotFound checks search existing user
 func TestMongoUserRepository_FindByID_NotFound(t *testing.T) {
 	repo := setupTestUserRepository(t)
 	ctx := context.Background()
@@ -72,7 +72,7 @@ func TestMongoUserRepository_FindByID_NotFound(t *testing.T) {
 	assert.ErrorIs(t, err, errs.ErrNotFound)
 }
 
-// TestMongoUserRepository_FindByEmail проверяет поиск пользователя по email
+// TestMongoUserRepository_FindByEmail checks search user po email
 func TestMongoUserRepository_FindByEmail(t *testing.T) {
 	repo := setupTestUserRepository(t)
 	ctx := context.Background()
@@ -95,7 +95,7 @@ func TestMongoUserRepository_FindByEmail(t *testing.T) {
 	assert.ErrorIs(t, err, errs.ErrNotFound)
 }
 
-// TestMongoUserRepository_FindByUsername проверяет поиск пользователя по username
+// TestMongoUserRepository_FindByUsername checks search user po username
 func TestMongoUserRepository_FindByUsername(t *testing.T) {
 	repo := setupTestUserRepository(t)
 	ctx := context.Background()
@@ -118,7 +118,7 @@ func TestMongoUserRepository_FindByUsername(t *testing.T) {
 	assert.ErrorIs(t, err, errs.ErrNotFound)
 }
 
-// TestMongoUserRepository_FindByExternalID проверяет поиск пользователя по Keycloak ID
+// TestMongoUserRepository_FindByExternalID checks search user po Keycloak ID
 func TestMongoUserRepository_FindByExternalID(t *testing.T) {
 	repo := setupTestUserRepository(t)
 	ctx := context.Background()
@@ -141,7 +141,7 @@ func TestMongoUserRepository_FindByExternalID(t *testing.T) {
 	assert.ErrorIs(t, err, errs.ErrNotFound)
 }
 
-// TestMongoUserRepository_List проверяет получение списка пользователей
+// TestMongoUserRepository_List checks retrieval list users
 func TestMongoUserRepository_List(t *testing.T) {
 	repo := setupTestUserRepository(t)
 	ctx := context.Background()
@@ -174,7 +174,7 @@ func TestMongoUserRepository_List(t *testing.T) {
 	assert.Empty(t, users)
 }
 
-// TestMongoUserRepository_Count проверяет подсчет пользователей
+// TestMongoUserRepository_Count checks podschet users
 func TestMongoUserRepository_Count(t *testing.T) {
 	repo := setupTestUserRepository(t)
 	ctx := context.Background()
@@ -196,7 +196,7 @@ func TestMongoUserRepository_Count(t *testing.T) {
 	assert.Equal(t, 3, count)
 }
 
-// TestMongoUserRepository_Delete проверяет удаление пользователя
+// TestMongoUserRepository_Delete checks deletion user
 func TestMongoUserRepository_Delete(t *testing.T) {
 	repo := setupTestUserRepository(t)
 	ctx := context.Background()
@@ -223,7 +223,7 @@ func TestMongoUserRepository_Delete(t *testing.T) {
 	require.ErrorIs(t, err, errs.ErrNotFound)
 }
 
-// TestMongoUserRepository_Exists проверяет наличие пользователя по ID
+// TestMongoUserRepository_Exists checks presence user po ID
 func TestMongoUserRepository_Exists(t *testing.T) {
 	repo := setupTestUserRepository(t)
 	ctx := context.Background()
@@ -244,7 +244,7 @@ func TestMongoUserRepository_Exists(t *testing.T) {
 	assert.False(t, exists)
 }
 
-// TestMongoUserRepository_ExistsByUsername проверяет наличие пользователя по username
+// TestMongoUserRepository_ExistsByUsername checks presence user po username
 func TestMongoUserRepository_ExistsByUsername(t *testing.T) {
 	repo := setupTestUserRepository(t)
 	ctx := context.Background()
@@ -265,7 +265,7 @@ func TestMongoUserRepository_ExistsByUsername(t *testing.T) {
 	assert.False(t, exists)
 }
 
-// TestMongoUserRepository_ExistsByEmail проверяет наличие пользователя по email
+// TestMongoUserRepository_ExistsByEmail checks presence user po email
 func TestMongoUserRepository_ExistsByEmail(t *testing.T) {
 	repo := setupTestUserRepository(t)
 	ctx := context.Background()
@@ -286,7 +286,7 @@ func TestMongoUserRepository_ExistsByEmail(t *testing.T) {
 	assert.False(t, exists)
 }
 
-// TestMongoUserRepository_InputValidation проверяет валидацию входных данных
+// TestMongoUserRepository_InputValidation checks valid vhodnyh dannyh
 func TestMongoUserRepository_InputValidation(t *testing.T) {
 	repo := setupTestUserRepository(t)
 	ctx := context.Background()
@@ -337,7 +337,7 @@ func TestMongoUserRepository_InputValidation(t *testing.T) {
 	})
 }
 
-// TestMongoUserRepository_Update проверяет обновление пользователя
+// TestMongoUserRepository_Update checks update user
 func TestMongoUserRepository_Update(t *testing.T) {
 	repo := setupTestUserRepository(t)
 	ctx := context.Background()
@@ -362,7 +362,7 @@ func TestMongoUserRepository_Update(t *testing.T) {
 	assert.Equal(t, "Updated Display Name", loaded.DisplayName())
 }
 
-// TestMongoUserRepository_SetAdmin проверяет установку прав администратора
+// TestMongoUserRepository_SetAdmin checks ustanovku prav administrator
 func TestMongoUserRepository_SetAdmin(t *testing.T) {
 	repo := setupTestUserRepository(t)
 	ctx := context.Background()
@@ -398,7 +398,7 @@ func TestMongoUserRepository_SetAdmin(t *testing.T) {
 	assert.False(t, loaded.IsSystemAdmin())
 }
 
-// TestMongoUserRepository_DocumentToUser проверяет преобразование документа в User
+// TestMongoUserRepository_DocumentToUser checks converting dokumenta in User
 func TestMongoUserRepository_DocumentToUser(t *testing.T) {
 	repo := setupTestUserRepository(t)
 	ctx := context.Background()
@@ -424,7 +424,7 @@ func TestMongoUserRepository_DocumentToUser(t *testing.T) {
 	assert.WithinDuration(t, user.UpdatedAt(), loaded.UpdatedAt(), time.Millisecond)
 }
 
-// TestMongoUserRepository_ListExternalIDs проверяет получение списка всех external ID
+// TestMongoUserRepository_ListExternalIDs checks retrieval list all external ID
 func TestMongoUserRepository_ListExternalIDs(t *testing.T) {
 	repo := setupTestUserRepository(t)
 	ctx := context.Background()
@@ -457,7 +457,7 @@ func TestMongoUserRepository_ListExternalIDs(t *testing.T) {
 	}
 }
 
-// TestMongoUserRepository_ListExternalIDs_Empty проверяет пустой список
+// TestMongoUserRepository_ListExternalIDs_Empty checks empty list
 func TestMongoUserRepository_ListExternalIDs_Empty(t *testing.T) {
 	repo := setupTestUserRepository(t)
 	ctx := context.Background()
@@ -467,12 +467,12 @@ func TestMongoUserRepository_ListExternalIDs_Empty(t *testing.T) {
 	assert.Empty(t, externalIDs)
 }
 
-// TestMongoUserRepository_IsActive_Persistence проверяет сохранение флага isActive
+// TestMongoUserRepository_IsActive_Persistence checks save flaga isActive
 func TestMongoUserRepository_IsActive_Persistence(t *testing.T) {
 	repo := setupTestUserRepository(t)
 	ctx := context.Background()
 
-	t.Run("new user is active", func(t *testing.T) {
+	t.Run("New user is active", func(t *testing.T) {
 		user := createTestUser(t, "active")
 		err := repo.Save(ctx, user)
 		require.NoError(t, err)

@@ -8,52 +8,52 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/workspace"
 )
 
-// CreateInviteUseCase - use case для создания инвайта
+// CreateInviteUseCase - use case for creating invayta
 type CreateInviteUseCase struct {
 	appcore.BaseUseCase
 
 	workspaceRepo Repository
 }
 
-// NewCreateInviteUseCase создает новый CreateInviteUseCase
+// NewCreateInviteUseCase creates New CreateInviteUseCase
 func NewCreateInviteUseCase(workspaceRepo Repository) *CreateInviteUseCase {
 	return &CreateInviteUseCase{
 		workspaceRepo: workspaceRepo,
 	}
 }
 
-// Execute выполняет создание инвайта
+// Execute performs creation invayta
 func (uc *CreateInviteUseCase) Execute(
 	ctx context.Context,
 	cmd CreateInviteCommand,
 ) (InviteResult, error) {
-	// Валидация контекста
+	// context validation
 	if err := uc.ValidateContext(ctx); err != nil {
 		return InviteResult{}, uc.WrapError("validate context", err)
 	}
 
-	// Валидация команды
+	// validation commands
 	if err := uc.validate(cmd); err != nil {
 		return InviteResult{}, uc.WrapError("validation failed", err)
 	}
 
-	// Поиск workspace
+	// Searching workspace
 	ws, err := uc.workspaceRepo.FindByID(ctx, cmd.WorkspaceID)
 	if err != nil {
 		return InviteResult{}, uc.WrapError("find workspace", ErrWorkspaceNotFound)
 	}
 
-	// Установка значений по умолчанию
+	// setting values by default
 	expiresAt := uc.getExpiresAt(cmd.ExpiresAt)
 	maxUses := uc.getMaxUses(cmd.MaxUses)
 
-	// Создание инвайта
+	// creation invayta
 	invite, err := ws.CreateInvite(cmd.CreatedBy, expiresAt, maxUses)
 	if err != nil {
 		return InviteResult{}, uc.WrapError("create invite", err)
 	}
 
-	// Сохранение workspace с новым инвайтом
+	// save workspace s novym invaytom
 	if errSave := uc.workspaceRepo.Save(ctx, ws); errSave != nil {
 		return InviteResult{}, uc.WrapError("save workspace", errSave)
 	}
@@ -65,7 +65,7 @@ func (uc *CreateInviteUseCase) Execute(
 	}, nil
 }
 
-// validate проверяет валидность команды
+// validate validates commands
 func (uc *CreateInviteUseCase) validate(cmd CreateInviteCommand) error {
 	if err := appcore.ValidateUUID("workspaceID", cmd.WorkspaceID); err != nil {
 		return err
@@ -86,7 +86,7 @@ func (uc *CreateInviteUseCase) validate(cmd CreateInviteCommand) error {
 	return nil
 }
 
-// getExpiresAt возвращает время истечения инвайта (по умолчанию: 7 дней)
+// getExpiresAt returns time istecheniya invayta (by default: 7 dney)
 func (uc *CreateInviteUseCase) getExpiresAt(expiresAt *time.Time) time.Time {
 	if expiresAt != nil {
 		return *expiresAt
@@ -94,7 +94,7 @@ func (uc *CreateInviteUseCase) getExpiresAt(expiresAt *time.Time) time.Time {
 	return time.Now().Add(7 * 24 * time.Hour)
 }
 
-// getMaxUses возвращает максимальное количество использований (по умолчанию: 0 - unlimited)
+// getMaxUses returns maximum count ispolzovaniy (by default: 0 - unlimited)
 func (uc *CreateInviteUseCase) getMaxUses(maxUses *int) int {
 	if maxUses != nil {
 		return *maxUses

@@ -84,14 +84,14 @@ func TestSendMessageUseCase_NotParticipant(t *testing.T) {
 
 	chatID := uuid.NewUUID()
 	otherUserID := uuid.NewUUID()
-	chatRepo.AddChat(chatID, []uuid.UUID{otherUserID}) // Другой пользователь
+	chatRepo.AddChat(chatID, []uuid.UUID{otherUserID}) // drugoy user
 
 	useCase := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus, nil, nil)
 
 	cmd := message.SendMessageCommand{
 		ChatID:          chatID,
 		Content:         "Hello",
-		AuthorID:        uuid.NewUUID(), // Не участник
+		AuthorID:        uuid.NewUUID(), // not uchastnik
 		ParentMessageID: "",
 	}
 
@@ -110,7 +110,7 @@ func TestSendMessageUseCase_ChatNotFound(t *testing.T) {
 	useCase := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus, nil, nil)
 
 	cmd := message.SendMessageCommand{
-		ChatID:          uuid.NewUUID(), // Несуществующий чат
+		ChatID:          uuid.NewUUID(), // existing chat
 		Content:         "Hello",
 		AuthorID:        uuid.NewUUID(),
 		ParentMessageID: "",
@@ -136,7 +136,7 @@ func TestSendMessageUseCase_EmptyContent(t *testing.T) {
 
 	cmd := message.SendMessageCommand{
 		ChatID:          chatID,
-		Content:         "", // Пустой контент
+		Content:         "", // empty kontent
 		AuthorID:        authorID,
 		ParentMessageID: "",
 	}
@@ -159,7 +159,7 @@ func TestSendMessageUseCase_ContentTooLong(t *testing.T) {
 
 	useCase := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus, nil, nil)
 
-	// Создаем контент > message.MaxContentLength
+	// Creating kontent > message.MaxContentLength
 	longContent := make([]byte, message.MaxContentLength+1)
 	for i := range longContent {
 		longContent[i] = 'a'
@@ -194,7 +194,7 @@ func TestSendMessageUseCase_ParentNotFound(t *testing.T) {
 		ChatID:          chatID,
 		Content:         "Reply",
 		AuthorID:        authorID,
-		ParentMessageID: uuid.NewUUID(), // Несуществующий parent
+		ParentMessageID: uuid.NewUUID(), // existing parent
 	}
 
 	result, err := useCase.Execute(context.Background(), cmd)
@@ -223,7 +223,7 @@ func TestSendMessageUseCase_ParentInDifferentChat(t *testing.T) {
 	useCase := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus, nil, nil)
 
 	cmd := message.SendMessageCommand{
-		ChatID:          chatID2, // Другой чат
+		ChatID:          chatID2, // drugoy chat
 		Content:         "Reply",
 		AuthorID:        authorID,
 		ParentMessageID: parentMsg.ID(),

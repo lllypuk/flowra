@@ -14,7 +14,7 @@ func TestUpdateProfileUseCase_Execute_Success_DisplayName(t *testing.T) {
 	repo := newMockUserRepository()
 	useCase := user.NewUpdateProfileUseCase(repo)
 
-	// Создаем пользователя
+	// Creating user
 	existingUser, _ := domainuser.NewUser("external-123", "testuser", "test@example.com", "Old Name")
 	_ = repo.Save(context.Background(), existingUser)
 
@@ -42,11 +42,11 @@ func TestUpdateProfileUseCase_Execute_Success_Email(t *testing.T) {
 	repo := newMockUserRepository()
 	useCase := user.NewUpdateProfileUseCase(repo)
 
-	// Создаем пользователя
+	// Creating user
 	existingUser, _ := domainuser.NewUser("external-123", "testuser", "old@example.com", "Test User")
 	_ = repo.Save(context.Background(), existingUser)
 
-	newEmail := "new@example.com"
+	newEmail := "New@example.com"
 	cmd := user.UpdateProfileCommand{
 		UserID: existingUser.ID(),
 		Email:  &newEmail,
@@ -70,12 +70,12 @@ func TestUpdateProfileUseCase_Execute_Success_Both(t *testing.T) {
 	repo := newMockUserRepository()
 	useCase := user.NewUpdateProfileUseCase(repo)
 
-	// Создаем пользователя
+	// Creating user
 	existingUser, _ := domainuser.NewUser("external-123", "testuser", "old@example.com", "Old Name")
 	_ = repo.Save(context.Background(), existingUser)
 
 	newDisplayName := "New Name"
-	newEmail := "new@example.com"
+	newEmail := "New@example.com"
 	cmd := user.UpdateProfileCommand{
 		UserID:      existingUser.ID(),
 		DisplayName: &newDisplayName,
@@ -125,13 +125,13 @@ func TestUpdateProfileUseCase_Execute_EmailAlreadyExists(t *testing.T) {
 	repo := newMockUserRepository()
 	useCase := user.NewUpdateProfileUseCase(repo)
 
-	// Создаем двух пользователей
+	// Creating dvuh users
 	user1, _ := domainuser.NewUser("external-1", "user1", "user1@example.com", "User 1")
 	user2, _ := domainuser.NewUser("external-2", "user2", "user2@example.com", "User 2")
 	_ = repo.Save(context.Background(), user1)
 	_ = repo.Save(context.Background(), user2)
 
-	// Пытаемся изменить email user2 на email user1
+	// pytaemsya change email user2 on email user1
 	existingEmail := user1.Email()
 	cmd := user.UpdateProfileCommand{
 		UserID: user2.ID(),
@@ -157,7 +157,7 @@ func TestUpdateProfileUseCase_Validate_NoFieldsProvided(t *testing.T) {
 
 	cmd := user.UpdateProfileCommand{
 		UserID: existingUser.ID(),
-		// Ни displayName, ни email не указаны
+		// ni displayName, ni email not ukazany
 	}
 
 	// Act

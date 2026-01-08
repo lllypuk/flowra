@@ -8,33 +8,33 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/chat"
 )
 
-// CreateChatUseCase обрабатывает создание нового чата
+// CreateChatUseCase handles the creation of a new chat
 type CreateChatUseCase struct {
 	chatRepo CommandRepository
 }
 
-// NewCreateChatUseCase создает новый CreateChatUseCase
+// NewCreateChatUseCase creates a new CreateChatUseCase
 func NewCreateChatUseCase(chatRepo CommandRepository) *CreateChatUseCase {
 	return &CreateChatUseCase{
 		chatRepo: chatRepo,
 	}
 }
 
-// Execute выполняет создание чата
+// Execute executes the chat creation
 func (uc *CreateChatUseCase) Execute(ctx context.Context, cmd CreateChatCommand) (Result, error) {
-	// Валидация
+	// Validation
 	if err := uc.validate(cmd); err != nil {
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Создание агрегата как Discussion для сохранения трейла событий конверсии
-	// NewChat() автоматически генерирует события ChatCreated и ParticipantAdded
+	// Create aggregate as Discussion to preserve conversion event trail
+	// NewChat() automatically generates ChatCreated and ParticipantAdded events
 	chatAggregate, err := chat.NewChat(cmd.WorkspaceID, chat.TypeDiscussion, cmd.IsPublic, cmd.CreatedBy)
 	if err != nil {
 		return Result{}, fmt.Errorf("failed to create chat: %w", err)
 	}
 
-	// Применяем тип и заголовок
+	// Apply type and title
 	if err = uc.applyChatTypeAndTitle(chatAggregate, cmd); err != nil {
 		return Result{}, err
 	}
@@ -42,7 +42,7 @@ func (uc *CreateChatUseCase) Execute(ctx context.Context, cmd CreateChatCommand)
 	// Capture events before saving (for response)
 	uncommittedEvents := chatAggregate.GetUncommittedEvents()
 
-	// Сохранение через репозиторий (обновляет и event store, и read model)
+	// Save via repository (updates both event store and read model)
 	if err = uc.chatRepo.Save(ctx, chatAggregate); err != nil {
 		return Result{}, fmt.Errorf("failed to save chat: %w", err)
 	}
@@ -57,7 +57,7 @@ func (uc *CreateChatUseCase) Execute(ctx context.Context, cmd CreateChatCommand)
 }
 
 func (uc *CreateChatUseCase) applyChatTypeAndTitle(chatAggregate *chat.Chat, cmd CreateChatCommand) error {
-	// Для typed чатов (Task/Bug/Epic) конвертируем и устанавливаем title
+	// For typed chats (Task/Bug/Epic) convert and set title
 	if cmd.Type != chat.TypeDiscussion {
 		var err error
 		switch cmd.Type {
@@ -78,7 +78,7 @@ func (uc *CreateChatUseCase) applyChatTypeAndTitle(chatAggregate *chat.Chat, cmd
 	}
 
 	if cmd.Title != "" {
-		// Для Discussion чатов устанавливаем title через Rename, если он передан
+		// For Discussion chats, set title via Rename if provided
 		if err := chatAggregate.Rename(cmd.Title, cmd.CreatedBy); err != nil {
 			return fmt.Errorf("failed to set title: %w", err)
 		}
@@ -102,7 +102,7 @@ func (uc *CreateChatUseCase) validate(cmd CreateChatCommand) error {
 		return err
 	}
 
-	// Для typed чатов title обязателен
+	// For typed chats title is required
 	if cmd.Type != chat.TypeDiscussion {
 		if err := appcore.ValidateRequired("title", cmd.Title); err != nil {
 			return ErrTitleRequired
@@ -111,7 +111,7 @@ func (uc *CreateChatUseCase) validate(cmd CreateChatCommand) error {
 			return err
 		}
 	} else if cmd.Title != "" {
-		// Для Discussion чатов title опционален, но если передан - проверяем длину
+		// For Discussion chats title is optional, but if provided - check length
 		if err := appcore.ValidateMaxLength("title", cmd.Title, appcore.MaxTitleLength); err != nil {
 			return err
 		}

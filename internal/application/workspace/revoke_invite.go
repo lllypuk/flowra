@@ -8,61 +8,61 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/workspace"
 )
 
-// RevokeInviteUseCase - use case для отзыва инвайта
+// RevokeInviteUseCase - use case for otzyva invayta
 type RevokeInviteUseCase struct {
 	appcore.BaseUseCase
 
 	workspaceRepo Repository
 }
 
-// NewRevokeInviteUseCase создает новый RevokeInviteUseCase
+// NewRevokeInviteUseCase creates New RevokeInviteUseCase
 func NewRevokeInviteUseCase(workspaceRepo Repository) *RevokeInviteUseCase {
 	return &RevokeInviteUseCase{
 		workspaceRepo: workspaceRepo,
 	}
 }
 
-// Execute выполняет отзыв инвайта
+// Execute performs otzyv invayta
 func (uc *RevokeInviteUseCase) Execute(
 	ctx context.Context,
 	cmd RevokeInviteCommand,
 ) (InviteResult, error) {
-	// Валидация контекста
+	// context validation
 	if err := uc.ValidateContext(ctx); err != nil {
 		return InviteResult{}, uc.WrapError("validate context", err)
 	}
 
-	// Валидация команды
+	// validation commands
 	if err := uc.validate(cmd); err != nil {
 		return InviteResult{}, uc.WrapError("validation failed", err)
 	}
 
-	// Поиск инвайта по ID
-	// Сначала нужно найти workspace с этим инвайтом
-	// Для этого нужно расширить Repository - добавить FindWorkspaceByInviteID
-	// Или можно использовать FindInviteByToken, но у нас только ID
-	// Упрощение: предполагаем что InviteID уникален и можем найти через перебор
-	// В реальном проекте лучше добавить метод FindWorkspaceByInviteID в Repository
+	// search invayta po ID
+	// snachala nuzhno find workspace s etim invaytom
+	// for it is nuzhno rasshirit Repository - add FindWorkspaceByInviteID
+	// or mozhno user FindInviteByToken, no u nas only ID
+	// uproschenie: predpolagaem that InviteID unikalen and mozhem find via perebor
+	// in realnom proekte luchshe add method FindWorkspaceByInviteID in Repository
 
-	// Временное решение: будем искать workspace через все workspaces
-	// Это не оптимально, но для примера подойдет
-	// TODO: добавить метод FindWorkspaceByInviteID в Repository
+	// vremennoe reshenie: budem iskat workspace via all workspaces
+	// eto not optimalno, no for primera podoydet
+	// TODO: add method FindWorkspaceByInviteID in Repository
 
-	// Для упрощения, используем прямой подход:
-	// Предполагаем, что в команде также есть WorkspaceID или ищем по всем workspaces
-	// Поскольку в задании такого метода нет, реализуем поиск через приватный метод
+	// for uproscheniya, ispolzuem pryamoy podhod:
+	// predpolagaem, that in komande takzhe est WorkspaceID or ischem po all workspaces
+	// poskolku in zadanii takogo metoda no, realizuem search via privatnyy method
 
 	invite, ws, err := uc.findInviteByID(ctx, cmd.InviteID)
 	if err != nil {
 		return InviteResult{}, uc.WrapError("find invite", ErrInviteNotFound)
 	}
 
-	// Отзыв инвайта
+	// otzyv invayta
 	if errRevoke := invite.Revoke(); errRevoke != nil {
 		return InviteResult{}, uc.WrapError("revoke invite", errRevoke)
 	}
 
-	// Сохранение workspace с отозванным инвайтом
+	// save workspace s otozvannym invaytom
 	if errSave := uc.workspaceRepo.Save(ctx, ws); errSave != nil {
 		return InviteResult{}, uc.WrapError("save workspace", errSave)
 	}
@@ -74,7 +74,7 @@ func (uc *RevokeInviteUseCase) Execute(
 	}, nil
 }
 
-// validate проверяет валидность команды
+// validate validates commands
 func (uc *RevokeInviteUseCase) validate(cmd RevokeInviteCommand) error {
 	if err := appcore.ValidateUUID("inviteID", cmd.InviteID); err != nil {
 		return err
@@ -85,15 +85,15 @@ func (uc *RevokeInviteUseCase) validate(cmd RevokeInviteCommand) error {
 	return nil
 }
 
-// findInviteByID находит инвайт по ID
-// Это вспомогательный метод, который ищет invite во всех workspaces
-// В реальном проекте лучше добавить индекс или прямой метод поиска
+// findInviteByID finds invayt po ID
+// eto vspomogatelnyy method, kotoryy ischet invite vo all workspaces
+// in realnom proekte luchshe add indeks or pryamoy method searching
 func (uc *RevokeInviteUseCase) findInviteByID(
 	ctx context.Context,
 	inviteID uuid.UUID,
 ) (*workspace.Invite, *workspace.Workspace, error) {
-	// Получаем все workspaces (не оптимально, но для примера)
-	// В реальном проекте нужен индекс inviteID -> workspaceID
+	// poluchaem all workspaces (not optimalno, no for primera)
+	// in realnom proekte nuzhen indeks inviteID -> workspaceID
 	const maxWorkspaces = 1000
 	workspaces, err := uc.workspaceRepo.List(ctx, 0, maxWorkspaces)
 	if err != nil {

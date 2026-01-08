@@ -17,13 +17,13 @@ func TestAcceptInviteUseCase_Execute_Success(t *testing.T) {
 	keycloakClient := newMockKeycloakClient()
 	useCase := workspace.NewAcceptInviteUseCase(repo, keycloakClient)
 
-	// Создаем workspace с инвайтом
+	// Creating workspace with invite
 	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
 	expiresAt := time.Now().Add(24 * time.Hour)
 	invite, _ := ws.CreateInvite(uuid.NewUUID(), expiresAt, 0)
 	_ = repo.Save(context.Background(), ws)
 
-	// Создаем группу в Keycloak
+	// Creating group in Keycloak
 	keycloakClient.groups[ws.KeycloakGroupID()] = "Test Workspace"
 	keycloakClient.groupUsers[ws.KeycloakGroupID()] = []string{}
 
@@ -45,13 +45,13 @@ func TestAcceptInviteUseCase_Execute_Success(t *testing.T) {
 		t.Fatal("expected workspace to be returned")
 	}
 
-	// Проверка, что пользователь добавлен в группу Keycloak
+	// check that user dobavlen in groups Keycloak
 	groupUsers := keycloakClient.groupUsers[ws.KeycloakGroupID()]
 	if len(groupUsers) != 1 || groupUsers[0] != userID.String() {
 		t.Error("expected user to be added to Keycloak group")
 	}
 
-	// Проверка, что счетчик использований инвайта увеличился
+	// check that schetchik ispolzovaniy invayta uvelichilsya
 	updatedWs, _ := repo.FindByID(context.Background(), ws.ID())
 	updatedInvite, _ := updatedWs.FindInviteByToken(invite.Token())
 	if updatedInvite.UsedCount() != 1 {
@@ -89,16 +89,16 @@ func TestAcceptInviteUseCase_Execute_InviteExpired(t *testing.T) {
 	keycloakClient := newMockKeycloakClient()
 	useCase := workspace.NewAcceptInviteUseCase(repo, keycloakClient)
 
-	// Создаем workspace с инвайтом который скоро истечет
+	// Creating workspace with invite kotoryy skoro istechet
 	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
-	// Создаем с коротким сроком действия (1 миллисекунда в будущем)
+	// Creating s korotkim srokom deystviya (1 millisekunda in buduschem)
 	expiresAt := time.Now().Add(1 * time.Millisecond)
 	invite, err := ws.CreateInvite(uuid.NewUUID(), expiresAt, 0)
 	if err != nil {
 		t.Fatalf("failed to create invite: %v", err)
 	}
 
-	// Подождем чтобы инвайт истек
+	// wait for invayt expired
 	time.Sleep(5 * time.Millisecond)
 
 	_ = repo.Save(context.Background(), ws)
@@ -127,7 +127,7 @@ func TestAcceptInviteUseCase_Execute_InviteRevoked(t *testing.T) {
 	keycloakClient := newMockKeycloakClient()
 	useCase := workspace.NewAcceptInviteUseCase(repo, keycloakClient)
 
-	// Создаем workspace с отозванным инвайтом
+	// Creating workspace s otozvannym invaytom
 	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
 	expiresAt := time.Now().Add(24 * time.Hour)
 	invite, _ := ws.CreateInvite(uuid.NewUUID(), expiresAt, 0)
@@ -158,20 +158,20 @@ func TestAcceptInviteUseCase_Execute_InviteMaxUsesReached(t *testing.T) {
 	keycloakClient := newMockKeycloakClient()
 	useCase := workspace.NewAcceptInviteUseCase(repo, keycloakClient)
 
-	// Создаем workspace с инвайтом с лимитом использований
+	// Creating workspace with invite s limitom ispolzovaniy
 	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
 	expiresAt := time.Now().Add(24 * time.Hour)
 	invite, _ := ws.CreateInvite(uuid.NewUUID(), expiresAt, 1) // maxUses = 1
 
-	// Создаем группу в Keycloak
+	// Creating group in Keycloak
 	keycloakClient.groups[ws.KeycloakGroupID()] = "Test Workspace"
 	keycloakClient.groupUsers[ws.KeycloakGroupID()] = []string{}
 
-	// Используем инвайт один раз
+	// ispolzuem invayt one raz
 	_ = invite.Use()
 	_ = repo.Save(context.Background(), ws)
 
-	// Пытаемся использовать второй раз
+	// pytaemsya user vtoroy raz
 	cmd := workspace.AcceptInviteCommand{
 		Token:  invite.Token(),
 		UserID: uuid.NewUUID(),
@@ -237,13 +237,13 @@ func TestAcceptInviteUseCase_Execute_KeycloakAddUserError(t *testing.T) {
 	keycloakClient.addUserError = errors.New("Keycloak error")
 	useCase := workspace.NewAcceptInviteUseCase(repo, keycloakClient)
 
-	// Создаем workspace с инвайтом
+	// Creating workspace with invite
 	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
 	expiresAt := time.Now().Add(24 * time.Hour)
 	invite, _ := ws.CreateInvite(uuid.NewUUID(), expiresAt, 0)
 	_ = repo.Save(context.Background(), ws)
 
-	// Создаем группу в Keycloak
+	// Creating group in Keycloak
 	keycloakClient.groups[ws.KeycloakGroupID()] = "Test Workspace"
 	keycloakClient.groupUsers[ws.KeycloakGroupID()] = []string{}
 

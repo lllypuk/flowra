@@ -1,31 +1,31 @@
-# Руководство по настройке среды разработки
+# Development Environment Setup Guide
 
-## Обзор
+## Overview
 
-Этот документ содержит инструкции по настройке локальной среды разработки для проекта Flowra.
+This document contains instructions for setting up the local development environment for the Flowra project.
 
-## Системные требования
+## System Requirements
 
-### Обязательные компоненты
+### Required Components
 
-- **Go**: версия 1.19 или выше
-- **MongoDB**: версия 8 или выше
-- **Redis**: версия 6 или выше
-- **Docker**: версия 20.10 или выше
-- **Docker Compose**: версия 2.0 или выше
-- **Git**: версия 2.30 или выше
+- **Go**: version 1.19 or higher
+- **MongoDB**: version 8 or higher
+- **Redis**: version 6 or higher
+- **Docker**: version 20.10 or higher
+- **Docker Compose**: version 2.0 or higher
+- **Git**: version 2.30 or higher
 
-### Рекомендуемые инструменты
+### Recommended Tools
 
-- **Make**: для автоматизации задач
-- **golangci-lint**: для статического анализа кода
-- **Air**: для hot reload в development
-- **Postman** или **Insomnia**: для тестирования API
-- **MongoDB Compass**: для работы с базой данных
+- **Make**: for task automation
+- **golangci-lint**: for static code analysis
+- **Air**: for hot reload in development
+- **Postman** or **Insomnia**: for API testing
+- **MongoDB Compass**: for working with the database
 
-## Установка зависимостей
+## Installing Dependencies
 
-### macOS (с использованием Homebrew)
+### macOS (using Homebrew)
 
 ```bash
 # Go
@@ -43,7 +43,7 @@ brew services start redis
 # Docker
 brew install --cask docker
 
-# Дополнительные инструменты
+# Additional tools
 brew install make
 brew install golangci/tap/golangci-lint
 ```
@@ -74,36 +74,36 @@ curl -fsSL https://get.docker.com -o get-docker.sh
 sudo sh get-docker.sh
 sudo usermod -aG docker $USER
 
-# Дополнительные инструменты
+# Additional tools
 sudo apt install make
 curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
 ```
 
 ### Windows
 
-1. Установите Go с официального сайта: https://golang.org/dl/
-2. Установите MongoDB: https://www.mongodb.com/try/download/community
-3. Установите Redis: https://redis.io/download
-4. Установите Docker Desktop: https://www.docker.com/products/docker-desktop
+1. Install Go from the official website: https://golang.org/dl/
+2. Install MongoDB: https://www.mongodb.com/try/download/community
+3. Install Redis: https://redis.io/download
+4. Install Docker Desktop: https://www.docker.com/products/docker-desktop
 
-## Настройка проекта
+## Project Setup
 
-### 1. Клонирование репозитория
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/lllypuk/flowra.git
 cd flowra
 ```
 
-### 2. Настройка переменных окружения
+### 2. Configure Environment Variables
 
-Создайте файл `.env` в корне проекта:
+Create a `.env` file in the project root:
 
 ```bash
 cp .env.example .env
 ```
 
-Отредактируйте `.env` файл:
+Edit the `.env` file:
 
 ```env
 # Database
@@ -140,119 +140,119 @@ GITHUB_CLIENT_ID=your-github-client-id
 GITHUB_CLIENT_SECRET=your-github-client-secret
 ```
 
-### 3. Установка Go зависимостей
+### 3. Install Go Dependencies
 
 ```bash
 go mod download
 go mod tidy
 ```
 
-### 4. Запуск MongoDB через Docker (рекомендуется)
+### 4. Run MongoDB via Docker (recommended)
 
 ```bash
-# Запустите MongoDB через docker-compose
+# Start MongoDB via docker-compose
 docker-compose up -d mongodb
 
-# Проверьте подключение
+# Verify connection
 mongosh mongodb://admin:admin123@localhost:27017
 ```
 
-### 5. Заполнение тестовыми данными (опционально)
+### 5. Populate with Test Data (optional)
 
 ```bash
 make seed
 ```
 
-## Запуск приложения
+## Running the Application
 
-### Development режим
+### Development Mode
 
 ```bash
-# Установите Air для hot reload
+# Install Air for hot reload
 go install github.com/cosmtrek/air@latest
 
-# Запустите в development режиме
+# Run in development mode
 make dev
 ```
 
-### Production режим
+### Production Mode
 
 ```bash
-# Соберите приложение
+# Build the application
 make build
 
-# Запустите скомпилированный бинарник
+# Run the compiled binary
 make run
 ```
 
 ### Docker Compose
 
 ```bash
-# Запустите все сервисы в Docker
+# Start all services in Docker
 make docker-up
 
-# Остановите сервисы
+# Stop services
 make docker-down
 ```
 
-## Доступные команды Make
+## Available Make Commands
 
 ```bash
-# Разработка
-make dev          # Запуск в development режиме с hot reload
-make build        # Сборка приложения
-make run          # Запуск приложения
-make clean        # Очистка build файлов
+# Development
+make dev          # Run in development mode with hot reload
+make build        # Build the application
+make run          # Run the application
+make clean        # Clean build files
 
-# Тестирование
-make test         # Запуск всех тестов
-make test-unit    # Запуск unit тестов
-make test-integration # Запуск integration тестов
-make coverage     # Генерация отчета о покрытии тестами
+# Testing
+make test         # Run all tests
+make test-unit    # Run unit tests
+make test-integration # Run integration tests
+make coverage     # Generate test coverage report
 
-# Качество кода
-make lint         # Проверка кода линтером
-make fmt          # Форматирование кода
-make vet          # Проверка кода vet'ом
+# Code Quality
+make lint         # Check code with linter
+make fmt          # Format code
+make vet          # Check code with vet
 
-# База данных
-make seed         # Заполнить БД тестовыми данными
-make db-reset     # Очистить и пересоздать БД
+# Database
+make seed         # Populate DB with test data
+make db-reset     # Clear and recreate DB
 
 # Docker
-make docker-build # Собрать Docker образ
-make docker-up    # Запустить сервисы в Docker
-make docker-down  # Остановить Docker сервисы
+make docker-build # Build Docker image
+make docker-up    # Start services in Docker
+make docker-down  # Stop Docker services
 
-# Документация
-make docs         # Генерация API документации
-make swagger      # Запуск Swagger UI
+# Documentation
+make docs         # Generate API documentation
+make swagger      # Run Swagger UI
 ```
 
-## Структура проекта
+## Project Structure
 
-После настройки у вас должна быть следующая структура:
+After setup, you should have the following structure:
 
 ```
 new-flowra/
-├── .env                    # Переменные окружения (не коммитится)
-├── .air.toml              # Конфигурация Air
-├── docker-compose.yml     # Docker Compose конфигурация
-├── Makefile              # Автоматизация задач
-├── cmd/                  # Точки входа приложений
-├── internal/             # Внутренний код приложения
-├── pkg/                  # Переиспользуемые пакеты
-├── migrations/           # Миграции базы данных
-├── configs/              # Конфигурационные файлы
-├── scripts/              # Вспомогательные скрипты
-└── docs/                 # Документация
+├── .env                    # Environment variables (not committed)
+├── .air.toml              # Air configuration
+├── docker-compose.yml     # Docker Compose configuration
+├── Makefile              # Task automation
+├── cmd/                  # Application entry points
+├── internal/             # Internal application code
+├── pkg/                  # Reusable packages
+├── migrations/           # Database migrations
+├── configs/              # Configuration files
+├── scripts/              # Helper scripts
+└── docs/                 # Documentation
 ```
 
-## Настройка IDE
+## IDE Setup
 
 ### VS Code
 
-Рекомендуемые расширения:
+Recommended extensions:
 
 ```json
 {
@@ -267,7 +267,7 @@ new-flowra/
 }
 ```
 
-Настройки VS Code (`.vscode/settings.json`):
+VS Code settings (`.vscode/settings.json`):
 
 ```json
 {
@@ -288,26 +288,26 @@ new-flowra/
 
 ### GoLand
 
-1. Откройте проект в GoLand
-2. Настройте Go Modules в Settings → Go → Go Modules
-3. Настройте Database connection в Database panel
-4. Установите плагины: Docker, Database Tools and SQL
+1. Open the project in GoLand
+2. Configure Go Modules in Settings → Go → Go Modules
+3. Configure Database connection in the Database panel
+4. Install plugins: Docker, Database Tools and SQL
 
-## Отладка
+## Debugging
 
 ### Delve Debugger
 
 ```bash
-# Установите delve
+# Install delve
 go install github.com/go-delve/delve/cmd/dlv@latest
 
-# Запустите с отладчиком
+# Run with debugger
 dlv debug ./cmd/api
 ```
 
 ### VS Code Debugging
 
-Конфигурация `.vscode/launch.json`:
+Configuration `.vscode/launch.json`:
 
 ```json
 {
@@ -328,98 +328,98 @@ dlv debug ./cmd/api
 }
 ```
 
-## Тестирование
+## Testing
 
-### Unit тесты
+### Unit Tests
 
 ```bash
-# Запуск всех unit тестов
+# Run all unit tests
 go test ./...
 
-# Запуск тестов с покрытием
+# Run tests with coverage
 go test -cover ./...
 
-# Детальный отчет о покрытии
+# Detailed coverage report
 go test -coverprofile=coverage.out ./...
 go tool cover -html=coverage.out
 ```
 
-### Integration тесты
+### Integration Tests
 
 ```bash
-# Запуск integration тестов
+# Run integration tests
 go test -tags=integration ./...
 ```
 
 ### Benchmarks
 
 ```bash
-# Запуск бенчмарков
+# Run benchmarks
 go test -bench=. ./...
 ```
 
 ## Troubleshooting
 
-### Частые проблемы
+### Common Issues
 
-**1. Не удается подключиться к MongoDB**
+**1. Cannot connect to MongoDB**
 ```bash
-# Проверьте статус сервиса
+# Check service status
 sudo systemctl status mongod
 
-# Проверьте, запущен ли MongoDB через Docker
+# Check if MongoDB is running via Docker
 docker ps | grep mongodb
 
-# Проверьте подключение
+# Verify connection
 mongosh mongodb://admin:admin123@localhost:27017
 ```
 
-**2. Go модули не загружаются**
+**2. Go modules not loading**
 ```bash
-# Очистите модульный кэш
+# Clear module cache
 go clean -modcache
 
-# Переустановите зависимости
+# Reinstall dependencies
 go mod download
 ```
 
-**3. Port уже используется**
+**3. Port already in use**
 ```bash
-# Найдите процесс, использующий порт
+# Find process using the port
 lsof -i :8080
 
-# Завершите процесс
+# Terminate the process
 kill -9 <PID>
 ```
 
-**4. Docker проблемы**
+**4. Docker issues**
 ```bash
-# Очистите Docker контейнеры и образы
+# Clean Docker containers and images
 docker system prune -a
 
-# Перезапустите Docker daemon
+# Restart Docker daemon
 sudo systemctl restart docker
 ```
 
-## Следующие шаги
+## Next Steps
 
-После успешной настройки среды разработки:
+After successfully setting up the development environment:
 
-1. Изучите [стандарты кодирования](coding-standards.md)
-2. Ознакомьтесь с [стратегией тестирования](testing.md)
-3. Прочитайте [архитектурное описание](../../ARCHITECTURE.md)
-4. Начните с изучения [API документации](../api/)
+1. Review the [coding standards](coding-standards.md)
+2. Familiarize yourself with the [testing strategy](testing.md)
+3. Read the [architecture description](../../ARCHITECTURE.md)
+4. Start by exploring the [API documentation](../api/)
 
-## Помощь
+## Help
 
-Если у вас возникли проблемы:
+If you encounter problems:
 
-1. Проверьте [FAQ](../faq.md)
-2. Поищите решение в [Issues](https://github.com/lllypuk/new-flowra/issues)
-3. Создайте новый Issue с тегом `setup`
-4. Обратитесь в Slack канал `#development`
+1. Check the [FAQ](../faq.md)
+2. Search for a solution in [Issues](https://github.com/lllypuk/new-flowra/issues)
+3. Create a new Issue with the `setup` tag
+4. Reach out in the Slack channel `#development`
 
 ---
 
-*Последнее обновление: [Текущая дата]*
-*Поддерживается: Development Team*
+*Last updated: [Current date]*
+*Maintained by: Development Team*

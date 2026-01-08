@@ -9,19 +9,19 @@ import (
 	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
-// ListParticipantsUseCase - use case для получения списка участников
+// ListParticipantsUseCase - use case for retrieving a list of participants
 type ListParticipantsUseCase struct {
 	eventStore appcore.EventStore
 }
 
-// NewListParticipantsUseCase - конструктор
+// NewListParticipantsUseCase - constructor
 func NewListParticipantsUseCase(eventStore appcore.EventStore) *ListParticipantsUseCase {
 	return &ListParticipantsUseCase{
 		eventStore: eventStore,
 	}
 }
 
-// Execute - выполнить запрос
+// Execute - execute the query
 func (uc *ListParticipantsUseCase) Execute(
 	ctx context.Context,
 	query ListParticipantsQuery,

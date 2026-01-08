@@ -3,30 +3,30 @@ package workspace
 import "errors"
 
 var (
-	// ErrWorkspaceNotFound возникает когда workspace не найден
+	// ErrWorkspaceNotFound is returned when workspace is not found
 	ErrWorkspaceNotFound = errors.New("workspace not found")
 
-	// ErrInviteNotFound возникает когда инвайт не найден
+	// ErrInviteNotFound is returned when invite is not found
 	ErrInviteNotFound = errors.New("invite not found")
 
-	// ErrInviteExpired возникает когда инвайт истек
+	// ErrInviteExpired is returned when invite has expired
 	ErrInviteExpired = errors.New("invite has expired")
 
-	// ErrInviteRevoked возникает когда инвайт отозван
+	// ErrInviteRevoked is returned when invite has been revoked
 	ErrInviteRevoked = errors.New("invite has been revoked")
 
-	// ErrInviteMaxUsesReached возникает когда достигнут лимит использований инвайта
+	// ErrInviteMaxUsesReached is returned when invite usage limit is reached
 	ErrInviteMaxUsesReached = errors.New("invite has reached maximum uses")
 
-	// ErrInvalidInviteToken возникает при невалидном токене инвайта
+	// ErrInvalidInviteToken is returned when invite token is invalid
 	ErrInvalidInviteToken = errors.New("invalid invite token")
 
-	// ErrKeycloakGroupCreationFailed возникает при ошибке создания группы в Keycloak
+	// ErrKeycloakGroupCreationFailed is returned when Keycloak group creation fails
 	ErrKeycloakGroupCreationFailed = errors.New("failed to create Keycloak group")
 
-	// ErrKeycloakGroupDeletionFailed возникает при ошибке удаления группы в Keycloak
+	// ErrKeycloakGroupDeletionFailed is returned when Keycloak group deletion fails
 	ErrKeycloakGroupDeletionFailed = errors.New("failed to delete Keycloak group")
 
-	// ErrKeycloakUserAddFailed возникает при ошибке добавления пользователя в группу Keycloak
+	// ErrKeycloakUserAddFailed is returned when adding user to Keycloak group fails
 	ErrKeycloakUserAddFailed = errors.New("failed to add user to Keycloak group")
 )

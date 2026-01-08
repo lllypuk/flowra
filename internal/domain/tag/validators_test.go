@@ -1,4 +1,4 @@
-package tag //nolint:testpackage // Чтобы тестировать unexported функции
+package tag //nolint:testpackage // to test unexported functions
 
 import (
 	"testing"
@@ -14,7 +14,7 @@ func TestValidateUsername(t *testing.T) {
 		wantErr   bool
 		errSubstr string
 	}{
-		// Валидные значения
+		// valid values
 		{
 			name:    "valid username",
 			value:   "@alex",
@@ -51,7 +51,7 @@ func TestValidateUsername(t *testing.T) {
 			wantErr: false,
 		},
 
-		// Невалидные значения
+		// Invalid values
 		{
 			name:      "missing @",
 			value:     "alex",
@@ -106,7 +106,7 @@ func TestValidateISODate(t *testing.T) {
 		wantErr   bool
 		errSubstr string
 	}{
-		// Валидные форматы
+		// valid formats
 		{
 			name:    "YYYY-MM-DD",
 			value:   "2025-10-20",
@@ -143,7 +143,7 @@ func TestValidateISODate(t *testing.T) {
 			wantErr: false,
 		},
 
-		// Невалидные форматы
+		// Invalid formats
 		{
 			name:      "DD-MM-YYYY",
 			value:     "20-10-2025",
@@ -198,7 +198,7 @@ func TestValidatePriority(t *testing.T) {
 		wantErr   bool
 		errSubstr string
 	}{
-		// Валидные значения (CASE-SENSITIVE)
+		// valid values (CASE-SENSITIVE)
 		{
 			name:    "High",
 			value:   "High",
@@ -215,7 +215,7 @@ func TestValidatePriority(t *testing.T) {
 			wantErr: false,
 		},
 
-		// Невалидные значения
+		// Invalid values
 		{
 			name:      "lowercase high",
 			value:     "high",
@@ -264,7 +264,7 @@ func TestValidateSeverity(t *testing.T) {
 		wantErr   bool
 		errSubstr string
 	}{
-		// Валидные значения (CASE-SENSITIVE)
+		// valid values (CASE-SENSITIVE)
 		{
 			name:    "Critical",
 			value:   "Critical",
@@ -286,7 +286,7 @@ func TestValidateSeverity(t *testing.T) {
 			wantErr: false,
 		},
 
-		// Невалидные значения
+		// Invalid values
 		{
 			name:      "lowercase critical",
 			value:     "critical",
@@ -323,7 +323,7 @@ func TestValidateSeverity(t *testing.T) {
 }
 
 func TestNoValidation(t *testing.T) {
-	// noValidation всегда возвращает nil
+	// noValidation always returns nil
 	assert.NoError(t, noValidation(""))
 	assert.NoError(t, noValidation("any value"))
 	assert.NoError(t, noValidation("🎉 emoji"))
@@ -341,7 +341,7 @@ func TestValidateStatus(t *testing.T) {
 		wantErr    bool
 		errSubstr  string
 	}{
-		// Task статусы
+		// Task statuses
 		{
 			name:       "valid Task status - To Do",
 			entityType: "Task",
@@ -375,7 +375,7 @@ func TestValidateStatus(t *testing.T) {
 			errSubstr:  "Invalid status",
 		},
 
-		// Bug статусы
+		// Bug statuses
 		{
 			name:       "valid Bug status - New",
 			entityType: "Bug",
@@ -408,7 +408,7 @@ func TestValidateStatus(t *testing.T) {
 			errSubstr:  "Invalid status",
 		},
 
-		// Epic статусы
+		// Epic statuses
 		{
 			name:       "valid Epic status - Planned",
 			entityType: "Epic",
@@ -428,7 +428,7 @@ func TestValidateStatus(t *testing.T) {
 			wantErr:    false,
 		},
 
-		// Неизвестный тип сущности
+		// unknown entity type
 		{
 			name:       "unknown entity type",
 			entityType: "Story",
@@ -461,7 +461,7 @@ func TestValidateDueDate(t *testing.T) {
 		wantErr   bool
 		errSubstr string
 	}{
-		// Валидные форматы
+		// valid formats
 		{
 			name:    "YYYY-MM-DD",
 			input:   "2025-10-20",
@@ -505,7 +505,7 @@ func TestValidateDueDate(t *testing.T) {
 			wantErr: false,
 		},
 
-		// Невалидные форматы
+		// Invalid formats
 		{
 			name:      "DD-MM-YYYY",
 			input:     "20-10-2025",
@@ -612,23 +612,23 @@ func TestValidateEntityCreation(t *testing.T) {
 		wantErr   bool
 		errSubstr string
 	}{
-		// Валидные title
+		// valid titles
 		{
 			name:    "valid task title",
 			tagKey:  "task",
-			title:   "Реализовать авторизацию",
+			title:   "Implement authorization",
 			wantErr: false,
 		},
 		{
 			name:    "valid bug title",
 			tagKey:  "bug",
-			title:   "Ошибка при логине",
+			title:   "Login error",
 			wantErr: false,
 		},
 		{
 			name:    "valid epic title",
 			tagKey:  "epic",
-			title:   "Новая фича",
+			title:   "New feature",
 			wantErr: false,
 		},
 		{
@@ -640,17 +640,17 @@ func TestValidateEntityCreation(t *testing.T) {
 		{
 			name:    "title with unicode",
 			tagKey:  "task",
-			title:   "Исправить баг 🐛",
+			title:   "Fix bug 🐛",
 			wantErr: false,
 		},
 		{
 			name:    "title with leading/trailing spaces",
 			tagKey:  "task",
-			title:   "  Много пробелов  ",
+			title:   "  many spaces  ",
 			wantErr: false,
 		},
 
-		// Невалидные title
+		// Invalid title
 		{
 			name:      "empty task title",
 			tagKey:    "task",

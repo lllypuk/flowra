@@ -1,18 +1,18 @@
 # Flowra
 
-Комплексная система чата с интегрированным таск-трекером, help desk функциональностью и поддержкой команд.
+A comprehensive chat system with integrated task tracker, help desk functionality, and team support.
 
-## 📊 Текущее состояние проекта
+## 📊 Current Project Status
 
-**Версия:** 1.0.0-beta  
-**Дата обновления:** 2026-01-06  
-**Общий прогресс:** ~95% к MVP  
-**Статус:** January 2026 Release Candidate
+**Version:** 1.0.0-beta  
+**Last Updated:** 2026-01-06  
+**Overall Progress:** ~95% to MVP  
+**Status:** January 2026 Release Candidate
 
-### Прогресс по слоям
+### Progress by Layer
 
-| Слой | Статус | Прогресс | Файлов | Coverage |
-|------|--------|----------|--------|----------|
+| Layer | Status | Progress | Files | Coverage |
+|-------|--------|----------|-------|----------|
 | **Domain** | ✅ Complete | 100% | 48 | 90%+ |
 | **Application** | ✅ Complete | 100% | 139 | 85%+ |
 | **Infrastructure** | ✅ Complete | 100% | 50 | 85%+ |
@@ -22,29 +22,29 @@
 | **Frontend** | 🔄 In Progress | 20% | ~30 | - |
 | **Entry Points** | ✅ Complete | 100% | 6 | 75%+ |
 
-### Что работает ✅
+### What Works ✅
 
-- ✅ **Domain Layer:** 6 Event-Sourced агрегатов, 30+ domain events
-- ✅ **Application Layer:** 40+ use cases с 85% average coverage
-- ✅ **MongoDB Repositories:** Все 6 репозиториев с интеграционными тестами
-- ✅ **Event Store:** MongoDB Event Store с optimistic locking
-- ✅ **Event Bus:** Redis pub/sub для событий между сервисами
-- ✅ **HTTP Handlers:** Полный REST API с 40+ endpoints
-- ✅ **WebSocket:** Real-time коммуникация с Hub pattern
+- ✅ **Domain Layer:** 6 Event-Sourced aggregates, 30+ domain events
+- ✅ **Application Layer:** 40+ use cases with 85% average coverage
+- ✅ **MongoDB Repositories:** All 6 repositories with integration tests
+- ✅ **Event Store:** MongoDB Event Store with optimistic locking
+- ✅ **Event Bus:** Redis pub/sub for cross-service events
+- ✅ **HTTP Handlers:** Full REST API with 40+ endpoints
+- ✅ **WebSocket:** Real-time communication with Hub pattern
 - ✅ **Middleware:** Auth, CORS, Logging, Recovery, Rate Limiting, Workspace Access
 - ✅ **Services:** Workspace Access Checker, Chat, Member, Auth services
-- ✅ **Keycloak Integration:** Полная SSO интеграция (JWT, OAuth, User Sync)
-- ✅ **Entry Points:** API server, Worker (с User Sync)
-- ✅ **E2E Tests:** Полное покрытие критических flows
+- ✅ **Keycloak Integration:** Full SSO integration (JWT, OAuth, User Sync)
+- ✅ **Entry Points:** API server, Worker (with User Sync)
+- ✅ **E2E Tests:** Full coverage of critical flows
 - ✅ **API Documentation:** OpenAPI 3.1, Postman collection
 
-### В разработке 🔄
+### In Development 🔄
 
 - 🔄 **Frontend:** HTMX + Pico CSS (framework ready, auth + workspace UI done)
 
 ---
 
-## 🚀 Quick Start (5 минут)
+## 🚀 Quick Start (5 minutes)
 
 ### Prerequisites
 
@@ -116,38 +116,38 @@ make test-coverage # Generate coverage report
 
 ---
 
-## 🏗️ Основные возможности
+## 🏗️ Key Features
 
-- **Real-time чат** с поддержкой групп и direct messages
-- **Система команд** для управления задачами прямо из чата
-- **Task management** с state machine для статусов
-- **Help Desk** функциональность с SLA tracking
-- **Keycloak интеграция** для SSO и управления пользователями
-- **HTMX + Alpine.js** для минимального использования JavaScript
-- **WebSocket** для real-time обновлений
-- **Event Sourcing** для полной истории изменений
-- **Tag Processing** - система обработки команд через теги в сообщениях
+- **Real-time chat** with group and direct message support
+- **Command system** for managing tasks directly from chat
+- **Task management** with state machine for statuses
+- **Help Desk** functionality with SLA tracking
+- **Keycloak integration** for SSO and user management
+- **HTMX + Alpine.js** for minimal JavaScript usage
+- **WebSocket** for real-time updates
+- **Event Sourcing** for complete change history
+- **Tag Processing** - command processing system via message tags
 
 ---
 
-## 🎯 Доменные модели
+## 🎯 Domain Models
 
 ### Chat Aggregate
-- **Типы**: Direct message, Group chat, Help Desk ticket
-- **Операции**: Create, AddParticipant, RemoveParticipant, Rename, SetSeverity, SetPriority
+- **Types**: Direct message, Group chat, Help Desk ticket
+- **Operations**: Create, AddParticipant, RemoveParticipant, Rename, SetSeverity, SetPriority
 
 ### Message Aggregate
-- **Возможности**: Content, attachments, reactions, threading
-- **Операции**: Create, Edit, Delete, AddAttachment, AddReaction
+- **Capabilities**: Content, attachments, reactions, threading
+- **Operations**: Create, Edit, Delete, AddAttachment, AddReaction
 
 ### Task Aggregate
-- **Типы**: Task, Bug, Feature, Support
+- **Types**: Task, Bug, Feature, Support
 - **States**: Todo, InProgress, Review, Done, Cancelled
 - **Priority**: Low, Medium, High, Critical
 
 ### Notification Aggregate
-- **Типы**: Task, Chat, Mention, System
-- **Операции**: Create, MarkAsRead, MarkAllAsRead, Delete
+- **Types**: Task, Chat, Mention, System
+- **Operations**: Create, MarkAsRead, MarkAllAsRead, Delete
 
 ### User & Workspace Entities
 - **User**: Registration, Profile updates, Admin promotion
@@ -155,28 +155,28 @@ make test-coverage # Generate coverage report
 
 ---
 
-## 📋 Документация
+## 📋 Documentation
 
 ### API Documentation
-- [API Overview](./docs/api/README.md) - Полное описание API
-- [OpenAPI Spec](./docs/api/openapi.yaml) - OpenAPI 3.1 спецификация
-- [Postman Collection](./docs/api/postman_collection.json) - Готовая коллекция для тестирования
+- [API Overview](./docs/api/README.md) - Complete API description
+- [OpenAPI Spec](./docs/api/openapi.yaml) - OpenAPI 3.1 specification
+- [Postman Collection](./docs/api/postman_collection.json) - Ready-to-use collection for testing
 
 ### Guides
-- [Deployment Guide](./docs/DEPLOYMENT.md) - Инструкции по развёртыванию
-- [Development Guide](./docs/DEVELOPMENT.md) - Настройка окружения разработчика
-- [Architecture](./docs/ARCHITECTURE.md) - Обзор архитектуры системы
+- [Deployment Guide](./docs/DEPLOYMENT.md) - Deployment instructions
+- [Development Guide](./docs/DEVELOPMENT.md) - Developer environment setup
+- [Architecture](./docs/ARCHITECTURE.md) - System architecture overview
 
 ### Architecture & Design
-- [Architecture Overview](./docs/01-architecture.md) - Детальная архитектура
-- [Domain Model](./docs/02-domain-model.md) - Доменная модель
-- [Security Model](./docs/04-security-model.md) - Модель безопасности
-- [Event Flow](./docs/05-event-flow.md) - Потоки событий
-- [API Contracts](./docs/06-api-contracts.md) - Контракты API
+- [Architecture Overview](./docs/01-architecture.md) - Detailed architecture
+- [Domain Model](./docs/02-domain-model.md) - Domain model
+- [Security Model](./docs/04-security-model.md) - Security model
+- [Event Flow](./docs/05-event-flow.md) - Event flows
+- [API Contracts](./docs/06-api-contracts.md) - API contracts
 
 ---
 
-## 🛠 Технологический стек
+## 🛠 Technology Stack
 
 ### Backend
 | Technology | Purpose | Version |
@@ -197,7 +197,7 @@ make test-coverage # Generate coverage report
 
 ---
 
-## 📁 Структура проекта
+## 📁 Project Structure
 
 ```
 .
@@ -255,17 +255,17 @@ make test-coverage # Generate coverage report
 
 ---
 
-## 🔐 Безопасность
+## 🔐 Security
 
-- **Authentication**: Keycloak SSO с JWT tokens
+- **Authentication**: Keycloak SSO with JWT tokens
 - **Authorization**: Role-based access control (RBAC)
-- **Workspace Access**: Middleware проверки доступа
-- **Input Validation**: Валидация на всех уровнях
-- **Secure Defaults**: Безопасная конфигурация по умолчанию
+- **Workspace Access**: Access verification middleware
+- **Input Validation**: Validation at all levels
+- **Secure Defaults**: Secure default configuration
 
 ---
 
-## 🧪 Тестирование
+## 🧪 Testing
 
 ```bash
 # Run all tests
@@ -344,9 +344,9 @@ make test-coverage-check
 
 ---
 
-## 📄 Лицензия
+## 📄 License
 
-MIT License - см. [LICENSE](./LICENSE)
+MIT License - see [LICENSE](./LICENSE)
 
 ---
 

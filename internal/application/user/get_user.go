@@ -8,27 +8,27 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/user"
 )
 
-// GetUserUseCase обрабатывает получение пользователя по ID
+// GetUserUseCase handles retrieval user po ID
 type GetUserUseCase struct {
 	userRepo Repository
 }
 
-// NewGetUserUseCase создает новый GetUserUseCase
+// NewGetUserUseCase creates New GetUserUseCase
 func NewGetUserUseCase(userRepo Repository) *GetUserUseCase {
 	return &GetUserUseCase{userRepo: userRepo}
 }
 
-// Execute выполняет получение пользователя
+// Execute performs retrieval user
 func (uc *GetUserUseCase) Execute(
 	ctx context.Context,
 	query GetUserQuery,
 ) (Result, error) {
-	// Валидация
+	// validation
 	if err := uc.validate(query); err != nil {
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Поиск пользователя
+	// search user
 	usr, err := uc.userRepo.FindByID(ctx, query.UserID)
 	if err != nil {
 		return Result{}, ErrUserNotFound

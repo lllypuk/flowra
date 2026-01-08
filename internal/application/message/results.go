@@ -5,8 +5,8 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/message"
 )
 
-// Result представляет результат для одного сообщения
+// Result represents result for odnogo messages
 type Result = appcore.Result[*message.Message]
 
-// ListResult представляет результат для списка сообщений
+// ListResult represents result for list soobscheniy
 type ListResult = appcore.Result[[]*message.Message]

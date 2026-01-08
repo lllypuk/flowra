@@ -10,19 +10,19 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// GetChatUseCase - use case для получения чата
+// GetChatUseCase - use case for retrieving a chat
 type GetChatUseCase struct {
 	eventStore appcore.EventStore
 }
 
-// NewGetChatUseCase - конструктор
+// NewGetChatUseCase - constructor
 func NewGetChatUseCase(eventStore appcore.EventStore) *GetChatUseCase {
 	return &GetChatUseCase{
 		eventStore: eventStore,
 	}
 }
 
-// Execute - выполнить запрос
+// Execute - execute the query
 func (uc *GetChatUseCase) Execute(ctx context.Context, query GetChatQuery) (*GetChatResult, error) {
 	// 1. Validate input
 	if err := uc.validate(query); err != nil {

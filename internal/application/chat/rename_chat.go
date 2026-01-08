@@ -8,17 +8,17 @@ import (
 	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
-// RenameChatUseCase обрабатывает переименование чата
+// RenameChatUseCase handles renaming a chat
 type RenameChatUseCase struct {
 	eventStore appcore.EventStore
 }
 
-// NewRenameChatUseCase создает новый RenameChatUseCase
+// NewRenameChatUseCase creates a new RenameChatUseCase
 func NewRenameChatUseCase(eventStore appcore.EventStore) *RenameChatUseCase {
 	return &RenameChatUseCase{eventStore: eventStore}
 }
 
-// Execute выполняет переименование
+// Execute performs renaming
 func (uc *RenameChatUseCase) Execute(ctx context.Context, cmd RenameChatCommand) (Result, error) {
 	if err := uc.validate(cmd); err != nil {
 		return Result{}, fmt.Errorf("validation failed: %w", err)

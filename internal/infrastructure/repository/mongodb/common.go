@@ -14,19 +14,19 @@ import (
 )
 
 const (
-	// DefaultPaginationLimit — дефолтный лимит для пагинации запросов.
+	// DefaultPaginationLimit — defoltnyy limit for paginatsii zaprosov.
 	DefaultPaginationLimit = 50
 
-	// MaxPaginationLimit — максимальный лимит для пагинации запросов.
+	// MaxPaginationLimit — maksimalnyy limit for paginatsii zaprosov.
 	MaxPaginationLimit = 100
 )
 
-// HandleMongoError преобразует ошибку MongoDB в доменную ошибку.
-// Возвращает:
-//   - nil если err == nil
-//   - errs.ErrNotFound если документ не найден
-//   - errs.ErrAlreadyExists если нарушен unique constraint
-//   - wrapped error для остальных случаев
+// HandleMongoError preobrazuet error MongoDB in domennuyu error.
+// returns:
+// - nil if err == nil
+// - errs.ErrNotFound if dokument not nayden
+// - errs.ErrAlreadyExists if narushen unique constraint
+// - wrapped error for ostalnyh sluchaev
 func HandleMongoError(err error, resourceType string) error {
 	if err == nil {
 		return nil
@@ -43,29 +43,29 @@ func HandleMongoError(err error, resourceType string) error {
 	return fmt.Errorf("failed to operate on %s: %w", resourceType, err)
 }
 
-// BaseDocument содержит общие поля для всех документов MongoDB.
-// Используется как встраиваемая структура для добавления метаданных времени.
+// BaseDocument contains obschie fields for all dokumentov MongoDB.
+// ispolzuetsya as vstraivaemaya struct for add metadannyh time.
 type BaseDocument struct {
 	CreatedAt time.Time `bson:"created_at"`
 	UpdatedAt time.Time `bson:"updated_at"`
 }
 
-// TouchUpdatedAt обновляет поле UpdatedAt на текущее время UTC.
+// TouchUpdatedAt obnovlyaet field UpdatedAt on current time UTC.
 func (d *BaseDocument) TouchUpdatedAt() {
 	d.UpdatedAt = time.Now().UTC()
 }
 
-// SetCreatedAt устанавливает CreatedAt на текущее время UTC,
-// если оно еще не было установлено (zero value).
+// SetCreatedAt sets CreatedAt on current time UTC,
+// if ono esche not bylo ustanovleno (zero value).
 func (d *BaseDocument) SetCreatedAt() {
 	if d.CreatedAt.IsZero() {
 		d.CreatedAt = time.Now().UTC()
 	}
 }
 
-// SetTimestamps устанавливает оба поля времени.
-// CreatedAt устанавливается только если не был установлен ранее.
-// UpdatedAt всегда обновляется на текущее время.
+// SetTimestamps sets oba fields time.
+// CreatedAt sets only if not byl ustanovlen ranee.
+// UpdatedAt always obnovlyaetsya on current time.
 func (d *BaseDocument) SetTimestamps() {
 	now := time.Now().UTC()
 	if d.CreatedAt.IsZero() {
@@ -74,22 +74,22 @@ func (d *BaseDocument) SetTimestamps() {
 	d.UpdatedAt = now
 }
 
-// UpsertOptions возвращает стандартные опции для upsert операции.
-// Использование:
+// UpsertOptions returns standartnye optsii for upsert operatsii.
+// use:
 //
 //	_, err := collection.UpdateOne(ctx, filter, update, UpsertOptions())
 func UpsertOptions() *options.UpdateOneOptionsBuilder {
 	return options.UpdateOne().SetUpsert(true)
 }
 
-// FindWithPagination возвращает опции для find с пагинацией и сортировкой.
-// Параметры:
-//   - offset: количество документов для пропуска
-//   - limit: максимальное количество возвращаемых документов
-//   - sortField: поле для сортировки (например, "created_at")
-//   - sortOrder: порядок сортировки (1 = ASC, -1 = DESC)
+// FindWithPagination returns optsii for find s paginatsiey and sortirovkoy.
+// parameters:
+// - offset: count dokumentov for propuska
+// - limit: maximum count returned documents
+// - sortField: field for sortirovki (naprimer, "created_at")
+// - sortOrder: order sortirovki (1 = ASC, -1 = DESC)
 //
-// Использование:
+// use:
 //
 //	opts := FindWithPagination(0, 50, "created_at", -1)
 //	cursor, err := collection.Find(ctx, filter, opts)
@@ -100,14 +100,14 @@ func FindWithPagination(offset, limit int, sortField string, sortOrder int) *opt
 		SetSkip(int64(offset))
 }
 
-// FindWithPaginationDesc возвращает опции для find с пагинацией и сортировкой по убыванию.
-// Это convenience функция для частого случая сортировки по created_at DESC.
+// FindWithPaginationDesc returns optsii for find s paginatsiey and sortirovkoy po ubyvaniyu.
+// eto convenience function for chastogo sluchaya sortirovki po created_at DESC.
 func FindWithPaginationDesc(offset, limit int) *options.FindOptionsBuilder {
 	return FindWithPagination(offset, limit, "created_at", -1)
 }
 
-// CountFilter выполняет подсчет документов с указанным фильтром.
-// Возвращает количество документов, соответствующих фильтру.
+// CountFilter performs podschet dokumentov s ukazannym filtrom.
+// returns count dokumentov, response filtru.
 func CountFilter(ctx context.Context, coll *mongo.Collection, filter bson.M) (int, error) {
 	count, err := coll.CountDocuments(ctx, filter)
 	if err != nil {
@@ -116,14 +116,14 @@ func CountFilter(ctx context.Context, coll *mongo.Collection, filter bson.M) (in
 	return int(count), nil
 }
 
-// CountAll выполняет подсчет всех документов в коллекции.
-// Это convenience функция для подсчета без фильтра.
+// CountAll performs podschet all dokumentov in kollektsii.
+// eto convenience function for podscheta bez filtra.
 func CountAll(ctx context.Context, coll *mongo.Collection) (int, error) {
 	return CountFilter(ctx, coll, bson.M{})
 }
 
-// DefaultLimit возвращает limit с применением дефолтного значения.
-// Если limit <= 0, возвращает defaultLimit.
+// DefaultLimit returns limit s applying defoltnogo values.
+// if limit <= 0, returns defaultLimit.
 func DefaultLimit(limit, defaultLimit int) int {
 	if limit <= 0 {
 		return defaultLimit
@@ -131,9 +131,9 @@ func DefaultLimit(limit, defaultLimit int) int {
 	return limit
 }
 
-// DefaultLimitWithMax возвращает limit с применением дефолтного и максимального значения.
-// Если limit <= 0, возвращает defaultLimit.
-// Если limit > maxLimit, возвращает maxLimit.
+// DefaultLimitWithMax returns limit s applying defoltnogo and maksimalnogo values.
+// if limit <= 0, returns defaultLimit.
+// if limit > maxLimit, returns maxLimit.
 func DefaultLimitWithMax(limit, defaultLimit, maxLimit int) int {
 	if limit <= 0 {
 		return defaultLimit
@@ -144,9 +144,9 @@ func DefaultLimitWithMax(limit, defaultLimit, maxLimit int) int {
 	return limit
 }
 
-// StringPtr возвращает указатель на строку.
-// Если строка пустая, возвращает nil.
-// Полезно для optional string полей в документах.
+// StringPtr returns pointer on stroku.
+// if stroka pustaya, returns nil.
+// polezno for optional string poley in dokumentah.
 func StringPtr(s string) *string {
 	if s == "" {
 		return nil
@@ -154,8 +154,8 @@ func StringPtr(s string) *string {
 	return &s
 }
 
-// StringValue возвращает значение строки из указателя.
-// Если указатель nil, возвращает пустую строку.
+// StringValue returns value stroki from ukazatelya.
+// if pointer nil, returns pustuyu stroku.
 func StringValue(s *string) string {
 	if s == nil {
 		return ""

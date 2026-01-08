@@ -5,23 +5,23 @@ import (
 	"strings"
 )
 
-// GenerateBotResponse генерирует ответ бота с результатами применения тегов
-// Возвращает пустую строку если нет тегов для обработки
+// GenerateBotResponse generiruet response bota s rezultatami primeneniya tegov
+// returns pustuyu stroku if no tegov for work
 func (pr *ProcessingResult) GenerateBotResponse() string {
 	if !pr.HasTags() {
-		return "" // Нет тегов - нет ответа
+		return "" // no tegov - no response
 	}
 
 	var lines []string
 
-	// Успешно примененные теги
+	// successfully primenennye tags
 	for _, applied := range pr.AppliedTags {
 		if applied.Success {
 			lines = append(lines, formatSuccess(applied))
 		}
 	}
 
-	// Ошибки
+	// oshibki
 	for _, err := range pr.Errors {
 		lines = append(lines, formatError(err))
 	}
@@ -29,7 +29,7 @@ func (pr *ProcessingResult) GenerateBotResponse() string {
 	return strings.Join(lines, "\n")
 }
 
-// formatSuccess форматирует сообщение об успешном применении тега
+// formatSuccess formatiruet message ob uspeshnom primenenii tega
 func formatSuccess(applied TagApplication) string {
 	switch applied.Command.(type) {
 	case CreateTaskCommand:
@@ -63,14 +63,14 @@ func formatSuccess(applied TagApplication) string {
 		return fmt.Sprintf("✅ Title changed to: %s", applied.TagValue)
 
 	case SetSeverityCommand:
-		return fmt.Sprintf("✅ Severity set to %s", applied.TagValue)
+		return fmt.Sprintf("✅ severity set to %s", applied.TagValue)
 
 	default:
 		return "✅ Applied"
 	}
 }
 
-// formatError форматирует сообщение об ошибке
+// formatError formatiruet message ob error
 func formatError(err TagError) string {
 	prefix := "❌"
 	if err.Severity == ErrorSeverityWarning {

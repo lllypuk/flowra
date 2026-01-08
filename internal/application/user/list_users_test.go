@@ -13,7 +13,7 @@ func TestListUsersUseCase_Execute_Success(t *testing.T) {
 	repo := newMockUserRepository()
 	useCase := user.NewListUsersUseCase(repo)
 
-	// Создаем несколько пользователей
+	// Creating several users
 	user1, _ := domainuser.NewUser("external-1", "user1", "user1@example.com", "User 1")
 	user2, _ := domainuser.NewUser("external-2", "user2", "user2@example.com", "User 2")
 	user3, _ := domainuser.NewUser("external-3", "user3", "user3@example.com", "User 3")
@@ -56,7 +56,7 @@ func TestListUsersUseCase_Execute_Pagination(t *testing.T) {
 	repo := newMockUserRepository()
 	useCase := user.NewListUsersUseCase(repo)
 
-	// Создаем 5 пользователей
+	// Creating 5 users
 	for i := 1; i <= 5; i++ {
 		usr, _ := domainuser.NewUser(
 			"external-"+string(rune('0'+i)),
@@ -67,7 +67,7 @@ func TestListUsersUseCase_Execute_Pagination(t *testing.T) {
 		_ = repo.Save(context.Background(), usr)
 	}
 
-	// Первая страница
+	// pervaya stranitsa
 	query1 := user.ListUsersQuery{
 		Offset: 0,
 		Limit:  2,
@@ -86,7 +86,7 @@ func TestListUsersUseCase_Execute_Pagination(t *testing.T) {
 		t.Errorf("expected totalCount 5, got %d", result1.TotalCount)
 	}
 
-	// Вторая страница
+	// vtoraya stranitsa
 	query2 := user.ListUsersQuery{
 		Offset: 2,
 		Limit:  2,

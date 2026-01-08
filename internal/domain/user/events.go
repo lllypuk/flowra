@@ -6,17 +6,17 @@ import (
 )
 
 const (
-	// EventTypeUserCreated тип события создания пользователя
+	// EventTypeUserCreated type event creating user
 	EventTypeUserCreated = "user.created"
-	// EventTypeUserUpdated тип события обновления пользователя
+	// EventTypeUserUpdated type event updating user
 	EventTypeUserUpdated = "user.updated"
-	// EventTypeUserDeleted тип события удаления пользователя
+	// EventTypeUserDeleted type event removing user
 	EventTypeUserDeleted = "user.deleted"
-	// EventTypeAdminRightsChanged тип события изменения прав администратора
+	// EventTypeAdminRightsChanged type event changing prav administrator
 	EventTypeAdminRightsChanged = "user.admin_rights_changed"
 )
 
-// Created событие создания пользователя
+// Created event creating user
 type Created struct {
 	event.BaseEvent
 
@@ -25,7 +25,7 @@ type Created struct {
 	DisplayName string
 }
 
-// NewUserCreated создает событие UserCreated
+// NewUserCreated creates event UserCreated
 func NewUserCreated(
 	userID uuid.UUID,
 	username, email, displayName string,
@@ -39,14 +39,14 @@ func NewUserCreated(
 	}
 }
 
-// Updated событие обновления пользователя
+// Updated event updating user
 type Updated struct {
 	event.BaseEvent
 
 	DisplayName string
 }
 
-// NewUserUpdated создает событие UserUpdated
+// NewUserUpdated creates event UserUpdated
 func NewUserUpdated(userID uuid.UUID, displayName string, version int, metadata event.Metadata) *Updated {
 	return &Updated{
 		BaseEvent:   event.NewBaseEvent(EventTypeUserUpdated, userID.String(), "User", version, metadata),
@@ -54,26 +54,26 @@ func NewUserUpdated(userID uuid.UUID, displayName string, version int, metadata 
 	}
 }
 
-// Deleted событие удаления пользователя
+// Deleted event removing user
 type Deleted struct {
 	event.BaseEvent
 }
 
-// NewUserDeleted создает событие UserDeleted
+// NewUserDeleted creates event UserDeleted
 func NewUserDeleted(userID uuid.UUID, version int, metadata event.Metadata) *Deleted {
 	return &Deleted{
 		BaseEvent: event.NewBaseEvent(EventTypeUserDeleted, userID.String(), "User", version, metadata),
 	}
 }
 
-// AdminRightsChanged событие изменения прав администратора
+// AdminRightsChanged event changing prav administrator
 type AdminRightsChanged struct {
 	event.BaseEvent
 
 	IsAdmin bool
 }
 
-// NewAdminRightsChanged создает событие AdminRightsChanged
+// NewAdminRightsChanged creates event AdminRightsChanged
 func NewAdminRightsChanged(
 	userID uuid.UUID,
 	isAdmin bool,

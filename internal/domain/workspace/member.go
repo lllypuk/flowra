@@ -6,19 +6,19 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// Role представляет роль участника в рабочем пространстве
+// Role represents role participant in workspace prostranstve
 type Role string
 
 const (
-	// RoleOwner владелец workspace (создатель)
+	// RoleOwner vladelets workspace (sozdatel)
 	RoleOwner Role = "owner"
-	// RoleAdmin администратор workspace
+	// RoleAdmin administrator workspace
 	RoleAdmin Role = "admin"
-	// RoleMember обычный участник
+	// RoleMember regular uchastnik
 	RoleMember Role = "member"
 )
 
-// IsValid проверяет, является ли роль допустимой
+// IsValid checks, is li role acceptable
 func (r Role) IsValid() bool {
 	switch r {
 	case RoleOwner, RoleAdmin, RoleMember:
@@ -28,12 +28,12 @@ func (r Role) IsValid() bool {
 	}
 }
 
-// String возвращает строковое представление роли
+// String returns strokovoe view roli
 func (r Role) String() string {
 	return string(r)
 }
 
-// Member представляет члена рабочего пространства (value object)
+// Member represents chlena workspace prostranstva (value object)
 type Member struct {
 	userID      uuid.UUID
 	workspaceID uuid.UUID
@@ -41,7 +41,7 @@ type Member struct {
 	joinedAt    time.Time
 }
 
-// NewMember создает нового члена workspace
+// NewMember creates novogo chlena workspace
 func NewMember(userID, workspaceID uuid.UUID, role Role) Member {
 	return Member{
 		userID:      userID,
@@ -51,9 +51,9 @@ func NewMember(userID, workspaceID uuid.UUID, role Role) Member {
 	}
 }
 
-// ReconstructMember восстанавливает Member из хранилища.
-// Используется репозиториями для гидрации объекта без валидации бизнес-правил.
-// Все параметры должны быть валидными значениями из хранилища.
+// ReconstructMember reconstructs Member from save.
+// Used by repositories for hydration obekta without validation business rules.
+// all parameters dolzhny byt valid values from save.
 func ReconstructMember(
 	userID uuid.UUID,
 	workspaceID uuid.UUID,
@@ -68,31 +68,31 @@ func ReconstructMember(
 	}
 }
 
-// UserID возвращает ID пользователя
+// UserID returns ID user
 func (m Member) UserID() uuid.UUID { return m.userID }
 
-// WorkspaceID возвращает ID рабочего пространства
+// WorkspaceID returns ID workspace prostranstva
 func (m Member) WorkspaceID() uuid.UUID { return m.workspaceID }
 
-// Role возвращает роль участника
+// Role returns role participant
 func (m Member) Role() Role { return m.role }
 
-// JoinedAt возвращает время присоединения
+// JoinedAt returns time prisoedineniya
 func (m Member) JoinedAt() time.Time { return m.joinedAt }
 
-// IsOwner проверяет, является ли участник владельцем
+// IsOwner checks, is li uchastnik vladeltsem
 func (m Member) IsOwner() bool { return m.role == RoleOwner }
 
-// IsAdmin проверяет, является ли участник администратором (owner или admin)
+// IsAdmin checks, is li uchastnik administrator (owner or admin)
 func (m Member) IsAdmin() bool { return m.role == RoleOwner || m.role == RoleAdmin }
 
-// CanManageMembers проверяет, может ли участник управлять членами workspace
+// CanManageMembers checks, mozhet li uchastnik upravlyat chlenami workspace
 func (m Member) CanManageMembers() bool { return m.IsAdmin() }
 
-// CanInvite проверяет, может ли участник приглашать новых членов
+// CanInvite checks, mozhet li uchastnik priglashat New chlenov
 func (m Member) CanInvite() bool { return m.IsAdmin() }
 
-// WithRole возвращает копию Member с новой ролью (immutable update)
+// WithRole returns kopiyu Member s novoy role (immutable update)
 func (m Member) WithRole(role Role) Member {
 	return Member{
 		userID:      m.userID,

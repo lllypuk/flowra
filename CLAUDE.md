@@ -348,7 +348,7 @@ When creating or updating task documentation in markdown files:
 ### No Time Estimates
 
 **DO NOT include time estimates in task files.** This includes:
-- ❌ "Оценка: 3-4 часа"
+- ❌ "Estimate: 3-4 hours"
 - ❌ "Time spent: ~4 hours"
 - ❌ "Estimated time: 2h"
 - ❌ Any form of time prediction or tracking
@@ -365,3 +365,27 @@ When creating or updating task documentation in markdown files:
 - ✅ Dependencies between tasks
 - ✅ Status (Pending, In Progress, Complete)
 - ✅ Priority when relevant
+
+## Language Requirements
+
+**All code, comments, and documentation must be written in English.**
+
+This includes:
+- ✅ Code comments
+- ✅ Function and variable names
+- ✅ Error messages and string literals
+- ✅ Documentation (markdown files, README, etc.)
+- ✅ Commit messages
+- ✅ Task descriptions and notes
+
+**Why:**
+- English is the standard language for software development
+- Ensures accessibility for international contributors
+- Maintains consistency across the codebase
+- Improves searchability and tooling compatibility
+
+**When writing comments:**
+- Use clear, concise English
+- Follow standard Go documentation conventions
+- Prefer "is returned when..." over "returns when..." for error comments
+- Prefer "represents..." or "is a..." for type comments

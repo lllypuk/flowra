@@ -8,33 +8,33 @@ import (
 )
 
 var (
-	// ErrAggregateNotFound возвращается когда агрегат не найден
+	// ErrAggregateNotFound is returned when the aggregate is not found
 	ErrAggregateNotFound = errors.New("aggregate not found")
 
-	// ErrConcurrencyConflict возвращается при конфликте версий (optimistic locking)
+	// ErrConcurrencyConflict is returned on version conflict (optimistic locking)
 	ErrConcurrencyConflict = errors.New("concurrency conflict detected")
 
-	// ErrInvalidVersion возвращается при невалидной версии
+	// ErrInvalidVersion is returned when the version is invalid
 	ErrInvalidVersion = errors.New("invalid version")
 )
 
-// EventStore определяет интерфейс для сохранения и загрузки событий
-// Интерфейс объявлен здесь (на стороне потребителя - application layer),
-// а не в infrastructure, следуя идиоматичному Go подходу.
+// EventStore defines the interface for saving and loading events.
+// The interface is declared here (on the consumer side - application layer),
+// not in infrastructure, following idiomatic Go approach.
 type EventStore interface {
-	// SaveEvents сохраняет события для агрегата
-	// aggregateID - идентификатор агрегата
-	// events - события для сохранения
-	// expectedVersion - ожидаемая версия для optimistic locking (0 для нового агрегата)
+	// SaveEvents saves events for an aggregate.
+	// aggregateID - the aggregate identifier
+	// events - events to save
+	// expectedVersion - expected version for optimistic locking (0 for a new aggregate)
 	SaveEvents(ctx context.Context, aggregateID string, events []event.DomainEvent, expectedVersion int) error
 
-	// LoadEvents загружает все события для агрегата
-	// aggregateID - идентификатор агрегата
-	// Возвращает события в хронологическом порядке
+	// LoadEvents loads all events for an aggregate.
+	// aggregateID - the aggregate identifier
+	// Returns events in chronological order
 	LoadEvents(ctx context.Context, aggregateID string) ([]event.DomainEvent, error)
 
-	// GetVersion возвращает текущую версию агрегата
-	// aggregateID - идентификатор агрегата
-	// Возвращает 0 если агрегат не найден
+	// GetVersion returns the current version of an aggregate.
+	// aggregateID - the aggregate identifier
+	// Returns 0 if the aggregate is not found
 	GetVersion(ctx context.Context, aggregateID string) (int, error)
 }

@@ -6,16 +6,16 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// UserRepository предоставляет доступ к информации о пользователях
+// UserRepository provides access to user information
 type UserRepository interface {
-	// Exists проверяет, существует ли пользователь с заданным ID
+	// Exists checks if a user with the given ID exists
 	Exists(ctx context.Context, userID uuid.UUID) (bool, error)
 
-	// GetByUsername ищет пользователя по username (для будущего парсинга @mentions)
+	// GetByUsername finds a user by username (for future @mentions parsing)
 	GetByUsername(ctx context.Context, username string) (*User, error)
 }
 
-// User представляет минимальную информацию о пользователе
+// User represents minimal user information
 type User struct {
 	ID       uuid.UUID
 	Username string

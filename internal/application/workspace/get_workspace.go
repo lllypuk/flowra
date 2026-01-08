@@ -7,36 +7,36 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/workspace"
 )
 
-// GetWorkspaceUseCase - use case для получения workspace по ID
+// GetWorkspaceUseCase - use case for receiv workspace po ID
 type GetWorkspaceUseCase struct {
 	appcore.BaseUseCase
 
 	workspaceRepo Repository
 }
 
-// NewGetWorkspaceUseCase создает новый GetWorkspaceUseCase
+// NewGetWorkspaceUseCase creates New GetWorkspaceUseCase
 func NewGetWorkspaceUseCase(workspaceRepo Repository) *GetWorkspaceUseCase {
 	return &GetWorkspaceUseCase{
 		workspaceRepo: workspaceRepo,
 	}
 }
 
-// Execute выполняет получение workspace
+// Execute performs retrieval workspace
 func (uc *GetWorkspaceUseCase) Execute(
 	ctx context.Context,
 	query GetWorkspaceQuery,
 ) (Result, error) {
-	// Валидация контекста
+	// context validation
 	if err := uc.ValidateContext(ctx); err != nil {
 		return Result{}, uc.WrapError("validate context", err)
 	}
 
-	// Валидация запроса
+	// validation request
 	if err := uc.validate(query); err != nil {
 		return Result{}, uc.WrapError("validation failed", err)
 	}
 
-	// Поиск workspace
+	// Searching workspace
 	ws, err := uc.workspaceRepo.FindByID(ctx, query.WorkspaceID)
 	if err != nil {
 		return Result{}, uc.WrapError("find workspace", ErrWorkspaceNotFound)
@@ -49,7 +49,7 @@ func (uc *GetWorkspaceUseCase) Execute(
 	}, nil
 }
 
-// validate проверяет валидность запроса
+// validate validates request
 func (uc *GetWorkspaceUseCase) validate(query GetWorkspaceQuery) error {
 	if err := appcore.ValidateUUID("workspaceID", query.WorkspaceID); err != nil {
 		return err
