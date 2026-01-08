@@ -12,8 +12,6 @@ This directory contains Keycloak realm configuration for the Flowra application.
   - Client scopes with protocol mappers
   - Test users for development
 
-- `users-export.json` - Standalone test users export (development only)
-
 ## Auto-Import on Docker Compose
 
 The Docker Compose configuration mounts this directory and imports the realm automatically on startup:
@@ -26,7 +24,7 @@ keycloak:
   command: start-dev --import-realm
 ```
 
-Simply run `docker-compose up` and the realm will be imported automatically.
+Simply run `docker-compose up -d` and the realm will be imported automatically.
 
 ## Manual Import
 

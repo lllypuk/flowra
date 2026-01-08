@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Chat System with Task Management** built in Go. It's a comprehensive chat platform with integrated task tracking, help desk functionality, and command support. The project uses a microservices architecture with event-driven design.
 
 **Key Technologies:**
-- **Backend**: Go 1.25+ with Echo v4 framework
+- **Backend**: Go 1.24+ with Echo v4 framework
 - **Database**: MongoDB 6+ (main with Go Driver v2), Redis (cache/pub-sub)
 - **Frontend**: HTMX 2+ for dynamic updates, Pico CSS v2 for styling
 - **Auth**: Keycloak for SSO and user management
@@ -56,7 +56,7 @@ make dev
 The system is designed around multiple services:
 - **API Gateway** (Echo) - HTTP/HTMX requests, static files, WebSocket upgrade
 - **WebSocket Server** - Real-time communication, presence tracking
-- **Worker Service** - Background tasks (SLA monitoring, notifications)
+- **Worker Service** - Background tasks (SLA monitoring, notifications, user sync)
 - **Command Processor** - Chat command parsing and execution
 
 ### Directory Layout
@@ -64,17 +64,19 @@ The system is designed around multiple services:
 cmd/                           # Application entry points
 ├── api/                      # HTTP API server (main.go, container.go, routes.go)
 ├── worker/                   # Background workers (user sync)
-└── migrator/                 # Database migrations (placeholder)
+└── migrator/                 # Database migrations
 
-internal/                     # Internal application code
-├── application/             # Use cases (40+ use cases, CQRS)
+internal/                     # Internal application code (295 files)
+├── application/             # Use cases (139 files, CQRS)
 │   ├── appcore/            # Shared interfaces and utilities
-│   ├── chat/               # Chat use cases (34 files)
-│   ├── message/            # Message use cases (21 files)
-│   ├── task/               # Task use cases (15 files)
-│   ├── notification/       # Notification use cases (17 files)
-│   ├── workspace/          # Workspace use cases (20 files)
-│   └── user/               # User use cases (16 files)
+│   ├── auth/               # Authentication use cases
+│   ├── chat/               # Chat use cases
+│   ├── eventhandler/       # Event handlers
+│   ├── message/            # Message use cases
+│   ├── notification/       # Notification use cases
+│   ├── task/               # Task use cases
+│   ├── user/               # User use cases
+│   └── workspace/          # Workspace use cases
 ├── domain/                  # Business logic and models (48 files)
 │   ├── chat/               # Chat aggregate
 │   ├── message/            # Message aggregate
@@ -84,17 +86,18 @@ internal/                     # Internal application code
 │   ├── notification/       # Notification aggregate
 │   ├── tag/                # Tag/command processing system
 │   ├── event/              # Event base types
+│   ├── uuid/               # UUID utilities
 │   └── errs/               # Domain errors
 ├── infrastructure/          # External dependencies (50 files)
 │   ├── mongodb/            # MongoDB index setup
-│   ├── repository/mongodb/ # MongoDB repositories (6 repos)
+│   ├── repository/         # MongoDB repositories (6 repos)
 │   ├── eventstore/         # Event store implementation
 │   ├── eventbus/           # Redis pub/sub event bus
 │   ├── httpserver/         # HTTP server utilities
 │   ├── websocket/          # WebSocket hub and client
 │   ├── keycloak/           # Keycloak SSO integration
 │   └── auth/               # Token store
-├── handler/                 # HTTP/WS handlers (20 files)
+├── handler/                 # HTTP/WS handlers (28 files)
 │   ├── http/               # REST API handlers
 │   └── websocket/          # WebSocket handler
 ├── middleware/              # HTTP middleware (14 files)
@@ -102,39 +105,44 @@ internal/                     # Internal application code
 ├── worker/                  # Background workers
 └── config/                  # Configuration loading
 
-web/                          # Frontend resources (HTMX + Pico CSS)
+web/                          # Frontend resources (54 files)
 ├── templates/               # HTML templates
 │   ├── layout/             # Base layout (base, navbar, footer)
 │   ├── components/         # Reusable HTMX components
 │   ├── auth/               # Auth pages
 │   ├── workspace/          # Workspace pages
-│   ├── chat/               # Chat pages (planned)
-│   └── task/               # Task pages (planned)
+│   ├── chat/               # Chat pages
+│   ├── task/               # Task pages
+│   ├── board/              # Board pages
+│   └── notification/       # Notification pages
+├── components/              # Reusable components
 ├── static/                  # CSS, JS assets
 └── embed.go                 # Go embed for static files
 
-tests/                        # Test suites
+tests/                        # Test suites (35 files)
 ├── e2e/                     # End-to-end tests
 ├── integration/             # Integration tests
 ├── testutil/                # Test utilities
 ├── fixtures/                # Test data fixtures
 └── mocks/                   # Mock implementations
 
-migrations/                   # MongoDB migrations (6 schema files)
+migrations/                   # MongoDB migrations
 configs/                      # Configuration files (YAML)
-docs/                         # Documentation (100+ files)
+docs/                         # Documentation (9+ files)
 ```
 
 ## Configuration
 
 - Main config: `configs/config.yaml`
+- Development config: `configs/config.dev.yaml`
+- Production config: `configs/config.prod.yaml`
 - Environment-specific values override via environment variables
 - Docker services configured in `docker-compose.yml`
 - Comprehensive settings for database, Redis, JWT, OAuth, email, etc.
 
 ## Database
 
-- **Primary**: MongoDB 6+ (document store)
+- **Primary**: MongoDB 6+ (document store with replica set)
 - **Cache**: Redis for sessions, pub/sub, caching
 - Main collections: Users, Chats, Messages, Tasks, Chat_members, Audit_log
 - Schema versioning handled through application code
@@ -151,10 +159,10 @@ docs/                         # Documentation (100+ files)
 | Domain | Complete | 48 | 90%+ |
 | Application | Complete | 139 | 85%+ |
 | Infrastructure | Complete | 50 | 85%+ |
-| Handlers | Complete | 20 | 80%+ |
+| Handlers | Complete | 28 | 80%+ |
 | Middleware | Complete | 14 | 80%+ |
 | Services | Complete | 12 | 80%+ |
-| Frontend | In Progress | ~30 | - |
+| Frontend | In Progress | ~54 | - |
 
 ### Key Implementation Details
 - 6 Event-Sourced Aggregates (Chat, Message, Task, User, Workspace, Notification)
@@ -172,7 +180,8 @@ docs/                         # Documentation (100+ files)
 - **Deployment Guide**: `docs/DEPLOYMENT.md` - Docker, environment setup
 - **Development Guide**: `docs/DEVELOPMENT.md` - Local setup, testing
 - **Architecture Overview**: `docs/ARCHITECTURE.md` - System design, decisions
-- **Task Documentation**: `docs/tasks/` - Implementation task tracking (100+ files)
+- **Frontend Guide**: `docs/FRONTEND_DEV_GUIDE.md` - Frontend development
+- **User Guide**: `docs/USER_GUIDE.md` - End user documentation
 
 ## MongoDB Driver
 
@@ -196,6 +205,7 @@ docs/                         # Documentation (100+ files)
 |---------|-----|-------------|
 | API Server | http://localhost:8080 | JWT Token |
 | API Health | http://localhost:8080/health | - |
+| API Docs | http://localhost:8080/docs | - |
 | Keycloak | http://localhost:8090 | admin/admin123 |
 | MongoDB | localhost:27017 | admin/admin123 |
 | Redis | localhost:6379 | - |
@@ -203,10 +213,20 @@ docs/                         # Documentation (100+ files)
 ## Testing Strategy
 
 - Unit tests for all business logic
-- Integration tests with MongoDB
+- Integration tests with MongoDB (testcontainers)
 - E2E tests for user workflows
 - Load testing for performance validation
 - Test database uses in-memory MongoDB (testcontainers)
+
+### Test Commands
+```bash
+make test               # Run all tests
+make test-unit          # Run unit tests only
+make test-integration   # Run integration tests
+make test-e2e           # Run E2E tests
+make test-coverage      # Generate coverage report
+make test-coverage-check # Check 80% threshold
+```
 
 ## Interface Design Guidelines
 
