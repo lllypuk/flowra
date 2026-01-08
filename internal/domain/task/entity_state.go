@@ -6,17 +6,17 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/errs"
 )
 
-// EntityType represents type сущности
+// EntityType represents type entity
 type EntityType string
 
 const (
-	// TypeTask обычная task
+	// TypeTask obychnaya task
 	TypeTask EntityType = "task"
-	// TypeBug bug/дефект
+	// TypeBug bug/defekt
 	TypeBug EntityType = "bug"
-	// TypeEpic эпик (большая task)
+	// TypeEpic epik (bolshaya task)
 	TypeEpic EntityType = "epic"
-	// TypeDiscussion обсуждение (not типизированная сущность)
+	// TypeDiscussion obsuzhdenie (not tipizirovannaya suschnost)
 	TypeDiscussion EntityType = "discussion"
 )
 
@@ -24,42 +24,42 @@ const (
 type Status string
 
 const (
-	// StatusBacklog task in бэклоге
+	// StatusBacklog task in bekloge
 	StatusBacklog Status = "Backlog"
-	// StatusToDo task готова to workе
+	// StatusToDo task gotova to work
 	StatusToDo Status = "To Do"
-	// StatusInProgress task in workе
+	// StatusInProgress task in work
 	StatusInProgress Status = "In Progress"
-	// StatusInReview task on ревью
+	// StatusInReview task on revyu
 	StatusInReview Status = "In Review"
-	// StatusDone task завершена
+	// StatusDone task zavershena
 	StatusDone Status = "Done"
-	// StatusCancelled task отменена
+	// StatusCancelled task otmenena
 	StatusCancelled Status = "Cancelled"
 )
 
-// Priority represents приоритет tasks
+// Priority represents prioritet tasks
 type Priority string
 
 const (
-	// PriorityLow низкий приоритет
+	// PriorityLow nizkiy prioritet
 	PriorityLow Priority = "Low"
-	// PriorityMedium средний приоритет
+	// PriorityMedium sredniy prioritet
 	PriorityMedium Priority = "Medium"
-	// PriorityHigh высокий приоритет
+	// PriorityHigh vysokiy prioritet
 	PriorityHigh Priority = "High"
-	// PriorityCritical критический приоритет
+	// PriorityCritical kriticheskiy prioritet
 	PriorityCritical Priority = "Critical"
 )
 
-// EntityState represents state типизированной сущности
+// EntityState represents state tipizirovannoy entity
 type EntityState struct {
 	entityType EntityType
 	status     Status
 	priority   Priority
 }
 
-// NewEntityState creates новое state сущности
+// NewEntityState creates new state entity
 func NewEntityState(entityType EntityType) (*EntityState, error) {
 	if !isValidEntityType(entityType) {
 		return nil, errs.ErrInvalidInput
@@ -72,7 +72,7 @@ func NewEntityState(entityType EntityType) (*EntityState, error) {
 	}, nil
 }
 
-// ChangeStatus изменяет status с validацией перехода
+// ChangeStatus izmenyaet status s valid perehoda
 func (s *EntityState) ChangeStatus(newStatus Status) error {
 	if !isValidStatus(newStatus) {
 		return errs.ErrInvalidInput
@@ -86,7 +86,7 @@ func (s *EntityState) ChangeStatus(newStatus Status) error {
 	return nil
 }
 
-// SetPriority устанавливает приоритет
+// SetPriority sets prioritet
 func (s *EntityState) SetPriority(priority Priority) error {
 	if !isValidPriority(priority) {
 		return errs.ErrInvalidInput
@@ -96,25 +96,25 @@ func (s *EntityState) SetPriority(priority Priority) error {
 	return nil
 }
 
-// isValidTransition validates перехода between статусами
+// isValidTransition validates perehoda between statusami
 func (s *EntityState) isValidTransition(newStatus Status) bool {
-	// if status not меняется, it is always validно
+	// if status not menyaetsya, it is always valid
 	if s.status == newStatus {
 		return true
 	}
 
-	// from Cancelled можно вернуться only in Backlog
+	// from Cancelled mozhno vernutsya only in Backlog
 	if s.status == StatusCancelled {
 		return newStatus == StatusBacklog
 	}
 
-	// from Done можно вернуться in InReview (reopening)
+	// from Done mozhno vernutsya in InReview (reopening)
 	if s.status == StatusDone {
 		return newStatus == StatusInReview || newStatus == StatusCancelled
 	}
 
-	// Стандартные переходы вbefore
-	transitions := map[Status][]Status{ //nolint:exhaustive // task.StatusDone, task.StatusCancelled not имеют переходов вbefore
+	// standartnye perehody before
+	transitions := map[Status][]Status{ //nolint:exhaustive // task.StatusDone, task.StatusCancelled not imeyut perehodov before
 		StatusBacklog:    {StatusToDo, StatusCancelled},
 		StatusToDo:       {StatusInProgress, StatusBacklog, StatusCancelled},
 		StatusInProgress: {StatusInReview, StatusToDo, StatusCancelled},
@@ -131,13 +131,13 @@ func (s *EntityState) isValidTransition(newStatus Status) bool {
 
 // Getters
 
-// Type returns type сущности
+// Type returns type entity
 func (s *EntityState) Type() EntityType { return s.entityType }
 
 // Status returns status
 func (s *EntityState) Status() Status { return s.status }
 
-// Priority returns приоритет
+// Priority returns prioritet
 func (s *EntityState) Priority() Priority { return s.priority }
 
 // Validation helpers

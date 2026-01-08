@@ -2,12 +2,12 @@ package workspace
 
 import "github.com/lllypuk/flowra/internal/domain/uuid"
 
-// Query базовый interface запросов
+// Query bazovyy interface zaprosov
 type Query interface {
 	QueryName() string
 }
 
-// GetWorkspaceQuery - retrieval workspace по ID
+// GetWorkspaceQuery - retrieval workspace po ID
 type GetWorkspaceQuery struct {
 	WorkspaceID uuid.UUID
 }

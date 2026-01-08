@@ -73,7 +73,7 @@ func TestListNotificationsUseCase_Execute_UnreadOnly(t *testing.T) {
 		repo.Save(context.Background(), notif)
 	}
 
-	// Creating 3 прочитанных
+	// Creating 3 prochitannyh
 	for range 3 {
 		notif, _ := domainnotification.NewNotification(
 			userID,
@@ -107,7 +107,7 @@ func TestListNotificationsUseCase_Execute_UnreadOnly(t *testing.T) {
 		t.Errorf("expected 5 unread notifications, got %d", len(result.Notifications))
 	}
 
-	// check, that all непрочитанные
+	// check that all neprochitannye
 	for _, notif := range result.Notifications {
 		if notif.IsRead() {
 			t.Error("expected all notifications to be unread")
@@ -138,7 +138,7 @@ func TestListNotificationsUseCase_Execute_Pagination(t *testing.T) {
 
 	useCase := notification.NewListNotificationsUseCase(repo)
 
-	// Первая страница
+	// pervaya stranitsa
 	query1 := notification.ListNotificationsQuery{
 		UserID:     userID,
 		UnreadOnly: false,
@@ -155,7 +155,7 @@ func TestListNotificationsUseCase_Execute_Pagination(t *testing.T) {
 		t.Errorf("expected 10 notifications on page 1, got %d", len(result1.Notifications))
 	}
 
-	// Вторая страница
+	// vtoraya stranitsa
 	query2 := notification.ListNotificationsQuery{
 		UserID:     userID,
 		UnreadOnly: false,
@@ -195,7 +195,7 @@ func TestListNotificationsUseCase_Execute_DefaultLimit(t *testing.T) {
 	query := notification.ListNotificationsQuery{
 		UserID:     userID,
 		UnreadOnly: false,
-		Limit:      0, // должен исuserься дефолтный лимит 50
+		Limit:      0, // dolzhen user defoltnyy limit 50
 		Offset:     0,
 	}
 
@@ -238,7 +238,7 @@ func TestListNotificationsUseCase_Execute_MaxLimit(t *testing.T) {
 	query := notification.ListNotificationsQuery{
 		UserID:     userID,
 		UnreadOnly: false,
-		Limit:      150, // greater максимума (100)
+		Limit:      150, // greater maksimuma (100)
 		Offset:     0,
 	}
 
@@ -333,7 +333,7 @@ func TestListNotificationsUseCase_Execute_OnlyUserNotifications(t *testing.T) {
 		t.Errorf("expected 5 notifications for user1, got %d", len(result.Notifications))
 	}
 
-	// check, that all notifications принадлежат user1
+	// check that all notifications prinadlezhat user1
 	for _, notif := range result.Notifications {
 		if notif.UserID() != user1ID {
 			t.Errorf("expected notification to belong to user1, got userID %s", notif.UserID())

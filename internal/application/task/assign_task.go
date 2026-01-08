@@ -9,13 +9,13 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/task"
 )
 
-// AssignTaskUseCase handles assignment исполнителя tasks
+// AssignTaskUseCase handles assignment ispolnitelya tasks
 type AssignTaskUseCase struct {
 	eventStore     appcore.EventStore
 	userRepository appcore.UserRepository
 }
 
-// NewAssignTaskUseCase creates New use case for наvalueения исполнителя
+// NewAssignTaskUseCase creates New use case for assigning ispolnitelya
 func NewAssignTaskUseCase(
 	eventStore appcore.EventStore,
 	userRepository appcore.UserRepository,
@@ -26,7 +26,7 @@ func NewAssignTaskUseCase(
 	}
 }
 
-// Execute наvalueает исполнителя задаче
+// Execute value ispolnitelya zadache
 func (uc *AssignTaskUseCase) Execute(ctx context.Context, cmd AssignTaskCommand) (TaskResult, error) {
 	// 1. validation commands
 	if err := uc.validate(ctx, cmd); err != nil {
@@ -50,7 +50,7 @@ func (uc *AssignTaskUseCase) Execute(ctx context.Context, cmd AssignTaskCommand)
 	aggregate := task.NewTaskAggregate(cmd.TaskID)
 	aggregate.ReplayEvents(events)
 
-	// 4. performing бизнес-операции
+	// 4. performing biznes-operatsii
 	err = aggregate.Assign(cmd.AssigneeID, cmd.AssignedBy)
 	if err != nil {
 		return TaskResult{}, fmt.Errorf("failed to assign task: %w", err)
@@ -59,7 +59,7 @@ func (uc *AssignTaskUseCase) Execute(ctx context.Context, cmd AssignTaskCommand)
 	// 5. retrieval New events
 	newEvents := aggregate.UncommittedEvents()
 
-	// if New events no (идемпотентность), возвращаем success
+	// if no new events (idempotent), return success
 	if len(newEvents) == 0 {
 		return TaskResult{
 			TaskID:  cmd.TaskID,
@@ -79,7 +79,7 @@ func (uc *AssignTaskUseCase) Execute(ctx context.Context, cmd AssignTaskCommand)
 		return TaskResult{}, fmt.Errorf("failed to save events: %w", saveErr)
 	}
 
-	// 7. Возврат result
+	// 7. vozvrat result
 	return NewSuccessResult(cmd.TaskID, expectedVersion+len(newEvents), newEvents), nil
 }
 
@@ -93,7 +93,7 @@ func (uc *AssignTaskUseCase) validate(ctx context.Context, cmd AssignTaskCommand
 		return ErrInvalidUserID
 	}
 
-	// if AssigneeID указан (not снятие assignee), checking существование user
+	// if AssigneeID ukazan (not snyatie assignee), checking suschestvovanie user
 	if cmd.AssigneeID != nil && !cmd.AssigneeID.IsZero() {
 		exists, err := uc.userRepository.Exists(ctx, *cmd.AssigneeID)
 		if err != nil {

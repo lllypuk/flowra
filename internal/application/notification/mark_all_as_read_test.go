@@ -26,7 +26,7 @@ func TestMarkAllAsReadUseCase_Execute_Success(t *testing.T) {
 		repo.Save(context.Background(), notif)
 	}
 
-	// Creating 2 уже прочитанных notifications
+	// Creating 2 uzhe prochitannyh notifications
 	for range 2 {
 		notif, _ := domainnotification.NewNotification(
 			userID,
@@ -57,7 +57,7 @@ func TestMarkAllAsReadUseCase_Execute_Success(t *testing.T) {
 		t.Errorf("expected 5 notifications to be marked, got %d", result.Count)
 	}
 
-	// Checking, that all notifications теперь прочитаны
+	// Checking, that all notifications teper prochitany
 	unreadCount, _ := repo.CountUnreadByUserID(context.Background(), userID)
 	if unreadCount != 0 {
 		t.Errorf("expected 0 unread notifications, got %d", unreadCount)
@@ -69,7 +69,7 @@ func TestMarkAllAsReadUseCase_Execute_NoUnreadNotifications(t *testing.T) {
 	repo := newMockNotificationRepository()
 	userID := uuid.NewUUID()
 
-	// Creating only прочитанные notifications
+	// Creating only prochitannye notifications
 	for range 3 {
 		notif, _ := domainnotification.NewNotification(
 			userID,
@@ -173,7 +173,7 @@ func TestMarkAllAsReadUseCase_Execute_OnlyUserNotifications(t *testing.T) {
 		t.Errorf("expected 3 notifications to be marked for user1, got %d", result.Count)
 	}
 
-	// Checking, that у user2 остались непрочитанные
+	// Checking, that u user2 ostalis neprochitannye
 	unreadCountUser2, _ := repo.CountUnreadByUserID(context.Background(), user2ID)
 	if unreadCountUser2 != 2 {
 		t.Errorf("expected 2 unread notifications for user2, got %d", unreadCountUser2)

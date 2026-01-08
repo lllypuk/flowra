@@ -2,15 +2,15 @@ package notification
 
 import "github.com/lllypuk/flowra/internal/domain/uuid"
 
-// Query базовый interface запросов
+// Query bazovyy interface zaprosov
 type Query interface {
 	QueryName() string
 }
 
-// GetNotificationQuery - retrieval notification по ID
+// GetNotificationQuery - retrieval notification po ID
 type GetNotificationQuery struct {
 	NotificationID uuid.UUID
-	UserID         uuid.UUID // check, that notification принадлежит user
+	UserID         uuid.UUID // check that notification prinadlezhit user
 }
 
 func (q GetNotificationQuery) QueryName() string { return "GetNotification" }

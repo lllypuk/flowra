@@ -12,7 +12,7 @@ const (
 	EventTypeUserUpdated = "user.updated"
 	// EventTypeUserDeleted type event removing user
 	EventTypeUserDeleted = "user.deleted"
-	// EventTypeAdminRightsChanged type event changing прав administratorа
+	// EventTypeAdminRightsChanged type event changing prav administrator
 	EventTypeAdminRightsChanged = "user.admin_rights_changed"
 )
 
@@ -66,7 +66,7 @@ func NewUserDeleted(userID uuid.UUID, version int, metadata event.Metadata) *Del
 	}
 }
 
-// AdminRightsChanged event changing прав administratorа
+// AdminRightsChanged event changing prav administrator
 type AdminRightsChanged struct {
 	event.BaseEvent
 

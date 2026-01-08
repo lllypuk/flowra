@@ -7,16 +7,16 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/workspace"
 )
 
-// ListUserWorkspacesUseCase - use case for receivения list workspace user
+// ListUserWorkspacesUseCase - use case for receiv list workspace user
 type ListUserWorkspacesUseCase struct {
 	appcore.BaseUseCase
 
 	keycloakClient KeycloakClient
-	// for receivения workspaces user нужно:
+	// for receiv workspaces user nuzhno:
 	// 1. get list user groups from Keycloak
 	// 2. find workspaces for these groups
-	// Но in текущей реализации Repository no метода FindByKeycloakGroups
-	// Поit isму используем existingий method FindByKeycloakGroup for каждой groupsы
+	// no in tekuschey realizatsii Repository no metoda FindByKeycloakGroups
+	// it is ispolzuem existing method FindByKeycloakGroup for kazhdoy groups
 }
 
 // NewListUserWorkspacesUseCase creates New ListUserWorkspacesUseCase
@@ -41,16 +41,16 @@ func (uc *ListUserWorkspacesUseCase) Execute(
 		return ListResult{}, uc.WrapError("validation failed", err)
 	}
 
-	// TODO: Реализация требует дополнительных methods in KeycloakClient:
+	// TODO: realizatsiya trebuet dopolnitelnyh methods in KeycloakClient:
 	// - GetUserGroups(ctx, userID) ([]string, error) - get list user groups
 	// and in Repository:
 	// - FindByKeycloakGroups(ctx, groupIDs []string) ([]*Workspace, error)
 
-	// Временная заглушка for компиляции
-	// in реальном проекте нужно:
+	// vremennaya zaglushka for kompilyatsii
+	// in realnom proekte nuzhno:
 	// 1. Add GetUserGroups in KeycloakClient
 	// 2. Add FindByKeycloakGroups in Repository
-	// 3. Реализовать логику receivения and filtering workspaces
+	// 3. realizovat logiku receiv and filtering workspaces
 
 	return ListResult{
 		Workspaces: []*workspace.Workspace{},

@@ -215,7 +215,7 @@ func TestMongoEventStore_LoadEvents_NotFound(t *testing.T) {
 
 	// Assert
 	assert.Equal(t, appcore.ErrAggregateNotFound, err)
-	assert.nil(t, events)
+	assert.Nil(t, events)
 }
 
 func TestMongoEventStore_SaveEmptyEventsList(t *testing.T) {
@@ -245,7 +245,7 @@ func TestMongoEventStore_SaveEventsInOrder(t *testing.T) {
 
 	for i := 1; i <= 5; i++ {
 		metadata := event.NewMetadata("user-123", "corr-456", "")
-		// Немного задержки for разных временных меток
+		// nemnogo zaderzhki for raznyh vremennyh metok
 		metadata.Timestamp = time.Now().Add(time.Duration(i) * time.Millisecond)
 		baseEvent := event.NewBaseEvent(
 			"TestEventCreated",

@@ -20,14 +20,14 @@ func NewChangePriorityUseCase(eventStore appcore.EventStore) *ChangePriorityUseC
 	}
 }
 
-// Execute изменяет приоритет tasks
+// Execute izmenyaet prioritet tasks
 func (uc *ChangePriorityUseCase) Execute(ctx context.Context, cmd ChangePriorityCommand) (TaskResult, error) {
 	// validation commands
 	if err := uc.validate(cmd); err != nil {
 		return TaskResult{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// performing операции via базовый executor
+	// performing operatsii via bazovyy executor
 	return uc.baseExecutor.Execute(
 		ctx,
 		cmd.TaskID,

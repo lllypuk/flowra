@@ -6,31 +6,31 @@ import (
 	"github.com/google/uuid"
 )
 
-// Processor handles распарсенные tags and генерирует commands
+// Processor handles rasparsennye tags and generiruet commands
 type Processor struct {
 	parser *Parser
 }
 
-// NewProcessor creates New процессор тегов
+// NewProcessor creates New protsessor tegov
 func NewProcessor() *Processor {
 	return &Processor{
 		parser: NewParser(),
 	}
 }
 
-// ProcessMessage handles message с тегами and returns result
-// currentEntityType - type текущей активной сущности in чате ("Task", "Bug", "Epic")
-// Может быть empty строкой, if no активной сущности
-// if in сообщении создается New сущность, Entity Management Tags применяются to ней
+// ProcessMessage handles message s tegami and returns result
+// currentEntityType - type tekuschey aktivnoy entity in chate ("Task", "Bug", "Epic")
+// mozhet byt empty strokoy, if no aktivnoy entity
+// if in soobschenii sozdaetsya New suschnost, Entity Management Tags primenyayutsya to ney
 func (p *Processor) ProcessMessage(
 	chatID uuid.UUID,
 	message string,
 	currentEntityType string,
 ) *ProcessingResult {
-	// Парсим message
+	// parsim message
 	parseResult := p.parser.Parse(message)
 
-	// Обрабатываем tags
+	// obrabatyvaem tags
 	result := p.ProcessTags(chatID, parseResult.Tags, currentEntityType)
 	result.OriginalMessage = message
 	result.PlainText = parseResult.PlainText
@@ -39,9 +39,9 @@ func (p *Processor) ProcessMessage(
 }
 
 // ProcessTags handles tags and returns result
-// currentEntityType - type текущей активной сущности in чате ("Task", "Bug", "Epic")
-// Может быть empty строкой, if no активной сущности
-// if in сообщении создается New сущность, Entity Management Tags применяются to ней
+// currentEntityType - type tekuschey aktivnoy entity in chate ("Task", "Bug", "Epic")
+// mozhet byt empty strokoy, if no aktivnoy entity
+// if in soobschenii sozdaetsya New suschnost, Entity Management Tags primenyayutsya to ney
 //
 //nolint:gocognit,funlen // Complexity justified: sequential tag processing logic
 func (p *Processor) ProcessTags(
@@ -54,7 +54,7 @@ func (p *Processor) ProcessTags(
 		Errors:      []TagError{},
 	}
 
-	// Отслеживаем type сущности for Entity Management Tags
+	// otslezhivaem type entity for Entity Management Tags
 	entityType := currentEntityType
 
 	for _, tag := range parsedTags {
@@ -66,7 +66,7 @@ func (p *Processor) ProcessTags(
 					TagKey:   tag.Key,
 					TagValue: tag.Value,
 					Error:    err,
-					severity: ErrorSeverityError,
+					Severity: ErrorSeverityError,
 				})
 				continue
 			}
@@ -80,7 +80,7 @@ func (p *Processor) ProcessTags(
 				Command:  cmd,
 				Success:  true,
 			})
-			// if создали сущность, используем ее type for последующих тегов
+			// if sozdali suschnost, ispolzuem ee type for posleduyuschih tegov
 			entityType = "Task"
 
 		case "bug":
@@ -89,7 +89,7 @@ func (p *Processor) ProcessTags(
 					TagKey:   tag.Key,
 					TagValue: tag.Value,
 					Error:    err,
-					severity: ErrorSeverityError,
+					Severity: ErrorSeverityError,
 				})
 				continue
 			}
@@ -111,7 +111,7 @@ func (p *Processor) ProcessTags(
 					TagKey:   tag.Key,
 					TagValue: tag.Value,
 					Error:    err,
-					severity: ErrorSeverityError,
+					Severity: ErrorSeverityError,
 				})
 				continue
 			}
@@ -134,7 +134,7 @@ func (p *Processor) ProcessTags(
 					TagKey:   tag.Key,
 					TagValue: tag.Value,
 					Error:    ErrNoActiveEntity,
-					severity: ErrorSeverityError,
+					Severity: ErrorSeverityError,
 				})
 				continue
 			}
@@ -143,7 +143,7 @@ func (p *Processor) ProcessTags(
 					TagKey:   tag.Key,
 					TagValue: tag.Value,
 					Error:    err,
-					severity: ErrorSeverityError,
+					Severity: ErrorSeverityError,
 				})
 				continue
 			}
@@ -164,14 +164,14 @@ func (p *Processor) ProcessTags(
 					TagKey:   tag.Key,
 					TagValue: tag.Value,
 					Error:    err,
-					severity: ErrorSeverityError,
+					Severity: ErrorSeverityError,
 				})
 				continue
 			}
 			cmd := AssignUserCommand{
 				ChatID:   chatID,
 				Username: tag.Value,
-				UserID:   nil, // Будет резолвлен on уровне service
+				UserID:   nil, // budet rezolvlen on urovne service
 			}
 			result.AppliedTags = append(result.AppliedTags, TagApplication{
 				TagKey:   tag.Key,
@@ -186,7 +186,7 @@ func (p *Processor) ProcessTags(
 					TagKey:   tag.Key,
 					TagValue: tag.Value,
 					Error:    err,
-					severity: ErrorSeverityError,
+					Severity: ErrorSeverityError,
 				})
 				continue
 			}
@@ -208,7 +208,7 @@ func (p *Processor) ProcessTags(
 					TagKey:   tag.Key,
 					TagValue: tag.Value,
 					Error:    err,
-					severity: ErrorSeverityError,
+					Severity: ErrorSeverityError,
 				})
 				continue
 			}
@@ -229,7 +229,7 @@ func (p *Processor) ProcessTags(
 					TagKey:   tag.Key,
 					TagValue: tag.Value,
 					Error:    err,
-					severity: ErrorSeverityError,
+					Severity: ErrorSeverityError,
 				})
 				continue
 			}
@@ -250,13 +250,13 @@ func (p *Processor) ProcessTags(
 					TagKey:   tag.Key,
 					TagValue: tag.Value,
 					Error:    err,
-					severity: ErrorSeverityError,
+					Severity: ErrorSeverityError,
 				})
 				continue
 			}
 			cmd := SetSeverityCommand{
 				ChatID:   chatID,
-				severity: tag.Value,
+				Severity: tag.Value,
 			}
 			result.AppliedTags = append(result.AppliedTags, TagApplication{
 				TagKey:   tag.Key,

@@ -9,7 +9,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/message"
 )
 
-// AddAttachmentUseCase handles adding вложения to сообщению
+// AddAttachmentUseCase handles adding attachments to messages
 type AddAttachmentUseCase struct {
 	messageRepo Repository
 	eventBus    event.Bus
@@ -26,7 +26,7 @@ func NewAddAttachmentUseCase(
 	}
 }
 
-// Execute performs adding вложения
+// Execute performs adding attachments
 func (uc *AddAttachmentUseCase) Execute(
 	ctx context.Context,
 	cmd AddAttachmentCommand,
@@ -42,17 +42,17 @@ func (uc *AddAttachmentUseCase) Execute(
 		return Result{}, ErrMessageNotFound
 	}
 
-	// check, that message not удалено
+	// check that message is not deleted
 	if msg.IsDeleted() {
 		return Result{}, ErrMessageDeleted
 	}
 
-	// authorization: only автор может добавлять вложения
+	// authorization: only author can add attachments
 	if !msg.CanBeEditedBy(cmd.UserID) {
 		return Result{}, ErrNotAuthor
 	}
 
-	// Adding вложения
+	// Adding attachments
 	if addErr := msg.AddAttachment(cmd.FileID, cmd.FileName, cmd.FileSize, cmd.MimeType); addErr != nil {
 		return Result{}, addErr
 	}

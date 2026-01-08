@@ -6,38 +6,38 @@ import (
 	wsapp "github.com/lllypuk/flowra/internal/application/workspace"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 	"github.com/lllypuk/flowra/internal/domain/workspace"
-	httphandler "github.com/lllypuk/flowra/internal/handler/HTTP"
+	httphandler "github.com/lllypuk/flowra/internal/handler/http"
 )
 
 // Compile-time assertion that WorkspaceService implements httphandler.WorkspaceService.
 var _ httphandler.WorkspaceService = (*WorkspaceService)(nil)
 
-// WorkspaceServiceCommandRepository defines interface for commands (change state) workspaceих пространств.
+// WorkspaceServiceCommandRepository defines interface for commands (change state) workspace prostranstv.
 // interface declared on the consumer side according to principles Go interface design.
 type WorkspaceServiceCommandRepository interface {
-	// Save saves workspaceее пространство (creation or update)
+	// Save saves workspace space (creation or update)
 	Save(ctx context.Context, ws *workspace.Workspace) error
 
-	// Delete удаляет workspaceее пространство
+	// Delete udalyaet workspace space
 	Delete(ctx context.Context, id uuid.UUID) error
 
-	// AddMember добавляет члена in workspace
+	// AddMember adds chlena in workspace
 	AddMember(ctx context.Context, member *workspace.Member) error
 }
 
-// WorkspaceServiceQueryRepository defines interface for запросов (only reading) workspaceих пространств.
+// WorkspaceServiceQueryRepository defines interface for zaprosov (only reading) workspace prostranstv.
 // interface declared on the consumer side according to principles Go interface design.
 type WorkspaceServiceQueryRepository interface {
-	// FindByID finds workspaceее пространство по ID
+	// FindByID finds workspace space po ID
 	FindByID(ctx context.Context, id uuid.UUID) (*workspace.Workspace, error)
 
-	// ListWorkspacesByUser returns workspaces, in которых userель is членом
+	// ListWorkspacesByUser returns workspaces, in kotoryh user is chlenom
 	ListWorkspacesByUser(ctx context.Context, userID uuid.UUID, offset, limit int) ([]*workspace.Workspace, error)
 
 	// CountWorkspacesByUser returns count workspaces user
 	CountWorkspacesByUser(ctx context.Context, userID uuid.UUID) (int, error)
 
-	// CountMembers returns count членов workspace
+	// CountMembers returns count chlenov workspace
 	CountMembers(ctx context.Context, workspaceID uuid.UUID) (int, error)
 }
 
@@ -46,7 +46,7 @@ type CreateWorkspaceUseCase interface {
 	Execute(ctx context.Context, cmd wsapp.CreateWorkspaceCommand) (wsapp.Result, error)
 }
 
-// GetWorkspaceUseCase defines interface for use case receivения workspace.
+// GetWorkspaceUseCase defines interface for use case receiv workspace.
 type GetWorkspaceUseCase interface {
 	Execute(ctx context.Context, query wsapp.GetWorkspaceQuery) (wsapp.Result, error)
 }
@@ -56,19 +56,19 @@ type UpdateWorkspaceUseCase interface {
 	Execute(ctx context.Context, cmd wsapp.UpdateWorkspaceCommand) (wsapp.Result, error)
 }
 
-// WorkspaceService реализует httphandler.WorkspaceService
+// WorkspaceService realizuet httphandler.WorkspaceService
 type WorkspaceService struct {
 	// Use cases
 	createUC CreateWorkspaceUseCase
 	getUC    GetWorkspaceUseCase
 	updateUC UpdateWorkspaceUseCase
 
-	// Repositories (for операций без use case)
+	// Repositories (for operatsiy bez use case)
 	commandRepo WorkspaceServiceCommandRepository
 	queryRepo   WorkspaceServiceQueryRepository
 }
 
-// WorkspaceServiceConfig contains зависимости for WorkspaceService.
+// WorkspaceServiceConfig contains zavisimosti for WorkspaceService.
 type WorkspaceServiceConfig struct {
 	CreateUC    CreateWorkspaceUseCase
 	GetUC       GetWorkspaceUseCase
@@ -77,7 +77,7 @@ type WorkspaceServiceConfig struct {
 	QueryRepo   WorkspaceServiceQueryRepository
 }
 
-// NewWorkspaceService создаёт New WorkspaceService.
+// NewWorkspaceService sozdayot New WorkspaceService.
 func NewWorkspaceService(cfg WorkspaceServiceConfig) *WorkspaceService {
 	return &WorkspaceService{
 		createUC:    cfg.CreateUC,
@@ -88,7 +88,7 @@ func NewWorkspaceService(cfg WorkspaceServiceConfig) *WorkspaceService {
 	}
 }
 
-// CreateWorkspace создаёт New workspace.
+// CreateWorkspace sozdayot New workspace.
 func (s *WorkspaceService) CreateWorkspace(
 	ctx context.Context,
 	ownerID uuid.UUID,
@@ -106,7 +106,7 @@ func (s *WorkspaceService) CreateWorkspace(
 	return result.Value, nil
 }
 
-// GetWorkspace returns workspace по ID.
+// GetWorkspace returns workspace po ID.
 func (s *WorkspaceService) GetWorkspace(
 	ctx context.Context,
 	id uuid.UUID,
@@ -122,8 +122,8 @@ func (s *WorkspaceService) GetWorkspace(
 }
 
 // ListUserWorkspaces returns list workspaces user.
-// uses repository напрямую, так as ListUserWorkspacesUseCase
-// требует дополнительных methods Keycloak, которые пока not реализованы.
+// uses repository napryamuyu, tak as ListUserWorkspacesUseCase
+// trebuet dopolnitelnyh methods Keycloak, kotorye poka not realizovany.
 func (s *WorkspaceService) ListUserWorkspaces(
 	ctx context.Context,
 	userID uuid.UUID,
@@ -142,7 +142,7 @@ func (s *WorkspaceService) ListUserWorkspaces(
 	return workspaces, total, nil
 }
 
-// UpdateWorkspace обновляет workspace.
+// UpdateWorkspace obnovlyaet workspace.
 func (s *WorkspaceService) UpdateWorkspace(
 	ctx context.Context,
 	id uuid.UUID,
@@ -151,7 +151,7 @@ func (s *WorkspaceService) UpdateWorkspace(
 	result, err := s.updateUC.Execute(ctx, wsapp.UpdateWorkspaceCommand{
 		WorkspaceID: id,
 		Name:        name,
-		UpdatedBy:   uuid.NewUUID(), // TODO: get from context авторизации
+		UpdatedBy:   uuid.NewUUID(), // TODO: get from context avtorizatsii
 	})
 	if err != nil {
 		return nil, err
@@ -160,8 +160,8 @@ func (s *WorkspaceService) UpdateWorkspace(
 	return result.Value, nil
 }
 
-// DeleteWorkspace удаляет workspace.
-// Use case for delete пока not реализован, используем repository напрямую.
+// DeleteWorkspace udalyaet workspace.
+// Use case for delete poka not realizovan, ispolzuem repository napryamuyu.
 func (s *WorkspaceService) DeleteWorkspace(
 	ctx context.Context,
 	id uuid.UUID,

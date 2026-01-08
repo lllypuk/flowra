@@ -4,7 +4,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// SendMessageCommand - sendа messages
+// SendMessageCommand - send messages
 type SendMessageCommand struct {
 	ChatID          uuid.UUID
 	Content         string
@@ -15,26 +15,26 @@ type SendMessageCommand struct {
 // CommandName returns command name
 func (c SendMessageCommand) CommandName() string { return "SendMessage" }
 
-// EditMessageCommand - редактирование messages
+// EditMessageCommand - edit messages
 type EditMessageCommand struct {
 	MessageID uuid.UUID
 	Content   string
-	EditorID  uuid.UUID // должен совпадать с AuthorID
+	EditorID  uuid.UUID // must match AuthorID
 }
 
 // CommandName returns command name
 func (c EditMessageCommand) CommandName() string { return "EditMessage" }
 
-// DeleteMessageCommand - deletion messages
+// DeleteMessageCommand - delete messages
 type DeleteMessageCommand struct {
 	MessageID uuid.UUID
-	DeletedBy uuid.UUID // должен совпадать с AuthorID
+	DeletedBy uuid.UUID // must match AuthorID
 }
 
 // CommandName returns command name
 func (c DeleteMessageCommand) CommandName() string { return "DeleteMessage" }
 
-// AddReactionCommand - adding реакции
+// AddReactionCommand - add reactions
 type AddReactionCommand struct {
 	MessageID uuid.UUID
 	Emoji     string
@@ -44,7 +44,7 @@ type AddReactionCommand struct {
 // CommandName returns command name
 func (c AddReactionCommand) CommandName() string { return "AddReaction" }
 
-// RemoveReactionCommand - deletion реакции
+// RemoveReactionCommand - remove reactions
 type RemoveReactionCommand struct {
 	MessageID uuid.UUID
 	Emoji     string
@@ -54,14 +54,14 @@ type RemoveReactionCommand struct {
 // CommandName returns command name
 func (c RemoveReactionCommand) CommandName() string { return "RemoveReaction" }
 
-// AddAttachmentCommand - adding вложения
+// AddAttachmentCommand - add attachments
 type AddAttachmentCommand struct {
 	MessageID uuid.UUID
 	FileID    uuid.UUID
 	FileName  string
 	FileSize  int64
 	MimeType  string
-	UserID    uuid.UUID // должен совпадать с AuthorID
+	UserID    uuid.UUID // must match AuthorID
 }
 
 // CommandName returns command name

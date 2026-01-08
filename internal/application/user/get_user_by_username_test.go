@@ -84,11 +84,11 @@ func TestGetUserByUsernameUseCase_Execute_CaseSensitive(t *testing.T) {
 	repo := newMockUserRepository()
 	useCase := user.NewGetUserByUsernameUseCase(repo)
 
-	// Creating user с lowercase username
+	// Creating user s lowercase username
 	existingUser, _ := domainuser.NewUser("external-123", "testuser", "test@example.com", "Test User")
 	_ = repo.Save(context.Background(), existingUser)
 
-	// Ищем с uppercase (должно not найтись, так as наш мок case-sensitive)
+	// ischem s uppercase (dolzhno not naytis, tak as nash mok case-sensitive)
 	query := user.GetUserByUsernameQuery{
 		Username: "TestUser",
 	}
@@ -97,7 +97,7 @@ func TestGetUserByUsernameUseCase_Execute_CaseSensitive(t *testing.T) {
 	_, err := useCase.Execute(context.Background(), query)
 
 	// Assert
-	// in простом мок-репозитории search case-sensitive
+	// in prostom mok-repozitorii search case-sensitive
 	if !errors.Is(err, user.ErrUserNotFound) {
 		t.Errorf("expected ErrUserNotFound for different case, got: %v", err)
 	}

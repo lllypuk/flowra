@@ -8,21 +8,21 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
-// listDocuments performs общую логику receivения list документов с пагинацией.
-// T - type документа for декодирования
+// listDocuments performs obschuyu logiku receiv list dokumentov s paginatsiey.
+// T - type dokumenta for dekodirovaniya
 // R - type result (domain object)
 //
 // parameters:
-//   - ctx: конtext выполнения
-//   - collection: MongoDB коллекция
-//   - offset: смещение for пагинации
-//   - limit: лимит документов (if 0, used DefaultPaginationLimit)
-//   - decoder: function conversion документа in domain object
-//   - collectionName: название коллекции for сообщений об errorх
+// - ctx: text vypolneniya
+// - collection: MongoDB kollektsiya
+// - offset: smeschenie for paginatsii
+// - limit: limit dokumentov (if 0, used DefaultPaginationLimit)
+// - decoder: function conversion dokumenta in domain object
+// - collectionName: nazvanie kollektsii for soobscheniy ob error
 //
 // returns:
-//   - срез domain объектов (never not nil)
-//   - error at проблемах с запросом
+// - srez domain obektov (never not nil)
+// - error at problemah s zaprosom
 func listDocuments[T any, R any](
 	ctx context.Context,
 	collection *mongo.Collection,
@@ -44,12 +44,12 @@ func listDocuments[T any, R any](
 	for cursor.Next(ctx) {
 		var doc T
 		if decodeErr := cursor.Decode(&doc); decodeErr != nil {
-			continue // пропускаем некорректные документы
+			continue // propuskaem nekorrektnye dokumenty
 		}
 
 		item, docErr := decoder(&doc)
 		if docErr != nil {
-			continue // пропускаем документы, которые not удалось convert
+			continue // propuskaem dokumenty, kotorye not udalos convert
 		}
 
 		results = append(results, item)
@@ -59,7 +59,7 @@ func listDocuments[T any, R any](
 		return nil, fmt.Errorf("cursor error: %w", err)
 	}
 
-	// Гарантируем возврат пустого среза вместо nil
+	// garantiruem vozvrat pustogo sreza vmesto nil
 	if results == nil {
 		results = make([]R, 0)
 	}

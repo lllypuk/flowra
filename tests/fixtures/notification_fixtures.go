@@ -24,25 +24,25 @@ func NewCreateNotificationCommandBuilder(userID domainUUID.UUID) *CreateNotifica
 	}
 }
 
-// WithTitle устанавливает title
+// WithTitle sets title
 func (b *CreateNotificationCommandBuilder) WithTitle(title string) *CreateNotificationCommandBuilder {
 	b.cmd.Title = title
 	return b
 }
 
-// WithMessage устанавливает message
+// WithMessage sets message
 func (b *CreateNotificationCommandBuilder) WithMessage(message string) *CreateNotificationCommandBuilder {
 	b.cmd.Message = message
 	return b
 }
 
-// WithType устанавливает type
+// WithType sets type
 func (b *CreateNotificationCommandBuilder) WithType(notifType notification.Type) *CreateNotificationCommandBuilder {
 	b.cmd.Type = notifType
 	return b
 }
 
-// WithResourceID устанавливает resourceID
+// WithResourceID sets resourceID
 func (b *CreateNotificationCommandBuilder) WithResourceID(resourceID string) *CreateNotificationCommandBuilder {
 	b.cmd.ResourceID = resourceID
 	return b

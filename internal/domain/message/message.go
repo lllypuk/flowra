@@ -7,13 +7,13 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// Message represents message in чате
+// Message represents message in chate
 type Message struct {
 	id              uuid.UUID
 	chatID          uuid.UUID
 	authorID        uuid.UUID
 	content         string
-	parentMessageID uuid.UUID // for тредов
+	parentMessageID uuid.UUID // for tredov
 	createdAt       time.Time
 	editedAt        *time.Time
 	isDeleted       bool
@@ -22,7 +22,7 @@ type Message struct {
 	reactions       []Reaction
 }
 
-// NewMessage creates новое message
+// NewMessage creates new message
 func NewMessage(
 	chatID uuid.UUID,
 	authorID uuid.UUID,
@@ -52,9 +52,9 @@ func NewMessage(
 	}, nil
 }
 
-// Reconstruct восстанавливает message from storage.
-// Used by repositories for hydration объекта without validation business rules.
-// all parameters должны быть valid values from storage.
+// Reconstruct reconstructs message from save.
+// Used by repositories for hydration obekta without validation business rules.
+// all parameters dolzhny byt valid values from save.
 func Reconstruct(
 	id uuid.UUID,
 	chatID uuid.UUID,
@@ -90,7 +90,7 @@ func Reconstruct(
 	}
 }
 
-// EditContent редактирует содержимое messages
+// EditContent redaktiruet soderzhimoe messages
 func (m *Message) EditContent(newContent string, editorID uuid.UUID) error {
 	if m.isDeleted {
 		return errs.ErrInvalidState
@@ -108,7 +108,7 @@ func (m *Message) EditContent(newContent string, editorID uuid.UUID) error {
 	return nil
 }
 
-// Delete мягко удаляет message
+// Delete myagko udalyaet message
 func (m *Message) Delete(deleterID uuid.UUID) error {
 	if m.isDeleted {
 		return errs.ErrInvalidState
@@ -123,7 +123,7 @@ func (m *Message) Delete(deleterID uuid.UUID) error {
 	return nil
 }
 
-// AddReaction добавляет реакцию
+// AddReaction adds reaction
 func (m *Message) AddReaction(userID uuid.UUID, emojiCode string) error {
 	if m.isDeleted {
 		return errs.ErrInvalidState
@@ -141,7 +141,7 @@ func (m *Message) AddReaction(userID uuid.UUID, emojiCode string) error {
 	return nil
 }
 
-// RemoveReaction удаляет реакцию
+// RemoveReaction udalyaet reaction
 func (m *Message) RemoveReaction(userID uuid.UUID, emojiCode string) error {
 	if !m.HasReaction(userID, emojiCode) {
 		return errs.ErrNotFound
@@ -157,7 +157,7 @@ func (m *Message) RemoveReaction(userID uuid.UUID, emojiCode string) error {
 	return nil
 }
 
-// AddAttachment добавляет вложение
+// AddAttachment adds attachment
 func (m *Message) AddAttachment(fileID uuid.UUID, fileName string, fileSize int64, mimeType string) error {
 	if m.isDeleted {
 		return errs.ErrInvalidState
@@ -172,7 +172,7 @@ func (m *Message) AddAttachment(fileID uuid.UUID, fileName string, fileSize int6
 	return nil
 }
 
-// HasReaction checks presence реакции от user
+// HasReaction checks presence reaktsii ot user
 func (m *Message) HasReaction(userID uuid.UUID, emojiCode string) bool {
 	for _, r := range m.reactions {
 		if r.UserID() == userID && r.EmojiCode() == emojiCode {
@@ -182,22 +182,22 @@ func (m *Message) HasReaction(userID uuid.UUID, emojiCode string) bool {
 	return false
 }
 
-// CanBeEditedBy checks, может ли userель редактировать message
+// CanBeEditedBy checks if user can edit message
 func (m *Message) CanBeEditedBy(userID uuid.UUID) bool {
 	return m.authorID == userID
 }
 
-// IsEdited checks, было ли message отредактировано
+// IsEdited checks if message was edited
 func (m *Message) IsEdited() bool {
 	return m.editedAt != nil
 }
 
-// IsReply checks, is ли message responseом (in треде)
+// IsReply checks, is is message a reply (in thread)
 func (m *Message) IsReply() bool {
 	return !m.parentMessageID.IsZero()
 }
 
-// GetReactionCount returns count реакций specific type
+// GetReactionCount returns count of reactions specific type
 func (m *Message) GetReactionCount(emojiCode string) int {
 	count := 0
 	for _, r := range m.reactions {
@@ -220,17 +220,17 @@ func (m *Message) ChatID() uuid.UUID {
 	return m.chatID
 }
 
-// AuthorID returns ID автора
+// AuthorID returns ID avtora
 func (m *Message) AuthorID() uuid.UUID {
 	return m.authorID
 }
 
-// Content returns содержимое messages
+// Content returns soderzhimoe messages
 func (m *Message) Content() string {
 	return m.content
 }
 
-// ParentMessageID returns ID родительского messages (for тредов)
+// ParentMessageID returns ID roditelskogo messages (for tredov)
 func (m *Message) ParentMessageID() uuid.UUID {
 	return m.parentMessageID
 }
@@ -240,12 +240,12 @@ func (m *Message) CreatedAt() time.Time {
 	return m.createdAt
 }
 
-// EditedAt returns time редактирования
+// EditedAt returns time redaktirovaniya
 func (m *Message) EditedAt() *time.Time {
 	return m.editedAt
 }
 
-// IsDeleted returns флаг removing
+// IsDeleted returns flag removing
 func (m *Message) IsDeleted() bool {
 	return m.isDeleted
 }
@@ -255,14 +255,14 @@ func (m *Message) DeletedAt() *time.Time {
 	return m.deletedAt
 }
 
-// Attachments returns копию list вложений
+// Attachments returns kopiyu list vlozheniy
 func (m *Message) Attachments() []Attachment {
 	attachments := make([]Attachment, len(m.attachments))
 	copy(attachments, m.attachments)
 	return attachments
 }
 
-// Reactions returns копию list реакций
+// Reactions returns kopiyu list reactions
 func (m *Message) Reactions() []Reaction {
 	reactions := make([]Reaction, len(m.reactions))
 	copy(reactions, m.reactions)

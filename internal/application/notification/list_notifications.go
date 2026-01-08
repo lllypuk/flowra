@@ -13,7 +13,7 @@ type ListNotificationsUseCase struct {
 	notificationRepo Repository
 }
 
-// NewListNotificationsUseCase creates New use case for receivения list notifications
+// NewListNotificationsUseCase creates New use case for receiv list notifications
 func NewListNotificationsUseCase(
 	notificationRepo Repository,
 ) *ListNotificationsUseCase {
@@ -32,7 +32,7 @@ func (uc *ListNotificationsUseCase) Execute(
 		return ListResult{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Дефолтные values for пагинации
+	// defoltnye values for paginatsii
 	limit := query.Limit
 	if limit == 0 || limit > 100 {
 		limit = 50
@@ -63,13 +63,13 @@ func (uc *ListNotificationsUseCase) Execute(
 		return ListResult{}, fmt.Errorf("failed to fetch notifications: %w", err)
 	}
 
-	// Получаем общее count (for пагинации)
+	// poluchaem obschee count (for paginatsii)
 	var totalCount int
 	if query.UnreadOnly {
 		totalCount, err = uc.notificationRepo.CountUnreadByUserID(ctx, query.UserID)
 	} else {
-		// for all notifications мы можем исuserь length result
-		// in реальном приложении здесь должен быть отдельный method CountByUserID
+		// for all notifications my mozhem user length result
+		// in realnom prilozhenii zdes dolzhen byt otdelnyy method CountByUserID
 		totalCount = len(notifications)
 	}
 

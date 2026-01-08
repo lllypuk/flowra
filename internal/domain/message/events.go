@@ -10,15 +10,15 @@ import (
 const (
 	// EventTypeMessageCreated event creating messages
 	EventTypeMessageCreated = "message.created"
-	// EventTypeMessageEdited event редактирования messages
+	// EventTypeMessageEdited event redaktirovaniya messages
 	EventTypeMessageEdited = "message.edited"
 	// EventTypeMessageDeleted event removing messages
 	EventTypeMessageDeleted = "message.deleted"
-	// EventTypeMessageReactionAdded event adding реакции
+	// EventTypeMessageReactionAdded event add reaktsii
 	EventTypeMessageReactionAdded = "message.reaction.added"
-	// EventTypeMessageReactionRemoved event removing реакции
+	// EventTypeMessageReactionRemoved event removing reaktsii
 	EventTypeMessageReactionRemoved = "message.reaction.removed"
-	// EventTypeMessageAttachmentAdded event adding вложения
+	// EventTypeMessageAttachmentAdded event add vlozheniya
 	EventTypeMessageAttachmentAdded = "message.attachment.added"
 )
 
@@ -52,7 +52,7 @@ func NewCreated(
 	}
 }
 
-// Edited event редактирования messages
+// Edited event redaktirovaniya messages
 type Edited struct {
 	event.BaseEvent
 
@@ -86,7 +86,7 @@ func NewDeleted(messageID uuid.UUID, deletedBy uuid.UUID, version int, metadata 
 	}
 }
 
-// ReactionAdded event adding реакции
+// ReactionAdded event add reaktsii
 type ReactionAdded struct {
 	event.BaseEvent
 
@@ -111,7 +111,7 @@ func NewReactionAdded(
 	}
 }
 
-// ReactionRemoved event removing реакции
+// ReactionRemoved event removing reaktsii
 type ReactionRemoved struct {
 	event.BaseEvent
 
@@ -142,7 +142,7 @@ func NewReactionRemoved(
 	}
 }
 
-// AttachmentAdded event adding вложения
+// AttachmentAdded event add vlozheniya
 type AttachmentAdded struct {
 	event.BaseEvent
 

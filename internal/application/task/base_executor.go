@@ -10,32 +10,32 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// AggregateCommand represents общий interface for commands, workающих с агрегатом tasks
+// AggregateCommand represents obschiy interface for commands, work s agregatom tasks
 type AggregateCommand interface {
 	GetTaskID() uuid.UUID
 }
 
-// AggregateOperation function for выполнения бизнес-операции on агрегате
+// AggregateOperation function for vypolneniya biznes-operatsii on agregate
 type AggregateOperation func(aggregate *task.Aggregate) error
 
-// BaseExecutor contains общую логику for выполнения commands с Event Sourcing
+// BaseExecutor contains obschuyu logiku for vypolneniya commands s Event Sourcing
 type BaseExecutor struct {
 	eventStore appcore.EventStore
 }
 
-// NewBaseExecutor creates New базовый executor
+// NewBaseExecutor creates New bazovyy executor
 func NewBaseExecutor(eventStore appcore.EventStore) *BaseExecutor {
 	return &BaseExecutor{
 		eventStore: eventStore,
 	}
 }
 
-// Execute performs общую логику Event Sourcing for commands задач
+// Execute performs obschuyu logiku Event Sourcing for commands zadach
 // parameters:
-// - ctx: конtext выполнения
-// - taskID: identifierатор tasks
-// - operation: бизнес-операция for выполнения on агрегате
-// - idempotentMessage: message for случая, when операция идемпотентна
+// - ctx: text vypolneniya
+// - taskID: identifier tasks
+// - operation: biznes-operatsiya for vypolneniya on agregate
+// - idempotentMessage: message for sluchaya, when operatsiya idempotentna
 func (e *BaseExecutor) Execute(
 	ctx context.Context,
 	taskID uuid.UUID,
@@ -59,7 +59,7 @@ func (e *BaseExecutor) Execute(
 	aggregate := task.NewTaskAggregate(taskID)
 	aggregate.ReplayEvents(events)
 
-	// 3. performing бизнес-операции
+	// 3. performing biznes-operatsii
 	if opErr := operation(aggregate); opErr != nil {
 		return TaskResult{}, opErr
 	}
@@ -67,7 +67,7 @@ func (e *BaseExecutor) Execute(
 	// 4. retrieval only New events
 	newEvents := aggregate.UncommittedEvents()
 
-	// if New events no (идемпотентность), возвращаем success
+	// if no new events (idempotent), return success
 	if len(newEvents) == 0 {
 		return TaskResult{
 			TaskID:  taskID,
@@ -87,6 +87,6 @@ func (e *BaseExecutor) Execute(
 		return TaskResult{}, fmt.Errorf("failed to save events: %w", saveErr)
 	}
 
-	// 6. Возврат result
+	// 6. vozvrat result
 	return NewSuccessResult(taskID, expectedVersion+len(newEvents), newEvents), nil
 }

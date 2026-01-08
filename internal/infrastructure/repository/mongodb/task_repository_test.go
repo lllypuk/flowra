@@ -21,7 +21,7 @@ import (
 
 // Helper functions
 
-// setupTaskTestRepository creates тестовые репозитории с mock event store
+// setupTaskTestRepository creates testovye repozitorii s mock event store
 func setupTaskTestRepository(t *testing.T) (
 	*mongodb.MongoTaskRepository,
 	*mongodb.MongoTaskQueryRepository,
@@ -31,7 +31,7 @@ func setupTaskTestRepository(t *testing.T) (
 
 	eventStore := mocks.NewMockEventStore()
 
-	// Используем testcontainers for MongoDB 6
+	// ispolzuem testcontainers for MongoDB 6
 	_, db := testutil.SetupTestMongoDBWithClient(t)
 	readModelColl := db.Collection("task_read_model")
 
@@ -52,7 +52,7 @@ func setupTaskTestRepository(t *testing.T) (
 	return commandRepo, queryRepo, eventStore
 }
 
-// setupTaskFullRepository creates full репозиторий for tests
+// setupTaskFullRepository creates full repozitoriy for tests
 func setupTaskFullRepository(t *testing.T) *mongodb.MongoTaskFullRepository {
 	t.Helper()
 

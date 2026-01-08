@@ -9,7 +9,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/message"
 )
 
-// RemoveReactionUseCase handles deletion реакции с messages
+// RemoveReactionUseCase handles removing reactions from messages
 type RemoveReactionUseCase struct {
 	messageRepo Repository
 	eventBus    event.Bus
@@ -26,7 +26,7 @@ func NewRemoveReactionUseCase(
 	}
 }
 
-// Execute performs deletion реакции
+// Execute performs removing reactions
 func (uc *RemoveReactionUseCase) Execute(
 	ctx context.Context,
 	cmd RemoveReactionCommand,
@@ -36,23 +36,23 @@ func (uc *RemoveReactionUseCase) Execute(
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Loading message
+	// load message
 	msg, err := uc.messageRepo.FindByID(ctx, cmd.MessageID)
 	if err != nil {
 		return Result{}, ErrMessageNotFound
 	}
 
-	// deletion реакции
+	// remove reaction
 	if removeErr := msg.RemoveReaction(cmd.UserID, cmd.Emoji); removeErr != nil {
 		return Result{}, removeErr
 	}
 
-	// storage
+	// save
 	if saveErr := uc.messageRepo.Save(ctx, msg); saveErr != nil {
 		return Result{}, fmt.Errorf("failed to save message: %w", saveErr)
 	}
 
-	// Publishing event
+	// publish event
 	evt := message.NewReactionRemoved(msg.ID(), cmd.UserID, cmd.Emoji, 1, event.Metadata{
 		UserID: cmd.UserID.String(),
 	})

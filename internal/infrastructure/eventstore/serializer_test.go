@@ -11,7 +11,7 @@ import (
 	"github.com/lllypuk/flowra/internal/infrastructure/eventstore"
 )
 
-// TestEvent простое event for testing.
+// TestEvent prostoe event for testing.
 type TestEvent struct {
 	event.BaseEvent
 
@@ -21,11 +21,11 @@ type TestEvent struct {
 func TestEventSerializer_Serialize(t *testing.T) {
 	serializer := eventstore.NewEventSerializer()
 
-	// Creating тестовое event
+	// Creating testovoe event
 	metadata := event.NewMetadata("user-123", "corr-456", "caus-789")
 	baseEvent := event.NewBaseEvent("TestEventCreated", "agg-123", "TestAggregate", 1, metadata)
 
-	// Creating полное event
+	// Creating polnoe event
 	testEvent := &TestEvent{
 		BaseEvent: baseEvent,
 		TestData:  "test value",
@@ -36,7 +36,7 @@ func TestEventSerializer_Serialize(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, doc)
 
-	// Checking основные fields
+	// Checking osnovnye fields
 	assert.Equal(t, "agg-123", doc.AggregateID)
 	assert.Equal(t, "TestAggregate", doc.AggregateType)
 	assert.Equal(t, "TestEventCreated", doc.EventType)
@@ -45,11 +45,11 @@ func TestEventSerializer_Serialize(t *testing.T) {
 	assert.Equal(t, "corr-456", doc.Metadata.CorrelationID)
 	assert.Equal(t, "caus-789", doc.Metadata.CausationID)
 
-	// Checking that data savены
+	// Checking that data sav
 	assert.NotNil(t, doc.Data)
 	assert.Equal(t, "test value", doc.Data["TestData"])
 
-	// Checking временные метки
+	// Checking vremennye metki
 	assert.False(t, doc.OccurredAt.IsZero())
 	assert.False(t, doc.CreatedAt.IsZero())
 }
@@ -57,7 +57,7 @@ func TestEventSerializer_Serialize(t *testing.T) {
 func TestEventSerializer_SerializeMany(t *testing.T) {
 	serializer := eventstore.NewEventSerializer()
 
-	// Creating several тестовых events
+	// Creating several testovyh events
 	events := []event.DomainEvent{}
 	for i := 1; i <= 3; i++ {
 		metadata := event.NewMetadata("user-123", "corr-456", "")
@@ -74,12 +74,12 @@ func TestEventSerializer_SerializeMany(t *testing.T) {
 		})
 	}
 
-	// Testing serialization множества
+	// Testing serialization mnozhestva
 	docs, err := serializer.SerializeMany(events)
 	require.NoError(t, err)
 	assert.Len(t, docs, 3)
 
-	// Checking версии
+	// Checking versii
 	assert.Equal(t, 1, docs[0].Version)
 	assert.Equal(t, 2, docs[1].Version)
 	assert.Equal(t, 3, docs[2].Version)
@@ -88,7 +88,7 @@ func TestEventSerializer_SerializeMany(t *testing.T) {
 func TestEventSerializer_SerializeWithMetadata(t *testing.T) {
 	serializer := eventstore.NewEventSerializer()
 
-	// Creating event с полными метаданными
+	// Creating event s polnymi metadannymi
 	metadata := event.NewMetadata("user-123", "corr-456", "caus-789")
 	metadata = metadata.WithIPAddress("192.168.1.1")
 	metadata = metadata.WithUserAgent("Mozilla/5.0")
@@ -103,7 +103,7 @@ func TestEventSerializer_SerializeWithMetadata(t *testing.T) {
 	doc, err := serializer.Serialize(testEvent)
 	require.NoError(t, err)
 
-	// Checking all метаданные
+	// Checking all metadannye
 	assert.Equal(t, "192.168.1.1", doc.Metadata.IPAddress)
 	assert.Equal(t, "Mozilla/5.0", doc.Metadata.UserAgent)
 	assert.Equal(t, "user-123", doc.Metadata.UserID)
@@ -112,7 +112,7 @@ func TestEventSerializer_SerializeWithMetadata(t *testing.T) {
 func TestEventSerializer_SerializeWithEmptyMetadata(t *testing.T) {
 	serializer := eventstore.NewEventSerializer()
 
-	// Creating event с пустыми метаданными
+	// Creating event s pustymi metadannymi
 	baseEvent := event.NewBaseEvent("TestEventCreated", "agg-123", "TestAggregate", 1, event.Metadata{})
 	testEvent := &TestEvent{
 		BaseEvent: baseEvent,
@@ -123,7 +123,7 @@ func TestEventSerializer_SerializeWithEmptyMetadata(t *testing.T) {
 	doc, err := serializer.Serialize(testEvent)
 	require.NoError(t, err)
 
-	// Checking that документ создан без errors
+	// Checking that dokument sozdan bez errors
 	assert.NotNil(t, doc)
 	assert.Empty(t, doc.Metadata.UserID)
 	assert.Empty(t, doc.Metadata.IPAddress)
@@ -132,7 +132,7 @@ func TestEventSerializer_SerializeWithEmptyMetadata(t *testing.T) {
 func TestEventSerializer_PreservesOccurredAtTime(t *testing.T) {
 	serializer := eventstore.NewEventSerializer()
 
-	// Creating event с specific временем
+	// Creating event s specific vremenem
 	now := time.Now().Truncate(time.Millisecond)
 	metadata := event.NewMetadata("user-123", "corr-456", "")
 	metadata.Timestamp = now
@@ -147,6 +147,6 @@ func TestEventSerializer_PreservesOccurredAtTime(t *testing.T) {
 	doc, err := serializer.Serialize(testEvent)
 	require.NoError(t, err)
 
-	// Checking that time savено
+	// Checking that time sav
 	assert.Equal(t, now, doc.Metadata.Timestamp)
 }

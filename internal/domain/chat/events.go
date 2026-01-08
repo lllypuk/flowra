@@ -35,7 +35,7 @@ type Created struct {
 	CreatedAt   time.Time `json:"created_at"   bson:"created_at"`
 }
 
-// NewChatCreated creates новое event ChatCreated
+// NewChatCreated creates new event ChatCreated
 func NewChatCreated(
 	chatID, workspaceID uuid.UUID,
 	chatType Type,
@@ -63,7 +63,7 @@ type ParticipantAdded struct {
 	JoinedAt time.Time `json:"joined_at" bson:"joined_at"`
 }
 
-// NewParticipantAdded creates новое event ParticipantAdded
+// NewParticipantAdded creates new event participantAdded
 func NewParticipantAdded(
 	chatID, userID uuid.UUID,
 	role Role,
@@ -86,7 +86,7 @@ type ParticipantRemoved struct {
 	UserID uuid.UUID `json:"user_id" bson:"user_id"`
 }
 
-// NewParticipantRemoved creates новое event ParticipantRemoved
+// NewParticipantRemoved creates new event participantRemoved
 func NewParticipantRemoved(
 	chatID, userID uuid.UUID,
 	version int,
@@ -107,7 +107,7 @@ type TypeChanged struct {
 	Title   string `json:"title"    bson:"title"`
 }
 
-// NewChatTypeChanged creates новое event ChatTypeChanged
+// NewChatTypeChanged creates new event ChatTypeChanged
 func NewChatTypeChanged(
 	chatID uuid.UUID,
 	oldType, newType Type,
@@ -156,7 +156,7 @@ func NewStatusChanged(
 	}
 }
 
-// UserAssigned event наvalueения user
+// UserAssigned event assigning user
 type UserAssigned struct {
 	event.BaseEvent `bson:",inline"`
 
@@ -183,7 +183,7 @@ func NewUserAssigned(
 	}
 }
 
-// AssigneeRemoved event снятия assignee
+// AssigneeRemoved event snyatiya assignee
 type AssigneeRemoved struct {
 	event.BaseEvent `bson:",inline"`
 
@@ -273,7 +273,7 @@ func NewDueDateSet(
 	}
 }
 
-// DueDateRemoved event снятия deadline
+// DueDateRemoved event snyatiya deadline
 type DueDateRemoved struct {
 	event.BaseEvent `bson:",inline"`
 
@@ -302,7 +302,7 @@ func NewDueDateRemoved(
 	}
 }
 
-// Renamed event переименования chat
+// Renamed event pereimenovaniya chat
 type Renamed struct {
 	event.BaseEvent `bson:",inline"`
 

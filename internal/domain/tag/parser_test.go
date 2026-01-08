@@ -1,4 +1,4 @@
-package tag //nolint:testpackage // Чтобы test unexported functions
+package tag //nolint:testpackage // to test unexported functions
 
 import (
 	"testing"
@@ -9,7 +9,7 @@ import (
 func TestIsKnownTag(t *testing.T) {
 	parser := NewParser()
 
-	// Системные tags должны быть известны
+	// sistemnye tags dolzhny byt izvestny
 	assert.True(t, parser.isKnownTag("task"))
 	assert.True(t, parser.isKnownTag("bug"))
 	assert.True(t, parser.isKnownTag("epic"))
@@ -20,7 +20,7 @@ func TestIsKnownTag(t *testing.T) {
 	assert.True(t, parser.isKnownTag("title"))
 	assert.True(t, parser.isKnownTag("severity"))
 
-	// Неизвестные tags
+	// neizvestnye tags
 	assert.False(t, parser.isKnownTag("unknown"))
 	assert.False(t, parser.isKnownTag("hashtag"))
 	assert.False(t, parser.isKnownTag("random"))
@@ -86,7 +86,7 @@ func TestTagDefinitions(t *testing.T) {
 		{
 			name:          "assignee",
 			tagName:       "assignee",
-			requiresValue: false, // опциональное value
+			requiresValue: false, // optsionalnoe value
 			valueType:     ValueTypeUsername,
 			hasValidator:  true,
 		},
@@ -100,7 +100,7 @@ func TestTagDefinitions(t *testing.T) {
 		{
 			name:          "due",
 			tagName:       "due",
-			requiresValue: false, // опциональное value
+			requiresValue: false, // optsionalnoe value
 			valueType:     ValueTypeDate,
 			hasValidator:  true,
 		},
@@ -169,6 +169,6 @@ func TestAllowedValuesForEnumTags(t *testing.T) {
 
 	t.Run("status has nil allowed values (context-dependent)", func(t *testing.T) {
 		def, _ := parser.GetTagDefinition("status")
-		assert.nil(t, def.AllowedValues, "status values depend on entity type")
+		assert.Nil(t, def.AllowedValues, "status values depend on entity type")
 	})
 }

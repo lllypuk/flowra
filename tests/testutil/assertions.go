@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// AssertEventPublished checks, that event specific type было опубликовано
+// AssertEventPublished checks that event of specific type was published
 func AssertEventPublished(t *testing.T, events []event.DomainEvent, eventType string) event.DomainEvent {
 	t.Helper()
 
@@ -40,14 +40,14 @@ func AssertEventType(t *testing.T, evt event.DomainEvent, expectedType string) {
 	require.Equal(t, expectedType, evt.EventType())
 }
 
-// AssertAggregateID checks ID aggregate in событии
+// AssertAggregateID checks aggregate ID in the event
 func AssertAggregateID(t *testing.T, evt event.DomainEvent, expectedID string) {
 	t.Helper()
 
 	require.Equal(t, expectedID, evt.AggregateID())
 }
 
-// AssertVersion checks version aggregate in событии
+// AssertVersion checks aggregate version in the event
 func AssertVersion(t *testing.T, evt event.DomainEvent, expectedVersion int) {
 	t.Helper()
 
@@ -61,7 +61,7 @@ func AssertError(t *testing.T, err error, msgAndArgs ...any) {
 	require.Error(t, err, msgAndArgs...)
 }
 
-// AssertErrorIs checks, that error is specific типом
+// AssertErrorIs checks that error is of specific type
 func AssertErrorIs(t *testing.T, err, target error, msgAndArgs ...any) {
 	t.Helper()
 
@@ -86,7 +86,7 @@ func AssertNotNil(t *testing.T, value any, msgAndArgs ...any) {
 func AssertNil(t *testing.T, value any, msgAndArgs ...any) {
 	t.Helper()
 
-	require.nil(t, value, msgAndArgs...)
+	require.Nil(t, value, msgAndArgs...)
 }
 
 // AssertLen checks length slice/array
@@ -126,14 +126,14 @@ func AssertFalse(t *testing.T, value bool, msgAndArgs ...any) {
 
 // ==================== UUID Assertions ====================
 
-// AssertUUIDEqual checks equality двух UUID
+// AssertUUIDEqual checks equality of two UUIDs
 func AssertUUIDEqual(t *testing.T, expected, actual uuid.UUID, msgAndArgs ...any) {
 	t.Helper()
 
 	assert.Equal(t, expected, actual, msgAndArgs...)
 }
 
-// RequireUUIDEqual checks equality двух UUID and stops test at error
+// RequireUUIDEqual checks equality of two UUIDs and stops test at error
 func RequireUUIDEqual(t *testing.T, expected, actual uuid.UUID, msgAndArgs ...any) {
 	t.Helper()
 
@@ -173,7 +173,7 @@ func RequireZeroUUID(t *testing.T, id uuid.UUID, msgAndArgs ...any) {
 // ==================== Time Assertions ====================
 
 // AssertTimeApproximatelyEqual checks, that two time approximately equal
-// с acceptable tolerance delta (usually time.Second or time.Millisecond)
+// with acceptable tolerance delta (usually time.Second or time.Millisecond)
 func AssertTimeApproximatelyEqual(t *testing.T, expected, actual time.Time, delta time.Duration, msgAndArgs ...any) {
 	t.Helper()
 

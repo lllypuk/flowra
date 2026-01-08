@@ -5,7 +5,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// Command базовый interface commands
+// Command bazovyy interface commands
 type Command interface {
 	CommandName() string
 }
@@ -21,15 +21,15 @@ type CreateNotificationCommand struct {
 
 func (c CreateNotificationCommand) CommandName() string { return "CreateNotification" }
 
-// MarkAsReadCommand - пометка as прочитанное
+// MarkAsReadCommand - pometka as prochitannoe
 type MarkAsReadCommand struct {
 	NotificationID uuid.UUID
-	UserID         uuid.UUID // check, that notification принадлежит user
+	UserID         uuid.UUID // check that notification prinadlezhit user
 }
 
 func (c MarkAsReadCommand) CommandName() string { return "MarkAsRead" }
 
-// MarkAllAsReadCommand - пометка all as прочитанные
+// MarkAllAsReadCommand - pometka all as prochitannye
 type MarkAllAsReadCommand struct {
 	UserID uuid.UUID
 }

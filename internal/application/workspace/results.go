@@ -5,17 +5,17 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/workspace"
 )
 
-// Result - result операции с workspace
+// Result - result operatsii s workspace
 type Result struct {
 	appcore.Result[*workspace.Workspace]
 }
 
-// InviteResult - result операции с invite
+// InviteResult - result operatsii s invite
 type InviteResult struct {
 	appcore.Result[*workspace.Invite]
 }
 
-// ListResult - result операции with списком workspace
+// ListResult - result operatsii with spiskom workspace
 type ListResult struct {
 	Workspaces []*workspace.Workspace
 	TotalCount int

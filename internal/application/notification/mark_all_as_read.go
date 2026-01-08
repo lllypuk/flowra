@@ -8,16 +8,16 @@ import (
 )
 
 const (
-	// maxNotificationsToMarkAsRead - максимальное count notifications for пометки as прочитанных за one раз
+	// maxNotificationsToMarkAsRead - maximum count notifications for pometki as prochitannyh za one raz
 	maxNotificationsToMarkAsRead = 1000
 )
 
-// MarkAllAsReadUseCase handles пометку all notifications user as прочитанных
+// MarkAllAsReadUseCase handles pometku all notifications user as prochitannyh
 type MarkAllAsReadUseCase struct {
 	notificationRepo Repository
 }
 
-// NewMarkAllAsReadUseCase creates New use case for пометки all notifications as прочитанных
+// NewMarkAllAsReadUseCase creates New use case for pometki all notifications as prochitannyh
 func NewMarkAllAsReadUseCase(
 	notificationRepo Repository,
 ) *MarkAllAsReadUseCase {
@@ -26,7 +26,7 @@ func NewMarkAllAsReadUseCase(
 	}
 }
 
-// Execute performs пометку all notifications user as прочитанных
+// Execute performs pometku all notifications user as prochitannyh
 func (uc *MarkAllAsReadUseCase) Execute(
 	ctx context.Context,
 	cmd MarkAllAsReadCommand,
@@ -42,11 +42,11 @@ func (uc *MarkAllAsReadUseCase) Execute(
 		return CountResult{}, fmt.Errorf("failed to find unread notifications: %w", err)
 	}
 
-	// Пометка all as прочитанных
+	// pometka all as prochitannyh
 	markedCount := 0
 	for _, notif := range notifications {
 		if markErr := notif.MarkAsRead(); markErr != nil {
-			// Пропускаем уже прочитанные (not должно быть, но on всякий случай)
+			// propuskaem uzhe prochitannye (not dolzhno byt, no on vsyakiy sluchay)
 			continue
 		}
 

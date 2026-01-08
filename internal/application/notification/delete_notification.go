@@ -31,13 +31,13 @@ func (uc *DeleteNotificationUseCase) Execute(
 		return fmt.Errorf("validation failed: %w", err)
 	}
 
-	// retrieval notification for проверки принадлежности
+	// retrieval notification for proverki prinadlezhnosti
 	notif, err := uc.notificationRepo.FindByID(ctx, cmd.NotificationID)
 	if err != nil {
 		return fmt.Errorf("failed to find notification: %w", ErrNotificationNotFound)
 	}
 
-	// check принадлежности
+	// check prinadlezhnosti
 	if notif.UserID() != cmd.UserID {
 		return ErrNotificationAccessDenied
 	}

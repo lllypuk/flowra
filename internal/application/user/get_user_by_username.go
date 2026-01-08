@@ -8,7 +8,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/user"
 )
 
-// GetUserByUsernameUseCase handles search user по username
+// GetUserByUsernameUseCase handles search user po username
 type GetUserByUsernameUseCase struct {
 	userRepo Repository
 }
@@ -18,7 +18,7 @@ func NewGetUserByUsernameUseCase(userRepo Repository) *GetUserByUsernameUseCase 
 	return &GetUserByUsernameUseCase{userRepo: userRepo}
 }
 
-// Execute performs search user по username
+// Execute performs search user po username
 func (uc *GetUserByUsernameUseCase) Execute(
 	ctx context.Context,
 	query GetUserByUsernameQuery,

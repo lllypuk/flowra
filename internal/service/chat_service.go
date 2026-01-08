@@ -9,7 +9,7 @@ import (
 	chatapp "github.com/lllypuk/flowra/internal/application/chat"
 	"github.com/lllypuk/flowra/internal/domain/chat"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
-	httphandler "github.com/lllypuk/flowra/internal/handler/HTTP"
+	httphandler "github.com/lllypuk/flowra/internal/handler/http"
 )
 
 // Compile-time assertion that ChatService implements httphandler.ChatService.
@@ -20,7 +20,7 @@ type CreateChatUseCase interface {
 	Execute(ctx context.Context, cmd chatapp.CreateChatCommand) (chatapp.Result, error)
 }
 
-// GetChatUseCase defines interface for use case receivения chat.
+// GetChatUseCase defines interface for use case receiv chat.
 type GetChatUseCase interface {
 	Execute(ctx context.Context, query chatapp.GetChatQuery) (*chatapp.GetChatResult, error)
 }
@@ -30,7 +30,7 @@ type ListChatsUseCase interface {
 	Execute(ctx context.Context, query chatapp.ListChatsQuery) (*chatapp.ListChatsResult, error)
 }
 
-// RenameChatUseCase defines interface for use case переименования chat.
+// RenameChatUseCase defines interface for use case pereimenovaniya chat.
 type RenameChatUseCase interface {
 	Execute(ctx context.Context, cmd chatapp.RenameChatCommand) (chatapp.Result, error)
 }
@@ -45,8 +45,8 @@ type RemoveParticipantUseCase interface {
 	Execute(ctx context.Context, cmd chatapp.RemoveParticipantCommand) (chatapp.Result, error)
 }
 
-// ChatService реализует httphandler.ChatService.
-// Объединяет existingие use cases for workы с чатами.
+// ChatService realizuet httphandler.ChatService.
+// obedinyaet existing use cases for work s chatami.
 type ChatService struct {
 	createUC     CreateChatUseCase
 	getUC        GetChatUseCase
@@ -57,7 +57,7 @@ type ChatService struct {
 	eventStore   appcore.EventStore
 }
 
-// ChatServiceConfig contains зависимости for ChatService.
+// ChatServiceConfig contains zavisimosti for ChatService.
 type ChatServiceConfig struct {
 	CreateUC     CreateChatUseCase
 	GetUC        GetChatUseCase
@@ -68,7 +68,7 @@ type ChatServiceConfig struct {
 	EventStore   appcore.EventStore
 }
 
-// NewChatService создаёт New ChatService.
+// NewChatService sozdayot New ChatService.
 func NewChatService(cfg ChatServiceConfig) *ChatService {
 	return &ChatService{
 		createUC:     cfg.CreateUC,
@@ -81,7 +81,7 @@ func NewChatService(cfg ChatServiceConfig) *ChatService {
 	}
 }
 
-// CreateChat создаёт New chat.
+// CreateChat sozdayot New chat.
 func (s *ChatService) CreateChat(
 	ctx context.Context,
 	cmd chatapp.CreateChatCommand,
@@ -89,7 +89,7 @@ func (s *ChatService) CreateChat(
 	return s.createUC.Execute(ctx, cmd)
 }
 
-// GetChat returns chat по ID.
+// GetChat returns chat po ID.
 func (s *ChatService) GetChat(
 	ctx context.Context,
 	query chatapp.GetChatQuery,
@@ -105,7 +105,7 @@ func (s *ChatService) ListChats(
 	return s.listUC.Execute(ctx, query)
 }
 
-// RenameChat переименовывает chat.
+// RenameChat pereimenovyvaet chat.
 func (s *ChatService) RenameChat(
 	ctx context.Context,
 	cmd chatapp.RenameChatCommand,
@@ -113,7 +113,7 @@ func (s *ChatService) RenameChat(
 	return s.renameUC.Execute(ctx, cmd)
 }
 
-// AddParticipant добавляет participant in chat.
+// AddParticipant adds participant in chat.
 func (s *ChatService) AddParticipant(
 	ctx context.Context,
 	cmd chatapp.AddParticipantCommand,
@@ -121,7 +121,7 @@ func (s *ChatService) AddParticipant(
 	return s.addPartUC.Execute(ctx, cmd)
 }
 
-// RemoveParticipant удаляет participant from chat.
+// RemoveParticipant udalyaet participant from chat.
 func (s *ChatService) RemoveParticipant(
 	ctx context.Context,
 	cmd chatapp.RemoveParticipantCommand,
@@ -129,7 +129,7 @@ func (s *ChatService) RemoveParticipant(
 	return s.removePartUC.Execute(ctx, cmd)
 }
 
-// DeleteChat удаляет chat (soft delete via event sourcing).
+// DeleteChat udalyaet chat (soft delete via event sourcing).
 func (s *ChatService) DeleteChat(
 	ctx context.Context,
 	chatID, deletedBy uuid.UUID,
@@ -148,7 +148,7 @@ func (s *ChatService) DeleteChat(
 		return err
 	}
 
-	// Применяем команду removing
+	// primenyaem komandu removing
 	if deleteErr := chatAggregate.Delete(deletedBy); deleteErr != nil {
 		return fmt.Errorf("failed to delete chat: %w", deleteErr)
 	}
@@ -178,7 +178,7 @@ func (s *ChatService) loadAggregate(ctx context.Context, chatID uuid.UUID) (*cha
 	return chatAggregate, nil
 }
 
-// saveAggregate saves новые event aggregate.
+// saveAggregate saves novye event aggregate.
 func (s *ChatService) saveAggregate(ctx context.Context, chatAggregate *chat.Chat) error {
 	newEvents := chatAggregate.GetUncommittedEvents()
 	if len(newEvents) == 0 {

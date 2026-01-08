@@ -7,23 +7,23 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// Type represents type уведомления
+// Type represents type uvedomleniya
 type Type string
 
 const (
-	// TypeTaskStatusChanged notification об изменении status tasks
+	// TypeTaskStatusChanged notification ob izmenenii status tasks
 	TypeTaskStatusChanged Type = "task.status_changed"
-	// TypeTaskAssigned notification о наvalueении tasks
+	// TypeTaskAssigned notification o value tasks
 	TypeTaskAssigned Type = "task.assigned"
-	// TypeTaskCreated notification о создании tasks
+	// TypeTaskCreated notification o sozdanii tasks
 	TypeTaskCreated Type = "task.created"
-	// TypeChatMention notification об упоминании in чате
+	// TypeChatMention notification ob upominanii in chate
 	TypeChatMention Type = "chat.mention"
-	// TypeChatMessage notification о новом сообщении in чате
+	// TypeChatMessage notification o novom soobschenii in chate
 	TypeChatMessage Type = "chat.message"
-	// TypeWorkspaceInvite notification о приглашении in workspace
+	// TypeWorkspaceInvite notification o priglashenii in workspace
 	TypeWorkspaceInvite Type = "workspace.invite"
-	// TypeSystem системное notification
+	// TypeSystem sistemnoe notification
 	TypeSystem Type = "system"
 )
 
@@ -39,7 +39,7 @@ type Notification struct {
 	createdAt  time.Time
 }
 
-// NewNotification creates новое notification
+// NewNotification creates new notification
 func NewNotification(
 	userID uuid.UUID,
 	typ Type,
@@ -71,9 +71,9 @@ func NewNotification(
 	}, nil
 }
 
-// Reconstruct восстанавливает notification from storage.
-// Used by repositories for hydration объекта without validation business rules.
-// all parameters должны быть valid values from storage.
+// Reconstruct reconstructs notification from save.
+// Used by repositories for hydration obekta without validation business rules.
+// all parameters dolzhny byt valid values from save.
 func Reconstruct(
 	id uuid.UUID,
 	userID uuid.UUID,
@@ -95,7 +95,7 @@ func Reconstruct(
 	}
 }
 
-// MarkAsRead помечает notification as прочитанное
+// MarkAsRead pomechaet notification as prochitannoe
 func (n *Notification) MarkAsRead() error {
 	if n.readAt != nil {
 		return errs.ErrInvalidState
@@ -105,30 +105,30 @@ func (n *Notification) MarkAsRead() error {
 	return nil
 }
 
-// IsRead checks, прочитано ли notification
+// IsRead checks, prochitano li notification
 func (n *Notification) IsRead() bool {
 	return n.readAt != nil
 }
 
-// ID returns ID уведомления
+// ID returns ID uvedomleniya
 func (n *Notification) ID() uuid.UUID { return n.id }
 
 // UserID returns ID user
 func (n *Notification) UserID() uuid.UUID { return n.userID }
 
-// Type returns type уведомления
+// Type returns type uvedomleniya
 func (n *Notification) Type() Type { return n.typ }
 
-// Title returns заголовок уведомления
+// Title returns zagolovok uvedomleniya
 func (n *Notification) Title() string { return n.title }
 
-// Message returns text уведомления
+// Message returns text uvedomleniya
 func (n *Notification) Message() string { return n.message }
 
-// ResourceID returns ID связанного ресурса
+// ResourceID returns ID svyazannogo resursa
 func (n *Notification) ResourceID() string { return n.resourceID }
 
-// ReadAt returns time прочтения
+// ReadAt returns time prochteniya
 func (n *Notification) ReadAt() *time.Time { return n.readAt }
 
 // CreatedAt returns creation time

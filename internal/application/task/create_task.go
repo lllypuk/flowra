@@ -10,7 +10,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// CreateTaskUseCase handles creation новой tasks
+// CreateTaskUseCase handles creation novoy tasks
 type CreateTaskUseCase struct {
 	eventStore appcore.EventStore
 }
@@ -22,7 +22,7 @@ func NewCreateTaskUseCase(eventStore appcore.EventStore) *CreateTaskUseCase {
 	}
 }
 
-// Execute creates New задачу
+// Execute creates New zadachu
 func (uc *CreateTaskUseCase) Execute(ctx context.Context, cmd CreateTaskCommand) (TaskResult, error) {
 	// 1. validation commands
 	if err := uc.validate(cmd); err != nil {
@@ -32,11 +32,11 @@ func (uc *CreateTaskUseCase) Execute(ctx context.Context, cmd CreateTaskCommand)
 	// 2. Applying values by default
 	cmd = uc.applyDefaults(cmd)
 
-	// 3. creation нового aggregate
+	// 3. creation novogo aggregate
 	taskID := uuid.NewUUID()
 	aggregate := task.NewTaskAggregate(taskID)
 
-	// 4. performing бизнес-операции
+	// 4. performing biznes-operatsii
 	if err := aggregate.Create(
 		cmd.ChatID,
 		cmd.Title,
@@ -57,44 +57,44 @@ func (uc *CreateTaskUseCase) Execute(ctx context.Context, cmd CreateTaskCommand)
 		return TaskResult{}, fmt.Errorf("failed to save events: %w", err)
 	}
 
-	// 7. Возврат result
+	// 7. vozvrat result
 	return NewSuccessResult(taskID, aggregate.Version(), events), nil
 }
 
 // validate checks command correctness
 func (uc *CreateTaskUseCase) validate(cmd CreateTaskCommand) error {
-	// ChatID обязателен
+	// ChatID obyazatelen
 	if cmd.ChatID.IsZero() {
 		return ErrInvalidChatID
 	}
 
-	// Title обязателен and not empty
+	// Title obyazatelen and not empty
 	if strings.TrimSpace(cmd.Title) == "" {
 		return ErrEmptyTitle
 	}
 
-	// Title not должен быть слишком длинным
+	// Title not dolzhen byt slishkom dlinnym
 	const maxTitleLength = 500
 	if len(cmd.Title) > maxTitleLength {
 		return fmt.Errorf("%w: title exceeds %d characters", ErrInvalidTitle, maxTitleLength)
 	}
 
-	// EntityType должен быть validным
+	// EntityType dolzhen byt valid
 	if !isValidEntityType(cmd.EntityType) {
 		return fmt.Errorf("%w: must be task, bug, or epic", ErrInvalidEntityType)
 	}
 
-	// Priority должен быть validным, if указан
+	// Priority dolzhen byt valid, if ukazan
 	if !isValidPriority(cmd.Priority) {
 		return fmt.Errorf("%w: must be Low, Medium, High, or Critical", ErrInvalidPriority)
 	}
 
-	// CreatedBy обязателен
+	// CreatedBy obyazatelen
 	if cmd.CreatedBy.IsZero() {
 		return ErrInvalidUserID
 	}
 
-	// DueDate not должна быть in далеком прошлом (sanity check)
+	// DueDate not dolzhna byt in dalekom proshlom (sanity check)
 	if cmd.DueDate != nil && cmd.DueDate.Year() < 2020 {
 		return fmt.Errorf("%w: date is too far in the past", ErrInvalidDate)
 	}
@@ -102,25 +102,25 @@ func (uc *CreateTaskUseCase) validate(cmd CreateTaskCommand) error {
 	return nil
 }
 
-// applyDefaults применяет values by default
+// applyDefaults primenyaet values by default
 func (uc *CreateTaskUseCase) applyDefaults(cmd CreateTaskCommand) CreateTaskCommand {
-	// if EntityType not указан, ставим task
+	// if EntityType not ukazan, stavim task
 	if cmd.EntityType == "" {
 		cmd.EntityType = task.TypeTask
 	}
 
-	// if Priority not указан, ставим Medium
+	// if Priority not ukazan, stavim Medium
 	if cmd.Priority == "" {
 		cmd.Priority = task.PriorityMedium
 	}
 
-	// Trim пробелы in Title
+	// Trim probely in Title
 	cmd.Title = strings.TrimSpace(cmd.Title)
 
 	return cmd
 }
 
-// isValidEntityType validates type сущности
+// isValidEntityType validates type entity
 func isValidEntityType(entityType task.EntityType) bool {
 	return entityType == task.TypeTask ||
 		entityType == task.TypeBug ||

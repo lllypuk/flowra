@@ -26,7 +26,7 @@ func TestCountUnreadUseCase_Execute_Success(t *testing.T) {
 		repo.Save(context.Background(), notif)
 	}
 
-	// Creating 3 прочитанных notifications
+	// Creating 3 prochitannyh notifications
 	for range 3 {
 		notif, _ := domainnotification.NewNotification(
 			userID,
@@ -63,7 +63,7 @@ func TestCountUnreadUseCase_Execute_NoUnread(t *testing.T) {
 	repo := newMockNotificationRepository()
 	userID := uuid.NewUUID()
 
-	// Creating only прочитанные notifications
+	// Creating only prochitannye notifications
 	for range 5 {
 		notif, _ := domainnotification.NewNotification(
 			userID,

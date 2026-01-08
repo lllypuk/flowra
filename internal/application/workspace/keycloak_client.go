@@ -2,18 +2,18 @@ package workspace
 
 import "context"
 
-// KeycloakClient defines interface for workы с Keycloak
-// Следуем принципу: interface объявляется on стороне потребителя
+// KeycloakClient defines interface for work s Keycloak
+// sleduem printsipu: interface obyavlyaetsya on storone potrebitelya
 type KeycloakClient interface {
-	// CreateGroup creates groupsу in Keycloak
+	// CreateGroup creates groups in Keycloak
 	CreateGroup(ctx context.Context, name string) (groupID string, err error)
 
-	// DeleteGroup удаляет groupsу in Keycloak
+	// DeleteGroup udalyaet groups in Keycloak
 	DeleteGroup(ctx context.Context, groupID string) error
 
-	// AddUserToGroup добавляет user in groupsу Keycloak
+	// AddUserToGroup adds user in groups Keycloak
 	AddUserToGroup(ctx context.Context, userID, groupID string) error
 
-	// RemoveUserFromGroup удаляет user from groupsы Keycloak
+	// RemoveUserFromGroup udalyaet user from groups Keycloak
 	RemoveUserFromGroup(ctx context.Context, userID, groupID string) error
 }

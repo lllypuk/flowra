@@ -7,7 +7,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// Workspace represents workspaceее пространство (команду/организацию)
+// Workspace represents workspace space (komandu/organizatsiyu)
 type Workspace struct {
 	id              uuid.UUID
 	name            string
@@ -19,7 +19,7 @@ type Workspace struct {
 	invites         []*Invite
 }
 
-// NewWorkspace creates новое workspaceее пространство
+// NewWorkspace creates new workspace space
 func NewWorkspace(name, description, keycloakGroupID string, createdBy uuid.UUID) (*Workspace, error) {
 	if name == "" {
 		return nil, errs.ErrInvalidInput
@@ -43,9 +43,9 @@ func NewWorkspace(name, description, keycloakGroupID string, createdBy uuid.UUID
 	}, nil
 }
 
-// Reconstruct восстанавливает workspaceее пространство from storage.
-// Used by repositories for hydration объекта without validation business rules.
-// all parameters должны быть valid values from storage.
+// Reconstruct reconstructs workspace space from save.
+// Used by repositories for hydration obekta without validation business rules.
+// all parameters dolzhny byt valid values from save.
 func Reconstruct(
 	id uuid.UUID,
 	name, description, keycloakGroupID string,
@@ -68,7 +68,7 @@ func Reconstruct(
 	}
 }
 
-// UpdateName обновляет название workspace пространства
+// UpdateName obnovlyaet nazvanie workspace prostranstva
 func (w *Workspace) UpdateName(name string) error {
 	if name == "" {
 		return errs.ErrInvalidInput
@@ -78,7 +78,7 @@ func (w *Workspace) UpdateName(name string) error {
 	return nil
 }
 
-// CreateInvite creates новое приглашение in workspaceее пространство
+// CreateInvite creates new invitation in workspace space
 func (w *Workspace) CreateInvite(createdBy uuid.UUID, expiresAt time.Time, maxUses int) (*Invite, error) {
 	if createdBy.IsZero() {
 		return nil, errs.ErrInvalidInput
@@ -100,7 +100,7 @@ func (w *Workspace) CreateInvite(createdBy uuid.UUID, expiresAt time.Time, maxUs
 	return invite, nil
 }
 
-// FindInviteByToken ищет приглашение по токену
+// FindInviteByToken ischet priglashenie po tokenu
 func (w *Workspace) FindInviteByToken(token string) (*Invite, error) {
 	for _, invite := range w.invites {
 		if invite.token == token {
@@ -110,16 +110,16 @@ func (w *Workspace) FindInviteByToken(token string) (*Invite, error) {
 	return nil, errs.ErrNotFound
 }
 
-// ID returns ID workspace пространства
+// ID returns ID workspace prostranstva
 func (w *Workspace) ID() uuid.UUID { return w.id }
 
-// Name returns название workspace пространства
+// Name returns nazvanie workspace prostranstva
 func (w *Workspace) Name() string { return w.name }
 
-// Description returns описание workspace пространства
+// Description returns opisanie workspace prostranstva
 func (w *Workspace) Description() string { return w.description }
 
-// KeycloakGroupID returns ID groupsы Keycloak
+// KeycloakGroupID returns ID groups Keycloak
 func (w *Workspace) KeycloakGroupID() string { return w.keycloakGroupID }
 
 // CreatedBy returns creator ID
@@ -128,13 +128,13 @@ func (w *Workspace) CreatedBy() uuid.UUID { return w.createdBy }
 // CreatedAt returns creation time
 func (w *Workspace) CreatedAt() time.Time { return w.createdAt }
 
-// UpdatedAt returns time последнего updating
+// UpdatedAt returns time poslednego updating
 func (w *Workspace) UpdatedAt() time.Time { return w.updatedAt }
 
-// Invites returns list приглашений
+// Invites returns list priglasheniy
 func (w *Workspace) Invites() []*Invite { return w.invites }
 
-// Invite represents приглашение in workspaceее пространство
+// Invite represents priglashenie in workspace space
 type Invite struct {
 	id          uuid.UUID
 	workspaceID uuid.UUID
@@ -147,7 +147,7 @@ type Invite struct {
 	isRevoked   bool
 }
 
-// NewInvite creates новое приглашение
+// NewInvite creates new invitation
 func NewInvite(workspaceID, createdBy uuid.UUID, expiresAt time.Time, maxUses int) (*Invite, error) {
 	if workspaceID.IsZero() {
 		return nil, errs.ErrInvalidInput
@@ -175,7 +175,7 @@ func NewInvite(workspaceID, createdBy uuid.UUID, expiresAt time.Time, maxUses in
 	}, nil
 }
 
-// Use uses приглашение (увеличивает счетчик использований)
+// Use uses priglashenie (uvelichivaet schetchik ispolzovaniy)
 func (i *Invite) Use() error {
 	if i.isRevoked {
 		return errs.ErrInvalidState
@@ -191,7 +191,7 @@ func (i *Invite) Use() error {
 	return nil
 }
 
-// Revoke отменяет приглашение
+// Revoke otmenyaet priglashenie
 func (i *Invite) Revoke() error {
 	if i.isRevoked {
 		return errs.ErrInvalidState
@@ -200,7 +200,7 @@ func (i *Invite) Revoke() error {
 	return nil
 }
 
-// IsValid checks, validно ли приглашение
+// IsValid checks, valid li priglashenie
 func (i *Invite) IsValid() bool {
 	if i.isRevoked {
 		return false
@@ -214,13 +214,13 @@ func (i *Invite) IsValid() bool {
 	return true
 }
 
-// ID returns ID приглашения
+// ID returns ID priglasheniya
 func (i *Invite) ID() uuid.UUID { return i.id }
 
-// WorkspaceID returns ID workspace пространства
+// WorkspaceID returns ID workspace prostranstva
 func (i *Invite) WorkspaceID() uuid.UUID { return i.workspaceID }
 
-// Token returns токен приглашения
+// Token returns token priglasheniya
 func (i *Invite) Token() string { return i.token }
 
 // CreatedBy returns creator ID
@@ -229,21 +229,21 @@ func (i *Invite) CreatedBy() uuid.UUID { return i.createdBy }
 // CreatedAt returns creation time
 func (i *Invite) CreatedAt() time.Time { return i.createdAt }
 
-// ExpiresAt returns time истечения
+// ExpiresAt returns time istecheniya
 func (i *Invite) ExpiresAt() time.Time { return i.expiresAt }
 
-// MaxUses returns максимальное count использований
+// MaxUses returns maximum count ispolzovaniy
 func (i *Invite) MaxUses() int { return i.maxUses }
 
-// UsedCount returns count использований
+// UsedCount returns count ispolzovaniy
 func (i *Invite) UsedCount() int { return i.usedCount }
 
-// IsRevoked returns true if приглашение отменено
+// IsRevoked returns true if priglashenie otmeneno
 func (i *Invite) IsRevoked() bool { return i.isRevoked }
 
-// ReconstructInvite восстанавливает приглашение from storage.
-// Used by repositories for hydration объекта without validation business rules.
-// all parameters должны быть valid values from storage.
+// ReconstructInvite reconstructs priglashenie from save.
+// Used by repositories for hydration obekta without validation business rules.
+// all parameters dolzhny byt valid values from save.
 func ReconstructInvite(
 	id uuid.UUID,
 	workspaceID uuid.UUID,

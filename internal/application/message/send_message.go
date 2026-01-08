@@ -12,12 +12,12 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// ChatRepository defines interface for access to чатам (consumer-side interface)
+// ChatRepository defines interface for access to chats (consumer-side interface)
 type ChatRepository interface {
 	FindByID(ctx context.Context, chatID uuid.UUID) (*chatapp.ReadModel, error)
 }
 
-// SendMessageUseCase handles sendу messages
+// SendMessageUseCase handles sending messages
 type SendMessageUseCase struct {
 	messageRepo  Repository
 	chatRepo     ChatRepository
@@ -43,7 +43,7 @@ func NewSendMessageUseCase(
 	}
 }
 
-// Execute performs sendу messages
+// Execute performs sending messages
 func (uc *SendMessageUseCase) Execute(
 	ctx context.Context,
 	cmd SendMessageCommand,
@@ -59,7 +59,7 @@ func (uc *SendMessageUseCase) Execute(
 		return Result{}, ErrChatNotFound
 	}
 
-	// Checking, that userель is участником chat
+	// check that user is a participant of chat
 	if !uc.isParticipant(chatReadModel, cmd.AuthorID) {
 		return Result{}, ErrNotChatParticipant
 	}
@@ -70,14 +70,13 @@ func (uc *SendMessageUseCase) Execute(
 		if parentErr != nil {
 			return Result{}, ErrParentNotFound
 		}
-		// check, that parent in том же чате
+		// check that parent is in the same chat
 		if parent.ChatID() != cmd.ChatID {
 			return Result{}, ErrParentInDifferentChat
 		}
 	}
 
-	// 4. creation messages
-	// 2. Creating message
+	// 4. create message
 	msg, err := messagedomain.NewMessage(
 		cmd.ChatID,
 		cmd.AuthorID,
@@ -88,12 +87,12 @@ func (uc *SendMessageUseCase) Execute(
 		return Result{}, fmt.Errorf("failed to create message: %w", err)
 	}
 
-	// 5. storage
+	// 5. save
 	if saveErr := uc.messageRepo.Save(ctx, msg); saveErr != nil {
 		return Result{}, fmt.Errorf("failed to save message: %w", saveErr)
 	}
 
-	// 6. Publishing event (for WebSocket broadcast)
+	// 6. publish event (for WebSocket broadcast)
 	evt := messagedomain.NewCreated(
 		msg.ID(),
 		cmd.ChatID,
@@ -105,11 +104,11 @@ func (uc *SendMessageUseCase) Execute(
 			Timestamp: msg.CreatedAt(),
 		},
 	)
-	// not критично, message уже savено
+	// not critical, message already saved
 	// TODO: log error
 	_ = uc.eventBus.Publish(ctx, evt)
 
-	// 7. Асинхронная handling тегов (not блокируем response)
+	// 7. async tag handling (do not block response)
 	if uc.tagProcessor != nil && uc.tagExecutor != nil {
 		go uc.processTagsAsync(ctx, msg, cmd.AuthorID)
 	}
@@ -144,8 +143,8 @@ func (uc *SendMessageUseCase) isParticipant(chatReadModel *chatapp.ReadModel, us
 	return false
 }
 
-// processTagsAsync handles tags in содержимом messages asynchronously
-// Выполняется in горутине for того чтобы not блокировать основной response
+// processTagsAsync handles tags in message content asynchronously
+// executed in goroutine to not block main response
 func (uc *SendMessageUseCase) processTagsAsync(
 	ctx context.Context,
 	msg *messagedomain.Message,
@@ -180,5 +179,5 @@ func (uc *SendMessageUseCase) processTagsAsync(
 		// For now just ignore the error
 	}
 
-	// TODO: форматирование результатов via tag.Formatter and sendа reply
+	// TODO: format results via tag.Formatter and send reply
 }

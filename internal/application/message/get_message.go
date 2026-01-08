@@ -7,7 +7,7 @@ import (
 	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
-// GetMessageUseCase handles retrieval messages по ID
+// GetMessageUseCase handles retrieval messages po ID
 type GetMessageUseCase struct {
 	messageRepo Repository
 }

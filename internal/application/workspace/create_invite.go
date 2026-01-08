@@ -8,7 +8,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/workspace"
 )
 
-// CreateInviteUseCase - use case for creating инвайта
+// CreateInviteUseCase - use case for creating invayta
 type CreateInviteUseCase struct {
 	appcore.BaseUseCase
 
@@ -22,7 +22,7 @@ func NewCreateInviteUseCase(workspaceRepo Repository) *CreateInviteUseCase {
 	}
 }
 
-// Execute performs creation инвайта
+// Execute performs creation invayta
 func (uc *CreateInviteUseCase) Execute(
 	ctx context.Context,
 	cmd CreateInviteCommand,
@@ -47,13 +47,13 @@ func (uc *CreateInviteUseCase) Execute(
 	expiresAt := uc.getExpiresAt(cmd.ExpiresAt)
 	maxUses := uc.getMaxUses(cmd.MaxUses)
 
-	// creation инвайта
+	// creation invayta
 	invite, err := ws.CreateInvite(cmd.CreatedBy, expiresAt, maxUses)
 	if err != nil {
 		return InviteResult{}, uc.WrapError("create invite", err)
 	}
 
-	// storage workspace с новым инвайтом
+	// save workspace s novym invaytom
 	if errSave := uc.workspaceRepo.Save(ctx, ws); errSave != nil {
 		return InviteResult{}, uc.WrapError("save workspace", errSave)
 	}
@@ -86,7 +86,7 @@ func (uc *CreateInviteUseCase) validate(cmd CreateInviteCommand) error {
 	return nil
 }
 
-// getExpiresAt returns time истечения инвайта (by default: 7 дней)
+// getExpiresAt returns time istecheniya invayta (by default: 7 dney)
 func (uc *CreateInviteUseCase) getExpiresAt(expiresAt *time.Time) time.Time {
 	if expiresAt != nil {
 		return *expiresAt
@@ -94,7 +94,7 @@ func (uc *CreateInviteUseCase) getExpiresAt(expiresAt *time.Time) time.Time {
 	return time.Now().Add(7 * 24 * time.Hour)
 }
 
-// getMaxUses returns максимальное count использований (by default: 0 - unlimited)
+// getMaxUses returns maximum count ispolzovaniy (by default: 0 - unlimited)
 func (uc *CreateInviteUseCase) getMaxUses(maxUses *int) int {
 	if maxUses != nil {
 		return *maxUses

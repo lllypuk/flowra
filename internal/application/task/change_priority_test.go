@@ -19,7 +19,7 @@ func TestChangePriorityUseCase_Success(t *testing.T) {
 	createUseCase := taskapp.NewCreateTaskUseCase(store)
 	priorityUseCase := taskapp.NewChangePriorityUseCase(store)
 
-	// Creating task с Medium priority (default)
+	// Creating task s Medium priority (default)
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
@@ -28,7 +28,7 @@ func TestChangePriorityUseCase_Success(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// Меняем приоритет
+	// menyaem prioritet
 	userID := uuid.NewUUID()
 	priorityCmd := taskapp.ChangePriorityCommand{
 		TaskID:    createResult.TaskID,
@@ -86,7 +86,7 @@ func TestChangePriorityUseCase_AllPriorities(t *testing.T) {
 
 			// Assert
 			if priority == task.PriorityLow {
-				// Идемпотентность - тот же приоритет
+				// idempotentnost - tot zhe prioritet
 				require.NoError(t, err)
 				assert.Empty(t, result.Events)
 			} else {
@@ -114,7 +114,7 @@ func TestChangePriorityUseCase_Idempotent(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// Act: Повторная setting того же priority
+	// Act: povtornaya setting togo zhe priority
 	priorityCmd := taskapp.ChangePriorityCommand{
 		TaskID:    createResult.TaskID,
 		Priority:  task.PriorityHigh,
@@ -262,7 +262,7 @@ func TestChangePriorityUseCase_TaskNotFound(t *testing.T) {
 	useCase := taskapp.NewChangePriorityUseCase(store)
 
 	cmd := taskapp.ChangePriorityCommand{
-		TaskID:    uuid.NewUUID(), // not существует
+		TaskID:    uuid.NewUUID(), // not suschestvuet
 		Priority:  task.PriorityHigh,
 		ChangedBy: uuid.NewUUID(),
 	}

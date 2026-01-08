@@ -96,7 +96,7 @@ func TestGetNotificationUseCase_Execute_AccessDenied(t *testing.T) {
 
 	query := notification.GetNotificationQuery{
 		NotificationID: notif.ID(),
-		UserID:         otherUserID, // другой userель
+		UserID:         otherUserID, // drugoy user
 	}
 
 	// Act

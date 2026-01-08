@@ -8,50 +8,50 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// CommandRepository defines interface for commands (change state) уведомлений
+// CommandRepository defines interface for commands (change state) uvedomleniy
 // interface declared on the consumer side (application layer)
 type CommandRepository interface {
 	// Save saves notification (creation or update)
 	Save(ctx context.Context, n *notification.Notification) error
 
-	// SaveBatch saves several уведомлений за one query
+	// SaveBatch saves several uvedomleniy za one query
 	SaveBatch(ctx context.Context, notifications []*notification.Notification) error
 
-	// Delete удаляет notification
+	// Delete udalyaet notification
 	Delete(ctx context.Context, id uuid.UUID) error
 
-	// DeleteByUserID удаляет all уведомления user
+	// DeleteByUserID udalyaet all uvedomleniya user
 	DeleteByUserID(ctx context.Context, userID uuid.UUID) error
 
-	// DeleteOlderThan удаляет уведомления старше указанной даты
+	// DeleteOlderThan udalyaet uvedomleniya starshe ukazannoy daty
 	DeleteOlderThan(ctx context.Context, before time.Time) (int, error)
 
-	// DeleteReadOlderThan удаляет прочитанные уведомления старше указанной даты
+	// DeleteReadOlderThan udalyaet prochitannye uvedomleniya starshe ukazannoy daty
 	DeleteReadOlderThan(ctx context.Context, before time.Time) (int, error)
 
-	// MarkAsRead отмечает notification as прочитанное
+	// MarkAsRead otmechaet notification as prochitannoe
 	MarkAsRead(ctx context.Context, id uuid.UUID) error
 
-	// MarkAllAsRead отмечает all уведомления user as прочитанные
+	// MarkAllAsRead otmechaet all uvedomleniya user as prochitannye
 	MarkAllAsRead(ctx context.Context, userID uuid.UUID) error
 
-	// MarkManyAsRead отмечает several уведомлений as прочитанные
+	// MarkManyAsRead otmechaet several uvedomleniy as prochitannye
 	MarkManyAsRead(ctx context.Context, ids []uuid.UUID) error
 }
 
-// QueryRepository defines interface for запросов (only reading) уведомлений
+// QueryRepository defines interface for zaprosov (only reading) uvedomleniy
 // interface declared on the consumer side (application layer)
 type QueryRepository interface {
-	// FindByID finds notification по ID
+	// FindByID finds notification po ID
 	FindByID(ctx context.Context, id uuid.UUID) (*notification.Notification, error)
 
-	// FindByUserID finds all уведомления user с пагинацией
+	// FindByUserID finds all uvedomleniya user s paginatsiey
 	FindByUserID(ctx context.Context, userID uuid.UUID, offset, limit int) ([]*notification.Notification, error)
 
-	// FindUnreadByUserID finds непрочитанные уведомления user
+	// FindUnreadByUserID finds neprochitannye uvedomleniya user
 	FindUnreadByUserID(ctx context.Context, userID uuid.UUID, limit int) ([]*notification.Notification, error)
 
-	// FindByType finds уведомления specific type for user
+	// FindByType finds uvedomleniya specific type for user
 	FindByType(
 		ctx context.Context,
 		userID uuid.UUID,
@@ -59,18 +59,18 @@ type QueryRepository interface {
 		offset, limit int,
 	) ([]*notification.Notification, error)
 
-	// FindByResourceID finds уведомления связанные с ресурсом
+	// FindByResourceID finds uvedomleniya svyazannye s resursom
 	FindByResourceID(ctx context.Context, resourceID string) ([]*notification.Notification, error)
 
-	// CountUnreadByUserID returns count unread уведомлений
+	// CountUnreadByUserID returns count unread uvedomleniy
 	CountUnreadByUserID(ctx context.Context, userID uuid.UUID) (int, error)
 
-	// CountByType returns count уведомлений по типам for user
+	// CountByType returns count uvedomleniy po tipam for user
 	CountByType(ctx context.Context, userID uuid.UUID) (map[notification.Type]int, error)
 }
 
 // Repository combines Command and Query interfaces for convenience
-// Used when use case need both types of операций
+// Used when use case need both types of operatsiy
 type Repository interface {
 	CommandRepository
 	QueryRepository

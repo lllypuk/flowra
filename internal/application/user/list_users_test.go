@@ -67,7 +67,7 @@ func TestListUsersUseCase_Execute_Pagination(t *testing.T) {
 		_ = repo.Save(context.Background(), usr)
 	}
 
-	// Первая страница
+	// pervaya stranitsa
 	query1 := user.ListUsersQuery{
 		Offset: 0,
 		Limit:  2,
@@ -86,7 +86,7 @@ func TestListUsersUseCase_Execute_Pagination(t *testing.T) {
 		t.Errorf("expected totalCount 5, got %d", result1.TotalCount)
 	}
 
-	// Вторая страница
+	// vtoraya stranitsa
 	query2 := user.ListUsersQuery{
 		Offset: 2,
 		Limit:  2,

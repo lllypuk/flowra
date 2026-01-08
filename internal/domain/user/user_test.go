@@ -44,7 +44,7 @@ func TestNewUser_EmptyExternalID(t *testing.T) {
 	// Assert
 	require.Error(t, err)
 	require.ErrorIs(t, err, errs.ErrInvalidInput)
-	assert.nil(t, user)
+	assert.Nil(t, user)
 }
 
 func TestNewUser_EmptyUsername(t *testing.T) {
@@ -54,7 +54,7 @@ func TestNewUser_EmptyUsername(t *testing.T) {
 	// Assert
 	require.Error(t, err)
 	require.ErrorIs(t, err, errs.ErrInvalidInput)
-	assert.nil(t, user)
+	assert.Nil(t, user)
 }
 
 func TestNewUser_EmptyEmail(t *testing.T) {
@@ -64,11 +64,11 @@ func TestNewUser_EmptyEmail(t *testing.T) {
 	// Assert
 	require.Error(t, err)
 	require.ErrorIs(t, err, errs.ErrInvalidInput)
-	assert.nil(t, user)
+	assert.Nil(t, user)
 }
 
 func TestNewUser_EmptyDisplayName_Allowed(t *testing.T) {
-	// Arrange - display name может быть пустым
+	// Arrange - display name mozhet byt pustym
 	keycloakID := "external-123"
 	username := "john_doe"
 	email := "john@example.com"
@@ -124,7 +124,7 @@ func TestUser_UpdateProfile_Success(t *testing.T) {
 	oldUpdatedAt := user.UpdatedAt()
 	newDisplayName := "John Smith"
 
-	// Небольшая задержка чтобы UpdatedAt изменился
+	// small delay to UpdatedAt changed
 	time.Sleep(10 * time.Millisecond)
 
 	// Act
@@ -142,7 +142,7 @@ func TestUser_UpdateProfile_NothingToUpdate(t *testing.T) {
 	oldDisplayName := user.DisplayName()
 	oldUpdatedAt := user.UpdatedAt()
 
-	// Act - ничего not beforeаем
+	// Act - nichego not before
 	err := user.UpdateProfile(nil, nil)
 
 	// Assert
@@ -158,7 +158,7 @@ func TestUser_SetAdmin_GrantRights(t *testing.T) {
 	assert.False(t, user.IsSystemAdmin())
 	oldUpdatedAt := user.UpdatedAt()
 
-	// Небольшая задержка
+	// small delay
 	time.Sleep(10 * time.Millisecond)
 
 	// Act
@@ -186,7 +186,7 @@ func TestUser_SetAdmin_RevokeRights(t *testing.T) {
 	assert.True(t, user.IsSystemAdmin())
 	oldUpdatedAt := user.UpdatedAt()
 
-	// Небольшая задержка
+	// small delay
 	time.Sleep(10 * time.Millisecond)
 
 	// Act

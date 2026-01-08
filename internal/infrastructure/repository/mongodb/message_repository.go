@@ -18,7 +18,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// MongoMessageRepository реализует messageapp.Repository (application layer interface)
+// MongoMessageRepository realizuet messageapp.Repository (application layer interface)
 type MongoMessageRepository struct {
 	collection *mongo.Collection
 	logger     *slog.Logger
@@ -48,7 +48,7 @@ func NewMongoMessageRepository(collection *mongo.Collection, opts ...MessageRepo
 	return r
 }
 
-// FindByID finds message по ID
+// FindByID finds message po ID
 func (r *MongoMessageRepository) FindByID(ctx context.Context, id uuid.UUID) (*messagedomain.Message, error) {
 	if id.IsZero() {
 		return nil, errs.ErrInvalidInput
@@ -70,7 +70,7 @@ func (r *MongoMessageRepository) FindByID(ctx context.Context, id uuid.UUID) (*m
 	return r.documentToMessage(&doc)
 }
 
-// FindByChatID finds messages in чате с пагинацией (от New to старым)
+// FindByChatID finds messages in chate s paginatsiey (ot New to starym)
 func (r *MongoMessageRepository) FindByChatID(
 	ctx context.Context,
 	chatID uuid.UUID,
@@ -103,7 +103,7 @@ func (r *MongoMessageRepository) FindByChatID(
 				slog.String("chat_id", chatID.String()),
 				slog.String("error", decodeErr.Error()),
 			)
-			continue // Пропускаем некорректные документы
+			continue // propuskaem nekorrektnye dokumenty
 		}
 
 		msg, docErr := r.documentToMessage(&doc)
@@ -133,7 +133,7 @@ func (r *MongoMessageRepository) FindByChatID(
 	return messages, nil
 }
 
-// FindThread finds all responses in треде
+// FindThread finds all responses in thread
 func (r *MongoMessageRepository) FindThread(
 	ctx context.Context,
 	parentMessageID uuid.UUID,
@@ -173,7 +173,7 @@ func (r *MongoMessageRepository) FindThread(
 	return messages, nil
 }
 
-// CountByChatID returns count сообщений in чате
+// CountByChatID returns count soobscheniy in chate
 func (r *MongoMessageRepository) CountByChatID(ctx context.Context, chatID uuid.UUID) (int, error) {
 	if chatID.IsZero() {
 		return 0, errs.ErrInvalidInput
@@ -216,7 +216,7 @@ func (r *MongoMessageRepository) Save(ctx context.Context, message *messagedomai
 	return HandleMongoError(err, "message")
 }
 
-// Delete физически удаляет message
+// Delete fizicheski udalyaet message
 func (r *MongoMessageRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	if id.IsZero() {
 		return errs.ErrInvalidInput
@@ -239,7 +239,7 @@ func (r *MongoMessageRepository) Delete(ctx context.Context, id uuid.UUID) error
 	return nil
 }
 
-// CountThreadReplies returns count responseов in треде
+// CountThreadReplies returns count response in thread
 func (r *MongoMessageRepository) CountThreadReplies(
 	ctx context.Context,
 	parentMessageID uuid.UUID,
@@ -261,7 +261,7 @@ func (r *MongoMessageRepository) CountThreadReplies(
 	return int(count), nil
 }
 
-// AddReaction добавляет реакцию to сообщению
+// AddReaction adds reaction to soobscheniyu
 func (r *MongoMessageRepository) AddReaction(
 	ctx context.Context,
 	messageID uuid.UUID,
@@ -295,7 +295,7 @@ func (r *MongoMessageRepository) AddReaction(
 	return nil
 }
 
-// RemoveReaction удаляет реакцию с messages
+// RemoveReaction udalyaet reaction s messages
 func (r *MongoMessageRepository) RemoveReaction(
 	ctx context.Context,
 	messageID uuid.UUID,
@@ -328,7 +328,7 @@ func (r *MongoMessageRepository) RemoveReaction(
 	return nil
 }
 
-// GetReactionUsers returns users, поставивших определенную реакцию
+// GetReactionUsers returns users, postavivshih opredelennuyu reaction
 func (r *MongoMessageRepository) GetReactionUsers(
 	ctx context.Context,
 	messageID uuid.UUID,
@@ -362,7 +362,7 @@ func (r *MongoMessageRepository) GetReactionUsers(
 	return userIDs, nil
 }
 
-// SearchInChat ищет messages in чате по textу
+// SearchInChat ischet messages in chate po text
 func (r *MongoMessageRepository) SearchInChat(
 	ctx context.Context,
 	chatID uuid.UUID,
@@ -424,7 +424,7 @@ func (r *MongoMessageRepository) SearchInChat(
 	return messages, nil
 }
 
-// FindByAuthor finds messages автора in чате
+// FindByAuthor finds messages avtora in chate
 func (r *MongoMessageRepository) FindByAuthor(
 	ctx context.Context,
 	chatID uuid.UUID,
@@ -480,7 +480,7 @@ func (r *MongoMessageRepository) FindByAuthor(
 	return messages, nil
 }
 
-// messageDocument represents структуру документа in MongoDB
+// messageDocument represents strukturu dokumenta in MongoDB
 type messageDocument struct {
 	MessageID   string               `bson:"message_id"`
 	ChatID      string               `bson:"chat_id"`
@@ -495,7 +495,7 @@ type messageDocument struct {
 	Reactions   []reactionDocument   `bson:"reactions"`
 }
 
-// attachmentDocument represents вложение in документе
+// attachmentDocument represents attachment in dokumente
 type attachmentDocument struct {
 	FileID   string `bson:"file_id"`
 	FileName string `bson:"file_name"`
@@ -503,16 +503,16 @@ type attachmentDocument struct {
 	MimeType string `bson:"mime_type"`
 }
 
-// reactionDocument represents реакцию in документе
+// reactionDocument represents reaction in dokumente
 type reactionDocument struct {
 	UserID    string    `bson:"user_id"`
 	EmojiCode string    `bson:"emoji_code"`
 	AddedAt   time.Time `bson:"added_at"`
 }
 
-// messageToDocument преобразует Message in Document
+// messageToDocument preobrazuet Message in Document
 func (r *MongoMessageRepository) messageToDocument(msg *messagedomain.Message) messageDocument {
-	// Преобразуем вложения
+	// preobrazuem vlozheniya
 	attachments := make([]attachmentDocument, 0, len(msg.Attachments()))
 	for _, a := range msg.Attachments() {
 		attachments = append(attachments, attachmentDocument{
@@ -523,7 +523,7 @@ func (r *MongoMessageRepository) messageToDocument(msg *messagedomain.Message) m
 		})
 	}
 
-	// Преобразуем реакции
+	// preobrazuem reaktsii
 	reactions := make([]reactionDocument, 0, len(msg.Reactions()))
 	for _, r := range msg.Reactions() {
 		reactions = append(reactions, reactionDocument{
@@ -533,7 +533,7 @@ func (r *MongoMessageRepository) messageToDocument(msg *messagedomain.Message) m
 		})
 	}
 
-	// Обрабатываем parent ID
+	// obrabatyvaem parent ID
 	var parentID *string
 	if !msg.ParentMessageID().IsZero() {
 		parentIDStr := msg.ParentMessageID().String()
@@ -555,7 +555,7 @@ func (r *MongoMessageRepository) messageToDocument(msg *messagedomain.Message) m
 	}
 }
 
-// documentToMessage преобразует Document in Message
+// documentToMessage preobrazuet Document in Message
 func (r *MongoMessageRepository) documentToMessage(doc *messageDocument) (*messagedomain.Message, error) {
 	if doc == nil {
 		return nil, errs.ErrInvalidInput
@@ -584,12 +584,12 @@ func (r *MongoMessageRepository) documentToMessage(doc *messageDocument) (*messa
 		}
 	}
 
-	// Восстанавливаем вложения
+	// vosstanavlivaem vlozheniya
 	attachments := make([]messagedomain.Attachment, 0, len(doc.Attachments))
 	for _, a := range doc.Attachments {
 		fileID, parseErr := uuid.ParseUUID(a.FileID)
 		if parseErr != nil {
-			continue // пропускаем некорректные вложения
+			continue // propuskaem nekorrektnye vlozheniya
 		}
 		attachments = append(attachments, messagedomain.ReconstructAttachment(
 			fileID,
@@ -599,12 +599,12 @@ func (r *MongoMessageRepository) documentToMessage(doc *messageDocument) (*messa
 		))
 	}
 
-	// Восстанавливаем реакции
+	// vosstanavlivaem reaktsii
 	reactions := make([]messagedomain.Reaction, 0, len(doc.Reactions))
 	for _, r := range doc.Reactions {
 		userID, parseErr := uuid.ParseUUID(r.UserID)
 		if parseErr != nil {
-			continue // пропускаем некорректные реакции
+			continue // propuskaem nekorrektnye reaktsii
 		}
 		reactions = append(reactions, messagedomain.ReconstructReaction(
 			userID,

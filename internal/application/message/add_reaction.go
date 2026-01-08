@@ -9,7 +9,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/message"
 )
 
-// AddReactionUseCase handles adding реакции to сообщению
+// AddReactionUseCase handles adding reactions to message
 type AddReactionUseCase struct {
 	messageRepo Repository
 	eventBus    event.Bus
@@ -26,7 +26,7 @@ func NewAddReactionUseCase(
 	}
 }
 
-// Execute performs adding реакции
+// Execute performs adding reactions
 func (uc *AddReactionUseCase) Execute(
 	ctx context.Context,
 	cmd AddReactionCommand,
@@ -36,28 +36,28 @@ func (uc *AddReactionUseCase) Execute(
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Loading message
+	// load message
 	msg, err := uc.messageRepo.FindByID(ctx, cmd.MessageID)
 	if err != nil {
 		return Result{}, ErrMessageNotFound
 	}
 
-	// check, that message not удалено
+	// check that message is not deleted
 	if msg.IsDeleted() {
 		return Result{}, ErrMessageDeleted
 	}
 
-	// Adding реакции
+	// add reaction
 	if addErr := msg.AddReaction(cmd.UserID, cmd.Emoji); addErr != nil {
 		return Result{}, addErr
 	}
 
-	// storage
+	// save
 	if saveErr := uc.messageRepo.Save(ctx, msg); saveErr != nil {
 		return Result{}, fmt.Errorf("failed to save message: %w", saveErr)
 	}
 
-	// Publishing event
+	// publish event
 	evt := message.NewReactionAdded(msg.ID(), cmd.UserID, cmd.Emoji, 1, event.Metadata{
 		UserID: cmd.UserID.String(),
 	})

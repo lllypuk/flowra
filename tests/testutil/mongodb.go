@@ -24,13 +24,13 @@ const (
 	maxTestNameLength              = 40
 )
 
-// MongoContainer represents контейнер MongoDB for tests
+// MongoContainer represents MongoDB container for tests
 type MongoContainer struct {
 	Container testcontainers.Container
 	URI       string
 }
 
-// SetupMongoContainer runningает MongoDB 6 in testcontainer.
+// SetupMongoContainer running MongoDB 6 in testcontainer.
 // This function creates a New container for each call which is slow.
 //
 // Deprecated: Use GetSharedMongoContainer for better performance.
@@ -55,7 +55,7 @@ func SetupMongoContainer(ctx context.Context, t *testing.T) *MongoContainer {
 		t.Fatalf("Failed to start MongoDB container: %v", err)
 	}
 
-	// Получаем хост and порт контейнера
+	// Get host and container port
 	host, err := container.Host(ctx)
 	if err != nil {
 		t.Fatalf("Failed to get container host: %v", err)
@@ -68,7 +68,7 @@ func SetupMongoContainer(ctx context.Context, t *testing.T) *MongoContainer {
 
 	uri := fmt.Sprintf("mongodb://admin:admin123@%s", net.JoinHostPort(host, port.Port()))
 
-	// Cleanup: останавливаем контейнер after теста
+	// Cleanup: stop container after test
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), mongoContainerTerminateTimeout)
 		defer cancel()
@@ -83,8 +83,8 @@ func SetupMongoContainer(ctx context.Context, t *testing.T) *MongoContainer {
 	}
 }
 
-// SetupTestMongoDB creates подключение to тестовой MongoDB с использованием shared контейнера.
-// each test receivает свою изолированную database for безопасного pairллельного выполнения.
+// SetupTestMongoDB creates connection to test MongoDB using shared container.
+// each test receives its own isolated database for safe parallel execution.
 func SetupTestMongoDB(t *testing.T) *mongo.Database {
 	t.Helper()
 
@@ -92,8 +92,8 @@ func SetupTestMongoDB(t *testing.T) *mongo.Database {
 	return SetupSharedTestMongoDB(t)
 }
 
-// SetupTestMongoDBWithClient creates подключение to тестовой MongoDB and returns клиент and database.
-// uses shared контейнер for ускорения tests.
+// SetupTestMongoDBWithClient creates connection to test MongoDB and returns client and database.
+// uses shared container for faster tests.
 func SetupTestMongoDBWithClient(t *testing.T) (*mongo.Client, *mongo.Database) {
 	t.Helper()
 
@@ -101,25 +101,25 @@ func SetupTestMongoDBWithClient(t *testing.T) (*mongo.Client, *mongo.Database) {
 	return SetupSharedTestMongoDBWithClient(t)
 }
 
-// SetupTestMongoDBIsolated creates New контейнер MongoDB for полной изоляции.
-// Используйте эту функцию only when нужна полная изоляция контейнера.
-// in большинстве случаев SetupTestMongoDB достаточно (изоляция on уровне database).
+// SetupTestMongoDBIsolated creates new container MongoDB for full isolation.
+// Use this function only when needed full isolation of container.
+// in most cases SetupTestMongoDB is sufficient (isolation at the database).
 func SetupTestMongoDBIsolated(t *testing.T) *mongo.Database {
 	t.Helper()
 
 	ctx, cancel := context.WithTimeout(context.Background(), mongoCtxTimeout)
 	defer cancel()
 
-	// Runningаем MongoDB in контейнере
+	// Running MongoDB in container
 	mongoContainer := SetupMongoContainer(ctx, t)
 
-	// Подключаемся to MongoDB
+	// Connect to MongoDB
 	client, err := mongo.Connect(options.Client().ApplyURI(mongoContainer.URI))
 	if err != nil {
 		t.Fatalf("Failed to connect to MongoDB: %v", err)
 	}
 
-	// check соединения с ретраями
+	// check connection with retries
 	maxRetries := 5
 	for i := range maxRetries {
 		ctx, cancel := context.WithTimeout(context.Background(), mongoPingTimeout)
@@ -136,11 +136,11 @@ func SetupTestMongoDBIsolated(t *testing.T) *mongo.Database {
 		t.Fatalf("Failed to ping MongoDB after %d retries: %v", maxRetries, err)
 	}
 
-	// Creating тестовую database с uniqueым именем
+	// Creating test database with unique name
 	dbName := "flowra_test_" + t.Name()
 	db := client.Database(dbName)
 
-	// Cleanup: удаляем database and отключаемся after теста
+	// Cleanup: delete database and disconnect after test
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), mongoCtxTimeout)
 		defer cancel()
@@ -151,24 +151,24 @@ func SetupTestMongoDBIsolated(t *testing.T) *mongo.Database {
 	return db
 }
 
-// SetupTestMongoDBWithClientIsolated creates New контейнер and returns клиент and database.
-// Используйте only when нужна полная изоляция контейнера.
+// SetupTestMongoDBWithClientIsolated creates new container and returns client and database.
+// Use only when needed full isolation of container.
 func SetupTestMongoDBWithClientIsolated(t *testing.T) (*mongo.Client, *mongo.Database) {
 	t.Helper()
 
 	ctx, cancel := context.WithTimeout(context.Background(), mongoCtxTimeout)
 	defer cancel()
 
-	// Runningаем MongoDB in контейнере
+	// Running MongoDB in container
 	mongoContainer := SetupMongoContainer(ctx, t)
 
-	// Подключаемся to MongoDB
+	// Connect to MongoDB
 	client, err := mongo.Connect(options.Client().ApplyURI(mongoContainer.URI))
 	if err != nil {
 		t.Fatalf("Failed to connect to MongoDB: %v", err)
 	}
 
-	// check соединения с ретраями
+	// check connection with retries
 	maxRetries := 5
 	for i := range maxRetries {
 		ctx, cancel := context.WithTimeout(context.Background(), mongoPingTimeout)
@@ -185,18 +185,18 @@ func SetupTestMongoDBWithClientIsolated(t *testing.T) (*mongo.Client, *mongo.Dat
 		t.Fatalf("Failed to ping MongoDB after %d retries: %v", maxRetries, err)
 	}
 
-	// Creating тестовую database с uniqueым именем
-	// Используем hash for длинных имен tests (MongoDB limit: 63 chars)
+	// Creating test database with unique name
+	// Use hash for long imen tests (MongoDB limit: 63 chars)
 	testName := t.Name()
 	if len(testName) > maxTestNameLength {
-		// Берем первые 20 символов + hash остального
+		// Take first 20 characters + hash of the rest
 		hash := sha256.Sum256([]byte(testName))
 		testName = testName[:20] + "_" + hex.EncodeToString(hash[:])[:12]
 	}
 	dbName := "flowra_test_" + testName
 	db := client.Database(dbName)
 
-	// Cleanup: удаляем database and отключаемся after теста
+	// Cleanup: delete database and disconnect after test
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), mongoCtxTimeout)
 		defer cancel()

@@ -8,12 +8,12 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/notification"
 )
 
-// GetNotificationUseCase handles retrieval notification по ID
+// GetNotificationUseCase handles retrieval notification po ID
 type GetNotificationUseCase struct {
 	notificationRepo Repository
 }
 
-// NewGetNotificationUseCase creates New use case for receivения notification
+// NewGetNotificationUseCase creates New use case for receiv notification
 func NewGetNotificationUseCase(
 	notificationRepo Repository,
 ) *GetNotificationUseCase {
@@ -22,7 +22,7 @@ func NewGetNotificationUseCase(
 	}
 }
 
-// Execute performs retrieval notification по ID
+// Execute performs retrieval notification po ID
 func (uc *GetNotificationUseCase) Execute(
 	ctx context.Context,
 	query GetNotificationQuery,
@@ -38,7 +38,7 @@ func (uc *GetNotificationUseCase) Execute(
 		return Result{}, fmt.Errorf("failed to find notification: %w", ErrNotificationNotFound)
 	}
 
-	// check принадлежности
+	// check prinadlezhnosti
 	if notif.UserID() != query.UserID {
 		return Result{}, ErrNotificationAccessDenied
 	}

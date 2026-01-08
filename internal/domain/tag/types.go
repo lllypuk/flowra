@@ -1,20 +1,20 @@
 package tag
 
-// ValueType defines type values тега
+// ValueType defines type values tega
 type ValueType int
 
 const (
-	// ValueTypeString - произвольная строка
+	// ValueTypeString - proizvolnaya stroka
 	ValueTypeString ValueType = iota
-	// ValueTypeUsername - имя user in формате @username
+	// ValueTypeUsername - imya user in formate @username
 	ValueTypeUsername
-	// ValueTypeDate - date in формате ISO 8601
+	// ValueTypeDate - date in formate ISO 8601
 	ValueTypeDate
-	// ValueTypeEnum - value from предопределенного list
+	// ValueTypeEnum - value from predopredelennogo list
 	ValueTypeEnum
 )
 
-// String returns строковое view type values
+// String returns strokovoe view type values
 func (vt ValueType) String() string {
 	switch vt {
 	case ValueTypeString:
@@ -30,19 +30,19 @@ func (vt ValueType) String() string {
 	}
 }
 
-// ParsedTag represents распарсенный тег
+// ParsedTag represents rasparsennyy teg
 type ParsedTag struct {
 	Key   string
 	Value string
 }
 
-// ParseResult represents result парсинга messages
+// ParseResult represents result parsinga messages
 type ParseResult struct {
 	Tags      []ParsedTag
 	PlainText string
 }
 
-// Definition defines метаинформацию о теге
+// Definition defines metainformatsiyu o tege
 type Definition struct {
 	Name          string
 	RequiresValue bool

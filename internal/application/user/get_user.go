@@ -8,7 +8,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/user"
 )
 
-// GetUserUseCase handles retrieval user по ID
+// GetUserUseCase handles retrieval user po ID
 type GetUserUseCase struct {
 	userRepo Repository
 }

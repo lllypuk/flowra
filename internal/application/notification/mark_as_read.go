@@ -10,12 +10,12 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/notification"
 )
 
-// MarkAsReadUseCase handles пометку notification as read
+// MarkAsReadUseCase handles pometku notification as read
 type MarkAsReadUseCase struct {
 	notificationRepo Repository
 }
 
-// NewMarkAsReadUseCase creates New use case for пометки notification as read
+// NewMarkAsReadUseCase creates New use case for pometki notification as read
 func NewMarkAsReadUseCase(
 	notificationRepo Repository,
 ) *MarkAsReadUseCase {
@@ -24,7 +24,7 @@ func NewMarkAsReadUseCase(
 	}
 }
 
-// Execute performs пометку notification as read
+// Execute performs pometku notification as read
 func (uc *MarkAsReadUseCase) Execute(
 	ctx context.Context,
 	cmd MarkAsReadCommand,
@@ -40,12 +40,12 @@ func (uc *MarkAsReadUseCase) Execute(
 		return Result{}, fmt.Errorf("failed to find notification: %w", ErrNotificationNotFound)
 	}
 
-	// check принадлежности
+	// check prinadlezhnosti
 	if notif.UserID() != cmd.UserID {
 		return Result{}, ErrNotificationAccessDenied
 	}
 
-	// Пометка as read
+	// pometka as read
 	if markErr := notif.MarkAsRead(); markErr != nil {
 		if errors.Is(markErr, errs.ErrInvalidState) {
 			return Result{}, ErrNotificationAlreadyRead

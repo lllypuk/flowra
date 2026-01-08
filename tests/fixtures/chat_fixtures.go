@@ -23,37 +23,37 @@ func NewCreateChatCommandBuilder() *CreateChatCommandBuilder {
 	}
 }
 
-// WithWorkspace устанавливает workspace ID (accepts domain UUID)
+// WithWorkspace sets workspace ID (accepts domain UUID)
 func (b *CreateChatCommandBuilder) WithWorkspace(id domainUUID.UUID) *CreateChatCommandBuilder {
 	b.cmd.WorkspaceID = id
 	return b
 }
 
-// WithTitle устанавливает title
+// WithTitle sets title
 func (b *CreateChatCommandBuilder) WithTitle(title string) *CreateChatCommandBuilder {
 	b.cmd.Title = title
 	return b
 }
 
-// AsTask устанавливает type as Task
+// AsTask sets type as Task
 func (b *CreateChatCommandBuilder) AsTask() *CreateChatCommandBuilder {
 	b.cmd.Type = chat.TypeTask
 	return b
 }
 
-// AsBug устанавливает type as Bug
+// AsBug sets type as Bug
 func (b *CreateChatCommandBuilder) AsBug() *CreateChatCommandBuilder {
 	b.cmd.Type = chat.TypeBug
 	return b
 }
 
-// AsEpic устанавливает type as Epic
+// AsEpic sets type as Epic
 func (b *CreateChatCommandBuilder) AsEpic() *CreateChatCommandBuilder {
 	b.cmd.Type = chat.TypeEpic
 	return b
 }
 
-// CreatedBy устанавливает creator ID (accepts domain UUID)
+// CreatedBy sets creator ID (accepts domain UUID)
 func (b *CreateChatCommandBuilder) CreatedBy(userID domainUUID.UUID) *CreateChatCommandBuilder {
 	b.cmd.CreatedBy = userID
 	return b
@@ -81,13 +81,13 @@ func NewAddParticipantCommandBuilder(chatID domainUUID.UUID, userID domainUUID.U
 	}
 }
 
-// WithRole устанавливает роль
+// WithRole sets role
 func (b *AddParticipantCommandBuilder) WithRole(role chat.Role) *AddParticipantCommandBuilder {
 	b.cmd.Role = role
 	return b
 }
 
-// AddedBy устанавливает ID user, добавившего participant (accepts domain UUID)
+// AddedBy sets ID user, who added participant (accepts domain UUID)
 func (b *AddParticipantCommandBuilder) AddedBy(userID domainUUID.UUID) *AddParticipantCommandBuilder {
 	b.cmd.AddedBy = userID
 	return b
@@ -114,13 +114,13 @@ func NewConvertToTaskCommandBuilder(chatID domainUUID.UUID) *ConvertToTaskComman
 	}
 }
 
-// WithTitle устанавливает title
+// WithTitle sets title
 func (b *ConvertToTaskCommandBuilder) WithTitle(title string) *ConvertToTaskCommandBuilder {
 	b.cmd.Title = title
 	return b
 }
 
-// ConvertedBy устанавливает ID user, конвертировавшего chat (accepts domain UUID)
+// ConvertedBy sets ID user, who converted chat (accepts domain UUID)
 func (b *ConvertToTaskCommandBuilder) ConvertedBy(userID domainUUID.UUID) *ConvertToTaskCommandBuilder {
 	b.cmd.ConvertedBy = userID
 	return b
@@ -147,13 +147,13 @@ func NewChangeStatusCommandBuilder(chatID domainUUID.UUID) *ChangeStatusCommandB
 	}
 }
 
-// WithStatus устанавливает status
+// WithStatus sets status
 func (b *ChangeStatusCommandBuilder) WithStatus(status string) *ChangeStatusCommandBuilder {
 	b.cmd.Status = status
 	return b
 }
 
-// ChangedBy устанавливает ID user, изменившего status (accepts domain UUID)
+// ChangedBy sets ID user, who changed status (accepts domain UUID)
 func (b *ChangeStatusCommandBuilder) ChangedBy(userID domainUUID.UUID) *ChangeStatusCommandBuilder {
 	b.cmd.ChangedBy = userID
 	return b
@@ -180,13 +180,13 @@ func NewAssignUserCommandBuilder(chatID domainUUID.UUID) *AssignUserCommandBuild
 	}
 }
 
-// AssignTo устанавливает ID assignee (accepts domain UUID)
+// AssignTo sets ID assignee (accepts domain UUID)
 func (b *AssignUserCommandBuilder) AssignTo(userID domainUUID.UUID) *AssignUserCommandBuilder {
 	b.cmd.AssigneeID = &userID
 	return b
 }
 
-// AssignedBy устанавливает ID user, который наvalueил (accepts domain UUID)
+// AssignedBy sets ID user, who assigned (accepts domain UUID)
 func (b *AssignUserCommandBuilder) AssignedBy(userID domainUUID.UUID) *AssignUserCommandBuilder {
 	b.cmd.AssignedBy = userID
 	return b

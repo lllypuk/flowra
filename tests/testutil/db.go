@@ -14,7 +14,7 @@ import (
 	"github.com/lllypuk/flowra/internal/infrastructure/mongodb"
 )
 
-// SetupTestDatabase creates тестовое подключение to MongoDB
+// SetupTestDatabase creates test connection to MongoDB
 func SetupTestDatabase(t *testing.T) *mongo.Database {
 	t.Helper()
 
@@ -29,16 +29,16 @@ func SetupTestDatabase(t *testing.T) *mongo.Database {
 		t.Fatalf("Failed to connect to test database: %v", err)
 	}
 
-	// Checking подключение
+	// Checking connection
 	if err := client.Ping(ctx, nil); err != nil {
 		t.Fatalf("Failed to ping test database: %v", err)
 	}
 
-	// Creating uniqueое имя базы данных for изоляции tests
+	// Creating unique name database for isolation tests
 	dbName := fmt.Sprintf("test_%s", sanitizeDatabaseName(t.Name()))
 	db := client.Database(dbName)
 
-	// Creating all индексы for production-like testing
+	// Creating all indexes for production-like testing
 	if err := mongodb.CreateAllIndexes(ctx, db); err != nil {
 		t.Fatalf("Failed to create indexes: %v", err)
 	}
@@ -46,7 +46,7 @@ func SetupTestDatabase(t *testing.T) *mongo.Database {
 	return db
 }
 
-// TeardownTestDatabase удаляет тестовую базу данных
+// TeardownTestDatabase deletes test database dannyh
 func TeardownTestDatabase(t *testing.T, db *mongo.Database) {
 	t.Helper()
 
@@ -60,9 +60,9 @@ func TeardownTestDatabase(t *testing.T, db *mongo.Database) {
 	}
 }
 
-// sanitizeDatabaseName clears имя теста for использования in качестве имени базы данных
+// sanitizeDatabaseName clears test name for usage as database name database
 func sanitizeDatabaseName(name string) string {
-	// Заменяем недопустимые символы on подчеркивания
+	// Replace invalid characters with underscores
 	result := ""
 	for _, ch := range name {
 		if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') {

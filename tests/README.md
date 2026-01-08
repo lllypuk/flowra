@@ -1,75 +1,75 @@
 # Testing Guide
 
-Эта директория содержит все тестовые утилиты, моки и integration тесты для проекта flowra.
+This directory contains all test utilities, mocks, and integration tests for the flowra project.
 
-## Структура
+## Structure
 
 ```
 tests/
-├── README.md              # Этот файл
-├── mocks/                 # Mock реализации для тестирования
+├── README.md              # This file
+├── mocks/                 # Mock implementations for testing
 │   ├── user_repository.go
 │   └── ...
-├── testutil/              # Утилиты для тестирования
-│   ├── db.go             # Helpers для работы с БД
-│   └── fixtures.go       # Тестовые данные (builders)
-└── integration/           # Integration тесты
+├── testutil/              # Testing utilities
+│   ├── db.go             # Helpers for database operations
+│   └── fixtures.go       # Test data (builders)
+└── integration/           # Integration tests
     └── usecase/
         └── ...
 ```
 
-## Типы тестов
+## Test Types
 
 ### 1. Unit Tests
 
-**Расположение**: Рядом с тестируемым кодом (например `create_task_test.go` рядом с `create_task.go`)
+**Location**: Next to the tested code (e.g., `create_task_test.go` next to `create_task.go`)
 
-**Характеристики**:
-- Быстрые (< 1 секунды на тест)
-- Используют in-memory Event Store
-- Используют mock repositories
-- Без внешних зависимостей
+**Characteristics**:
+- Fast (< 1 second per test)
+- Use in-memory Event Store
+- Use mock repositories
+- No external dependencies
 
-**Запуск**:
+**Run**:
 ```bash
-# Все unit тесты
+# All unit tests
 make test-unit
 
-# Конкретный пакет
+# Specific package
 go test ./internal/usecase/task/
 ```
 
 ### 2. Integration Tests
 
-**Расположение**: `tests/integration/`
+**Location**: `tests/integration/`
 
-**Характеристики**:
-- Медленнее (1-5 секунд на тест)
-- Используют реальную PostgreSQL
-- Требуют build tag `integration`
-- Каждый тест создает свою изолированную схему
+**Characteristics**:
+- Slower (1-5 seconds per test)
+- Use real PostgreSQL
+- Require build tag `integration`
+- Each test creates its own isolated schema
 
-**Запуск**:
+**Run**:
 ```bash
-# Все integration тесты
+# All integration tests
 make test-integration
 
-# Вручную
+# Manually
 TEST_DATABASE_URL="postgresql://postgres:postgres123@localhost:5432/test_db?sslmode=disable" \
   go test -tags=integration ./tests/integration/...
 ```
 
 ### 3. Coverage
 
-**Проверка coverage**:
+**Check coverage**:
 ```bash
-# Генерация HTML отчета
+# Generate HTML report
 make test-coverage
 
-# Проверка порога (80%)
+# Check threshold (80%)
 make test-coverage-check
 
-# Просмотр coverage в терминале
+# View coverage in terminal
 go test -coverprofile=coverage.out ./...
 go tool cover -func=coverage.out
 ```
@@ -78,18 +78,18 @@ go tool cover -func=coverage.out
 
 ### InMemoryEventStore
 
-In-memory реализация EventStore для быстрых unit тестов.
+In-memory implementation of EventStore for fast unit tests.
 
 ```go
 import "github.com/lllypuk/flowra/internal/infrastructure/eventstore"
 
 eventStore := eventstore.NewInMemoryEventStore()
-// Используйте в тестах
+// Use in tests
 ```
 
 ### MockUserRepository
 
-Mock реализация UserRepository для тестирования.
+Mock implementation of UserRepository for testing.
 
 ```go
 import "github.com/lllypuk/flowra/tests/mocks"
@@ -101,15 +101,15 @@ exists, _ := repo.Exists(ctx, userID) // true
 
 ### Test Fixtures (Builders)
 
-Builders для создания тестовых команд с fluent API.
+Builders for creating test commands with fluent API.
 
 ```go
 import "github.com/lllypuk/flowra/tests/testutil"
 
-// Базовая команда с дефолтными значениями
+// Basic command with default values
 cmd := testutil.CreateTaskCommandFixture()
 
-// Команда с кастомными значениями
+// Command with custom values
 cmd := testutil.BuildCreateTaskCommand(
     testutil.WithTitle("Custom Task"),
     testutil.WithPriority(task.PriorityHigh),
@@ -118,7 +118,7 @@ cmd := testutil.BuildCreateTaskCommand(
 )
 ```
 
-Доступные builders:
+Available builders:
 - `CreateTaskCommandFixture()` / `BuildCreateTaskCommand(...)`
 - `ChangeStatusCommandFixture(taskID)` / `BuildChangeStatusCommand(taskID, ...)`
 - `AssignTaskCommandFixture(taskID, assigneeID)` / `BuildAssignTaskCommand(...)`
@@ -127,7 +127,7 @@ cmd := testutil.BuildCreateTaskCommand(
 
 ### Database Helpers (Integration Tests)
 
-Helpers для работы с тестовой БД в integration тестах.
+Helpers for working with test database in integration tests.
 
 ```go
 //go:build integration
@@ -138,7 +138,7 @@ func TestSomething_Integration(t *testing.T) {
     db := testutil.SetupTestDatabase(t)
     defer testutil.TeardownTestDatabase(t, db)
     
-    // Используйте db для создания eventStore и т.д.
+    // Use db to create eventStore, etc.
 }
 ```
 
@@ -146,7 +146,7 @@ func TestSomething_Integration(t *testing.T) {
 
 ### Table-Driven Tests
 
-Используйте table-driven подход для множества сценариев:
+Use table-driven approach for multiple scenarios:
 
 ```go
 func TestValidation(t *testing.T) {
@@ -177,11 +177,11 @@ func TestValidation(t *testing.T) {
 ```go
 // Pattern: Test<FunctionName>_<Scenario>
 
-// Успешные случаи
+// Success cases
 TestCreateTaskUseCase_Success
 TestCreateTaskUseCase_WithDefaults
 
-// Ошибки
+// Errors
 TestCreateTaskUseCase_ValidationErrors
 TestCreateTaskUseCase_EmptyTitle
 TestCreateTaskUseCase_TaskNotFound
@@ -193,7 +193,7 @@ TestCreateTaskUseCase_ConcurrentUpdate
 
 ### Assertions
 
-Используйте `testify/assert` и `testify/require`:
+Use `testify/assert` and `testify/require`:
 
 ```go
 import (
@@ -201,11 +201,11 @@ import (
     "github.com/stretchr/testify/require"
 )
 
-// require - останавливает тест при ошибке (для критичных проверок)
+// require - stops test on error (for critical checks)
 require.NoError(t, err)
 require.NotNil(t, result)
 
-// assert - продолжает выполнение (для множественных проверок)
+// assert - continues execution (for multiple checks)
 assert.Equal(t, expected, actual)
 assert.Len(t, events, 1)
 assert.True(t, condition)
@@ -214,29 +214,29 @@ assert.True(t, condition)
 ## Makefile Targets
 
 ```bash
-make test                  # Все тесты
-make test-unit            # Только unit тесты
-make test-integration     # Только integration тесты
-make test-coverage        # Генерация HTML отчета
-make test-coverage-check  # Проверка порога (80%)
-make test-verbose         # Тесты с verbose output
-make test-clean           # Очистка cache и coverage файлов
+make test                  # All tests
+make test-unit            # Only unit tests
+make test-integration     # Only integration tests
+make test-coverage        # Generate HTML report
+make test-coverage-check  # Check threshold (80%)
+make test-verbose         # Tests with verbose output
+make test-clean           # Clean cache and coverage files
 ```
 
 ## Environment Variables
 
 ### Integration Tests
 
-- `TEST_DATABASE_URL` - URL тестовой PostgreSQL БД
+- `TEST_DATABASE_URL` - URL of test PostgreSQL database
   - Example: `postgresql://postgres:postgres123@localhost:5432/test_db?sslmode=disable`
-  - Если не установлена, integration тесты будут пропущены
+  - If not set, integration tests will be skipped
 
 ## CI/CD (Future)
 
-При настройке CI будут автоматически запускаться:
-1. Unit тесты при каждом push
-2. Coverage check (минимум 80%)
-3. Integration тесты при PR
+When CI is configured, it will automatically run:
+1. Unit tests on every push
+2. Coverage check (minimum 80%)
+3. Integration tests on PR
 4. Linting
 
 ## Coverage Goals
@@ -249,25 +249,25 @@ internal/infrastructure/        > 70%
 
 ## Troubleshooting
 
-### Integration тесты не запускаются
+### Integration tests do not run
 
-Проверьте:
-1. PostgreSQL запущен: `docker-compose ps postgres`
-2. Переменная `TEST_DATABASE_URL` установлена
-3. Build tag `integration` указан: `-tags=integration`
+Check:
+1. PostgreSQL is running: `docker-compose ps postgres`
+2. `TEST_DATABASE_URL` environment variable is set
+3. Build tag `integration` is specified: `-tags=integration`
 
-### Coverage низкий
+### Coverage is low
 
-1. Проверьте какие пакеты не покрыты: `go tool cover -func=coverage.out`
-2. Добавьте тесты для непокрытого кода
-3. Используйте HTML отчет для визуализации: `make test-coverage` → `coverage.html`
+1. Check which packages are not covered: `go tool cover -func=coverage.out`
+2. Add tests for uncovered code
+3. Use HTML report for visualization: `make test-coverage` → `coverage.html`
 
-### Тесты медленные
+### Tests are slow
 
-1. Убедитесь что используете unit тесты, а не integration
-2. Используйте `InMemoryEventStore` вместо БД
-3. Избегайте `time.Sleep()` в тестах
-4. Используйте моки для внешних зависимостей
+1. Make sure you are using unit tests, not integration tests
+2. Use `InMemoryEventStore` instead of database
+3. Avoid `time.Sleep()` in tests
+4. Use mocks for external dependencies
 
 ## References
 

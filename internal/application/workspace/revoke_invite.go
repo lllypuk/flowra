@@ -8,7 +8,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/workspace"
 )
 
-// RevokeInviteUseCase - use case for отзыва инвайта
+// RevokeInviteUseCase - use case for otzyva invayta
 type RevokeInviteUseCase struct {
 	appcore.BaseUseCase
 
@@ -22,7 +22,7 @@ func NewRevokeInviteUseCase(workspaceRepo Repository) *RevokeInviteUseCase {
 	}
 }
 
-// Execute performs отзыв инвайта
+// Execute performs otzyv invayta
 func (uc *RevokeInviteUseCase) Execute(
 	ctx context.Context,
 	cmd RevokeInviteCommand,
@@ -37,32 +37,32 @@ func (uc *RevokeInviteUseCase) Execute(
 		return InviteResult{}, uc.WrapError("validation failed", err)
 	}
 
-	// search инвайта по ID
-	// Сначала нужно find workspace с этим инвайтом
-	// for it isго нужно расширить Repository - add FindWorkspaceByInviteID
-	// or можно исuserь FindInviteByToken, но у нас only ID
-	// Упрощение: предполагаем that InviteID уникален and можем find via перебор
-	// in реальном проекте лучше add method FindWorkspaceByInviteID in Repository
+	// search invayta po ID
+	// snachala nuzhno find workspace s etim invaytom
+	// for it is nuzhno rasshirit Repository - add FindWorkspaceByInviteID
+	// or mozhno user FindInviteByToken, no u nas only ID
+	// uproschenie: predpolagaem that InviteID unikalen and mozhem find via perebor
+	// in realnom proekte luchshe add method FindWorkspaceByInviteID in Repository
 
-	// Временное решение: будем искать workspace via all workspaces
-	// Это not оптимально, но for примера подойдет
+	// vremennoe reshenie: budem iskat workspace via all workspaces
+	// eto not optimalno, no for primera podoydet
 	// TODO: add method FindWorkspaceByInviteID in Repository
 
-	// for упрощения, используем прямой подход:
-	// Предполагаем, that in команде также есть WorkspaceID or ищем по allм workspaces
-	// Поскольку in задании такого метода no, реализуем search via приватный method
+	// for uproscheniya, ispolzuem pryamoy podhod:
+	// predpolagaem, that in komande takzhe est WorkspaceID or ischem po all workspaces
+	// poskolku in zadanii takogo metoda no, realizuem search via privatnyy method
 
 	invite, ws, err := uc.findInviteByID(ctx, cmd.InviteID)
 	if err != nil {
 		return InviteResult{}, uc.WrapError("find invite", ErrInviteNotFound)
 	}
 
-	// Отзыв инвайта
+	// otzyv invayta
 	if errRevoke := invite.Revoke(); errRevoke != nil {
 		return InviteResult{}, uc.WrapError("revoke invite", errRevoke)
 	}
 
-	// storage workspace с отозванным инвайтом
+	// save workspace s otozvannym invaytom
 	if errSave := uc.workspaceRepo.Save(ctx, ws); errSave != nil {
 		return InviteResult{}, uc.WrapError("save workspace", errSave)
 	}
@@ -85,15 +85,15 @@ func (uc *RevokeInviteUseCase) validate(cmd RevokeInviteCommand) error {
 	return nil
 }
 
-// findInviteByID finds инвайт по ID
-// Это вспомогательный method, который ищет invite во all workspaces
-// in реальном проекте лучше add индекс or прямой method searching
+// findInviteByID finds invayt po ID
+// eto vspomogatelnyy method, kotoryy ischet invite vo all workspaces
+// in realnom proekte luchshe add indeks or pryamoy method searching
 func (uc *RevokeInviteUseCase) findInviteByID(
 	ctx context.Context,
 	inviteID uuid.UUID,
 ) (*workspace.Invite, *workspace.Workspace, error) {
-	// Получаем all workspaces (not оптимально, но for примера)
-	// in реальном проекте нужен индекс inviteID -> workspaceID
+	// poluchaem all workspaces (not optimalno, no for primera)
+	// in realnom proekte nuzhen indeks inviteID -> workspaceID
 	const maxWorkspaces = 1000
 	workspaces, err := uc.workspaceRepo.List(ctx, 0, maxWorkspaces)
 	if err != nil {

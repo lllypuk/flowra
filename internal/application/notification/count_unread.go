@@ -7,12 +7,12 @@ import (
 	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
-// CountUnreadUseCase handles подсчет unread notifications user
+// CountUnreadUseCase handles podschet unread notifications user
 type CountUnreadUseCase struct {
 	notificationRepo Repository
 }
 
-// NewCountUnreadUseCase creates New use case for подсчета unread notifications
+// NewCountUnreadUseCase creates New use case for podscheta unread notifications
 func NewCountUnreadUseCase(
 	notificationRepo Repository,
 ) *CountUnreadUseCase {
@@ -21,7 +21,7 @@ func NewCountUnreadUseCase(
 	}
 }
 
-// Execute performs подсчет unread notifications user
+// Execute performs podschet unread notifications user
 func (uc *CountUnreadUseCase) Execute(
 	ctx context.Context,
 	query CountUnreadQuery,
@@ -31,7 +31,7 @@ func (uc *CountUnreadUseCase) Execute(
 		return CountResult{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Подсчет unread
+	// podschet unread
 	count, err := uc.notificationRepo.CountUnreadByUserID(ctx, query.UserID)
 	if err != nil {
 		return CountResult{}, fmt.Errorf("failed to count unread notifications: %w", err)

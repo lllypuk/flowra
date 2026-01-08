@@ -36,23 +36,23 @@ func (uc *DeleteMessageUseCase) Execute(
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Loading message
+	// load message
 	msg, err := uc.messageRepo.FindByID(ctx, cmd.MessageID)
 	if err != nil {
 		return Result{}, ErrMessageNotFound
 	}
 
-	// deletion (authorization inside domain метода)
+	// delete (authorization inside domain method)
 	if deleteErr := msg.Delete(cmd.DeletedBy); deleteErr != nil {
 		return Result{}, deleteErr
 	}
 
-	// storage
+	// save
 	if saveErr := uc.messageRepo.Save(ctx, msg); saveErr != nil {
 		return Result{}, fmt.Errorf("failed to save message: %w", saveErr)
 	}
 
-	// Publishing event
+	// publish event
 	evt := message.NewDeleted(msg.ID(), cmd.DeletedBy, 1, event.Metadata{
 		UserID:    cmd.DeletedBy.String(),
 		Timestamp: *msg.DeletedAt(),

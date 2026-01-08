@@ -7,7 +7,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/workspace"
 )
 
-// AcceptInviteUseCase - use case for принятия инвайта
+// AcceptInviteUseCase - use case for prinyatiya invayta
 type AcceptInviteUseCase struct {
 	appcore.BaseUseCase
 
@@ -26,7 +26,7 @@ func NewAcceptInviteUseCase(
 	}
 }
 
-// Execute performs принятие инвайта
+// Execute performs prinyatie invayta
 func (uc *AcceptInviteUseCase) Execute(
 	ctx context.Context,
 	cmd AcceptInviteCommand,
@@ -41,18 +41,18 @@ func (uc *AcceptInviteUseCase) Execute(
 		return Result{}, uc.WrapError("validation failed", err)
 	}
 
-	// search инвайта по токену
+	// search invayta po tokenu
 	invite, err := uc.workspaceRepo.FindInviteByToken(ctx, cmd.Token)
 	if err != nil {
 		return Result{}, uc.WrapError("find invite", ErrInviteNotFound)
 	}
 
-	// check validности инвайта
+	// check valid invayta
 	if !invite.IsValid() {
 		if invite.IsRevoked() {
 			return Result{}, uc.WrapError("validate invite", ErrInviteRevoked)
 		}
-		// Инвайт истек or достигнут лимит использований
+		// invayt expired or dostignut limit ispolzovaniy
 		return Result{}, uc.WrapError("validate invite", ErrInviteExpired)
 	}
 
@@ -62,25 +62,25 @@ func (uc *AcceptInviteUseCase) Execute(
 		return Result{}, uc.WrapError("find workspace", ErrWorkspaceNotFound)
 	}
 
-	// use инвайта (увеличение счетчика)
+	// use invayta (uvelichenie schetchika)
 	if errUse := invite.Use(); errUse != nil {
 		return Result{}, uc.WrapError("use invite", errUse)
 	}
 
-	// storage workspace с обновленным инвайтом
+	// save workspace s obnovlennym invaytom
 	if errSave := uc.workspaceRepo.Save(ctx, ws); errSave != nil {
 		return Result{}, uc.WrapError("save workspace", errSave)
 	}
 
-	// Adding user in groupsу Keycloak
+	// Adding user in groups Keycloak
 	errKeycloak := uc.keycloakClient.AddUserToGroup(
 		ctx,
 		cmd.UserID.String(),
 		ws.KeycloakGroupID(),
 	)
 	if errKeycloak != nil {
-		// Откатываем use инвайта? no, т.to. уже savили.
-		// in реальном приложении нужна транзакционность or saga pattern
+		// otkatyvaem use invayta? no, t.to. uzhe sav.
+		// in realnom prilozhenii nuzhna tranzaktsionnost or saga pattern
 		return Result{}, uc.WrapError("add user to Keycloak group", ErrKeycloakUserAddFailed)
 	}
 

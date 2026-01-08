@@ -40,7 +40,7 @@ func TestDeleteNotificationUseCase_Execute_Success(t *testing.T) {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	// check, that notification удален
+	// check that notification udalen
 	if len(repo.notifications) != 0 {
 		t.Errorf("expected 0 notifications in repository, got %d", len(repo.notifications))
 	}
@@ -89,7 +89,7 @@ func TestDeleteNotificationUseCase_Execute_AccessDenied(t *testing.T) {
 
 	cmd := notification.DeleteNotificationCommand{
 		NotificationID: notif.ID(),
-		UserID:         otherUserID, // другой userель
+		UserID:         otherUserID, // drugoy user
 	}
 
 	// Act
@@ -104,7 +104,7 @@ func TestDeleteNotificationUseCase_Execute_AccessDenied(t *testing.T) {
 		t.Errorf("expected ErrNotificationAccessDenied, got: %v", err)
 	}
 
-	// check, that notification not удален
+	// check that notification not udalen
 	if len(repo.notifications) != 1 {
 		t.Errorf("expected 1 notification in repository, got %d", len(repo.notifications))
 	}

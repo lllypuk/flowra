@@ -43,7 +43,7 @@ func TestRevokeInviteUseCase_Execute_Success(t *testing.T) {
 		t.Error("expected invite to be revoked")
 	}
 
-	// check, that инвайт отозван in workspace
+	// check that invayt otozvan in workspace
 	updatedWs, _ := repo.FindByID(context.Background(), ws.ID())
 	updatedInvite, _ := updatedWs.FindInviteByToken(invite.Token())
 	if !updatedInvite.IsRevoked() {
@@ -79,7 +79,7 @@ func TestRevokeInviteUseCase_Execute_AlreadyRevoked(t *testing.T) {
 	repo := newMockWorkspaceRepository()
 	useCase := workspace.NewRevokeInviteUseCase(repo)
 
-	// Creating workspace с уже отозванным инвайтом
+	// Creating workspace s uzhe otozvannym invaytom
 	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
 	expiresAt := time.Now().Add(24 * time.Hour)
 	invite, _ := ws.CreateInvite(uuid.NewUUID(), expiresAt, 0)

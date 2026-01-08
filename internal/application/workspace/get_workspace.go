@@ -7,7 +7,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/workspace"
 )
 
-// GetWorkspaceUseCase - use case for receivения workspace по ID
+// GetWorkspaceUseCase - use case for receiv workspace po ID
 type GetWorkspaceUseCase struct {
 	appcore.BaseUseCase
 

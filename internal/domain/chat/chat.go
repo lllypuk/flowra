@@ -702,12 +702,12 @@ func (c *Chat) ApplyAndTrack(evt event.DomainEvent) error {
 	return nil
 }
 
-// GetUncommittedEvents returns новые event
+// GetUncommittedEvents returns novye event
 func (c *Chat) GetUncommittedEvents() []event.DomainEvent {
 	return c.uncommittedEvents
 }
 
-// MarkEventsAsCommitted помечает event as зафиксированные
+// MarkEventsAsCommitted pomechaet event as zafiksirovannye
 func (c *Chat) MarkEventsAsCommitted() {
 	c.uncommittedEvents = make([]event.DomainEvent, 0)
 }
@@ -723,7 +723,7 @@ func (c *Chat) WorkspaceID() uuid.UUID { return c.workspaceID }
 // Type returns type chat
 func (c *Chat) Type() Type { return c.chatType }
 
-// IsPublic returns признак публичности
+// IsPublic returns priznak publichnosti
 func (c *Chat) IsPublic() bool { return c.isPublic }
 
 // CreatedBy returns creator ID
@@ -732,7 +732,7 @@ func (c *Chat) CreatedBy() uuid.UUID { return c.createdBy }
 // CreatedAt returns creation time
 func (c *Chat) CreatedAt() time.Time { return c.createdAt }
 
-// Participants returns копию list participants
+// Participants returns kopiyu list participants
 func (c *Chat) Participants() []Participant {
 	participants := make([]Participant, len(c.participants))
 	copy(participants, c.participants)
@@ -742,36 +742,36 @@ func (c *Chat) Participants() []Participant {
 // Version returns version aggregate for optimistic locking
 func (c *Chat) Version() int { return c.version }
 
-// Title returns название typed chat
+// Title returns nazvanie typed chat
 func (c *Chat) Title() string { return c.title }
 
 // Status returns status typed chat
 func (c *Chat) Status() string { return c.status }
 
-// Priority returns приоритет
+// Priority returns prioritet
 func (c *Chat) Priority() string { return c.priority }
 
-// AssigneeID returns ID наvalueенного user
+// AssigneeID returns ID value user
 func (c *Chat) AssigneeID() *uuid.UUID { return c.assigneeID }
 
-// DueDate returns дедлайн
+// DueDate returns deadline
 func (c *Chat) DueDate() *time.Time { return c.dueDate }
 
-// severity returns severity for Bug
-func (c *Chat) severity() string { return c.severity }
+// Severity returns severity for Bug
+func (c *Chat) Severity() string { return c.severity }
 
-// IsDeleted returns признак removing
+// IsDeleted returns priznak removing
 func (c *Chat) IsDeleted() bool { return c.deleted }
 
 // DeletedAt returns time removing
 func (c *Chat) DeletedAt() *time.Time { return c.deletedAt }
 
-// DeletedBy returns ID удалившего user
+// DeletedBy returns ID udalivshego user
 func (c *Chat) DeletedBy() *uuid.UUID { return c.deletedBy }
 
 // Validation helpers
 
-// validateStatus validates status for текущего type chat
+// validateStatus validates status for tekuschego type chat
 func (c *Chat) validateStatus(status string) error {
 	var validStatuses []string
 

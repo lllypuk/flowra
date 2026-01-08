@@ -28,8 +28,8 @@ func TestSetDueDateUseCase_Success(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// Setting дедлайн
-	dueDate := time.Now().Add(7 * 24 * time.Hour) // via неделю
+	// Setting deadline
+	dueDate := time.Now().Add(7 * 24 * time.Hour) // via nedelyu
 	userID := uuid.NewUUID()
 	dueDateCmd := taskapp.SetDueDateCommand{
 		TaskID:    createResult.TaskID,
@@ -48,7 +48,7 @@ func TestSetDueDateUseCase_Success(t *testing.T) {
 	event, ok := result.Events[0].(*task.DueDateChanged)
 	require.True(t, ok, "Expected *task.DueDateChanged event")
 	assert.Equal(t, createResult.TaskID, uuid.UUID(event.AggregateID()))
-	assert.nil(t, event.OldDueDate)
+	assert.Nil(t, event.OldDueDate)
 	assert.NotNil(t, event.NewDueDate)
 	assert.Equal(t, dueDate.Unix(), event.NewDueDate.Unix())
 	assert.Equal(t, userID, event.ChangedBy)
@@ -60,7 +60,7 @@ func TestSetDueDateUseCase_RemoveDueDate(t *testing.T) {
 	createUseCase := taskapp.NewCreateTaskUseCase(store)
 	dueDateUseCase := taskapp.NewSetDueDateUseCase(store)
 
-	// Creating task с дедлайном
+	// Creating task s dedlaynom
 	dueDate := time.Now().Add(7 * 24 * time.Hour)
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
@@ -71,7 +71,7 @@ func TestSetDueDateUseCase_RemoveDueDate(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// Act: Снимаем дедлайн (nil)
+	// Act: snimaem deadline (nil)
 	dueDateCmd := taskapp.SetDueDateCommand{
 		TaskID:    createResult.TaskID,
 		DueDate:   nil,
@@ -86,7 +86,7 @@ func TestSetDueDateUseCase_RemoveDueDate(t *testing.T) {
 	event, ok := result.Events[0].(*task.DueDateChanged)
 	require.True(t, ok)
 	assert.NotNil(t, event.OldDueDate)
-	assert.nil(t, event.NewDueDate)
+	assert.Nil(t, event.NewDueDate)
 }
 
 func TestSetDueDateUseCase_Idempotent(t *testing.T) {
@@ -105,7 +105,7 @@ func TestSetDueDateUseCase_Idempotent(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// Act: Повторная setting той же даты
+	// Act: povtornaya setting toy zhe daty
 	dueDateCmd := taskapp.SetDueDateCommand{
 		TaskID:    createResult.TaskID,
 		DueDate:   &dueDate,
@@ -127,7 +127,7 @@ func TestSetDueDateUseCase_IdempotentRemove(t *testing.T) {
 	createUseCase := taskapp.NewCreateTaskUseCase(store)
 	dueDateUseCase := taskapp.NewSetDueDateUseCase(store)
 
-	// Creating task без deadline
+	// Creating task bez deadline
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
@@ -136,7 +136,7 @@ func TestSetDueDateUseCase_IdempotentRemove(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// Act: Пытаемся снять дедлайн, when его no
+	// Act: pytaemsya snyat deadline, when ego no
 	dueDateCmd := taskapp.SetDueDateCommand{
 		TaskID:    createResult.TaskID,
 		DueDate:   nil,
@@ -164,7 +164,7 @@ func TestSetDueDateUseCase_PastDate(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// Act: Setting дату in прошлом (просроченная task)
+	// Act: Setting datu in proshlom (prosrochennaya task)
 	pastDate := time.Now().Add(-7 * 24 * time.Hour)
 	dueDateCmd := taskapp.SetDueDateCommand{
 		TaskID:    createResult.TaskID,
@@ -173,7 +173,7 @@ func TestSetDueDateUseCase_PastDate(t *testing.T) {
 	}
 	result, err := dueDateUseCase.Execute(context.Background(), dueDateCmd)
 
-	// Assert: Должно быть successfully (date in прошлом допустима)
+	// Assert: dolzhno byt successfully (date in proshlom dopustima)
 	require.NoError(t, err)
 	assert.Len(t, result.Events, 1)
 
@@ -290,7 +290,7 @@ func TestSetDueDateUseCase_TaskNotFound(t *testing.T) {
 
 	dueDate := time.Now().Add(7 * 24 * time.Hour)
 	cmd := taskapp.SetDueDateCommand{
-		TaskID:    uuid.NewUUID(), // not существует
+		TaskID:    uuid.NewUUID(), // not suschestvuet
 		DueDate:   &dueDate,
 		ChangedBy: uuid.NewUUID(),
 	}

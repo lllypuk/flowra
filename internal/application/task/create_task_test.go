@@ -56,7 +56,7 @@ func TestCreateTaskUseCase_Success(t *testing.T) {
 	assert.NotNil(t, event.DueDate)
 	assert.Equal(t, userID, event.CreatedBy)
 
-	// Checking, that event savены in Event Store
+	// Checking, that event sav in Event Store
 	storedEvents, err := store.LoadEvents(context.Background(), result.TaskID.String())
 	require.NoError(t, err)
 	assert.Len(t, storedEvents, 1)
@@ -70,10 +70,10 @@ func TestCreateTaskUseCase_WithDefaults(t *testing.T) {
 	cmd := taskapp.CreateTaskCommand{
 		ChatID: uuid.NewUUID(),
 		Title:  "Simple task",
-		// EntityType not указан - должен стать TypeTask
-		// Priority not указан - должен стать PriorityMedium
-		// AssigneeID not указан
-		// DueDate not указан
+		// EntityType not ukazan - dolzhen stat TypeTask
+		// Priority not ukazan - dolzhen stat PriorityMedium
+		// AssigneeID not ukazan
+		// DueDate not ukazan
 		CreatedBy: uuid.NewUUID(),
 	}
 
@@ -88,8 +88,8 @@ func TestCreateTaskUseCase_WithDefaults(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, task.TypeTask, event.EntityType, "Default entity type should be TypeTask")
 	assert.Equal(t, task.PriorityMedium, event.Priority, "Default priority should be Medium")
-	assert.nil(t, event.AssigneeID, "AssigneeID should be nil")
-	assert.nil(t, event.DueDate, "DueDate should be nil")
+	assert.Nil(t, event.AssigneeID, "AssigneeID should be nil")
+	assert.Nil(t, event.DueDate, "DueDate should be nil")
 }
 
 func TestCreateTaskUseCase_TitleTrimming(t *testing.T) {
@@ -151,7 +151,7 @@ func TestCreateTaskUseCase_ValidationErrors(t *testing.T) {
 			name: "Title too long",
 			cmd: taskapp.CreateTaskCommand{
 				ChatID:    uuid.NewUUID(),
-				Title:     string(make([]byte, 501)), // 501 символ
+				Title:     string(make([]byte, 501)), // 501 simvol
 				CreatedBy: uuid.NewUUID(),
 			},
 			expectedErr: taskapp.ErrInvalidTitle,
@@ -171,7 +171,7 @@ func TestCreateTaskUseCase_ValidationErrors(t *testing.T) {
 			cmd: taskapp.CreateTaskCommand{
 				ChatID:    uuid.NewUUID(),
 				Title:     "Test",
-				Priority:  "Urgent", // not существует
+				Priority:  "Urgent", // not suschestvuet
 				CreatedBy: uuid.NewUUID(),
 			},
 			expectedErr: taskapp.ErrInvalidPriority,

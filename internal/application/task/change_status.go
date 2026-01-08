@@ -22,7 +22,7 @@ func NewChangeStatusUseCase(eventStore appcore.EventStore) *ChangeStatusUseCase 
 	}
 }
 
-// Execute изменяет status tasks
+// Execute izmenyaet status tasks
 func (uc *ChangeStatusUseCase) Execute(ctx context.Context, cmd ChangeStatusCommand) (TaskResult, error) {
 	// 1. validation commands
 	if err := uc.validate(cmd); err != nil {
@@ -46,7 +46,7 @@ func (uc *ChangeStatusUseCase) Execute(ctx context.Context, cmd ChangeStatusComm
 	aggregate := task.NewTaskAggregate(cmd.TaskID)
 	aggregate.ReplayEvents(events)
 
-	// 4. performing бизнес-операции
+	// 4. performing biznes-operatsii
 	err = aggregate.ChangeStatus(cmd.NewStatus, cmd.ChangedBy)
 	if err != nil {
 		if errors.Is(err, errs.ErrInvalidTransition) {
@@ -58,7 +58,7 @@ func (uc *ChangeStatusUseCase) Execute(ctx context.Context, cmd ChangeStatusComm
 	// 5. retrieval only New events
 	newEvents := aggregate.UncommittedEvents()
 
-	// if New events no (идемпотентность), возвращаем success
+	// if no new events (idempotent), return success
 	if len(newEvents) == 0 {
 		return TaskResult{
 			TaskID:  cmd.TaskID,
@@ -78,7 +78,7 @@ func (uc *ChangeStatusUseCase) Execute(ctx context.Context, cmd ChangeStatusComm
 		return TaskResult{}, fmt.Errorf("failed to save events: %w", saveErr)
 	}
 
-	// 7. Возврат result
+	// 7. vozvrat result
 	return NewSuccessResult(cmd.TaskID, expectedVersion+len(newEvents), newEvents), nil
 }
 

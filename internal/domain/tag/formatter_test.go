@@ -62,7 +62,7 @@ func TestGenerateBotResponse(t *testing.T) {
 						TagKey:   "assignee",
 						TagValue: "@nonexistent",
 						Error:    errors.New("User @nonexistent not found"),
-						severity: tag.ErrorSeverityError,
+						Severity: tag.ErrorSeverityError,
 					},
 				},
 			},
@@ -76,13 +76,13 @@ func TestGenerateBotResponse(t *testing.T) {
 						TagKey:   "status",
 						TagValue: "done",
 						Error:    errors.New("Invalid status 'done' for Task. Available: To Do, In Progress, Done"),
-						severity: tag.ErrorSeverityError,
+						Severity: tag.ErrorSeverityError,
 					},
 					{
 						TagKey:   "assignee",
 						TagValue: "@nobody",
 						Error:    errors.New("User @nobody not found"),
-						severity: tag.ErrorSeverityError,
+						Severity: tag.ErrorSeverityError,
 					},
 				},
 			},
@@ -124,7 +124,7 @@ func TestGenerateBotResponse(t *testing.T) {
 						TagKey:   "severity",
 						TagValue: "Critical",
 						Error:    errors.New("severity is only applicable to Bugs"),
-						severity: tag.ErrorSeverityWarning,
+						Severity: tag.ErrorSeverityWarning,
 					},
 				},
 			},
@@ -263,7 +263,7 @@ func TestFormatSuccess_AllCommandTypes(t *testing.T) {
 			applied: tag.TagApplication{
 				TagKey:   "severity",
 				TagValue: "Critical",
-				Command:  tag.SetSeverityCommand{ChatID: chatID, severity: "Critical"},
+				Command:  tag.SetSeverityCommand{ChatID: chatID, Severity: "Critical"},
 				Success:  true,
 			},
 			expected: "✅ severity set to Critical",
@@ -324,7 +324,7 @@ func TestProcessingResult_HelperMethods(t *testing.T) {
 			AppliedTags: []tag.TagApplication{
 				{TagKey: "task", Success: true},
 				{TagKey: "bug", Success: true},
-				{TagKey: "epic", Success: false}, // not должен считаться
+				{TagKey: "epic", Success: false}, // not dolzhen schitatsya
 			},
 		}
 		assert.Equal(t, 2, result.SuccessCount())

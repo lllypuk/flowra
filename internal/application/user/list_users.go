@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	// MaxListLimit максимальное count users in одном запросе
+	// MaxListLimit maximum count users in odnom zaprose
 	MaxListLimit = 100
 )
 
@@ -32,7 +32,7 @@ func (uc *ListUsersUseCase) Execute(
 		return UsersListResult{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// retrieval общего количества
+	// retrieval obschego kolichestva
 	totalCount, err := uc.userRepo.Count(ctx)
 	if err != nil {
 		return UsersListResult{}, fmt.Errorf("failed to get users count: %w", err)

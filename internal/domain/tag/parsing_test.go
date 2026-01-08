@@ -19,7 +19,7 @@ func TestParse(t *testing.T) {
 		wantTags []tag.ParsedTag
 		wantText string
 	}{
-		// Базовые примеры
+		// bazovye primery
 		{
 			name:  "single tag",
 			input: "#status Done",

@@ -16,7 +16,7 @@ const (
 	entityTypeEpic = "Epic"
 )
 
-// Handler handles messages с тегами
+// Handler handles messages s tegami
 type Handler struct {
 	processor   *Processor
 	executor    *CommandExecutor
@@ -39,14 +39,14 @@ func NewHandler(
 	}
 }
 
-// HandleMessageWithTags handles message с тегами
+// HandleMessageWithTags handles message s tegami
 func (h *Handler) HandleMessageWithTags(
 	ctx context.Context,
 	chatID uuid.UUID,
 	authorID uuid.UUID,
 	content string,
 ) error {
-	// Конвертация UUID
+	// konvertatsiya UUID
 	domainChatID := domainUUID.FromGoogleUUID(chatID)
 
 	// 1. retrieval context chat
@@ -55,17 +55,17 @@ func (h *Handler) HandleMessageWithTags(
 		return fmt.Errorf("failed to load chat: %w", err)
 	}
 
-	// Определяем текущий type entity for validации
+	// opredelyaem tekuschiy type entity for valid
 	currentEntityType := h.getEntityType(c)
 
-	// 2. handling тегов via Processor
+	// 2. handling tegov via Processor
 	result := h.processor.ProcessMessage(chatID, content, currentEntityType)
 
 	// 3. storage messages user
 	msg, err := message.NewMessage(
 		domainChatID,
 		domainUUID.FromGoogleUUID(authorID),
-		result.PlainText,    // text без тегов
+		result.PlainText,    // text bez tegov
 		domainUUID.UUID(""), // not thread
 	)
 	if err != nil {
@@ -79,22 +79,22 @@ func (h *Handler) HandleMessageWithTags(
 	// 4. performing commands
 	executionErrors := h.executeCommands(ctx, result.AppliedTags, authorID)
 
-	// 5. Adding errors выполнения to результату
+	// 5. Adding errors vypolneniya to rezultatu
 	result.Errors = append(result.Errors, executionErrors...)
 
-	// 6. Генерация and sendа bot response
+	// 6. generatsiya and send bot response
 	if botResponse := result.GenerateBotResponse(); botResponse != "" {
 		if sendErr := h.sendBotResponse(ctx, chatID, botResponse); sendErr != nil {
-			// Логируем, но not фейлим весь процесс
+			// logiruem, no not feylim ves protsess
 			// TODO: add proper logging
-			_ = sendErr // временно игнорируем error sendи bot response
+			_ = sendErr // vremenno ignoriruem error send bot response
 		}
 	}
 
 	return nil
 }
 
-// executeCommands performs all commands from result обworkки
+// executeCommands performs all commands from result work
 func (h *Handler) executeCommands(
 	ctx context.Context,
 	applications []TagApplication,
@@ -112,7 +112,7 @@ func (h *Handler) executeCommands(
 				TagKey:   app.TagKey,
 				TagValue: app.TagValue,
 				Error:    err,
-				severity: ErrorSeverityError,
+				Severity: ErrorSeverityError,
 			})
 		}
 	}
@@ -120,12 +120,12 @@ func (h *Handler) executeCommands(
 	return errors
 }
 
-// sendBotResponse отправляет bot response in chat
+// sendBotResponse otpravlyaet bot response in chat
 func (h *Handler) sendBotResponse(ctx context.Context, chatID uuid.UUID, response string) error {
 	domainChatID := domainUUID.FromGoogleUUID(chatID)
 
-	// Creating системное message от бота
-	// TODO: исuserь настоящий bot user ID вместо пустого
+	// Creating sistemnoe message ot bota
+	// TODO: user nastoyaschiy bot user ID vmesto pustogo
 	botMessage, err := message.NewMessage(
 		domainChatID,
 		domainUUID.UUID("00000000-0000-0000-0000-000000000000"), // System bot ID
@@ -143,7 +143,7 @@ func (h *Handler) sendBotResponse(ctx context.Context, chatID uuid.UUID, respons
 	return nil
 }
 
-// getEntityType returns type entity for validации
+// getEntityType returns type entity for valid
 func (h *Handler) getEntityType(c *chat.Chat) string {
 	switch c.Type() {
 	case chat.TypeTask:

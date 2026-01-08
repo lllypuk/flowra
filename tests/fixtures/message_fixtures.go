@@ -21,7 +21,7 @@ func NewSendMessageCommandBuilder(chatID domainUUID.UUID, authorID domainUUID.UU
 	}
 }
 
-// WithContent устанавливает content
+// WithContent sets content
 func (b *SendMessageCommandBuilder) WithContent(content string) *SendMessageCommandBuilder {
 	b.cmd.Content = content
 	return b
@@ -48,7 +48,7 @@ func NewEditMessageCommandBuilder(messageID domainUUID.UUID, userID domainUUID.U
 	}
 }
 
-// WithContent устанавливает content
+// WithContent sets content
 func (b *EditMessageCommandBuilder) WithContent(content string) *EditMessageCommandBuilder {
 	b.cmd.Content = content
 	return b

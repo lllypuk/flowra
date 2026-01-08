@@ -8,7 +8,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/user"
 )
 
-// RegisterUserUseCase handles регистрацию нового user
+// RegisterUserUseCase handles registratsiyu novogo user
 type RegisterUserUseCase struct {
 	userRepo Repository
 }
@@ -18,7 +18,7 @@ func NewRegisterUserUseCase(userRepo Repository) *RegisterUserUseCase {
 	return &RegisterUserUseCase{userRepo: userRepo}
 }
 
-// Execute performs регистрацию user
+// Execute performs registratsiyu user
 func (uc *RegisterUserUseCase) Execute(
 	ctx context.Context,
 	cmd RegisterUserCommand,
@@ -28,13 +28,13 @@ func (uc *RegisterUserUseCase) Execute(
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// check uniqueости username
+	// check unique username
 	existing, err := uc.userRepo.FindByUsername(ctx, cmd.Username)
 	if err == nil && existing != nil {
 		return Result{}, ErrUsernameAlreadyExists
 	}
 
-	// check uniqueости email
+	// check unique email
 	existingByEmail, err := uc.userRepo.FindByEmail(ctx, cmd.Email)
 	if err == nil && existingByEmail != nil {
 		return Result{}, ErrEmailAlreadyExists

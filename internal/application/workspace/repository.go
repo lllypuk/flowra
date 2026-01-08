@@ -7,64 +7,64 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/workspace"
 )
 
-// CommandRepository defines interface for commands (change state) workspaceих пространств
+// CommandRepository defines interface for commands (change state) workspace prostranstv
 // interface declared on the consumer side (application layer)
 type CommandRepository interface {
-	// Save saves workspaceее пространство (creation or update)
+	// Save saves workspace space (creation or update)
 	Save(ctx context.Context, ws *workspace.Workspace) error
 
-	// Delete удаляет workspaceее пространство
+	// Delete udalyaet workspace space
 	Delete(ctx context.Context, id uuid.UUID) error
 
-	// AddMember добавляет члена in workspace
+	// AddMember adds chlena in workspace
 	AddMember(ctx context.Context, member *workspace.Member) error
 
-	// RemoveMember удаляет члена from workspace
+	// RemoveMember udalyaet chlena from workspace
 	RemoveMember(ctx context.Context, workspaceID, userID uuid.UUID) error
 
-	// UpdateMember обновляет data члена workspace
+	// UpdateMember obnovlyaet data chlena workspace
 	UpdateMember(ctx context.Context, member *workspace.Member) error
 }
 
-// QueryRepository defines interface for запросов (only reading) workspaceих пространств
+// QueryRepository defines interface for zaprosov (only reading) workspace prostranstv
 // interface declared on the consumer side (application layer)
 type QueryRepository interface {
-	// FindByID finds workspaceее пространство по ID
+	// FindByID finds workspace space po ID
 	FindByID(ctx context.Context, id uuid.UUID) (*workspace.Workspace, error)
 
-	// FindByKeycloakGroup finds workspaceее пространство по ID groupsы Keycloak
+	// FindByKeycloakGroup finds workspace space po ID groups Keycloak
 	FindByKeycloakGroup(ctx context.Context, keycloakGroupID string) (*workspace.Workspace, error)
 
-	// List returns list workspaceих пространств с пагинацией
+	// List returns list workspace prostranstv s paginatsiey
 	List(ctx context.Context, offset, limit int) ([]*workspace.Workspace, error)
 
-	// Count returns общее count workspaceих пространств
+	// Count returns obschee count workspace prostranstv
 	Count(ctx context.Context) (int, error)
 
-	// FindInviteByToken finds приглашение по токену
+	// FindInviteByToken finds priglashenie po tokenu
 	FindInviteByToken(ctx context.Context, token string) (*workspace.Invite, error)
 
-	// GetMember returns члена workspace по userID
+	// GetMember returns chlena workspace po userID
 	GetMember(ctx context.Context, workspaceID, userID uuid.UUID) (*workspace.Member, error)
 
-	// IsMember checks, is ли userель членом workspace
+	// IsMember checks, is li user chlenom workspace
 	IsMember(ctx context.Context, workspaceID, userID uuid.UUID) (bool, error)
 
-	// ListWorkspacesByUser returns workspaces, in которых userель is членом
+	// ListWorkspacesByUser returns workspaces, in kotoryh user is chlenom
 	ListWorkspacesByUser(ctx context.Context, userID uuid.UUID, offset, limit int) ([]*workspace.Workspace, error)
 
 	// CountWorkspacesByUser returns count workspaces user
 	CountWorkspacesByUser(ctx context.Context, userID uuid.UUID) (int, error)
 
-	// ListMembers returns all членов workspace
+	// ListMembers returns all chlenov workspace
 	ListMembers(ctx context.Context, workspaceID uuid.UUID, offset, limit int) ([]*workspace.Member, error)
 
-	// CountMembers returns count членов workspace
+	// CountMembers returns count chlenov workspace
 	CountMembers(ctx context.Context, workspaceID uuid.UUID) (int, error)
 }
 
 // Repository combines Command and Query interfaces for convenience
-// Used when use case need both types of операций
+// Used when use case need both types of operatsiy
 type Repository interface {
 	CommandRepository
 	QueryRepository

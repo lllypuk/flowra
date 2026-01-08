@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// Command represents команду, которая должна быть выполнена
+// Command represents komandu, kotoraya dolzhna byt vypolnena
 type Command interface {
 	CommandType() string
 }
@@ -57,11 +57,11 @@ func (c ChangeStatusCommand) CommandType() string {
 	return "ChangeStatus"
 }
 
-// AssignUserCommand - command наvalueения исполнителя
+// AssignUserCommand - command assigning ispolnitelya
 type AssignUserCommand struct {
 	ChatID   uuid.UUID
 	Username string     // @alex
-	UserID   *uuid.UUID // резолвленный ID (может быть nil at снятии)
+	UserID   *uuid.UUID // rezolvlennyy ID (mozhet byt nil at snyatii)
 }
 
 // CommandType returns type commands
@@ -83,7 +83,7 @@ func (c ChangePriorityCommand) CommandType() string {
 // SetDueDateCommand - command setting deadline
 type SetDueDateCommand struct {
 	ChatID  uuid.UUID
-	DueDate *time.Time // nil оvalueает снять due date
+	DueDate *time.Time // nil value snyat due date
 }
 
 // CommandType returns type commands
@@ -91,7 +91,7 @@ func (c SetDueDateCommand) CommandType() string {
 	return "SetDueDate"
 }
 
-// ChangeTitleCommand - command changing названия
+// ChangeTitleCommand - command changing nazvaniya
 type ChangeTitleCommand struct {
 	ChatID uuid.UUID
 	Title  string
@@ -102,10 +102,10 @@ func (c ChangeTitleCommand) CommandType() string {
 	return "ChangeTitle"
 }
 
-// SetSeverityCommand - command setting серьезности бага
+// SetSeverityCommand - command setting sereznosti baga
 type SetSeverityCommand struct {
 	ChatID   uuid.UUID
-	severity string
+	Severity string
 }
 
 // CommandType returns type commands

@@ -9,7 +9,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/user"
 )
 
-// UpdateProfileUseCase handles update профиля user
+// UpdateProfileUseCase handles update profilya user
 type UpdateProfileUseCase struct {
 	userRepo Repository
 }
@@ -19,7 +19,7 @@ func NewUpdateProfileUseCase(userRepo Repository) *UpdateProfileUseCase {
 	return &UpdateProfileUseCase{userRepo: userRepo}
 }
 
-// Execute performs update профиля
+// Execute performs update profilya
 func (uc *UpdateProfileUseCase) Execute(
 	ctx context.Context,
 	cmd UpdateProfileCommand,
@@ -35,7 +35,7 @@ func (uc *UpdateProfileUseCase) Execute(
 		return Result{}, ErrUserNotFound
 	}
 
-	// check uniqueости email if он меняется
+	// check unique email if on menyaetsya
 	if cmd.Email != nil {
 		existingByEmail, emailErr := uc.userRepo.FindByEmail(ctx, *cmd.Email)
 		if emailErr == nil && existingByEmail != nil && existingByEmail.ID() != usr.ID() {
@@ -43,7 +43,7 @@ func (uc *UpdateProfileUseCase) Execute(
 		}
 	}
 
-	// update профиля
+	// update profilya
 	if updateErr := usr.UpdateProfile(cmd.DisplayName, cmd.Email); updateErr != nil {
 		return Result{}, fmt.Errorf("failed to update profile: %w", updateErr)
 	}
@@ -65,19 +65,19 @@ func (uc *UpdateProfileUseCase) validate(cmd UpdateProfileCommand) error {
 		return err
 	}
 
-	// Checking, that хотя бы одно field for updating указано
+	// Checking, that hotya by odno field for updating ukazano
 	if cmd.DisplayName == nil && cmd.Email == nil {
 		return errors.New("at least one field (displayName or email) must be provided")
 	}
 
-	// validation email if он предоставлен
+	// validation email if on predostavlen
 	if cmd.Email != nil {
 		if err := appcore.ValidateEmail("email", *cmd.Email); err != nil {
 			return err
 		}
 	}
 
-	// validation displayName if он предоставлен
+	// validation displayName if on predostavlen
 	if cmd.DisplayName != nil && *cmd.DisplayName == "" {
 		return appcore.NewValidationError("displayName", "cannot be empty")
 	}

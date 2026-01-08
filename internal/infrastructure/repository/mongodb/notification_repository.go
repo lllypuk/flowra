@@ -16,7 +16,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// MongoNotificationRepository реализует notificationapp.Repository (application layer interface)
+// MongoNotificationRepository realizuet notificationapp.Repository (application layer interface)
 type MongoNotificationRepository struct {
 	collection *mongo.Collection
 	logger     *slog.Logger
@@ -49,7 +49,7 @@ func NewMongoNotificationRepository(
 	return r
 }
 
-// notificationDocument represents структуру документа in MongoDB
+// notificationDocument represents strukturu dokumenta in MongoDB
 type notificationDocument struct {
 	NotificationID string     `bson:"notification_id"`
 	UserID         string     `bson:"user_id"`
@@ -61,7 +61,7 @@ type notificationDocument struct {
 	CreatedAt      time.Time  `bson:"created_at"`
 }
 
-// notificationToDocument преобразует Notification in Document
+// notificationToDocument preobrazuet Notification in Document
 func (r *MongoNotificationRepository) notificationToDocument(
 	notif *notificationdomain.Notification,
 ) notificationDocument {
@@ -77,7 +77,7 @@ func (r *MongoNotificationRepository) notificationToDocument(
 	}
 }
 
-// documentToNotification преобразует Document in Notification
+// documentToNotification preobrazuet Document in Notification
 func (r *MongoNotificationRepository) documentToNotification(
 	doc *notificationDocument,
 ) (*notificationdomain.Notification, error) {
@@ -107,7 +107,7 @@ func (r *MongoNotificationRepository) documentToNotification(
 	), nil
 }
 
-// FindByID finds notification по ID
+// FindByID finds notification po ID
 func (r *MongoNotificationRepository) FindByID(
 	ctx context.Context,
 	id uuid.UUID,
@@ -132,7 +132,7 @@ func (r *MongoNotificationRepository) FindByID(
 	return r.documentToNotification(&doc)
 }
 
-// FindByUserID finds all уведомления user с пагинацией
+// FindByUserID finds all uvedomleniya user s paginatsiey
 func (r *MongoNotificationRepository) FindByUserID(
 	ctx context.Context,
 	userID uuid.UUID,
@@ -179,7 +179,7 @@ func (r *MongoNotificationRepository) FindByUserID(
 	return notifications, nil
 }
 
-// FindUnreadByUserID finds непрочитанные уведомления user
+// FindUnreadByUserID finds neprochitannye uvedomleniya user
 func (r *MongoNotificationRepository) FindUnreadByUserID(
 	ctx context.Context,
 	userID uuid.UUID,
@@ -225,7 +225,7 @@ func (r *MongoNotificationRepository) FindUnreadByUserID(
 	return notifications, nil
 }
 
-// FindByType finds уведомления specific type for user
+// FindByType finds uvedomleniya specific type for user
 func (r *MongoNotificationRepository) FindByType(
 	ctx context.Context,
 	userID uuid.UUID,
@@ -273,7 +273,7 @@ func (r *MongoNotificationRepository) FindByType(
 	return notifications, nil
 }
 
-// FindByResourceID finds уведомления связанные с ресурсом
+// FindByResourceID finds uvedomleniya svyazannye s resursom
 func (r *MongoNotificationRepository) FindByResourceID(
 	ctx context.Context,
 	resourceID string,
@@ -317,7 +317,7 @@ func (r *MongoNotificationRepository) FindByResourceID(
 	return notifications, nil
 }
 
-// CountUnreadByUserID returns count unread уведомлений
+// CountUnreadByUserID returns count unread uvedomleniy
 func (r *MongoNotificationRepository) CountUnreadByUserID(ctx context.Context, userID uuid.UUID) (int, error) {
 	if userID.IsZero() {
 		return 0, errs.ErrInvalidInput
@@ -335,7 +335,7 @@ func (r *MongoNotificationRepository) CountUnreadByUserID(ctx context.Context, u
 	return int(count), nil
 }
 
-// CountByType returns count уведомлений по типам for user
+// CountByType returns count uvedomleniy po tipam for user
 func (r *MongoNotificationRepository) CountByType(
 	ctx context.Context,
 	userID uuid.UUID,
@@ -399,7 +399,7 @@ func (r *MongoNotificationRepository) Save(ctx context.Context, notification *no
 	return HandleMongoError(err, "notification")
 }
 
-// SaveBatch saves several уведомлений за one query
+// SaveBatch saves several uvedomleniy za one query
 func (r *MongoNotificationRepository) SaveBatch(
 	ctx context.Context,
 	notifications []*notificationdomain.Notification,
@@ -431,7 +431,7 @@ func (r *MongoNotificationRepository) SaveBatch(
 	return nil
 }
 
-// Delete удаляет notification
+// Delete udalyaet notification
 func (r *MongoNotificationRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	if id.IsZero() {
 		return errs.ErrInvalidInput
@@ -454,7 +454,7 @@ func (r *MongoNotificationRepository) Delete(ctx context.Context, id uuid.UUID) 
 	return nil
 }
 
-// DeleteByUserID удаляет all уведомления user
+// DeleteByUserID udalyaet all uvedomleniya user
 func (r *MongoNotificationRepository) DeleteByUserID(ctx context.Context, userID uuid.UUID) error {
 	if userID.IsZero() {
 		return errs.ErrInvalidInput
@@ -465,7 +465,7 @@ func (r *MongoNotificationRepository) DeleteByUserID(ctx context.Context, userID
 	return HandleMongoError(err, "notifications")
 }
 
-// DeleteOlderThan удаляет уведомления старше указанной даты
+// DeleteOlderThan udalyaet uvedomleniya starshe ukazannoy daty
 func (r *MongoNotificationRepository) DeleteOlderThan(ctx context.Context, before time.Time) (int, error) {
 	filter := bson.M{
 		"created_at": bson.M{"$lt": before},
@@ -479,7 +479,7 @@ func (r *MongoNotificationRepository) DeleteOlderThan(ctx context.Context, befor
 	return int(result.DeletedCount), nil
 }
 
-// DeleteReadOlderThan удаляет прочитанные уведомления старше указанной даты
+// DeleteReadOlderThan udalyaet prochitannye uvedomleniya starshe ukazannoy daty
 func (r *MongoNotificationRepository) DeleteReadOlderThan(ctx context.Context, before time.Time) (int, error) {
 	filter := bson.M{
 		"read_at":    bson.M{"$ne": nil},
@@ -494,7 +494,7 @@ func (r *MongoNotificationRepository) DeleteReadOlderThan(ctx context.Context, b
 	return int(result.DeletedCount), nil
 }
 
-// MarkAsRead отмечает notification as прочитанное
+// MarkAsRead otmechaet notification as prochitannoe
 func (r *MongoNotificationRepository) MarkAsRead(ctx context.Context, id uuid.UUID) error {
 	if id.IsZero() {
 		return errs.ErrInvalidInput
@@ -503,7 +503,7 @@ func (r *MongoNotificationRepository) MarkAsRead(ctx context.Context, id uuid.UU
 	now := time.Now().UTC()
 	filter := bson.M{
 		"notification_id": id.String(),
-		"read_at":         nil, // only непрочитанные
+		"read_at":         nil, // only neprochitannye
 	}
 	update := bson.M{
 		"$set": bson.M{
@@ -517,7 +517,7 @@ func (r *MongoNotificationRepository) MarkAsRead(ctx context.Context, id uuid.UU
 	}
 
 	if result.MatchedCount == 0 {
-		// Checking, существует ли notification вообще
+		// Checking, suschestvuet li notification voobsche
 		existsFilter := bson.M{"notification_id": id.String()}
 		count, countErr := r.collection.CountDocuments(ctx, existsFilter)
 		if countErr != nil {
@@ -526,13 +526,13 @@ func (r *MongoNotificationRepository) MarkAsRead(ctx context.Context, id uuid.UU
 		if count == 0 {
 			return errs.ErrNotFound
 		}
-		// Notification существует, но уже прочитано — not error
+		// Notification suschestvuet, no uzhe prochitano — not error
 	}
 
 	return nil
 }
 
-// MarkAllAsRead отмечает all уведомления user as прочитанные
+// MarkAllAsRead otmechaet all uvedomleniya user as prochitannye
 func (r *MongoNotificationRepository) MarkAllAsRead(ctx context.Context, userID uuid.UUID) error {
 	if userID.IsZero() {
 		return errs.ErrInvalidInput
@@ -557,7 +557,7 @@ func (r *MongoNotificationRepository) MarkAllAsRead(ctx context.Context, userID 
 	return nil
 }
 
-// MarkManyAsRead отмечает several уведомлений as прочитанные
+// MarkManyAsRead otmechaet several uvedomleniy as prochitannye
 func (r *MongoNotificationRepository) MarkManyAsRead(ctx context.Context, ids []uuid.UUID) error {
 	if len(ids) == 0 {
 		return nil

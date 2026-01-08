@@ -25,10 +25,10 @@ type ChangeStatusCommand struct {
 	ChangedBy uuid.UUID
 }
 
-// AssignTaskCommand contains data for наvalueения исполнителя
+// AssignTaskCommand contains data for assigning ispolnitelya
 type AssignTaskCommand struct {
 	TaskID     uuid.UUID
-	AssigneeID *uuid.UUID // nil = снять assignee
+	AssigneeID *uuid.UUID // nil = snyat assignee
 	AssignedBy uuid.UUID
 }
 
@@ -42,11 +42,11 @@ type ChangePriorityCommand struct {
 // SetDueDateCommand contains data for setting deadline
 type SetDueDateCommand struct {
 	TaskID    uuid.UUID
-	DueDate   *time.Time // nil = снять дедлайн
+	DueDate   *time.Time // nil = snyat deadline
 	ChangedBy uuid.UUID
 }
 
-// UpdateTitleCommand contains data for updating заголовка
+// UpdateTitleCommand contains data for updating zagolovka
 type UpdateTitleCommand struct {
 	TaskID    uuid.UUID
 	Title     string

@@ -33,7 +33,7 @@ type Created struct {
 	CreatedBy  uuid.UUID
 }
 
-// NewTaskCreated creates новое event TaskCreated
+// NewTaskCreated creates new event TaskCreated
 func NewTaskCreated(
 	taskID, chatID uuid.UUID,
 	title string,
@@ -65,7 +65,7 @@ type Updated struct {
 	Title string
 }
 
-// NewTaskUpdated creates новое event TaskUpdated
+// NewTaskUpdated creates new event TaskUpdated
 func NewTaskUpdated(
 	taskID uuid.UUID,
 	title string,
@@ -82,7 +82,7 @@ type Deleted struct {
 	event.BaseEvent
 }
 
-// NewTaskDeleted creates новое event TaskDeleted
+// NewTaskDeleted creates new event TaskDeleted
 func NewTaskDeleted(
 	taskID uuid.UUID,
 	metadata event.Metadata,
@@ -101,7 +101,7 @@ type StatusChanged struct {
 	ChangedBy uuid.UUID
 }
 
-// NewStatusChanged creates новое event StatusChanged
+// NewStatusChanged creates new event StatusChanged
 func NewStatusChanged(
 	taskID uuid.UUID,
 	oldStatus, newStatus Status,
@@ -116,7 +116,7 @@ func NewStatusChanged(
 	}
 }
 
-// AssigneeChanged event changing исполнителя
+// AssigneeChanged event changing ispolnitelya
 type AssigneeChanged struct {
 	event.BaseEvent
 
@@ -125,7 +125,7 @@ type AssigneeChanged struct {
 	ChangedBy   uuid.UUID
 }
 
-// NewAssigneeChanged creates новое event AssigneeChanged
+// NewAssigneeChanged creates new event AssigneeChanged
 func NewAssigneeChanged(
 	taskID uuid.UUID,
 	oldAssignee, newAssignee *uuid.UUID,
@@ -149,7 +149,7 @@ type PriorityChanged struct {
 	ChangedBy   uuid.UUID
 }
 
-// NewPriorityChanged creates новое event PriorityChanged
+// NewPriorityChanged creates new event PriorityChanged
 func NewPriorityChanged(
 	taskID uuid.UUID,
 	oldPriority, newPriority Priority,
@@ -164,7 +164,7 @@ func NewPriorityChanged(
 	}
 }
 
-// DueDateChanged event changing срока выполнения
+// DueDateChanged event changing sroka vypolneniya
 type DueDateChanged struct {
 	event.BaseEvent
 
@@ -173,7 +173,7 @@ type DueDateChanged struct {
 	ChangedBy  uuid.UUID
 }
 
-// NewDueDateChanged creates новое event DueDateChanged
+// NewDueDateChanged creates new event DueDateChanged
 func NewDueDateChanged(
 	taskID uuid.UUID,
 	oldDueDate, newDueDate *time.Time,
@@ -188,7 +188,7 @@ func NewDueDateChanged(
 	}
 }
 
-// CustomFieldSet event setting кастомного fields
+// CustomFieldSet event setting kastomnogo fields
 type CustomFieldSet struct {
 	event.BaseEvent
 
@@ -196,7 +196,7 @@ type CustomFieldSet struct {
 	Value string
 }
 
-// NewCustomFieldSet creates новое event CustomFieldSet
+// NewCustomFieldSet creates new event CustomFieldSet
 func NewCustomFieldSet(
 	taskID uuid.UUID,
 	key, value string,

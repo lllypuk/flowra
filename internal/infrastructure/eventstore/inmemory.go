@@ -8,7 +8,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/event"
 )
 
-// InMemoryEventStore реализует EventStore in памяти for testing
+// InMemoryEventStore realizuet EventStore in pamyati for testing
 type InMemoryEventStore struct {
 	mu     sync.RWMutex
 	events map[string][]event.DomainEvent
@@ -60,7 +60,7 @@ func (s *InMemoryEventStore) LoadEvents(
 		return nil, appcore.ErrAggregateNotFound
 	}
 
-	// Возвращаем копию чтобы избежать race conditions
+	// return a copy to avoid race conditions
 	result := make([]event.DomainEvent, len(events))
 	copy(result, events)
 
@@ -91,7 +91,7 @@ func (s *InMemoryEventStore) Clear() {
 	s.events = make(map[string][]event.DomainEvent)
 }
 
-// GetAllAggregateIDs returns all ID агрегатов (for tests)
+// GetAllAggregateIDs returns all ID agregatov (for tests)
 func (s *InMemoryEventStore) GetAllAggregateIDs() []string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

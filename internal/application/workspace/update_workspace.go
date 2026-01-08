@@ -42,7 +42,7 @@ func (uc *UpdateWorkspaceUseCase) Execute(
 		return Result{}, uc.WrapError("find workspace", ErrWorkspaceNotFound)
 	}
 
-	// update названия
+	// update nazvaniya
 	if errUpdate := ws.UpdateName(cmd.Name); errUpdate != nil {
 		return Result{}, uc.WrapError("update workspace name", errUpdate)
 	}

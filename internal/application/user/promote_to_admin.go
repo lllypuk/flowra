@@ -8,7 +8,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/user"
 )
 
-// PromoteToAdminUseCase handles повышение user before administratorа
+// PromoteToAdminUseCase handles povyshenie user before administrator
 type PromoteToAdminUseCase struct {
 	userRepo Repository
 }
@@ -18,7 +18,7 @@ func NewPromoteToAdminUseCase(userRepo Repository) *PromoteToAdminUseCase {
 	return &PromoteToAdminUseCase{userRepo: userRepo}
 }
 
-// Execute performs повышение before administratorа
+// Execute performs povyshenie before administrator
 func (uc *PromoteToAdminUseCase) Execute(
 	ctx context.Context,
 	cmd PromoteToAdminCommand,
@@ -28,7 +28,7 @@ func (uc *PromoteToAdminUseCase) Execute(
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// check прав выполняющего операцию
+	// check prav vypolnyayuschego operatsiyu
 	promoter, err := uc.userRepo.FindByID(ctx, cmd.PromotedBy)
 	if err != nil {
 		return Result{}, ErrUserNotFound
@@ -38,13 +38,13 @@ func (uc *PromoteToAdminUseCase) Execute(
 		return Result{}, ErrNotSystemAdmin
 	}
 
-	// Loading целевого user
+	// Loading tselevogo user
 	targetUser, targetErr := uc.userRepo.FindByID(ctx, cmd.UserID)
 	if targetErr != nil {
 		return Result{}, ErrUserNotFound
 	}
 
-	// setting прав administratorа
+	// setting prav administrator
 	targetUser.SetAdmin(true)
 
 	// storage
