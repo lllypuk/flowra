@@ -73,7 +73,12 @@ func (uc *AcceptInviteUseCase) Execute(
 	}
 
 	// Добавление пользователя в группу Keycloak
-	if errKeycloak := uc.keycloakClient.AddUserToGroup(ctx, cmd.UserID.String(), ws.KeycloakGroupID()); errKeycloak != nil {
+	errKeycloak := uc.keycloakClient.AddUserToGroup(
+		ctx,
+		cmd.UserID.String(),
+		ws.KeycloakGroupID(),
+	)
+	if errKeycloak != nil {
 		// Откатываем использование инвайта? Нет, т.к. уже сохранили.
 		// В реальном приложении нужна транзакционность или saga pattern
 		return Result{}, uc.WrapError("add user to Keycloak group", ErrKeycloakUserAddFailed)
