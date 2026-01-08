@@ -85,7 +85,7 @@ test-clean: ## Clean test cache and coverage files
 	go clean -testcache
 	rm -f coverage.out coverage.html
 
-# Линтер
+# Linter
 lint: ## Run linter and format code
 	@echo "Running linter..."
 	@go fmt ./...

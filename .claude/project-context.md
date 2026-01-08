@@ -1,1 +1,1 @@
-# Flowra - Проектный контекст для Claude
+# Flowra - Project Context for Claude

@@ -1,37 +1,37 @@
-# Стандарты кодирования Flowra
+# Flowra Coding Standards
 
-## Обзор
+## Overview
 
-Этот документ определяет стандарты кодирования для проекта Flowra. Соблюдение этих стандартов обеспечивает консистентность, читаемость и поддерживаемость кода.
+This document defines the coding standards for the Flowra project. Following these standards ensures consistency, readability, and maintainability of the code.
 
-## Общие принципы
+## General Principles
 
 ### Clean Code
-- Код должен быть самодокументируемым
-- Предпочитайте ясность производительности (если это не критично)
-- Используйте говорящие имена для переменных, функций и типов
-- Функции должны делать одну вещь хорошо
-- Избегайте глубокой вложенности (max 3 уровня)
+- Code should be self-documenting
+- Prefer clarity over performance (unless performance is critical)
+- Use descriptive names for variables, functions, and types
+- Functions should do one thing well
+- Avoid deep nesting (max 3 levels)
 
-### SOLID принципы
-- **Single Responsibility Principle**: Класс/функция имеет одну причину для изменения
-- **Open/Closed Principle**: Открыт для расширения, закрыт для модификации
-- **Liskov Substitution Principle**: Подтипы должны быть заменяемы своими базовыми типами
-- **Interface Segregation Principle**: Клиенты не должны зависеть от неиспользуемых интерфейсов
-- **Dependency Inversion Principle**: Зависимости должны быть от абстракций, не от конкретных реализаций
+### SOLID Principles
+- **Single Responsibility Principle**: A class/function has one reason to change
+- **Open/Closed Principle**: Open for extension, closed for modification
+- **Liskov Substitution Principle**: Subtypes must be substitutable for their base types
+- **Interface Segregation Principle**: Clients should not depend on unused interfaces
+- **Dependency Inversion Principle**: Dependencies should be on abstractions, not concrete implementations
 
-## Go Стандарты
+## Go Standards
 
-### Общие правила
+### General Rules
 
-#### Форматирование
-- Используйте `gofmt` или `goimports` для автоматического форматирования
-- Длина строки не более 120 символов
-- Используйте табы для отступов
-- Пустая строка между логическими блоками кода
+#### Formatting
+- Use `gofmt` or `goimports` for automatic formatting
+- Line length no more than 120 characters
+- Use tabs for indentation
+- Empty line between logical code blocks
 
 ```go
-// Хорошо
+// Good
 func ProcessUser(ctx context.Context, userID int) (*User, error) {
     user, err := userRepo.FindByID(ctx, userID)
     if err != nil {
@@ -45,7 +45,7 @@ func ProcessUser(ctx context.Context, userID int) (*User, error) {
     return nil, ErrUserInactive
 }
 
-// Плохо
+// Bad
 func ProcessUser(ctx context.Context,userID int)(*User,error){
 user,err:=userRepo.FindByID(ctx,userID)
 if err!=nil{return nil,fmt.Errorf("finding user: %w",err)}
@@ -54,9 +54,9 @@ return nil,ErrUserInactive
 }
 ```
 
-#### Именование
+#### Naming
 
-**Переменные и функции**: camelCase
+**Variables and functions**: camelCase
 ```go
 var userCount int
 var isUserActive bool
@@ -65,7 +65,7 @@ func getUserProfile() {}
 func calculateTotalScore() {}
 ```
 
-**Константы**: UPPER_CASE или PascalCase для экспортируемых
+**Constants**: UPPER_CASE or PascalCase for exported
 ```go
 const (
     MaxRetryCount = 3
@@ -73,21 +73,21 @@ const (
 )
 ```
 
-**Типы**: PascalCase
+**Types**: PascalCase
 ```go
 type UserService struct {}
 type HTTPClient interface {}
 ```
 
-**Пакеты**: короткие, строчные, без underscore
+**Packages**: short, lowercase, no underscores
 ```go
 package auth
 package userservice
 ```
 
-#### Комментарии
+#### Comments
 
-**Публичные элементы**: обязательны комментарии
+**Public elements**: comments are required
 ```go
 // UserService handles user-related operations.
 type UserService struct {
@@ -101,7 +101,7 @@ func (s *UserService) CreateUser(ctx context.Context, req CreateUserRequest) (*U
 }
 ```
 
-**Приватные элементы**: комментарии желательны для сложной логики
+**Private elements**: comments are recommended for complex logic
 ```go
 // validateUserInput checks if the user input is valid
 func validateUserInput(req CreateUserRequest) error {
@@ -109,9 +109,9 @@ func validateUserInput(req CreateUserRequest) error {
 }
 ```
 
-#### Обработка ошибок
+#### Error Handling
 
-**Wrap ошибки с контекстом**:
+**Wrap errors with context**:
 ```go
 user, err := repo.FindByID(ctx, id)
 if err != nil {
@@ -119,7 +119,7 @@ if err != nil {
 }
 ```
 
-**Создание кастомных ошибок**:
+**Creating custom errors**:
 ```go
 var (
     ErrUserNotFound = errors.New("user not found")
@@ -136,57 +136,57 @@ func (e ValidationError) Error() string {
 }
 ```
 
-**Не игнорируйте ошибки**:
+**Don't ignore errors**:
 ```go
-// Хорошо
+// Good
 if err := someOperation(); err != nil {
     log.Error("operation failed", "error", err)
     return err
 }
 
-// Плохо
-someOperation() // ошибка игнорируется
+// Bad
+someOperation() // error is ignored
 ```
 
-#### Работа с контекстом
+#### Working with Context
 
-**Первый параметр функции должен быть context.Context**:
+**First function parameter should be context.Context**:
 ```go
 func ProcessRequest(ctx context.Context, req Request) (*Response, error) {
     // implementation
 }
 ```
 
-**Передавайте контекст во все внешние вызовы**:
+**Pass context to all external calls**:
 ```go
 func (s *Service) ProcessUser(ctx context.Context, userID int) error {
-    user, err := s.repo.GetUser(ctx, userID) // передаем контекст
+    user, err := s.repo.GetUser(ctx, userID) // pass context
     if err != nil {
         return err
     }
     
-    return s.notifier.Send(ctx, user) // и здесь тоже
+    return s.notifier.Send(ctx, user) // and here too
 }
 ```
 
-#### Интерфейсы
+#### Interfaces
 
-**Определяйте интерфейсы на стороне потребителя**:
+**Define interfaces on the consumer side**:
 ```go
-// В пакете service
+// In the service package
 type UserRepository interface {
     GetUser(ctx context.Context, id int) (*User, error)
     SaveUser(ctx context.Context, user *User) error
 }
 
 type UserService struct {
-    repo UserRepository // зависимость от интерфейса
+    repo UserRepository // dependency on interface
 }
 ```
 
-**Интерфейсы должны быть небольшими**:
+**Interfaces should be small**:
 ```go
-// Хорошо
+// Good
 type Reader interface {
     Read([]byte) (int, error)
 }
@@ -195,22 +195,22 @@ type Writer interface {
     Write([]byte) (int, error)
 }
 
-// Плохо - слишком много методов
+// Bad - too many methods
 type FileManager interface {
     Read([]byte) (int, error)
     Write([]byte) (int, error)
     Close() error
     Seek(int64, int) (int64, error)
     Stat() (FileInfo, error)
-    // ... еще 10 методов
+    // ... 10 more methods
 }
 ```
 
-### Структуры и методы
+### Structs and Methods
 
-#### Структуры
+#### Structs
 ```go
-// Хорошо - группировка связанных полей
+// Good - grouping related fields
 type User struct {
     // Identity
     ID    int    `json:"id" db:"id"`
@@ -219,7 +219,7 @@ type User struct {
     // Profile
     FirstName string    `json:"first_name" db:"first_name"`
     LastName  string    `json:"last_name" db:"last_name"`
-    Bio       *string   `json:"bio" db:"bio"` // nullable поля как указатели
+    Bio       *string   `json:"bio" db:"bio"` // nullable fields as pointers
     
     // Metadata
     CreatedAt time.Time  `json:"created_at" db:"created_at"`
@@ -228,9 +228,9 @@ type User struct {
 }
 ```
 
-#### Методы
+#### Methods
 ```go
-// Методы должны быть привязаны к соответствующему типу
+// Methods should be attached to the appropriate type
 func (u *User) IsActive() bool {
     return u.DeletedAt == nil
 }
@@ -239,7 +239,7 @@ func (u *User) FullName() string {
     return strings.TrimSpace(u.FirstName + " " + u.LastName)
 }
 
-// Конструкторы
+// Constructors
 func NewUser(email, firstName, lastName string) *User {
     return &User{
         Email:     email,
@@ -251,45 +251,45 @@ func NewUser(email, firstName, lastName string) *User {
 }
 ```
 
-### Пакеты и импорты
+### Packages and Imports
 
-#### Организация импортов
+#### Import Organization
 ```go
 import (
-    // Стандартная библиотека
+    // Standard library
     "context"
     "fmt"
     "time"
     
-    // Внешние зависимости
+    // External dependencies
     "github.com/gin-gonic/gin"
     "github.com/jmoiron/sqlx"
     
-    // Внутренние пакеты
+    // Internal packages
     "github.com/your-org/new-flowra/internal/domain"
     "github.com/your-org/new-flowra/pkg/logger"
 )
 ```
 
-#### Структура пакетов
+#### Package Structure
 ```
 internal/
-├── domain/          # Доменные модели
+├── domain/          # Domain models
 ├── application/     # Use cases
-├── infrastructure/  # Внешние зависимости
+├── infrastructure/  # External dependencies
 └── presentation/    # HTTP handlers
 ```
 
-### Тестирование
+### Testing
 
-#### Именование тестов
+#### Test Naming
 ```go
 func TestUserService_CreateUser_Success(t *testing.T) {}
 func TestUserService_CreateUser_InvalidEmail(t *testing.T) {}
 func TestUserService_CreateUser_EmailAlreadyExists(t *testing.T) {}
 ```
 
-#### Структура тестов (AAA pattern)
+#### Test Structure (AAA pattern)
 ```go
 func TestUserService_CreateUser_Success(t *testing.T) {
     // Arrange
@@ -312,7 +312,7 @@ func TestUserService_CreateUser_Success(t *testing.T) {
 }
 ```
 
-#### Table-driven тесты для множественных сценариев
+#### Table-driven tests for multiple scenarios
 ```go
 func TestValidateEmail(t *testing.T) {
     tests := []struct {
@@ -341,9 +341,9 @@ func TestValidateEmail(t *testing.T) {
 
 ## Database Standards
 
-### Миграции
+### Migrations
 
-#### Именование файлов
+#### File Naming
 ```
 001_create_users_table.up.sql
 001_create_users_table.down.sql
@@ -351,7 +351,7 @@ func TestValidateEmail(t *testing.T) {
 002_add_user_profiles.down.sql
 ```
 
-#### Структура миграций
+#### Migration Structure
 ```sql
 -- 001_create_users_table.up.sql
 CREATE TABLE users (
@@ -369,9 +369,9 @@ CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_deleted_at ON users(deleted_at);
 ```
 
-### Именование в БД
+### Database Naming
 
-#### Таблицы: snake_case, множественное число
+#### Tables: snake_case, plural
 ```sql
 users
 user_profiles
@@ -379,7 +379,7 @@ team_memberships
 project_tasks
 ```
 
-#### Колонки: snake_case
+#### Columns: snake_case
 ```sql
 first_name
 created_at
@@ -387,13 +387,13 @@ is_active
 team_id
 ```
 
-#### Индексы: idx_table_column(s)
+#### Indexes: idx_table_column(s)
 ```sql
 idx_users_email
 idx_team_memberships_user_id_team_id
 ```
 
-#### Внешние ключи: fk_table_referenced_table
+#### Foreign Keys: fk_table_referenced_table
 ```sql
 fk_user_profiles_users
 fk_team_memberships_teams
@@ -403,34 +403,34 @@ fk_team_memberships_teams
 
 ### REST API
 
-#### URL структура
+#### URL Structure
 ```
-GET    /api/v1/users           # Получить список пользователей
-POST   /api/v1/users           # Создать пользователя
-GET    /api/v1/users/{id}      # Получить пользователя
-PUT    /api/v1/users/{id}      # Обновить пользователя
-DELETE /api/v1/users/{id}      # Удалить пользователя
+GET    /api/v1/users           # Get list of users
+POST   /api/v1/users           # Create user
+GET    /api/v1/users/{id}      # Get user
+PUT    /api/v1/users/{id}      # Update user
+DELETE /api/v1/users/{id}      # Delete user
 
-GET    /api/v1/users/{id}/teams # Получить команды пользователя
-```
-
-#### HTTP статус коды
-```
-200 OK                  # Успешный запрос
-201 Created            # Ресурс создан
-204 No Content         # Успешно, без содержимого
-400 Bad Request        # Неверный запрос
-401 Unauthorized       # Не авторизован
-403 Forbidden          # Доступ запрещен
-404 Not Found          # Ресурс не найден
-409 Conflict           # Конфликт (например, email уже существует)
-422 Unprocessable Entity # Ошибка валидации
-500 Internal Server Error # Внутренняя ошибка сервера
+GET    /api/v1/users/{id}/teams # Get user's teams
 ```
 
-#### JSON структуры
+#### HTTP Status Codes
+```
+200 OK                  # Successful request
+201 Created            # Resource created
+204 No Content         # Successful, no content
+400 Bad Request        # Invalid request
+401 Unauthorized       # Not authenticated
+403 Forbidden          # Access denied
+404 Not Found          # Resource not found
+409 Conflict           # Conflict (e.g., email already exists)
+422 Unprocessable Entity # Validation error
+500 Internal Server Error # Internal server error
+```
 
-**Успешные ответы**:
+#### JSON Structures
+
+**Successful responses**:
 ```json
 {
   "data": {
@@ -445,7 +445,7 @@ GET    /api/v1/users/{id}/teams # Получить команды пользов
 }
 ```
 
-**Списки с пагинацией**:
+**Lists with pagination**:
 ```json
 {
   "data": [...],
@@ -458,7 +458,7 @@ GET    /api/v1/users/{id}/teams # Получить команды пользов
 }
 ```
 
-**Ошибки**:
+**Errors**:
 ```json
 {
   "error": {
@@ -478,7 +478,7 @@ GET    /api/v1/users/{id}/teams # Получить команды пользов
 }
 ```
 
-## Безопасность
+## Security
 
 ### Input Validation
 ```go
@@ -496,7 +496,7 @@ func (r CreateUserRequest) Validate() error {
 
 ### SQL Injection Prevention
 ```go
-// Хорошо - используйте параметризованные запросы
+// Good - use parameterized queries
 func (r *repository) FindUserByEmail(ctx context.Context, email string) (*User, error) {
     query := `SELECT id, email, first_name FROM users WHERE email = $1`
     var user User
@@ -504,7 +504,7 @@ func (r *repository) FindUserByEmail(ctx context.Context, email string) (*User, 
     return &user, err
 }
 
-// Плохо - уязвимо к SQL injection
+// Bad - vulnerable to SQL injection
 func (r *repository) FindUserByEmail(ctx context.Context, email string) (*User, error) {
     query := fmt.Sprintf("SELECT * FROM users WHERE email = '%s'", email)
     // ...
@@ -517,13 +517,13 @@ type User struct {
     ID           int    `json:"id"`
     Email        string `json:"email"`
     FirstName    string `json:"first_name"`
-    PasswordHash string `json:"-"` // исключаем из JSON
+    PasswordHash string `json:"-"` // exclude from JSON
 }
 ```
 
-## Логирование
+## Logging
 
-### Структурированные логи
+### Structured Logs
 ```go
 import "go.uber.org/zap"
 
@@ -540,37 +540,37 @@ logger.Error("failed to create user",
 )
 ```
 
-### Уровни логирования
-- **DEBUG**: Детальная информация для отладки
-- **INFO**: Общая информация о работе приложения
-- **WARN**: Предупреждения о потенциальных проблемах
-- **ERROR**: Ошибки, которые не останавливают приложение
-- **FATAL**: Критические ошибки, останавливающие приложение
+### Logging Levels
+- **DEBUG**: Detailed information for debugging
+- **INFO**: General information about application operation
+- **WARN**: Warnings about potential issues
+- **ERROR**: Errors that don't stop the application
+- **FATAL**: Critical errors that stop the application
 
 ## Performance Guidelines
 
 ### Database
-- Используйте индексы для часто запрашиваемых колонок
-- Избегайте N+1 проблем (используйте JOIN или batch loading)
-- Используйте connection pooling
-- Используйте prepared statements
+- Use indexes for frequently queried columns
+- Avoid N+1 problems (use JOIN or batch loading)
+- Use connection pooling
+- Use prepared statements
 
 ### Caching
 ```go
-// Пример кэширования результатов
+// Example of result caching
 func (s *UserService) GetUser(ctx context.Context, id int) (*User, error) {
-    // Попробуем получить из кэша
+    // Try to get from cache
     if cached, found := s.cache.Get(fmt.Sprintf("user:%d", id)); found {
         return cached.(*User), nil
     }
     
-    // Если нет в кэше, получаем из БД
+    // If not in cache, get from DB
     user, err := s.repo.GetUser(ctx, id)
     if err != nil {
         return nil, err
     }
     
-    // Сохраняем в кэш
+    // Save to cache
     s.cache.Set(fmt.Sprintf("user:%d", id), user, 5*time.Minute)
     
     return user, nil
@@ -579,47 +579,47 @@ func (s *UserService) GetUser(ctx context.Context, id int) (*User, error) {
 
 ## Code Review Checklist
 
-### Общее
-- [ ] Код соответствует стандартам проекта
-- [ ] Имена переменных и функций понятны
-- [ ] Нет дублирования кода
-- [ ] Функции не слишком большие (< 50 строк)
-- [ ] Есть необходимые комментарии
+### General
+- [ ] Code follows project standards
+- [ ] Variable and function names are clear
+- [ ] No code duplication
+- [ ] Functions are not too large (< 50 lines)
+- [ ] Necessary comments are present
 
-### Go специфичное
-- [ ] Используется `gofmt`
-- [ ] Обрабатываются все ошибки
-- [ ] Используется context.Context где нужно
-- [ ] Нет race conditions
-- [ ] Ресурсы освобождаются (defer close())
+### Go Specific
+- [ ] Uses `gofmt`
+- [ ] All errors are handled
+- [ ] Uses context.Context where needed
+- [ ] No race conditions
+- [ ] Resources are released (defer close())
 
-### Тесты
-- [ ] Написаны тесты для нового кода
-- [ ] Покрытие тестами достаточное (>80%)
-- [ ] Тесты проходят успешно
-- [ ] Тестируются error cases
+### Tests
+- [ ] Tests are written for new code
+- [ ] Test coverage is sufficient (>80%)
+- [ ] Tests pass successfully
+- [ ] Error cases are tested
 
-### Безопасность
-- [ ] Input validation реализована
-- [ ] Нет hardcoded секретов
-- [ ] SQL injection защита
-- [ ] Правильная обработка sensitive data
+### Security
+- [ ] Input validation is implemented
+- [ ] No hardcoded secrets
+- [ ] SQL injection protection
+- [ ] Proper handling of sensitive data
 
-## Инструменты
+## Tools
 
-### Обязательные
-- `gofmt` - форматирование кода
-- `go vet` - статический анализ
-- `golangci-lint` - линтер
-- `go test` - тестирование
+### Required
+- `gofmt` - code formatting
+- `go vet` - static analysis
+- `golangci-lint` - linter
+- `go test` - testing
 
-### Рекомендуемые
-- `staticcheck` - расширенный статический анализ
-- `govulncheck` - поиск уязвимостей
-- `goimports` - управление импортами
-- `godoc` - генерация документации
+### Recommended
+- `staticcheck` - extended static analysis
+- `govulncheck` - vulnerability scanning
+- `goimports` - import management
+- `godoc` - documentation generation
 
-### Настройка .golangci.yml
+### .golangci.yml Configuration
 ```yaml
 linters-settings:
   gocyclo:
@@ -644,6 +644,6 @@ linters:
 
 ---
 
-*Последнее обновление: [Текущая дата]*  
-*Версия: 1.0*  
-*Поддерживается: Development Team*
+*Last updated: [Current date]*  
+*Version: 1.0*  
+*Maintained by: Development Team*

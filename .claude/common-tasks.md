@@ -1,14 +1,14 @@
-# Common Tasks для Claude
+# Common Tasks for Claude
 
-## Обзор
+## Overview
 
-Этот документ содержит часто выполняемые задачи и команды для работы с проектом Flowra. Используй его как справочник для быстрого выполнения типичных операций разработки.
+This document contains frequently performed tasks and commands for working with the Flowra project. Use it as a reference for quickly executing typical development operations.
 
-## Структура разработки
+## Development Structure
 
-### Создание нового микросервиса
+### Creating a New Microservice
 
-1. **Создать структуру каталогов**:
+1. **Create directory structure**:
 ```bash
 mkdir -p cmd/{service-name}
 mkdir -p internal/{service-name}/{domain,application,infrastructure,presentation}
@@ -18,7 +18,7 @@ mkdir -p internal/{service-name}/infrastructure/{database,http,messaging}
 mkdir -p internal/{service-name}/presentation/{handlers,dto,middleware}
 ```
 
-2. **Создать main.go для сервиса**:
+2. **Create main.go for the service**:
 ```go
 // cmd/{service-name}/main.go
 package main
@@ -72,9 +72,9 @@ func main() {
 }
 ```
 
-### Создание новой доменной сущности
+### Creating a New Domain Entity
 
-1. **Entity структура**:
+1. **Entity structure**:
 ```go
 // internal/{service}/domain/entities/{entity}.go
 package entities
@@ -93,50 +93,50 @@ type {Entity}ID string
 
 type {Entity} struct {
     id        {Entity}ID
-    // поля сущности
+    // entity fields
     createdAt time.Time
     updatedAt time.Time
 }
 
 func New{Entity}(...params) (*{Entity}, error) {
-    // валидация и создание
+    // validation and creation
     if err := validate{Entity}(...params); err != nil {
         return nil, err
     }
 
     return &{Entity}{
         id:        generate{Entity}ID(),
-        // инициализация полей
+        // field initialization
         createdAt: time.Now(),
         updatedAt: time.Now(),
     }, nil
 }
 
-// Геттеры
+// Getters
 func (e *{Entity}) ID() {Entity}ID { return e.id }
 func (e *{Entity}) CreatedAt() time.Time { return e.createdAt }
 func (e *{Entity}) UpdatedAt() time.Time { return e.updatedAt }
 
-// Бизнес методы
+// Business methods
 func (e *{Entity}) DoSomething() error {
-    // бизнес логика
+    // business logic
     e.updatedAt = time.Now()
     return nil
 }
 
-// Приватные методы
+// Private methods
 func validate{Entity}(...params) error {
-    // валидация
+    // validation
     return nil
 }
 
 func generate{Entity}ID() {Entity}ID {
-    // генерация ID
+    // ID generation
     return {Entity}ID("generated-id")
 }
 ```
 
-2. **Repository интерфейс**:
+2. **Repository interface**:
 ```go
 // internal/{service}/domain/repositories/{entity}_repository.go
 package repositories
@@ -159,18 +159,18 @@ type Filter interface {
 }
 ```
 
-### Создание Use Case
+### Creating a Use Case
 
 ```go
 // internal/{service}/application/commands/create_{entity}_command.go
 package commands
 
 type Create{Entity}Command struct {
-    // поля команды
+    // command fields
 }
 
 func (c Create{Entity}Command) Validate() error {
-    // валидация команды
+    // command validation
     return nil
 }
 ```
@@ -223,7 +223,7 @@ func (h *Create{Entity}Handler) Handle(ctx context.Context, cmd commands.Create{
 }
 ```
 
-### Создание HTTP Handler
+### Creating an HTTP Handler
 
 ```go
 // internal/{service}/presentation/handlers/{entity}_handler.go
@@ -261,7 +261,7 @@ func (h *{Entity}Handler) Create(w http.ResponseWriter, r *http.Request) {
     }
 
     cmd := commands.Create{Entity}Command{
-        // маппинг из request в command
+        // mapping from request to command
     }
 
     entity, err := h.createHandler.Handle(r.Context(), cmd)
@@ -300,27 +300,27 @@ func (h *{Entity}Handler) respondWithData(w http.ResponseWriter, statusCode int,
 
 ## Database Operations
 
-### Создание новой миграции
+### Creating a New Migration
 
 ```bash
-# MongoDB не требует SQL миграций
-# Schema versioning управляется через application code
-# Индексы создаются при инициализации приложения
+# MongoDB does not require SQL migrations
+# Schema versioning is managed through application code
+# Indexes are created during application initialization
 ```
 
-### Шаблон миграции
+### Migration Template
 
 ```sql
 -- migrations/{version}_create_{table}_table.up.sql
 CREATE TABLE {table} (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    -- другие поля
+    -- other fields
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     deleted_at TIMESTAMP WITH TIME ZONE
 );
 
--- Индексы
+-- Indexes
 CREATE INDEX idx_{table}_created_at ON {table}(created_at);
 CREATE INDEX idx_{table}_deleted_at ON {table}(deleted_at) WHERE deleted_at IS NULL;
 
@@ -412,7 +412,7 @@ func (r *MongoDB{Entity}Repository) FindByID(ctx context.Context, id entities.{E
 }
 
 func (r *MongoDB{Entity}Repository) toDomainEntity(row struct{...}) *entities.{Entity} {
-    // конвертация из DB модели в доменную сущность
+    // conversion from DB model to domain entity
 }
 ```
 
@@ -546,7 +546,7 @@ func TestIntegration{Service}(t *testing.T) {
 
 ## Monitoring & Logging
 
-### Добавление метрик
+### Adding Metrics
 
 ```go
 // pkg/metrics/{service}_metrics.go
@@ -591,20 +591,20 @@ func RecordOperation(operation string, duration float64, success bool) {
 ```go
 import "go.uber.org/zap"
 
-// В начале операции
+// At the start of operation
 logger.Info("starting {operation}",
     zap.String("entity_id", id.String()),
     zap.String("operation", "{operation}"),
     zap.String("user_id", userID),
 )
 
-// При успехе
+// On success
 logger.Info("{operation} completed successfully",
     zap.String("entity_id", result.ID().String()),
     zap.Duration("duration", time.Since(start)),
 )
 
-// При ошибке
+// On error
 logger.Error("{operation} failed",
     zap.Error(err),
     zap.String("entity_id", id.String()),
@@ -787,4 +787,4 @@ curl http://localhost:8080/ready
 
 ---
 
-*Используй этот документ как быстрый справочник для типичных задач разработки в проекте Flowra.*
+*Use this document as a quick reference for typical development tasks in the Flowra project.*

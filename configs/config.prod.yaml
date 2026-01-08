@@ -3,7 +3,7 @@ log:
   format: "json"
 
 auth:
-  jwt_secret: "${JWT_SECRET}" # из переменной окружения
+  jwt_secret: "${JWT_SECRET}" # from environment variable
 
 keycloak:
   client_secret: "${KEYCLOAK_CLIENT_SECRET}"

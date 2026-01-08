@@ -1,30 +1,30 @@
-# Development Guidelines для Claude
+# Development Guidelines for Claude
 
-## Обзор
+## Overview
 
-Этот документ содержит специфические руководства для AI-ассистента Claude при работе с проектом Flowra. Он дополняет основные стандарты кодирования и обеспечивает консистентный подход к разработке.
+This document contains specific guidelines for the AI assistant Claude when working with the Flowra project. It complements the core coding standards and ensures a consistent development approach.
 
-## Принципы работы с Claude
+## Principles for Working with Claude
 
-### Контекст-ориентированный подход
-- Всегда учитывай архитектуру проекта (Clean Architecture + DDD)
-- Понимай текущую фазу разработки (Phase 0: Foundation)
-- Придерживайся установленных паттернов и конвенций
-- Используй существующие абстракции и интерфейсы
+### Context-Oriented Approach
+- Always consider the project architecture (Clean Architecture + DDD)
+- Understand the current development phase (Phase 0: Foundation)
+- Follow established patterns and conventions
+- Use existing abstractions and interfaces
 
-### Качество кода
-- Пиши код, готовый к production
-- Следуй принципам SOLID
-- Создавай тесты для нового кода
-- Документируй публичные API
+### Code Quality
+- Write production-ready code
+- Follow SOLID principles
+- Create tests for new code
+- Document public APIs
 
-## Структурные паттерны
+## Structural Patterns
 
 ### Domain Layer
-При создании доменных моделей:
+When creating domain models:
 
 ```go
-// Правильно - богатая доменная модель
+// Correct - rich domain model
 type User struct {
     id       UserID
     email    Email
@@ -53,7 +53,7 @@ func (u *User) HasSkill(skillType SkillType) bool {
 ```
 
 ### Application Layer
-Use cases должны быть простыми и фокусироваться на оркестрации:
+Use cases should be simple and focus on orchestration:
 
 ```go
 type CreateUserUseCase struct {
@@ -63,12 +63,12 @@ type CreateUserUseCase struct {
 }
 
 func (uc *CreateUserUseCase) Execute(ctx context.Context, cmd CreateUserCommand) (*UserDTO, error) {
-    // 1. Валидация входных данных
+    // 1. Validate input data
     if err := cmd.Validate(); err != nil {
         return nil, fmt.Errorf("validating command: %w", err)
     }
 
-    // 2. Проверка бизнес-правил
+    // 2. Check business rules
     exists, err := uc.userRepo.ExistsByEmail(ctx, cmd.Email)
     if err != nil {
         return nil, fmt.Errorf("checking email existence: %w", err)
@@ -77,18 +77,18 @@ func (uc *CreateUserUseCase) Execute(ctx context.Context, cmd CreateUserCommand)
         return nil, ErrEmailAlreadyExists
     }
 
-    // 3. Создание доменного объекта
+    // 3. Create domain object
     user, err := NewUser(cmd.Email, cmd.Profile)
     if err != nil {
         return nil, fmt.Errorf("creating user: %w", err)
     }
 
-    // 4. Сохранение
+    // 4. Save
     if err := uc.userRepo.Save(ctx, user); err != nil {
         return nil, fmt.Errorf("saving user: %w", err)
     }
 
-    // 5. Публикация события
+    // 5. Publish event
     event := UserCreatedEvent{
         UserID:    user.ID(),
         Email:     user.Email().String(),
@@ -96,7 +96,7 @@ func (uc *CreateUserUseCase) Execute(ctx context.Context, cmd CreateUserCommand)
     }
     uc.eventBus.Publish(ctx, event)
 
-    // 6. Логирование
+    // 6. Logging
     uc.logger.Info("user created",
         zap.String("user_id", user.ID().String()),
         zap.String("email", user.Email().String()),
@@ -107,7 +107,7 @@ func (uc *CreateUserUseCase) Execute(ctx context.Context, cmd CreateUserCommand)
 ```
 
 ### Infrastructure Layer
-Всегда реализуй интерфейсы из domain/application слоев:
+Always implement interfaces from the domain/application layers:
 
 ```go
 type MongoDBUserRepository struct {
@@ -155,16 +155,16 @@ func (r *MongoDBUserRepository) Save(ctx context.Context, user *User) error {
 
 ## Naming Conventions
 
-### Go-специфичные правила
-- **Packages**: короткие, lowercase, без underscores (`user`, `team`, `match`)
+### Go-Specific Rules
+- **Packages**: short, lowercase, no underscores (`user`, `team`, `match`)
 - **Types**: PascalCase (`UserService`, `TeamRepository`)
-- **Functions**: camelCase для private, PascalCase для public
-- **Constants**: PascalCase или UPPER_CASE для package-level
-- **Interfaces**: часто с суффиксом `-er` (`UserCreator`, `TeamManager`)
+- **Functions**: camelCase for private, PascalCase for public
+- **Constants**: PascalCase or UPPER_CASE for package-level
+- **Interfaces**: often with `-er` suffix (`UserCreator`, `TeamManager`)
 
-### Доменно-специфичные соглашения
-- **Entities**: существительные (`User`, `Team`, `Project`)
-- **Value Objects**: описательные (`Email`, `UserProfile`, `SkillLevel`)
+### Domain-Specific Conventions
+- **Entities**: nouns (`User`, `Team`, `Project`)
+- **Value Objects**: descriptive (`Email`, `UserProfile`, `SkillLevel`)
 - **Services**: `{Entity}Service` (`UserService`, `MatchService`)
 - **Repositories**: `{Entity}Repository` (`UserRepository`)
 - **Use Cases**: `{Verb}{Entity}UseCase` (`CreateUserUseCase`)
@@ -172,9 +172,9 @@ func (r *MongoDBUserRepository) Save(ctx context.Context, user *User) error {
 
 ## Error Handling Patterns
 
-### Доменные ошибки
+### Domain Errors
 ```go
-// Определяй ошибки как constants в domain слое
+// Define errors as constants in the domain layer
 var (
     ErrUserNotFound        = errors.New("user not found")
     ErrEmailAlreadyExists  = errors.New("email already exists")
@@ -182,7 +182,7 @@ var (
     ErrTeamMemberLimit    = errors.New("team member limit exceeded")
 )
 
-// Для более сложных ошибок используй кастомные типы
+// For more complex errors, use custom types
 type ValidationError struct {
     Field   string `json:"field"`
     Message string `json:"message"`
@@ -194,21 +194,21 @@ func (e ValidationError) Error() string {
 }
 ```
 
-### Обработка ошибок в слоях
+### Error Handling Across Layers
 ```go
-// Application layer - добавляет контекст
+// Application layer - adds context
 func (s *UserService) GetUser(ctx context.Context, id UserID) (*User, error) {
     user, err := s.repo.FindByID(ctx, id)
     if err != nil {
         if errors.Is(err, ErrUserNotFound) {
-            return nil, err // передаем доменную ошибку как есть
+            return nil, err // pass domain error as-is
         }
         return nil, fmt.Errorf("finding user %s: %w", id, err)
     }
     return user, nil
 }
 
-// Presentation layer - конвертирует в HTTP ответы
+// Presentation layer - converts to HTTP responses
 func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
     userID := UserID(mux.Vars(r)["id"])
 
@@ -229,7 +229,7 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 ## Testing Guidelines
 
 ### Test Structure
-Используй AAA pattern (Arrange, Act, Assert):
+Use the AAA pattern (Arrange, Act, Assert):
 
 ```go
 func TestUserService_CreateUser_Success(t *testing.T) {
@@ -314,7 +314,7 @@ user := NewUserBuilder().
 
 ### Request/Response DTOs
 ```go
-// Request DTOs - всегда валидируются
+// Request DTOs - always validated
 type CreateUserRequest struct {
     Email     string `json:"email" validate:"required,email"`
     FirstName string `json:"first_name" validate:"required,min=2,max=50"`
@@ -326,7 +326,7 @@ func (r CreateUserRequest) Validate() error {
     return validator.Struct(r)
 }
 
-// Response DTOs - только данные для клиента
+// Response DTOs - only data for the client
 type UserResponse struct {
     ID        string    `json:"id"`
     Email     string    `json:"email"`
@@ -335,7 +335,7 @@ type UserResponse struct {
     CreatedAt time.Time `json:"created_at"`
 }
 
-// Mappers - отдельные функции для конвертации
+// Mappers - separate functions for conversion
 func ToUserResponse(user *User) UserResponse {
     return UserResponse{
         ID:        user.ID().String(),
@@ -512,10 +512,10 @@ logger.Warn("slow database query detected",
 ## Performance Considerations
 
 ### Database Optimization
-- Всегда используй индексы для часто запрашиваемых полей
-- Избегай N+1 проблем (используй JOIN или batch loading)
-- Используй prepared statements для repeated queries
-- Реализуй pagination для больших datasets
+- Always use indexes for frequently queried fields
+- Avoid N+1 problems (use JOIN or batch loading)
+- Use prepared statements for repeated queries
+- Implement pagination for large datasets
 
 ### Caching Strategy
 ```go
@@ -542,10 +542,10 @@ func (s *UserService) GetUser(ctx context.Context, id UserID) (*User, error) {
 ## Security Guidelines
 
 ### Input Validation
-- Всегда валидируй входные данные на уровне presentation
-- Используй whitelist подход для валидации
-- Санитизируй данные перед сохранением
-- Используй prepared statements для SQL queries
+- Always validate input data at the presentation level
+- Use a whitelist approach for validation
+- Sanitize data before saving
+- Use prepared statements for SQL queries
 
 ### Authentication & Authorization
 ```go
@@ -593,7 +593,7 @@ func (s *UserService) CreateUser(ctx context.Context, cmd CreateUserCommand) (*U
 ```
 
 ### API Documentation
-Используй OpenAPI/Swagger спецификации для документирования API endpoints.
+Use OpenAPI/Swagger specifications for documenting API endpoints.
 
 ## Monitoring & Observability
 
@@ -632,4 +632,4 @@ func (s *UserService) CreateUser(ctx context.Context, cmd CreateUserCommand) (*U
 
 ---
 
-*Следуй этим принципам для поддержания высокого качества кода и архитектурной консистентности.*
+*Follow these principles to maintain high code quality and architectural consistency.*
