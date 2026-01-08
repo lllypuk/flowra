@@ -61,23 +61,23 @@ func TestParse(t *testing.T) {
 				{Key: "status", Value: "Done"},
 				{Key: "assignee", Value: "@alex"},
 			},
-			wantText: "Закончил работу",
+			wantText: "Finished work",
 		},
 		{
 			name:  "tag from bug example",
-			input: "#bug Ошибка в логине\nВоспроизводится на Chrome",
+			input: "#bug Login error\nReproduced on Chrome",
 			wantTags: []tag.ParsedTag{
-				{Key: "bug", Value: "Ошибка в логине"},
+				{Key: "bug", Value: "Login error"},
 			},
-			wantText: "Воспроизводится на Chrome",
+			wantText: "Reproduced on Chrome",
 		},
 
 		// Edge cases
 		{
 			name:     "tags in middle of line - ignored",
-			input:    "Закончил работу #status Done отправляю",
+			input:    "Finished work #status Done sending",
 			wantTags: []tag.ParsedTag{},
-			wantText: "Закончил работу #status Done отправляю",
+			wantText: "Finished work #status Done sending",
 		},
 		{
 			name:  "mixed tags and text on same line",

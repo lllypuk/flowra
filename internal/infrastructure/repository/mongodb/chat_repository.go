@@ -19,8 +19,8 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// MongoChatRepository реализует chatapp.CommandRepository (application layer interface)
-// с использованием MongoDB и Event Sourcing
+// MongoChatRepository implements chatapp.CommandRepository (application layer interface)
+// using MongoDB and Event Sourcing
 type MongoChatRepository struct {
 	eventStore    appcore.EventStore
 	readModelColl *mongo.Collection
@@ -37,7 +37,7 @@ func WithChatRepoLogger(logger *slog.Logger) ChatRepoOption {
 	}
 }
 
-// NewMongoChatRepository создает новый MongoDB Chat Repository
+// NewMongoChatRepository creates a new MongoDB Chat Repository
 func NewMongoChatRepository(
 	eventStore appcore.EventStore,
 	readModelColl *mongo.Collection,
@@ -56,13 +56,13 @@ func NewMongoChatRepository(
 	return r
 }
 
-// Load загружает Chat из event store путем восстановления состояния из событий (event sourcing)
+// Load loads Chat from event store by restoring state from events (event sourcing)
 func (r *MongoChatRepository) Load(ctx context.Context, chatID uuid.UUID) (*chatdomain.Chat, error) {
 	if chatID.IsZero() {
 		return nil, errs.ErrInvalidInput
 	}
 
-	// Загружаем события из event store
+	// Load events from event store
 	events, err := r.eventStore.LoadEvents(ctx, chatID.String())
 	if err != nil {
 		if errors.Is(err, appcore.ErrAggregateNotFound) {
@@ -79,7 +79,7 @@ func (r *MongoChatRepository) Load(ctx context.Context, chatID uuid.UUID) (*chat
 		return nil, errs.ErrNotFound
 	}
 
-	// Создаем новый Chat и применяем события
+	// Create new Chat and apply events
 	chat := &chatdomain.Chat{}
 	for _, domainEvent := range events {
 		if chatErr := chat.Apply(domainEvent); chatErr != nil {
@@ -92,13 +92,13 @@ func (r *MongoChatRepository) Load(ctx context.Context, chatID uuid.UUID) (*chat
 		}
 	}
 
-	// Помечаем события как committed (они уже сохранены)
+	// Mark events as committed (they are already saved)
 	chat.MarkEventsAsCommitted()
 
 	return chat, nil
 }
 
-// Save сохраняет Chat путем сохранения новых событий в event store и обновления read model
+// Save saves Chat by storing new events in event store and updating read model
 func (r *MongoChatRepository) Save(ctx context.Context, chat *chatdomain.Chat) error {
 	if chat == nil {
 		return errs.ErrInvalidInput
@@ -106,10 +106,10 @@ func (r *MongoChatRepository) Save(ctx context.Context, chat *chatdomain.Chat) e
 
 	uncommittedEvents := chat.GetUncommittedEvents()
 	if len(uncommittedEvents) == 0 {
-		return nil // Нечего сохранять
+		return nil // Nothing to save
 	}
 
-	// 1. Сохраняем события в event store
+	// 1. Save events to event store
 	expectedVersion := chat.Version() - len(uncommittedEvents)
 	err := r.eventStore.SaveEvents(ctx, chat.ID().String(), uncommittedEvents, expectedVersion)
 	if err != nil {
@@ -129,17 +129,17 @@ func (r *MongoChatRepository) Save(ctx context.Context, chat *chatdomain.Chat) e
 		return fmt.Errorf("failed to save events: %w", err)
 	}
 
-	// 2. Обновляем read model (денормализованное представление)
+	// 2. Update read model (denormalized representation)
 	err = r.updateReadModel(ctx, chat)
 	if err != nil {
 		r.logger.ErrorContext(ctx, "failed to update chat read model",
 			slog.String("chat_id", chat.ID().String()),
 			slog.String("error", err.Error()),
 		)
-		// Не падаем - read model можно пересчитать
+		// Don't fail - read model can be recalculated
 	}
 
-	// 3. Помечаем события как committed
+	// 3. Mark events as committed
 	chat.MarkEventsAsCommitted()
 
 	return nil

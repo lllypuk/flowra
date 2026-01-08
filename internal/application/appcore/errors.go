@@ -37,7 +37,7 @@ var (
 	ErrEventBusError   = errors.New("event bus error")
 )
 
-// ValidationError — ошибка валидации с контекстом
+// ValidationError represents a validation error with context
 type ValidationError struct {
 	Field   string
 	Message string
@@ -47,12 +47,12 @@ func (e ValidationError) Error() string {
 	return fmt.Sprintf("validation error on field '%s': %s", e.Field, e.Message)
 }
 
-// NewValidationError создает ValidationError
+// NewValidationError creates a ValidationError
 func NewValidationError(field, message string) error {
 	return &ValidationError{Field: field, Message: message}
 }
 
-// AuthorizationError — ошибка авторизации
+// AuthorizationError represents an authorization error
 type AuthorizationError struct {
 	UserID   string
 	Resource string
@@ -63,7 +63,7 @@ func (e AuthorizationError) Error() string {
 	return fmt.Sprintf("user %s is not authorized to %s on %s", e.UserID, e.Action, e.Resource)
 }
 
-// NewAuthorizationError создает AuthorizationError
+// NewAuthorizationError creates an AuthorizationError
 func NewAuthorizationError(userID, resource, action string) error {
 	return &AuthorizationError{
 		UserID:   userID,
@@ -72,7 +72,7 @@ func NewAuthorizationError(userID, resource, action string) error {
 	}
 }
 
-// NotFoundError — ошибка "не найдено"
+// NotFoundError represents a "not found" error
 type NotFoundError struct {
 	Resource string
 	ID       string
@@ -82,7 +82,7 @@ func (e NotFoundError) Error() string {
 	return fmt.Sprintf("%s with ID %s not found", e.Resource, e.ID)
 }
 
-// NewNotFoundError создает NotFoundError
+// NewNotFoundError creates a NotFoundError
 func NewNotFoundError(resource, id string) error {
 	return &NotFoundError{
 		Resource: resource,
@@ -90,7 +90,7 @@ func NewNotFoundError(resource, id string) error {
 	}
 }
 
-// ConflictError — ошибка конфликта
+// ConflictError represents a conflict error
 type ConflictError struct {
 	Resource string
 	Reason   string
@@ -100,7 +100,7 @@ func (e ConflictError) Error() string {
 	return fmt.Sprintf("conflict on %s: %s", e.Resource, e.Reason)
 }
 
-// NewConflictError создает ConflictError
+// NewConflictError creates a ConflictError
 func NewConflictError(resource, reason string) error {
 	return &ConflictError{
 		Resource: resource,

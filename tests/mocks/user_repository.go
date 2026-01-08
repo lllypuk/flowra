@@ -8,19 +8,19 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// MockUserRepository реализует appcore.UserRepository для тестирования
+// MockUserRepository implements appcore.UserRepository for testing
 type MockUserRepository struct {
 	users map[uuid.UUID]*appcore.User
 }
 
-// NewMockUserRepository создает новый mock репозиторий
+// NewMockUserRepository creates a new mock repository
 func NewMockUserRepository() *MockUserRepository {
 	return &MockUserRepository{
 		users: make(map[uuid.UUID]*appcore.User),
 	}
 }
 
-// AddUser добавляет пользователя в mock репозиторий
+// AddUser adds a user to the mock repository
 func (m *MockUserRepository) AddUser(id uuid.UUID, username, fullName string) {
 	m.users[id] = &appcore.User{
 		ID:       id,
@@ -29,13 +29,13 @@ func (m *MockUserRepository) AddUser(id uuid.UUID, username, fullName string) {
 	}
 }
 
-// Exists проверяет, существует ли пользователь
+// Exists checks if a user exists
 func (m *MockUserRepository) Exists(_ context.Context, userID uuid.UUID) (bool, error) {
 	_, exists := m.users[userID]
 	return exists, nil
 }
 
-// GetByUsername ищет пользователя по username
+// GetByUsername finds a user by username
 func (m *MockUserRepository) GetByUsername(_ context.Context, username string) (*appcore.User, error) {
 	for _, user := range m.users {
 		if user.Username == username {
@@ -45,12 +45,12 @@ func (m *MockUserRepository) GetByUsername(_ context.Context, username string) (
 	return nil, errs.ErrNotFound
 }
 
-// Reset очищает все пользователей (для тестов)
+// Reset clears all users (for tests)
 func (m *MockUserRepository) Reset() {
 	m.users = make(map[uuid.UUID]*appcore.User)
 }
 
-// GetAllUsers возвращает всех пользователей (для тестов)
+// GetAllUsers returns all users (for tests)
 func (m *MockUserRepository) GetAllUsers() []*appcore.User {
 	users := make([]*appcore.User, 0, len(m.users))
 	for _, user := range m.users {

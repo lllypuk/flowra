@@ -9,7 +9,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/errs"
 )
 
-// NotificationData представляет данные уведомления для тестов
+// NotificationData represents notification data for tests
 type NotificationData struct {
 	ID        uuid.UUID
 	UserID    uuid.UUID
@@ -19,14 +19,14 @@ type NotificationData struct {
 	CreatedAt time.Time
 }
 
-// MockNotificationRepository реализует репозиторий уведомлений для тестирования
+// MockNotificationRepository implements the notification repository for testing
 type MockNotificationRepository struct {
 	mu            sync.RWMutex
 	notifications map[uuid.UUID]*NotificationData
 	calls         map[string]int
 }
 
-// NewMockNotificationRepository создает новый mock репозиторий
+// NewMockNotificationRepository creates a new mock repository
 func NewMockNotificationRepository() *MockNotificationRepository {
 	return &MockNotificationRepository{
 		notifications: make(map[uuid.UUID]*NotificationData),
@@ -34,7 +34,7 @@ func NewMockNotificationRepository() *MockNotificationRepository {
 	}
 }
 
-// Load загружает уведомление по ID
+// Load loads a notification by ID
 func (r *MockNotificationRepository) Load(ctx context.Context, id uuid.UUID) (*NotificationData, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -49,7 +49,7 @@ func (r *MockNotificationRepository) Load(ctx context.Context, id uuid.UUID) (*N
 	return notif, nil
 }
 
-// Save сохраняет уведомление
+// Save saves a notification
 func (r *MockNotificationRepository) Save(ctx context.Context, notif *NotificationData) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -60,7 +60,7 @@ func (r *MockNotificationRepository) Save(ctx context.Context, notif *Notificati
 	return nil
 }
 
-// FindByUserID находит все уведомления для пользователя
+// FindByUserID finds all notifications for a user
 func (r *MockNotificationRepository) FindByUserID(ctx context.Context, userID uuid.UUID) ([]*NotificationData, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -76,7 +76,7 @@ func (r *MockNotificationRepository) FindByUserID(ctx context.Context, userID uu
 	return notifs, nil
 }
 
-// FindUnreadByUserID находит непрочитанные уведомления для пользователя
+// FindUnreadByUserID finds unread notifications for a user
 func (r *MockNotificationRepository) FindUnreadByUserID(
 	ctx context.Context,
 	userID uuid.UUID,
@@ -95,7 +95,7 @@ func (r *MockNotificationRepository) FindUnreadByUserID(
 	return notifs, nil
 }
 
-// GetAll возвращает все уведомления
+// GetAll returns all notifications
 func (r *MockNotificationRepository) GetAll() []*NotificationData {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -107,14 +107,14 @@ func (r *MockNotificationRepository) GetAll() []*NotificationData {
 	return notifs
 }
 
-// GetCallCount возвращает количество вызовов метода
+// GetCallCount returns the number of method calls
 func (r *MockNotificationRepository) GetCallCount(method string) int {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.calls[method]
 }
 
-// Reset очищает все данные
+// Reset clears all data
 func (r *MockNotificationRepository) Reset() {
 	r.mu.Lock()
 	defer r.mu.Unlock()

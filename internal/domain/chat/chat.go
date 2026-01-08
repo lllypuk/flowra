@@ -11,21 +11,21 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// Type представляет тип чата
+// Type represents the chat type
 type Type string
 
 const (
-	// TypeDiscussion обычное обсуждение
+	// TypeDiscussion is a regular discussion
 	TypeDiscussion Type = "discussion"
-	// TypeTask чат-задача
+	// TypeTask is a task chat
 	TypeTask Type = "task"
-	// TypeBug чат-баг
+	// TypeBug is a bug chat
 	TypeBug Type = "bug"
-	// TypeEpic чат-эпик
+	// TypeEpic is an epic chat
 	TypeEpic Type = "epic"
 )
 
-// Chat представляет чат aggregate root с Event Sourcing
+// Chat represents the chat aggregate root with Event Sourcing
 type Chat struct {
 	id           uuid.UUID
 	workspaceID  uuid.UUID
@@ -35,13 +35,13 @@ type Chat struct {
 	createdAt    time.Time
 	participants []Participant
 
-	// Поля для typed чатов (Task/Bug/Epic)
+	// Fields for typed chats (Task/Bug/Epic)
 	title      string
 	status     string
 	priority   string
 	assigneeID *uuid.UUID
 	dueDate    *time.Time
-	severity   string // только для Bug
+	severity   string // only for Bug
 
 	// Soft delete
 	deleted   bool
@@ -53,7 +53,7 @@ type Chat struct {
 	uncommittedEvents []event.DomainEvent
 }
 
-// NewChat создает новый чат
+// NewChat creates a new chat
 func NewChat(
 	workspaceID uuid.UUID,
 	chatType Type,
@@ -91,8 +91,8 @@ func NewChat(
 	)
 	chat.applyEvent(createdEvent)
 
-	// Создатель автоматически становится admin - raise ParticipantAdded event
-	// После ChatCreated version = 1, следующая версия = 2
+	// Creator automatically becomes admin - raise ParticipantAdded event
+	// After ChatCreated version = 1, next version = 2
 	participantEvent := NewParticipantAdded(
 		chatID,
 		createdBy,
@@ -106,7 +106,7 @@ func NewChat(
 	return chat, nil
 }
 
-// AddParticipant добавляет участника в чат
+// AddParticipant adds a participant to the chat
 func (c *Chat) AddParticipant(userID uuid.UUID, role Role) error {
 	if userID.IsZero() {
 		return errs.ErrInvalidInput
@@ -133,7 +133,7 @@ func (c *Chat) addParticipantInternal(userID uuid.UUID, role Role) {
 	c.participants = append(c.participants, participant)
 }
 
-// RemoveParticipant удаляет участника из чата
+// RemoveParticipant removes a participant from the chat
 func (c *Chat) RemoveParticipant(userID uuid.UUID) error {
 	if userID.IsZero() {
 		return errs.ErrInvalidInput
@@ -142,7 +142,7 @@ func (c *Chat) RemoveParticipant(userID uuid.UUID) error {
 		return errs.ErrNotFound
 	}
 	if userID == c.createdBy {
-		return errs.ErrInvalidInput // Создатель не может покинуть чат
+		return errs.ErrInvalidInput // Creator cannot leave the chat
 	}
 
 	// Raise ParticipantRemoved event
@@ -157,9 +157,9 @@ func (c *Chat) RemoveParticipant(userID uuid.UUID) error {
 	return nil
 }
 
-// ConvertToTask конвертирует Discussion в Task
+// ConvertToTask converts Discussion to Task
 func (c *Chat) ConvertToTask(title string, userID uuid.UUID) error {
-	// Валидация
+	// Validation
 	if c.chatType != TypeDiscussion {
 		return errs.ErrInvalidState
 	}
@@ -170,7 +170,7 @@ func (c *Chat) ConvertToTask(title string, userID uuid.UUID) error {
 		return errs.ErrInvalidInput
 	}
 
-	// Создание события
+	// Create event
 	evt := NewChatTypeChanged(
 		c.id,
 		c.chatType,
@@ -184,12 +184,12 @@ func (c *Chat) ConvertToTask(title string, userID uuid.UUID) error {
 		},
 	)
 
-	// Применение и сохранение события
+	// Apply and save the event
 	c.applyEvent(evt)
 	return nil
 }
 
-// ConvertToBug конвертирует Discussion в Bug
+// ConvertToBug converts Discussion to Bug
 func (c *Chat) ConvertToBug(title string, userID uuid.UUID) error {
 	if c.chatType != TypeDiscussion {
 		return errs.ErrInvalidState
@@ -218,7 +218,7 @@ func (c *Chat) ConvertToBug(title string, userID uuid.UUID) error {
 	return nil
 }
 
-// ConvertToEpic конвертирует Discussion в Epic
+// ConvertToEpic converts Discussion to Epic
 func (c *Chat) ConvertToEpic(title string, userID uuid.UUID) error {
 	if c.chatType != TypeDiscussion {
 		return errs.ErrInvalidState
@@ -249,19 +249,19 @@ func (c *Chat) ConvertToEpic(title string, userID uuid.UUID) error {
 
 // ====== Entity Management Methods ======
 
-// ChangeStatus изменяет статус typed чата
+// ChangeStatus changes the status of a typed chat
 func (c *Chat) ChangeStatus(newStatus string, userID uuid.UUID) error {
-	// Валидация: только для typed чатов
+	// Validation: only for typed chats
 	if c.chatType == TypeDiscussion {
 		return errs.ErrInvalidState
 	}
 
-	// Валидация статуса
+	// Status validation
 	if err := c.validateStatus(newStatus); err != nil {
 		return err
 	}
 
-	// Если статус не изменился
+	// If status has not changed
 	if c.status == newStatus {
 		return nil
 	}
@@ -285,16 +285,16 @@ func (c *Chat) ChangeStatus(newStatus string, userID uuid.UUID) error {
 	return nil
 }
 
-// AssignUser назначает исполнителя
+// AssignUser assigns an assignee
 func (c *Chat) AssignUser(assigneeID *uuid.UUID, userID uuid.UUID) error {
 	if c.chatType == TypeDiscussion {
 		return errs.ErrInvalidState
 	}
 
-	// Снятие assignee
+	// Removing assignee
 	if assigneeID == nil {
 		if c.assigneeID == nil {
-			return nil // Уже нет assignee
+			return nil // Already no assignee
 		}
 
 		evt := NewAssigneeRemoved(
@@ -312,12 +312,12 @@ func (c *Chat) AssignUser(assigneeID *uuid.UUID, userID uuid.UUID) error {
 		return nil
 	}
 
-	// Проверка: не назначаем того же пользователя
+	// Check: do not assign the same user
 	if c.assigneeID != nil && *c.assigneeID == *assigneeID {
 		return nil
 	}
 
-	// Назначение assignee
+	// Assign assignee
 	evt := NewUserAssigned(
 		c.id,
 		*assigneeID,
@@ -333,7 +333,7 @@ func (c *Chat) AssignUser(assigneeID *uuid.UUID, userID uuid.UUID) error {
 	return nil
 }
 
-// SetPriority устанавливает приоритет
+// SetPriority sets the priority
 func (c *Chat) SetPriority(priority string, userID uuid.UUID) error {
 	if c.chatType == TypeDiscussion {
 		return errs.ErrInvalidState
@@ -366,13 +366,13 @@ func (c *Chat) SetPriority(priority string, userID uuid.UUID) error {
 	return nil
 }
 
-// SetDueDate устанавливает или снимает дедлайн
+// SetDueDate sets or removes the deadline
 func (c *Chat) SetDueDate(dueDate *time.Time, userID uuid.UUID) error {
 	if c.chatType == TypeDiscussion {
 		return errs.ErrInvalidState
 	}
 
-	// Снятие due date
+	// Removing due date
 	if dueDate == nil {
 		if c.dueDate == nil {
 			return nil
@@ -393,12 +393,12 @@ func (c *Chat) SetDueDate(dueDate *time.Time, userID uuid.UUID) error {
 		return nil
 	}
 
-	// Проверка: не устанавливаем ту же дату
+	// Check: do not set the same date
 	if c.dueDate != nil && c.dueDate.Equal(*dueDate) {
 		return nil
 	}
 
-	// Установка due date
+	// Set due date
 	evt := NewDueDateSet(
 		c.id,
 		c.dueDate,
@@ -415,7 +415,7 @@ func (c *Chat) SetDueDate(dueDate *time.Time, userID uuid.UUID) error {
 	return nil
 }
 
-// Rename изменяет название чата
+// Rename changes the chat title
 func (c *Chat) Rename(newTitle string, userID uuid.UUID) error {
 	if newTitle == "" {
 		return errs.ErrInvalidInput
@@ -444,7 +444,7 @@ func (c *Chat) Rename(newTitle string, userID uuid.UUID) error {
 	return nil
 }
 
-// Delete удаляет чат (soft delete)
+// Delete deletes the chat (soft delete)
 func (c *Chat) Delete(deletedBy uuid.UUID) error {
 	if c.deleted {
 		return errors.New("chat already deleted")
@@ -462,7 +462,7 @@ func (c *Chat) Delete(deletedBy uuid.UUID) error {
 	return nil
 }
 
-// SetSeverity устанавливает severity для Bug
+// SetSeverity sets severity for Bug
 func (c *Chat) SetSeverity(severity string, setBy uuid.UUID) error {
 	if c.chatType != TypeBug {
 		return errs.ErrInvalidState
@@ -495,7 +495,7 @@ func (c *Chat) SetSeverity(severity string, setBy uuid.UUID) error {
 	return nil
 }
 
-// HasParticipant проверяет, является ли пользователь участником
+// HasParticipant checks if the user is a participant
 func (c *Chat) HasParticipant(userID uuid.UUID) bool {
 	for _, p := range c.participants {
 		if p.UserID() == userID {
@@ -505,7 +505,7 @@ func (c *Chat) HasParticipant(userID uuid.UUID) bool {
 	return false
 }
 
-// IsParticipantAdmin проверяет, является ли участник администратором
+// IsParticipantAdmin checks if the participant is an admin
 func (c *Chat) IsParticipantAdmin(userID uuid.UUID) bool {
 	for _, p := range c.participants {
 		if p.UserID() == userID && p.IsAdmin() {
@@ -515,7 +515,7 @@ func (c *Chat) IsParticipantAdmin(userID uuid.UUID) bool {
 	return false
 }
 
-// FindParticipant находит участника по ID
+// FindParticipant finds a participant by ID
 func (c *Chat) FindParticipant(userID uuid.UUID) *Participant {
 	for _, p := range c.participants {
 		if p.UserID() == userID {
@@ -526,12 +526,12 @@ func (c *Chat) FindParticipant(userID uuid.UUID) *Participant {
 	return nil
 }
 
-// IsTyped проверяет, является ли чат типизированным (не Discussion)
+// IsTyped checks if the chat is typed (not Discussion)
 func (c *Chat) IsTyped() bool {
 	return c.chatType != TypeDiscussion
 }
 
-// GetTaskEntityType возвращает соответствующий тип TaskEntity
+// GetTaskEntityType returns the corresponding TaskEntity type
 func (c *Chat) GetTaskEntityType() (task.EntityType, error) {
 	switch c.chatType {
 	case TypeTask:
@@ -549,9 +549,9 @@ func (c *Chat) GetTaskEntityType() (task.EntityType, error) {
 
 // Event Sourcing methods
 
-// Apply применяет событие для восстановления состояния.
-// Метод идемпотентен: безопасно применять одно событие несколько раз
-// (например, при replay событий).
+// Apply applies an event to restore state.
+// This method is idempotent: it is safe to apply the same event multiple times
+// (for example, during event replay).
 func (c *Chat) Apply(e event.DomainEvent) error {
 	switch evt := e.(type) {
 	case *Created:
@@ -581,7 +581,7 @@ func (c *Chat) Apply(e event.DomainEvent) error {
 	case *Deleted:
 		c.applyDeleted(evt)
 	default:
-		// Неизвестные события игнорируем (forward compatibility)
+		// Ignore unknown events (forward compatibility)
 	}
 	return nil
 }
@@ -601,8 +601,8 @@ func (c *Chat) applyParticipantAdded(evt *ParticipantAdded) {
 	c.version = evt.Version()
 }
 
-// applyParticipantRemoved удаляет участника.
-// Идемпотентно: если участника нет, ничего не происходит.
+// applyParticipantRemoved removes a participant.
+// Idempotent: if the participant does not exist, nothing happens.
 func (c *Chat) applyParticipantRemoved(evt *ParticipantRemoved) {
 	newParticipants := make([]Participant, 0, len(c.participants))
 	for _, p := range c.participants {
@@ -670,7 +670,7 @@ func (c *Chat) applyDeleted(evt *Deleted) {
 	c.version = evt.Version()
 }
 
-// getDefaultStatus возвращает дефолтный статус для типа чата
+// getDefaultStatus returns the default status for the chat type
 func (c *Chat) getDefaultStatus() string {
 	switch c.chatType {
 	case TypeTask:
@@ -686,14 +686,14 @@ func (c *Chat) getDefaultStatus() string {
 	}
 }
 
-// applyEvent применяет событие и добавляет в uncommitted
+// applyEvent applies an event and adds it to uncommitted
 func (c *Chat) applyEvent(evt event.DomainEvent) {
 	_ = c.Apply(evt)
 	c.uncommittedEvents = append(c.uncommittedEvents, evt)
 }
 
-// ApplyAndTrack применяет событие и добавляет его в списокнеиспользованных событий
-// Используется для создания новых событий в UseCase layer
+// ApplyAndTrack applies an event and adds it to the list of uncommitted events.
+// Used for creating new events in the UseCase layer.
 func (c *Chat) ApplyAndTrack(evt event.DomainEvent) error {
 	if err := c.Apply(evt); err != nil {
 		return err

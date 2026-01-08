@@ -622,13 +622,13 @@ func TestValidateEntityCreation(t *testing.T) {
 		{
 			name:    "valid bug title",
 			tagKey:  "bug",
-			title:   "Ошибка при логине",
+			title:   "Login error",
 			wantErr: false,
 		},
 		{
 			name:    "valid epic title",
 			tagKey:  "epic",
-			title:   "Новая фича",
+			title:   "New feature",
 			wantErr: false,
 		},
 		{

@@ -5,29 +5,29 @@ import (
 	"time"
 )
 
-// DomainEvent представляет доменное событие
+// DomainEvent represents a domain event
 type DomainEvent interface {
-	// EventType возвращает тип события
+	// EventType returns the event type
 	EventType() string
 
-	// AggregateID возвращает ID агрегата
+	// AggregateID returns the aggregate ID
 	AggregateID() string
 
-	// AggregateType возвращает тип агрегата
+	// AggregateType returns the aggregate type
 	AggregateType() string
 
-	// OccurredAt возвращает время возникновения события
+	// OccurredAt returns the time when the event occurred
 	OccurredAt() time.Time
 
-	// Version возвращает версию агрегата
+	// Version returns the aggregate version
 	Version() int
 
-	// Metadata возвращает метаданные события
+	// Metadata returns the event metadata
 	Metadata() Metadata
 }
 
-// Bus интерфейс для публикации событий
+// Bus is an interface for publishing events
 type Bus interface {
-	// Publish публикует событие
+	// Publish publishes an event
 	Publish(ctx context.Context, event DomainEvent) error
 }

@@ -151,33 +151,33 @@ func (uc *SendMessageUseCase) processTagsAsync(
 	msg *messagedomain.Message,
 	authorID uuid.UUID,
 ) {
-	// Конвертируем domain UUID в google UUID для processor
+	// Convert domain UUID to google UUID for processor
 	chatIDGoogle, err := msg.ChatID().ToGoogleUUID()
 	if err != nil {
-		// Ошибка конвертации UUID - игнорируем
+		// UUID conversion error - ignore
 		return
 	}
 
-	// Парсинг и обработка тегов из содержимого сообщения
-	// currentEntityType пустой, т.к. это сообщение, а не сущность
+	// Parse and process tags from message content
+	// currentEntityType is empty because this is a message, not an entity
 	processingResult := uc.tagProcessor.ProcessMessage(chatIDGoogle, msg.Content(), "")
 	if len(processingResult.AppliedTags) == 0 {
-		// Нет успешно применённых тегов - выходим
+		// No successfully applied tags - exit
 		return
 	}
 
-	// Конвертируем domain UUID в google UUID для executor
+	// Convert domain UUID to google UUID for executor
 	authorIDGoogle, convErr := authorID.ToGoogleUUID()
 	if convErr != nil {
-		// Ошибка конвертации UUID - выходим
+		// UUID conversion error - exit
 		return
 	}
 
-	// Выполняем команды
+	// Execute commands
 	for _, tagApp := range processingResult.AppliedTags {
 		_ = uc.tagExecutor.Execute(ctx, tagApp.Command, authorIDGoogle)
-		// TODO: отправить notification об ошибке или создать reply с ботом
-		// Для теперь просто игнорируем ошибку
+		// TODO: send notification about error or create reply with bot
+		// For now just ignore the error
 	}
 
 	// TODO: форматирование результатов через tag.Formatter и отправка reply

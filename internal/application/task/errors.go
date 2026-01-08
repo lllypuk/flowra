@@ -18,9 +18,9 @@ func (e *appError) HTTPCode() string    { return e.httpCode }
 func (e *appError) HTTPMessage() string { return e.httpMsg }
 
 var (
-	// Validation errors - ошибки валидации входных данных
+	// Validation errors - input data validation errors
 
-	// ErrInvalidChatID возвращается когда ChatID невалиден
+	// ErrInvalidChatID is returned when ChatID is invalid
 	ErrInvalidChatID = &appError{
 		msg:        "invalid chat ID",
 		httpStatus: http.StatusBadRequest,
@@ -28,7 +28,7 @@ var (
 		httpMsg:    "invalid chat ID",
 	}
 
-	// ErrEmptyTitle возвращается когда заголовок пустой
+	// ErrEmptyTitle is returned when title is empty
 	ErrEmptyTitle = &appError{
 		msg:        "task title cannot be empty",
 		httpStatus: http.StatusBadRequest,
@@ -36,7 +36,7 @@ var (
 		httpMsg:    "task title cannot be empty",
 	}
 
-	// ErrInvalidPriority возвращается когда приоритет невалиден
+	// ErrInvalidPriority is returned when priority is invalid
 	ErrInvalidPriority = &appError{
 		msg:        "invalid priority value",
 		httpStatus: http.StatusBadRequest,
@@ -44,7 +44,7 @@ var (
 		httpMsg:    "invalid priority value",
 	}
 
-	// ErrEmptyPriority возвращается когда приоритет пустой
+	// ErrEmptyPriority is returned when priority is empty
 	ErrEmptyPriority = &appError{
 		msg:        "priority cannot be empty",
 		httpStatus: http.StatusBadRequest,
@@ -52,7 +52,7 @@ var (
 		httpMsg:    "priority cannot be empty",
 	}
 
-	// ErrInvalidStatus возвращается когда статус невалиден
+	// ErrInvalidStatus is returned when status is invalid
 	ErrInvalidStatus = &appError{
 		msg:        "invalid status value",
 		httpStatus: http.StatusBadRequest,
@@ -60,7 +60,7 @@ var (
 		httpMsg:    "invalid status value",
 	}
 
-	// ErrInvalidUserID возвращается когда ID пользователя невалиден
+	// ErrInvalidUserID is returned when user ID is invalid
 	ErrInvalidUserID = &appError{
 		msg:        "invalid user ID",
 		httpStatus: http.StatusBadRequest,
@@ -68,7 +68,7 @@ var (
 		httpMsg:    "invalid user ID",
 	}
 
-	// ErrInvalidTaskID возвращается когда ID задачи невалиден
+	// ErrInvalidTaskID is returned when task ID is invalid
 	ErrInvalidTaskID = &appError{
 		msg:        "invalid task ID",
 		httpStatus: http.StatusBadRequest,
@@ -76,7 +76,7 @@ var (
 		httpMsg:    "invalid task ID",
 	}
 
-	// ErrInvalidDate возвращается когда дата невалидна
+	// ErrInvalidDate is returned when date is invalid
 	ErrInvalidDate = &appError{
 		msg:        "invalid date value",
 		httpStatus: http.StatusBadRequest,
@@ -84,7 +84,7 @@ var (
 		httpMsg:    "invalid date value",
 	}
 
-	// ErrInvalidEntityType возвращается когда тип сущности невалиден
+	// ErrInvalidEntityType is returned when entity type is invalid
 	ErrInvalidEntityType = &appError{
 		msg:        "invalid entity type",
 		httpStatus: http.StatusBadRequest,
@@ -92,7 +92,7 @@ var (
 		httpMsg:    "invalid entity type",
 	}
 
-	// ErrInvalidTitle возвращается когда заголовок невалиден (слишком длинный и т.д.)
+	// ErrInvalidTitle is returned when title is invalid (too long, etc.)
 	ErrInvalidTitle = &appError{
 		msg:        "invalid task title",
 		httpStatus: http.StatusBadRequest,
@@ -100,9 +100,9 @@ var (
 		httpMsg:    "invalid task title",
 	}
 
-	// Business logic errors - ошибки бизнес-логики
+	// Business logic errors
 
-	// ErrTaskNotFound возвращается когда задача не найдена
+	// ErrTaskNotFound is returned when task is not found
 	ErrTaskNotFound = &appError{
 		msg:        "task not found",
 		httpStatus: http.StatusNotFound,
@@ -110,7 +110,7 @@ var (
 		httpMsg:    "task not found",
 	}
 
-	// ErrUnauthorized возвращается когда пользователь не авторизован для операции
+	// ErrUnauthorized is returned when user is not authorized for the operation
 	ErrUnauthorized = &appError{
 		msg:        "user not authorized for this operation",
 		httpStatus: http.StatusForbidden,
@@ -118,7 +118,7 @@ var (
 		httpMsg:    "not authorized for this operation",
 	}
 
-	// ErrConcurrentUpdate возвращается при конфликте версий (optimistic locking)
+	// ErrConcurrentUpdate is returned on version conflict (optimistic locking)
 	ErrConcurrentUpdate = &appError{
 		msg:        "concurrent update detected",
 		httpStatus: http.StatusConflict,
@@ -126,7 +126,7 @@ var (
 		httpMsg:    "task was modified by another request",
 	}
 
-	// ErrInvalidStatusTransition возвращается при невалидном переходе статуса
+	// ErrInvalidStatusTransition is returned on invalid status transition
 	ErrInvalidStatusTransition = &appError{
 		msg:        "invalid status transition",
 		httpStatus: http.StatusUnprocessableEntity,
@@ -134,7 +134,7 @@ var (
 		httpMsg:    "invalid status transition",
 	}
 
-	// ErrUserNotFound возвращается когда пользователь не найден
+	// ErrUserNotFound is returned when user is not found
 	ErrUserNotFound = &appError{
 		msg:        "user not found",
 		httpStatus: http.StatusBadRequest,
@@ -142,7 +142,7 @@ var (
 		httpMsg:    "assignee user not found",
 	}
 
-	// ErrTaskAlreadyExists возвращается когда задача уже существует
+	// ErrTaskAlreadyExists is returned when task already exists
 	ErrTaskAlreadyExists = &appError{
 		msg:        "task already exists",
 		httpStatus: http.StatusConflict,
@@ -150,7 +150,7 @@ var (
 		httpMsg:    "task already exists",
 	}
 
-	// ErrDueDateInPast возвращается когда дедлайн указан в прошлом
+	// ErrDueDateInPast is returned when due date is in the past
 	ErrDueDateInPast = &appError{
 		msg:        "due date cannot be in the past",
 		httpStatus: http.StatusBadRequest,

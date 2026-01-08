@@ -2,7 +2,7 @@ package event
 
 import "time"
 
-// Metadata содержит метаданные события
+// Metadata contains event metadata
 type Metadata struct {
 	UserID        string    `json:"user_id,omitempty"        bson:"user_id,omitempty"`
 	CorrelationID string    `json:"correlation_id,omitempty" bson:"correlation_id,omitempty"`
@@ -12,7 +12,7 @@ type Metadata struct {
 	UserAgent     string    `json:"user_agent,omitempty"     bson:"user_agent,omitempty"`
 }
 
-// NewMetadata создает новые метаданные
+// NewMetadata creates new metadata
 func NewMetadata(userID, correlationID, causationID string) Metadata {
 	return Metadata{
 		UserID:        userID,
@@ -22,13 +22,13 @@ func NewMetadata(userID, correlationID, causationID string) Metadata {
 	}
 }
 
-// WithIPAddress добавляет IP адрес
+// WithIPAddress adds IP address
 func (m Metadata) WithIPAddress(ip string) Metadata {
 	m.IPAddress = ip
 	return m
 }
 
-// WithUserAgent добавляет User-Agent
+// WithUserAgent adds User-Agent
 func (m Metadata) WithUserAgent(ua string) Metadata {
 	m.UserAgent = ua
 	return m

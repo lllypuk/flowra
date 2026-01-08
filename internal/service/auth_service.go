@@ -19,7 +19,7 @@ import (
 // Compile-time assertion that AuthService implements httphandler.AuthService.
 var _ httphandler.AuthService = (*AuthService)(nil)
 
-// AuthService errors.
+// ErrUserSyncFailed AuthService errors.
 var (
 	ErrUserSyncFailed = errors.New("failed to sync user from Keycloak")
 )

@@ -7,17 +7,17 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/event"
 )
 
-// MockEventBus реализует event.Bus для тестирования
+// MockEventBus implements event.Bus for testing
 type MockEventBus struct {
 	mu        sync.RWMutex
 	published []event.DomainEvent
 	handlers  map[string][]EventHandler
 }
 
-// EventHandler тип для обработчиков событий
+// EventHandler is a type for event handlers
 type EventHandler func(ctx context.Context, evt event.DomainEvent) error
 
-// NewMockEventBus создает новый mock event bus
+// NewMockEventBus creates a new mock event bus
 func NewMockEventBus() *MockEventBus {
 	return &MockEventBus{
 		published: []event.DomainEvent{},
@@ -25,14 +25,14 @@ func NewMockEventBus() *MockEventBus {
 	}
 }
 
-// Publish публикует событие
+// Publish publishes an event
 func (b *MockEventBus) Publish(ctx context.Context, evt event.DomainEvent) error {
 	b.mu.Lock()
 	b.published = append(b.published, evt)
 	handlers := b.handlers[evt.EventType()]
 	b.mu.Unlock()
 
-	// Синхронный вызов всех handlers (для тестов)
+	// Synchronous call of all handlers (for tests)
 	for _, handler := range handlers {
 		if err := handler(ctx, evt); err != nil {
 			return err
@@ -42,7 +42,7 @@ func (b *MockEventBus) Publish(ctx context.Context, evt event.DomainEvent) error
 	return nil
 }
 
-// Subscribe подписывает handler на событие определенного типа
+// Subscribe subscribes a handler to events of a specific type
 func (b *MockEventBus) Subscribe(eventType string, handler EventHandler) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -50,21 +50,21 @@ func (b *MockEventBus) Subscribe(eventType string, handler EventHandler) {
 	b.handlers[eventType] = append(b.handlers[eventType], handler)
 }
 
-// PublishedCount возвращает количество опубликованных событий
+// PublishedCount returns the number of published events
 func (b *MockEventBus) PublishedCount() int {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	return len(b.published)
 }
 
-// PublishedEvents возвращает все опубликованные события
+// PublishedEvents returns all published events
 func (b *MockEventBus) PublishedEvents() []event.DomainEvent {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	return append([]event.DomainEvent{}, b.published...)
 }
 
-// GetPublishedEventsByType возвращает события определенного типа
+// GetPublishedEventsByType returns events of a specific type
 func (b *MockEventBus) GetPublishedEventsByType(eventType string) []event.DomainEvent {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
@@ -78,7 +78,7 @@ func (b *MockEventBus) GetPublishedEventsByType(eventType string) []event.Domain
 	return events
 }
 
-// GetPublishedEventsByAggregate возвращает события конкретного агрегата
+// GetPublishedEventsByAggregate returns events for a specific aggregate
 func (b *MockEventBus) GetPublishedEventsByAggregate(aggregateID string) []event.DomainEvent {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
@@ -92,7 +92,7 @@ func (b *MockEventBus) GetPublishedEventsByAggregate(aggregateID string) []event
 	return events
 }
 
-// Reset очищает bus
+// Reset clears the bus
 func (b *MockEventBus) Reset() {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -101,7 +101,7 @@ func (b *MockEventBus) Reset() {
 	b.handlers = make(map[string][]EventHandler)
 }
 
-// HandlerCount возвращает количество зарегистрированных handlers для типа события
+// HandlerCount returns the number of registered handlers for an event type
 func (b *MockEventBus) HandlerCount(eventType string) int {
 	b.mu.RLock()
 	defer b.mu.RUnlock()

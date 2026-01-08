@@ -9,11 +9,11 @@ import (
 )
 
 const (
-	// MaxTitleLength максимальная длина заголовка чата/задачи
+	// MaxTitleLength is the maximum length of a chat/task title
 	MaxTitleLength = 200
 )
 
-// ValidateRequired проверяет, что строка не пустая
+// ValidateRequired checks that the string is not empty
 func ValidateRequired(field, value string) error {
 	if value == "" {
 		return NewValidationError(field, "is required")
@@ -21,7 +21,7 @@ func ValidateRequired(field, value string) error {
 	return nil
 }
 
-// ValidateUUID проверяет, что UUID валиден и не пустой
+// ValidateUUID checks that the UUID is valid and not empty
 func ValidateUUID(field string, id uuid.UUID) error {
 	if id.IsZero() {
 		return NewValidationError(field, "must be a valid UUID")
@@ -29,7 +29,7 @@ func ValidateUUID(field string, id uuid.UUID) error {
 	return nil
 }
 
-// ValidateMaxLength проверяет максимальную длину строки
+// ValidateMaxLength checks the maximum string length
 func ValidateMaxLength(field, value string, maxLength int) error {
 	if len(value) > maxLength {
 		return NewValidationError(field, fmt.Sprintf("must be at most %d characters", maxLength))
@@ -37,7 +37,7 @@ func ValidateMaxLength(field, value string, maxLength int) error {
 	return nil
 }
 
-// ValidateMinLength проверяет минимальную длину строки
+// ValidateMinLength checks the minimum string length
 func ValidateMinLength(field, value string, minLength int) error {
 	if len(value) < minLength {
 		return NewValidationError(field, fmt.Sprintf("must be at least %d characters", minLength))
@@ -45,7 +45,7 @@ func ValidateMinLength(field, value string, minLength int) error {
 	return nil
 }
 
-// ValidateEnum проверяет, что значение находится в списке допустимых
+// ValidateEnum checks that the value is in the list of allowed values
 func ValidateEnum(field, value string, allowedValues []string) error {
 	if slices.Contains(allowedValues, value) {
 		return nil
@@ -53,7 +53,7 @@ func ValidateEnum(field, value string, allowedValues []string) error {
 	return NewValidationError(field, fmt.Sprintf("must be one of: %v", allowedValues))
 }
 
-// ValidateDateNotPast проверяет, что дата не в прошлом
+// ValidateDateNotPast checks that the date is not in the past
 func ValidateDateNotPast(field string, date *time.Time) error {
 	if date != nil && date.Before(time.Now()) {
 		return NewValidationError(field, "cannot be in the past")
@@ -61,7 +61,7 @@ func ValidateDateNotPast(field string, date *time.Time) error {
 	return nil
 }
 
-// ValidateDateRange проверяет, что дата находится в допустимом диапазоне
+// ValidateDateRange checks that the date is within the allowed range
 func ValidateDateRange(field string, date *time.Time, minDate, maxDate time.Time) error {
 	if date == nil {
 		return nil
@@ -79,7 +79,7 @@ func ValidateDateRange(field string, date *time.Time, minDate, maxDate time.Time
 	return nil
 }
 
-// ValidatePositive проверяет, что число положительное
+// ValidatePositive checks that the number is positive
 func ValidatePositive(field string, value int) error {
 	if value <= 0 {
 		return NewValidationError(field, "must be positive")
@@ -87,7 +87,7 @@ func ValidatePositive(field string, value int) error {
 	return nil
 }
 
-// ValidateNonNegative проверяет, что число неотрицательное
+// ValidateNonNegative checks that the number is non-negative
 func ValidateNonNegative(field string, value int) error {
 	if value < 0 {
 		return NewValidationError(field, "must be non-negative")
@@ -95,7 +95,7 @@ func ValidateNonNegative(field string, value int) error {
 	return nil
 }
 
-// ValidateRange проверяет, что значение находится в заданном диапазоне
+// ValidateRange checks that the value is within the specified range
 func ValidateRange(field string, value, minValue, maxValue int) error {
 	if value < minValue || value > maxValue {
 		return NewValidationError(field, fmt.Sprintf("must be between %d and %d", minValue, maxValue))
@@ -103,12 +103,12 @@ func ValidateRange(field string, value, minValue, maxValue int) error {
 	return nil
 }
 
-// ValidateEmail проверяет базовый формат email (упрощенная проверка)
+// ValidateEmail checks basic email format (simplified check)
 func ValidateEmail(field, value string) error {
 	if value == "" {
 		return NewValidationError(field, "email is required")
 	}
-	// Простая проверка наличия @ и точки
+	// Simple check for @ and dot presence
 	hasAt := false
 	hasDot := false
 	for i, ch := range value {

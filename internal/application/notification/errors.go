@@ -3,15 +3,15 @@ package notification
 import "errors"
 
 var (
-	// ErrNotificationNotFound возвращается, когда notification не найден
+	// ErrNotificationNotFound is returned when notification is not found
 	ErrNotificationNotFound = errors.New("notification not found")
 
-	// ErrNotificationAccessDenied возвращается, когда пользователь пытается получить доступ к чужому notification
+	// ErrNotificationAccessDenied is returned when user tries to access another user's notification
 	ErrNotificationAccessDenied = errors.New("notification access denied")
 
-	// ErrInvalidNotificationType возвращается при неверном типе notification
+	// ErrInvalidNotificationType is returned when notification type is invalid
 	ErrInvalidNotificationType = errors.New("invalid notification type")
 
-	// ErrNotificationAlreadyRead возвращается при попытке пометить прочитанное notification как прочитанное
+	// ErrNotificationAlreadyRead is returned when trying to mark an already read notification as read
 	ErrNotificationAlreadyRead = errors.New("notification already marked as read")
 )
