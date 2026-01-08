@@ -32,7 +32,7 @@ func TestProcessTags_EntityCreation(t *testing.T) {
 			name:       "create task",
 			entityType: "",
 			tags: []tag.ParsedTag{
-				{Key: "task", Value: "Реализовать авторизацию"},
+				{Key: "task", Value: "Implement authorization"},
 			},
 			wantCommands: 1,
 			wantErrors:   0,

@@ -39,24 +39,24 @@ func TestParse(t *testing.T) {
 		},
 		{
 			name:  "tag with multi-word value",
-			input: "#task Реализовать функцию авторизации #priority High",
+			input: "#task Implement authorization function #priority High",
 			wantTags: []tag.ParsedTag{
-				{Key: "task", Value: "Реализовать функцию авторизации"},
+				{Key: "task", Value: "Implement authorization function"},
 				{Key: "priority", Value: "High"},
 			},
 			wantText: "",
 		},
 		{
 			name:  "text then tags on separate line",
-			input: "Закончил работу\n#status Done",
+			input: "Finished work\n#status Done",
 			wantTags: []tag.ParsedTag{
 				{Key: "status", Value: "Done"},
 			},
-			wantText: "Закончил работу",
+			wantText: "Finished work",
 		},
 		{
 			name:  "tags at start then text on new line",
-			input: "#status Done #assignee @alex\nЗакончил работу",
+			input: "#status Done #assignee @alex\nFinished work",
 			wantTags: []tag.ParsedTag{
 				{Key: "status", Value: "Done"},
 				{Key: "assignee", Value: "@alex"},
@@ -81,18 +81,18 @@ func TestParse(t *testing.T) {
 		},
 		{
 			name:  "mixed tags and text on same line",
-			input: "#status Done какой-то текст #assignee @alex",
+			input: "#status Done some text #assignee @alex",
 			wantTags: []tag.ParsedTag{
-				{Key: "status", Value: "Done какой-то текст"},
+				{Key: "status", Value: "Done some text"},
 				{Key: "assignee", Value: "@alex"},
 			},
 			wantText: "",
 		},
 		{
 			name:     "unknown tag - ignored",
-			input:    "Поддержка #hashtags в тексте",
+			input:    "Support #hashtags in text",
 			wantTags: []tag.ParsedTag{},
-			wantText: "Поддержка #hashtags в тексте",
+			wantText: "Support #hashtags in text",
 		},
 		{
 			name:  "empty lines ignored",
@@ -113,9 +113,9 @@ func TestParse(t *testing.T) {
 		},
 		{
 			name:  "unicode in tag value",
-			input: "#task Исправить баг в модуле авторизации 🐛",
+			input: "#task Fix bug in authorization module 🐛",
 			wantTags: []tag.ParsedTag{
-				{Key: "task", Value: "Исправить баг в модуле авторизации 🐛"},
+				{Key: "task", Value: "Fix bug in authorization module 🐛"},
 			},
 			wantText: "",
 		},
@@ -139,12 +139,12 @@ func TestParse(t *testing.T) {
 		},
 		{
 			name:  "text with multiple paragraphs and tags",
-			input: "Первый параграф\nВторой параграф\n#status Done\n#priority High",
+			input: "First paragraph\nSecond paragraph\n#status Done\n#priority High",
 			wantTags: []tag.ParsedTag{
 				{Key: "status", Value: "Done"},
 				{Key: "priority", Value: "High"},
 			},
-			wantText: "Первый параграф\nВторой параграф",
+			wantText: "First paragraph\nSecond paragraph",
 		},
 		{
 			name:     "only unknown tags",
