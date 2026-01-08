@@ -132,7 +132,13 @@ func (s *AuthService) Login(
 	// 4. Store refresh token in Redis
 	if tokens.RefreshToken != "" && tokens.RefreshExpiresIn > 0 {
 		ttl := time.Duration(tokens.RefreshExpiresIn) * time.Second
-		if storeErr := s.tokenStore.StoreRefreshToken(reqCtx, localUser.ID(), tokens.RefreshToken, ttl); storeErr != nil {
+		storeErr := s.tokenStore.StoreRefreshToken(
+			reqCtx,
+			localUser.ID(),
+			tokens.RefreshToken,
+			ttl,
+		)
+		if storeErr != nil {
 			// Log but don't fail - the user can still use the access token
 			s.logger.Warn("failed to store refresh token",
 				slog.String("user_id", localUser.ID().String()),

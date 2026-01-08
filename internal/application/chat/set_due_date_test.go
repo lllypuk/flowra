@@ -16,22 +16,21 @@ import (
 func TestSetDueDateUseCase_Success_SetFutureDate(t *testing.T) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
+	workspaceID := generateUUID(t)
 
-	createUseCase := chat.NewCreateChatUseCase(eventStore)
-	createCmd := chat.CreateChatCommand{
-		WorkspaceID: generateUUID(t),
-		Type:        domainChat.TypeTask,
-		Title:       "Test Task",
-		IsPublic:    true,
-		CreatedBy:   creatorID,
-	}
-	createResult, err := createUseCase.Execute(testContext(), createCmd)
-	require.NoError(t, err)
+	createdChat := createTestChatWithParams(
+		t,
+		eventStore,
+		domainChat.TypeTask,
+		"Test Task",
+		workspaceID,
+		creatorID,
+	)
 
 	futureDate := time.Now().AddDate(0, 0, 7) // 7 days in future
 	setDueDateUseCase := chat.NewSetDueDateUseCase(eventStore)
 	setDueDateCmd := chat.SetDueDateCommand{
-		ChatID:  createResult.Value.ID(),
+		ChatID:  createdChat.ID(),
 		DueDate: &futureDate,
 		SetBy:   creatorID,
 	}
@@ -45,32 +44,31 @@ func TestSetDueDateUseCase_Success_SetFutureDate(t *testing.T) {
 func TestSetDueDateUseCase_Success_ClearDueDate(t *testing.T) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
+	workspaceID := generateUUID(t)
 
-	createUseCase := chat.NewCreateChatUseCase(eventStore)
-	createCmd := chat.CreateChatCommand{
-		WorkspaceID: generateUUID(t),
-		Type:        domainChat.TypeTask,
-		Title:       "Test Task",
-		IsPublic:    true,
-		CreatedBy:   creatorID,
-	}
-	createResult, err := createUseCase.Execute(testContext(), createCmd)
-	require.NoError(t, err)
+	createdChat := createTestChatWithParams(
+		t,
+		eventStore,
+		domainChat.TypeTask,
+		"Test Task",
+		workspaceID,
+		creatorID,
+	)
 
 	// First set a due date
 	futureDate := time.Now().AddDate(0, 0, 7)
 	setDueDateUseCase := chat.NewSetDueDateUseCase(eventStore)
 	setDueDateCmd := chat.SetDueDateCommand{
-		ChatID:  createResult.Value.ID(),
+		ChatID:  createdChat.ID(),
 		DueDate: &futureDate,
 		SetBy:   creatorID,
 	}
-	_, err = setDueDateUseCase.Execute(testContext(), setDueDateCmd)
+	_, err := setDueDateUseCase.Execute(testContext(), setDueDateCmd)
 	require.NoError(t, err)
 
 	// Then clear it
 	clearCmd := chat.SetDueDateCommand{
-		ChatID:  createResult.Value.ID(),
+		ChatID:  createdChat.ID(),
 		DueDate: nil,
 		SetBy:   creatorID,
 	}

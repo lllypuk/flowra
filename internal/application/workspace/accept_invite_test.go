@@ -18,7 +18,7 @@ func TestAcceptInviteUseCase_Execute_Success(t *testing.T) {
 	useCase := workspace.NewAcceptInviteUseCase(repo, keycloakClient)
 
 	// Создаем workspace с инвайтом
-	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "keycloak-group-id", uuid.NewUUID())
+	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
 	expiresAt := time.Now().Add(24 * time.Hour)
 	invite, _ := ws.CreateInvite(uuid.NewUUID(), expiresAt, 0)
 	_ = repo.Save(context.Background(), ws)
@@ -90,7 +90,7 @@ func TestAcceptInviteUseCase_Execute_InviteExpired(t *testing.T) {
 	useCase := workspace.NewAcceptInviteUseCase(repo, keycloakClient)
 
 	// Создаем workspace с инвайтом который скоро истечет
-	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "keycloak-group-id", uuid.NewUUID())
+	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
 	// Создаем с коротким сроком действия (1 миллисекунда в будущем)
 	expiresAt := time.Now().Add(1 * time.Millisecond)
 	invite, err := ws.CreateInvite(uuid.NewUUID(), expiresAt, 0)
@@ -128,7 +128,7 @@ func TestAcceptInviteUseCase_Execute_InviteRevoked(t *testing.T) {
 	useCase := workspace.NewAcceptInviteUseCase(repo, keycloakClient)
 
 	// Создаем workspace с отозванным инвайтом
-	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "keycloak-group-id", uuid.NewUUID())
+	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
 	expiresAt := time.Now().Add(24 * time.Hour)
 	invite, _ := ws.CreateInvite(uuid.NewUUID(), expiresAt, 0)
 	_ = invite.Revoke()
@@ -159,7 +159,7 @@ func TestAcceptInviteUseCase_Execute_InviteMaxUsesReached(t *testing.T) {
 	useCase := workspace.NewAcceptInviteUseCase(repo, keycloakClient)
 
 	// Создаем workspace с инвайтом с лимитом использований
-	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "keycloak-group-id", uuid.NewUUID())
+	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
 	expiresAt := time.Now().Add(24 * time.Hour)
 	invite, _ := ws.CreateInvite(uuid.NewUUID(), expiresAt, 1) // maxUses = 1
 
@@ -238,7 +238,7 @@ func TestAcceptInviteUseCase_Execute_KeycloakAddUserError(t *testing.T) {
 	useCase := workspace.NewAcceptInviteUseCase(repo, keycloakClient)
 
 	// Создаем workspace с инвайтом
-	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "keycloak-group-id", uuid.NewUUID())
+	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
 	expiresAt := time.Now().Add(24 * time.Hour)
 	invite, _ := ws.CreateInvite(uuid.NewUUID(), expiresAt, 0)
 	_ = repo.Save(context.Background(), ws)

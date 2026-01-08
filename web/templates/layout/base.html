@@ -4,7 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Flowra - Team collaboration with integrated task management">
     <title>{{if .Title}}{{.Title}} - {{end}}Flowra</title>
+
+    <!-- Preload critical assets -->
+    <link rel="preload" href="/static/css/custom.css" as="style">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://unpkg.com">
 
     <!-- Pico CSS -->
     <link rel="stylesheet"
@@ -13,24 +19,43 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/static/css/custom.css">
 
+    <!-- Board CSS (only on board pages) -->
+    {{if .IncludeBoardCSS}}
+    <link rel="stylesheet" href="/static/css/board.css">
+    {{end}}
+
     <!-- HTMX -->
     <script src="https://unpkg.com/htmx.org@2.0.0"
-            crossorigin="anonymous"></script>
+            crossorigin="anonymous"
+            defer></script>
 
     <!-- HTMX WebSocket Extension -->
-    <script src="https://unpkg.com/htmx-ext-ws@2.0.0/ws.js"></script>
+    <script src="https://unpkg.com/htmx-ext-ws@2.0.0/ws.js" defer></script>
 </head>
 <body hx-boost="true">
+    <!-- Skip Links for Accessibility -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    <a href="#main-nav" class="skip-link">Skip to navigation</a>
+
     {{template "navbar" .}}
 
-    <main class="container">
+    <main id="main-content" class="container" role="main">
         {{template "flash" .}}
         {{block "content" .}}{{end}}
     </main>
 
     {{template "footer" .}}
 
-    <script src="/static/js/app.js"></script>
+    <!-- Live announcer for screen readers -->
+    <div id="live-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+    <script src="/static/js/app.js" defer></script>
+    {{if .IncludeChatJS}}
+    <script src="/static/js/chat.js" defer></script>
+    {{end}}
+    {{if .IncludeBoardJS}}
+    <script src="/static/js/board.js" defer></script>
+    {{end}}
 </body>
 </html>
 {{end}}

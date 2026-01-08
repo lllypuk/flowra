@@ -11,6 +11,7 @@ import (
 type Workspace struct {
 	id              uuid.UUID
 	name            string
+	description     string
 	keycloakGroupID string
 	createdBy       uuid.UUID
 	createdAt       time.Time
@@ -19,7 +20,7 @@ type Workspace struct {
 }
 
 // NewWorkspace создает новое рабочее пространство
-func NewWorkspace(name, keycloakGroupID string, createdBy uuid.UUID) (*Workspace, error) {
+func NewWorkspace(name, description, keycloakGroupID string, createdBy uuid.UUID) (*Workspace, error) {
 	if name == "" {
 		return nil, errs.ErrInvalidInput
 	}
@@ -33,6 +34,7 @@ func NewWorkspace(name, keycloakGroupID string, createdBy uuid.UUID) (*Workspace
 	return &Workspace{
 		id:              uuid.NewUUID(),
 		name:            name,
+		description:     description,
 		keycloakGroupID: keycloakGroupID,
 		createdBy:       createdBy,
 		createdAt:       time.Now(),
@@ -46,7 +48,7 @@ func NewWorkspace(name, keycloakGroupID string, createdBy uuid.UUID) (*Workspace
 // Все параметры должны быть валидными значениями из хранилища.
 func Reconstruct(
 	id uuid.UUID,
-	name, keycloakGroupID string,
+	name, description, keycloakGroupID string,
 	createdBy uuid.UUID,
 	createdAt, updatedAt time.Time,
 	invites []*Invite,
@@ -57,6 +59,7 @@ func Reconstruct(
 	return &Workspace{
 		id:              id,
 		name:            name,
+		description:     description,
 		keycloakGroupID: keycloakGroupID,
 		createdBy:       createdBy,
 		createdAt:       createdAt,
@@ -112,6 +115,9 @@ func (w *Workspace) ID() uuid.UUID { return w.id }
 
 // Name возвращает название рабочего пространства
 func (w *Workspace) Name() string { return w.name }
+
+// Description возвращает описание рабочего пространства
+func (w *Workspace) Description() string { return w.description }
 
 // KeycloakGroupID возвращает ID группы Keycloak
 func (w *Workspace) KeycloakGroupID() string { return w.keycloakGroupID }

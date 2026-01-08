@@ -1,0 +1,360 @@
+{{define "message"}}
+<article class="message {{if .IsSystemMessage}}system-message{{end}} {{if .IsDeleted}}deleted-message{{end}}"
+         id="message-{{.ID}}">
+    {{if not .IsSystemMessage}}
+    <div class="message-avatar">
+        {{if .Author.AvatarURL}}
+        <img src="{{.Author.AvatarURL}}" alt="{{.Author.Username}}">
+        {{else}}
+        <div class="avatar-placeholder">
+            {{slice .Author.Username 0 1 | upper}}
+        </div>
+        {{end}}
+    </div>
+    {{end}}
+
+    <div class="message-content">
+        {{if not .IsSystemMessage}}
+        <header class="message-header">
+            <strong>{{.Author.DisplayName}}</strong>
+            <small class="text-muted">
+                @{{.Author.Username}}
+            </small>
+            <time datetime="{{.CreatedAt}}" class="text-muted">
+                {{.CreatedAt | formatTime}}
+            </time>
+            {{if .EditedAt}}
+            <small class="text-muted">(edited)</small>
+            {{end}}
+        </header>
+        {{end}}
+
+        {{if .IsDeleted}}
+        <div class="message-body deleted">
+            <em class="text-muted">This message has been deleted.</em>
+        </div>
+        {{else}}
+        <div class="message-body">
+            {{.Content | safeHTML}}
+        </div>
+        {{end}}
+
+        {{if and .Tags (not .IsDeleted)}}
+        <div class="message-tags">
+            {{range .Tags}}
+            <span class="tag tag-{{.Key}}">
+                #{{.Key}}{{if .Value}} {{.Value}}{{end}}
+            </span>
+            {{end}}
+        </div>
+        {{end}}
+
+        {{if and .Reactions (not .IsDeleted)}}
+        <div class="message-reactions">
+            {{range .Reactions}}
+            <button class="reaction-btn {{if .HasReacted}}active{{end}}"
+                    hx-post="/api/v1/messages/{{$.ID}}/reactions/{{.Emoji}}"
+                    hx-swap="outerHTML"
+                    title="{{.Count}} {{pluralize .Count "reaction" "reactions"}}">
+                <span class="reaction-emoji">{{.Emoji}}</span>
+                <span class="reaction-count">{{.Count}}</span>
+            </button>
+            {{end}}
+        </div>
+        {{end}}
+
+        {{if and (not .IsSystemMessage) (not .IsDeleted) .CanEdit}}
+        <footer class="message-actions">
+            <button hx-get="/partials/messages/{{.ID}}/edit"
+                    hx-target="#message-{{.ID}}"
+                    hx-swap="outerHTML"
+                    class="small outline">
+                Edit
+            </button>
+            <button hx-delete="/api/v1/messages/{{.ID}}"
+                    hx-target="#message-{{.ID}}"
+                    hx-swap="outerHTML"
+                    hx-confirm="Delete this message?"
+                    class="small outline secondary">
+                Delete
+            </button>
+        </footer>
+        {{end}}
+    </div>
+</article>
+{{end}}
+
+{{define "message_edit"}}
+<article class="message editing" id="message-{{.ID}}">
+    <div class="message-avatar">
+        {{if .Author.AvatarURL}}
+        <img src="{{.Author.AvatarURL}}" alt="{{.Author.Username}}">
+        {{else}}
+        <div class="avatar-placeholder">
+            {{slice .Author.Username 0 1 | upper}}
+        </div>
+        {{end}}
+    </div>
+
+    <div class="message-content">
+        <form hx-put="/api/v1/messages/{{.ID}}"
+              hx-target="#message-{{.ID}}"
+              hx-swap="outerHTML"
+              class="message-edit-form">
+            <textarea name="content"
+                      rows="2"
+                      required
+                      autofocus>{{.Content}}</textarea>
+            <div class="message-edit-actions">
+                <button type="submit" class="small">Save</button>
+                <button type="button"
+                        class="small secondary outline"
+                        hx-get="/partials/messages/{{.ID}}"
+                        hx-target="#message-{{.ID}}"
+                        hx-swap="outerHTML">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</article>
+{{end}}
+
+<style>
+.message {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+}
+
+.message:hover {
+    background: var(--secondary-focus);
+    border-radius: 4px;
+    margin: 0 -0.5rem;
+    padding: 0.5rem;
+}
+
+.message.system-message {
+    justify-content: center;
+}
+
+.message.system-message .message-content {
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--muted-color);
+    font-style: italic;
+}
+
+.message.deleted-message {
+    opacity: 0.7;
+}
+
+.message-avatar {
+    flex-shrink: 0;
+}
+
+.message-avatar img,
+.message-avatar .avatar-placeholder {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.message-avatar .avatar-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--secondary-focus);
+    color: var(--secondary);
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.message-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.message-header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+    flex-wrap: wrap;
+}
+
+.message-header strong {
+    font-weight: 600;
+}
+
+.message-header small,
+.message-header time {
+    font-size: 0.75rem;
+}
+
+.message-body {
+    line-height: 1.5;
+    word-wrap: break-word;
+}
+
+.message-body.deleted {
+    font-style: italic;
+}
+
+.message-body p {
+    margin: 0;
+}
+
+.message-body p + p {
+    margin-top: 0.5rem;
+}
+
+.message-body code {
+    background: var(--code-background-color);
+    padding: 0.125rem 0.25rem;
+    border-radius: 3px;
+    font-size: 0.875em;
+}
+
+.message-body pre {
+    background: var(--code-background-color);
+    padding: 0.75rem;
+    border-radius: 4px;
+    overflow-x: auto;
+    margin: 0.5rem 0;
+}
+
+.message-body pre code {
+    background: none;
+    padding: 0;
+}
+
+.message-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+}
+
+.tag {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    background: var(--secondary-focus);
+    color: var(--secondary);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.tag.tag-createTask,
+.tag.tag-task {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.tag.tag-createBug,
+.tag.tag-bug {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.tag.tag-setStatus,
+.tag.tag-status {
+    background: #e8f5e9;
+    color: #388e3c;
+}
+
+.tag.tag-assign {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+.tag.tag-setPriority,
+.tag.tag-priority {
+    background: #fce4ec;
+    color: #c2185b;
+}
+
+.tag.tag-setDueDate,
+.tag.tag-due {
+    background: #ede7f6;
+    color: #512da8;
+}
+
+.message-reactions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+}
+
+.reaction-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.125rem 0.375rem;
+    background: var(--secondary-focus);
+    border: 1px solid var(--muted-border-color);
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.reaction-btn:hover {
+    background: var(--primary-focus);
+    border-color: var(--primary);
+}
+
+.reaction-btn.active {
+    background: var(--primary-focus);
+    border-color: var(--primary);
+}
+
+.reaction-emoji {
+    font-size: 0.875rem;
+}
+
+.reaction-count {
+    font-weight: 500;
+}
+
+.message-actions {
+    display: none;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.message:hover .message-actions {
+    display: flex;
+}
+
+.message-actions button {
+    padding: 0.25rem 0.5rem;
+    margin-bottom: 0;
+    font-size: 0.75rem;
+}
+
+/* Edit form styles */
+.message.editing {
+    background: var(--secondary-focus);
+    border-radius: 4px;
+    margin: 0 -0.5rem;
+    padding: 0.5rem;
+}
+
+.message-edit-form textarea {
+    margin-bottom: 0.5rem;
+    min-height: 60px;
+}
+
+.message-edit-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.message-edit-actions button {
+    margin-bottom: 0;
+}
+</style>

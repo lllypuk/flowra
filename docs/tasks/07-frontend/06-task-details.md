@@ -1,7 +1,7 @@
 # 06: Task Details
 
 **Приоритет:** 🟡 High
-**Статус:** ⏳ Не начато
+**Статус:** ✅ Завершено
 **Зависит от:** [04-chat-ui.md](04-chat-ui.md), [05-kanban-board.md](05-kanban-board.md)
 
 ---
@@ -642,42 +642,42 @@ partials.GET("/tasks/:task_id/description-display", h.TaskDescriptionDisplay)
 ## Чеклист
 
 ### Templates
-- [ ] `task/sidebar.html` - full task sidebar
-- [ ] `task/form.html` - task edit form
-- [ ] `task/activity.html` - activity timeline
-- [ ] `task/quick-edit.html` - quick edit popover
-- [ ] `components/activity_item.html` - activity item
-- [ ] `components/user_select.html` - user picker
-- [ ] `components/date_picker.html` - date picker
+- [x] `task/sidebar.html` - full task sidebar
+- [x] `task/form.html` - task edit form
+- [x] `task/activity.html` - activity timeline
+- [x] `task/quick-edit.html` - quick edit popover
+- [x] `components/activity_item.html` - activity item
+- [x] `components/user_select.html` - user picker
+- [x] `components/date_picker.html` - date picker
 
 ### Handlers
-- [ ] `TaskSidebarPartial` - sidebar content
-- [ ] `TaskActivityPartial` - activity list
-- [ ] `TaskEditTitleForm` - inline title edit
-- [ ] `TaskEditDescriptionForm` - inline description edit
+- [x] `TaskSidebarPartial` - sidebar content
+- [x] `TaskActivityPartial` - activity list
+- [x] `TaskEditTitleForm` - inline title edit
+- [x] `TaskEditDescriptionForm` - inline description edit
 
 ### Features
-- [ ] Sidebar показывает все поля задачи
-- [ ] Inline editing title работает
-- [ ] Inline editing description работает
-- [ ] Status/priority/assignee селекты работают
-- [ ] Date picker работает
-- [ ] Clear date работает
-- [ ] Activity timeline загружается
-- [ ] Real-time обновления через WebSocket
-- [ ] Delete task с подтверждением
+- [x] Sidebar показывает все поля задачи
+- [x] Inline editing title работает
+- [x] Inline editing description работает
+- [x] Status/priority/assignee селекты работают
+- [x] Date picker работает
+- [x] Clear date работает
+- [x] Activity timeline загружается
+- [x] Real-time обновления через WebSocket
+- [x] Delete task с подтверждением
 
 ---
 
 ## Критерии приёмки
 
-- [ ] Task sidebar открывается из chat view и kanban
-- [ ] Все поля редактируются inline
-- [ ] Changes сохраняются без перезагрузки страницы
-- [ ] Activity показывает историю изменений
-- [ ] Overdue задачи выделяются визуально
-- [ ] Delete task работает с подтверждением
-- [ ] Real-time updates при изменении другими пользователями
+- [x] Task sidebar открывается из chat view и kanban
+- [x] Все поля редактируются inline
+- [x] Changes сохраняются без перезагрузки страницы
+- [x] Activity показывает историю изменений
+- [x] Overdue задачи выделяются визуально
+- [x] Delete task работает с подтверждением
+- [x] Real-time updates при изменении другими пользователями
 
 ---
 

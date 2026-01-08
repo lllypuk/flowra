@@ -185,10 +185,7 @@ func (m *MockMessageRepository) SearchInChat(
 	if offset >= len(result) {
 		return []*domainMessage.Message{}, nil
 	}
-	end := offset + limit
-	if end > len(result) {
-		end = len(result)
-	}
+	end := min(offset+limit, len(result))
 
 	return result[offset:end], nil
 }
@@ -211,10 +208,7 @@ func (m *MockMessageRepository) FindByAuthor(
 	if offset >= len(result) {
 		return []*domainMessage.Message{}, nil
 	}
-	end := offset + limit
-	if end > len(result) {
-		end = len(result)
-	}
+	end := min(offset+limit, len(result))
 
 	return result[offset:end], nil
 }

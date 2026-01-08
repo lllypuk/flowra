@@ -21,7 +21,7 @@ import (
 // Helper function to create a test workspace.
 func createTestWorkspace(t *testing.T, ownerID uuid.UUID, name string) *workspace.Workspace {
 	t.Helper()
-	ws, err := workspace.NewWorkspace(name, "keycloak-group-"+uuid.NewUUID().String(), ownerID)
+	ws, err := workspace.NewWorkspace(name, "", "keycloak-group-"+uuid.NewUUID().String(), ownerID)
 	require.NoError(t, err)
 	return ws
 }
@@ -1140,7 +1140,7 @@ func TestNewWorkspaceHandler(t *testing.T) {
 
 func TestToWorkspaceResponse(t *testing.T) {
 	ownerID := uuid.NewUUID()
-	ws, err := workspace.NewWorkspace("Test Workspace", "keycloak-group", ownerID)
+	ws, err := workspace.NewWorkspace("Test Workspace", "", "keycloak-group", ownerID)
 	require.NoError(t, err)
 
 	resp := httphandler.ToWorkspaceResponse(ws, 5)

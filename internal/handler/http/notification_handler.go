@@ -20,6 +20,7 @@ import (
 const (
 	defaultNotificationListLimit = 20
 	maxNotificationListLimit     = 100
+	queryParamTrue               = "true"
 )
 
 // Notification handler errors.
@@ -113,7 +114,7 @@ func (h *NotificationHandler) List(c echo.Context) error {
 
 	// Parse query parameters
 	limit, offset := parseNotificationPagination(c)
-	unreadOnly := c.QueryParam("unread_only") == "true"
+	unreadOnly := c.QueryParam("unread_only") == queryParamTrue
 
 	query := notifapp.ListNotificationsQuery{
 		UserID:     userID,
@@ -257,10 +258,7 @@ func parseNotificationPagination(c echo.Context) (int, int) {
 
 	if limitStr := c.QueryParam("limit"); limitStr != "" {
 		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
-			limit = l
-			if limit > maxNotificationListLimit {
-				limit = maxNotificationListLimit
-			}
+			limit = min(l, maxNotificationListLimit)
 		}
 	}
 
@@ -379,14 +377,8 @@ func (m *MockNotificationService) ListNotifications(
 	total := len(filtered)
 
 	// Apply pagination
-	start := query.Offset
-	if start > len(filtered) {
-		start = len(filtered)
-	}
-	end := start + query.Limit
-	if end > len(filtered) {
-		end = len(filtered)
-	}
+	start := min(query.Offset, len(filtered))
+	end := min(start+query.Limit, len(filtered))
 
 	return notifapp.ListResult{
 		Notifications: filtered[start:end],

@@ -77,6 +77,7 @@ func (uc *ListChatsUseCase) Execute(ctx context.Context, query ListChatsQuery) (
 			ID:          rm.ID,
 			WorkspaceID: rm.WorkspaceID,
 			Type:        rm.Type,
+			Title:       rm.Title,
 			IsPublic:    rm.IsPublic,
 			CreatedBy:   rm.CreatedBy,
 			CreatedAt:   rm.CreatedAt,

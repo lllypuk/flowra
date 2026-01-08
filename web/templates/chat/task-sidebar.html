@@ -1,0 +1,165 @@
+{{define "chat/task-sidebar"}}
+<div class="task-details">
+    <h3>Task Details</h3>
+
+    <!-- Status -->
+    <div class="field">
+        <label for="task-status">Status</label>
+        <select id="task-status"
+                hx-put="/api/v1/tasks/{{.Data.Task.ID}}/status"
+                hx-trigger="change"
+                hx-swap="none"
+                name="status">
+            <option value="todo" {{if eq .Data.Task.Status "todo"}}selected{{end}}>To Do</option>
+            <option value="in_progress" {{if eq .Data.Task.Status "in_progress"}}selected{{end}}>In Progress</option>
+            <option value="review" {{if eq .Data.Task.Status "review"}}selected{{end}}>Review</option>
+            <option value="done" {{if eq .Data.Task.Status "done"}}selected{{end}}>Done</option>
+        </select>
+    </div>
+
+    <!-- Assignee -->
+    <div class="field">
+        <label for="task-assignee">Assignee</label>
+        <select id="task-assignee"
+                hx-put="/api/v1/tasks/{{.Data.Task.ID}}/assignee"
+                hx-trigger="change"
+                hx-swap="none"
+                name="assignee_id">
+            <option value="">Unassigned</option>
+            {{range .Data.Participants}}
+            <option value="{{.UserID}}"
+                    {{if eq .UserID $.Data.Task.AssigneeID}}selected{{end}}>
+                {{.Username}}
+            </option>
+            {{end}}
+        </select>
+    </div>
+
+    <!-- Priority -->
+    <div class="field">
+        <label for="task-priority">Priority</label>
+        <select id="task-priority"
+                hx-put="/api/v1/tasks/{{.Data.Task.ID}}/priority"
+                hx-trigger="change"
+                hx-swap="none"
+                name="priority">
+            <option value="low" {{if eq .Data.Task.Priority "low"}}selected{{end}}>Low</option>
+            <option value="medium" {{if eq .Data.Task.Priority "medium"}}selected{{end}}>Medium</option>
+            <option value="high" {{if eq .Data.Task.Priority "high"}}selected{{end}}>High</option>
+            <option value="critical" {{if eq .Data.Task.Priority "critical"}}selected{{end}}>Critical</option>
+        </select>
+    </div>
+
+    <!-- Due Date -->
+    <div class="field">
+        <label for="task-due-date">Due Date</label>
+        <input type="date"
+               id="task-due-date"
+               hx-put="/api/v1/tasks/{{.Data.Task.ID}}/due-date"
+               hx-trigger="change"
+               hx-swap="none"
+               name="due_date"
+               value="{{if .Data.Task.DueDate}}{{.Data.Task.DueDate | formatDateInput}}{{end}}">
+    </div>
+
+    {{if eq .Data.Chat.Type "bug"}}
+    <!-- Severity (Bug-specific) -->
+    <div class="field">
+        <label for="task-severity">Severity</label>
+        <select id="task-severity"
+                hx-put="/api/v1/tasks/{{.Data.Task.ID}}/severity"
+                hx-trigger="change"
+                hx-swap="none"
+                name="severity">
+            <option value="low" {{if eq .Data.Task.Severity "low"}}selected{{end}}>Low</option>
+            <option value="medium" {{if eq .Data.Task.Severity "medium"}}selected{{end}}>Medium</option>
+            <option value="high" {{if eq .Data.Task.Severity "high"}}selected{{end}}>High</option>
+            <option value="critical" {{if eq .Data.Task.Severity "critical"}}selected{{end}}>Critical</option>
+        </select>
+    </div>
+    {{end}}
+
+    <hr>
+
+    <!-- Activity -->
+    <div class="task-activity">
+        <h4>Activity</h4>
+        <div id="task-activity"
+             hx-get="/partials/tasks/{{.Data.Task.ID}}/activity"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            {{template "loading" (dict "ID" "activity-loading")}}
+        </div>
+    </div>
+</div>
+
+<style>
+.task-details h3 {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    font-size: 1.125rem;
+    border-bottom: 1px solid var(--muted-border-color);
+    padding-bottom: 0.75rem;
+}
+
+.task-details .field {
+    margin-bottom: 1rem;
+}
+
+.task-details .field label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    color: var(--muted-color);
+}
+
+.task-details .field select,
+.task-details .field input {
+    margin-bottom: 0;
+}
+
+.task-details hr {
+    margin: 1.5rem 0;
+}
+
+.task-activity h4 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    text-transform: uppercase;
+    color: var(--muted-color);
+}
+
+.task-activity-item {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--muted-border-color);
+    font-size: 0.875rem;
+}
+
+.task-activity-item:last-child {
+    border-bottom: none;
+}
+
+.task-activity-item .activity-icon {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted-color);
+}
+
+.task-activity-item .activity-content {
+    flex: 1;
+}
+
+.task-activity-item .activity-time {
+    color: var(--muted-color);
+    font-size: 0.75rem;
+}
+</style>
+{{end}}

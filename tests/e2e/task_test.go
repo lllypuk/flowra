@@ -23,7 +23,7 @@ func TestTask_Create_Success(t *testing.T) {
 	client := suite.NewHTTPClient(testUser.Token)
 
 	// Create workspace
-	ws, err := workspace.NewWorkspace("Task Workspace", "For task tests", testUser.ID)
+	ws, err := workspace.NewWorkspace("Task Workspace", "For task tests", "keycloak-group-test", testUser.ID)
 	require.NoError(t, err)
 	suite.MockWorkspaceService.AddWorkspace(ws, 1)
 
@@ -90,7 +90,7 @@ func TestTask_Create_WithAssignee(t *testing.T) {
 	assignee := suite.CreateTestUser("taskassignee")
 	client := suite.NewHTTPClient(owner.Token)
 
-	ws, err := workspace.NewWorkspace("Assign Task Workspace", "Test", owner.ID)
+	ws, err := workspace.NewWorkspace("Assign Task Workspace", "", "keycloak-group-test", owner.ID)
 	require.NoError(t, err)
 	suite.MockWorkspaceService.AddWorkspace(ws, 2)
 
@@ -133,7 +133,7 @@ func TestTask_Create_WithDueDate(t *testing.T) {
 	testUser := suite.CreateTestUser("taskduedateowner")
 	client := suite.NewHTTPClient(testUser.Token)
 
-	ws, err := workspace.NewWorkspace("DueDate Workspace", "Test", testUser.ID)
+	ws, err := workspace.NewWorkspace("DueDate Workspace", "", "keycloak-group-test", testUser.ID)
 	require.NoError(t, err)
 	suite.MockWorkspaceService.AddWorkspace(ws, 1)
 
@@ -175,7 +175,7 @@ func TestTask_Create_ValidationError(t *testing.T) {
 	testUser := suite.CreateTestUser("taskvalidation")
 	client := suite.NewHTTPClient(testUser.Token)
 
-	ws, err := workspace.NewWorkspace("Validation Workspace", "Test", testUser.ID)
+	ws, err := workspace.NewWorkspace("Validation Workspace", "", "keycloak-group-test", testUser.ID)
 	require.NoError(t, err)
 	suite.MockWorkspaceService.AddWorkspace(ws, 1)
 
@@ -248,7 +248,7 @@ func TestTask_Get_Success(t *testing.T) {
 	testUser := suite.CreateTestUser("taskgetowner")
 	client := suite.NewHTTPClient(testUser.Token)
 
-	ws, err := workspace.NewWorkspace("Get Task Workspace", "Test", testUser.ID)
+	ws, err := workspace.NewWorkspace("Get Task Workspace", "", "keycloak-group-test", testUser.ID)
 	require.NoError(t, err)
 	suite.MockWorkspaceService.AddWorkspace(ws, 1)
 
@@ -304,7 +304,7 @@ func TestTask_Get_NotFound(t *testing.T) {
 	testUser := suite.CreateTestUser("tasknotfound")
 	client := suite.NewHTTPClient(testUser.Token)
 
-	ws, err := workspace.NewWorkspace("NotFound Workspace", "Test", testUser.ID)
+	ws, err := workspace.NewWorkspace("NotFound Workspace", "", "keycloak-group-test", testUser.ID)
 	require.NoError(t, err)
 	suite.MockWorkspaceService.AddWorkspace(ws, 1)
 
@@ -320,7 +320,7 @@ func TestTask_List_Success(t *testing.T) {
 	testUser := suite.CreateTestUser("tasklistowner")
 	client := suite.NewHTTPClient(testUser.Token)
 
-	ws, err := workspace.NewWorkspace("List Tasks Workspace", "Test", testUser.ID)
+	ws, err := workspace.NewWorkspace("List Tasks Workspace", "", "keycloak-group-test", testUser.ID)
 	require.NoError(t, err)
 	suite.MockWorkspaceService.AddWorkspace(ws, 1)
 
@@ -380,7 +380,7 @@ func TestTask_List_WithFilters(t *testing.T) {
 	testUser := suite.CreateTestUser("taskfilterowner")
 	client := suite.NewHTTPClient(testUser.Token)
 
-	ws, err := workspace.NewWorkspace("Filter Tasks Workspace", "Test", testUser.ID)
+	ws, err := workspace.NewWorkspace("Filter Tasks Workspace", "", "keycloak-group-test", testUser.ID)
 	require.NoError(t, err)
 	suite.MockWorkspaceService.AddWorkspace(ws, 1)
 
@@ -438,7 +438,7 @@ func TestTask_ChangeStatus_Success(t *testing.T) {
 	testUser := suite.CreateTestUser("taskstatusowner")
 	client := suite.NewHTTPClient(testUser.Token)
 
-	ws, err := workspace.NewWorkspace("Status Workspace", "Test", testUser.ID)
+	ws, err := workspace.NewWorkspace("Status Workspace", "", "keycloak-group-test", testUser.ID)
 	require.NoError(t, err)
 	suite.MockWorkspaceService.AddWorkspace(ws, 1)
 
@@ -491,7 +491,7 @@ func TestTask_ChangeStatus_InvalidStatus(t *testing.T) {
 	testUser := suite.CreateTestUser("taskinvalidstatus")
 	client := suite.NewHTTPClient(testUser.Token)
 
-	ws, err := workspace.NewWorkspace("Invalid Status Workspace", "Test", testUser.ID)
+	ws, err := workspace.NewWorkspace("Invalid Status Workspace", "", "keycloak-group-test", testUser.ID)
 	require.NoError(t, err)
 	suite.MockWorkspaceService.AddWorkspace(ws, 1)
 
@@ -525,7 +525,7 @@ func TestTask_Assign_Success(t *testing.T) {
 	assignee := suite.CreateTestUser("taskassignee2")
 	client := suite.NewHTTPClient(owner.Token)
 
-	ws, err := workspace.NewWorkspace("Assign Workspace", "Test", owner.ID)
+	ws, err := workspace.NewWorkspace("Assign Workspace", "", "keycloak-group-test", owner.ID)
 	require.NoError(t, err)
 	suite.MockWorkspaceService.AddWorkspace(ws, 2)
 
@@ -578,7 +578,7 @@ func TestTask_ChangePriority_Success(t *testing.T) {
 	testUser := suite.CreateTestUser("taskpriorityowner")
 	client := suite.NewHTTPClient(testUser.Token)
 
-	ws, err := workspace.NewWorkspace("Priority Workspace", "Test", testUser.ID)
+	ws, err := workspace.NewWorkspace("Priority Workspace", "", "keycloak-group-test", testUser.ID)
 	require.NoError(t, err)
 	suite.MockWorkspaceService.AddWorkspace(ws, 1)
 
@@ -631,7 +631,7 @@ func TestTask_SetDueDate_Success(t *testing.T) {
 	testUser := suite.CreateTestUser("taskduedateowner2")
 	client := suite.NewHTTPClient(testUser.Token)
 
-	ws, err := workspace.NewWorkspace("DueDate Workspace 2", "Test", testUser.ID)
+	ws, err := workspace.NewWorkspace("DueDate Workspace 2", "", "keycloak-group-test", testUser.ID)
 	require.NoError(t, err)
 	suite.MockWorkspaceService.AddWorkspace(ws, 1)
 
@@ -685,7 +685,7 @@ func TestTask_Delete_Success(t *testing.T) {
 	testUser := suite.CreateTestUser("taskdeleteowner")
 	client := suite.NewHTTPClient(testUser.Token)
 
-	ws, err := workspace.NewWorkspace("Delete Task Workspace", "Test", testUser.ID)
+	ws, err := workspace.NewWorkspace("Delete Task Workspace", "", "keycloak-group-test", testUser.ID)
 	require.NoError(t, err)
 	suite.MockWorkspaceService.AddWorkspace(ws, 1)
 
@@ -722,7 +722,7 @@ func TestTask_CompleteFlow(t *testing.T) {
 	devClient := suite.NewHTTPClient(developer.Token)
 
 	// Setup workspace
-	ws, err := workspace.NewWorkspace("Flow Workspace", "Test", manager.ID)
+	ws, err := workspace.NewWorkspace("Flow Workspace", "", "keycloak-group-test", manager.ID)
 	require.NoError(t, err)
 	suite.MockWorkspaceService.AddWorkspace(ws, 2)
 

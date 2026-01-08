@@ -45,8 +45,8 @@ func jwksResponse(t *testing.T, keys *testKeys) []byte {
 	n := base64.RawURLEncoding.EncodeToString(keys.publicKey.N.Bytes())
 	e := base64.RawURLEncoding.EncodeToString(big.NewInt(int64(keys.publicKey.E)).Bytes())
 
-	response := map[string]interface{}{
-		"keys": []map[string]interface{}{
+	response := map[string]any{
+		"keys": []map[string]any{
 			{
 				"kty": "RSA",
 				"alg": "RS256",
@@ -107,10 +107,10 @@ func standardClaims(issuerURL string) jwt.MapClaims {
 		"given_name":         "Test",
 		"family_name":        "User",
 		"session_state":      "session-abc",
-		"realm_access": map[string]interface{}{
-			"roles": []interface{}{"user", "admin"},
+		"realm_access": map[string]any{
+			"roles": []any{"user", "admin"},
 		},
-		"groups": []interface{}{"/team-a", "/team-b"},
+		"groups": []any{"/team-a", "/team-b"},
 	}
 }
 
@@ -391,7 +391,7 @@ func TestJWTValidator_ExtractClaims(t *testing.T) {
 			"aud":          "test-client",
 			"exp":          now.Add(time.Hour).Unix(),
 			"iat":          now.Unix(),
-			"realm_access": map[string]interface{}{},
+			"realm_access": map[string]any{},
 		}
 
 		tokenString := createTestToken(t, keys, claims)
@@ -409,7 +409,7 @@ func TestJWTValidator_ExtractClaims(t *testing.T) {
 			"aud": "test-client",
 			"exp": now.Add(time.Hour).Unix(),
 			"iat": now.Unix(),
-			"realm_access": map[string]interface{}{
+			"realm_access": map[string]any{
 				"other_field": "value",
 			},
 		}
@@ -429,8 +429,8 @@ func TestJWTValidator_ExtractClaims(t *testing.T) {
 			"aud": "test-client",
 			"exp": now.Add(time.Hour).Unix(),
 			"iat": now.Unix(),
-			"realm_access": map[string]interface{}{
-				"roles": []interface{}{"valid-role", 123, "another-role"},
+			"realm_access": map[string]any{
+				"roles": []any{"valid-role", 123, "another-role"},
 			},
 		}
 
@@ -450,7 +450,7 @@ func TestJWTValidator_ExtractClaims(t *testing.T) {
 			"aud":    "test-client",
 			"exp":    now.Add(time.Hour).Unix(),
 			"iat":    now.Unix(),
-			"groups": []interface{}{"/group-a", 456, "/group-b"},
+			"groups": []any{"/group-a", 456, "/group-b"},
 		}
 
 		tokenString := createTestToken(t, keys, claims)
@@ -493,8 +493,8 @@ func BenchmarkJWTValidator_Validate(b *testing.B) {
 	// Create JWKS response
 	n := base64.RawURLEncoding.EncodeToString(publicKey.N.Bytes())
 	e := base64.RawURLEncoding.EncodeToString(big.NewInt(int64(publicKey.E)).Bytes())
-	jwksData, _ := json.Marshal(map[string]interface{}{
-		"keys": []map[string]interface{}{
+	jwksData, _ := json.Marshal(map[string]any{
+		"keys": []map[string]any{
 			{
 				"kty": "RSA",
 				"alg": "RS256",
@@ -540,8 +540,8 @@ func BenchmarkJWTValidator_Validate(b *testing.B) {
 		"email_verified":     true,
 		"preferred_username": "testuser",
 		"name":               "Test User",
-		"realm_access": map[string]interface{}{
-			"roles": []interface{}{"user", "admin"},
+		"realm_access": map[string]any{
+			"roles": []any{"user", "admin"},
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
@@ -553,10 +553,9 @@ func BenchmarkJWTValidator_Validate(b *testing.B) {
 
 	ctx := context.Background()
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for range b.N {
+	for b.Loop() {
 		_, validateErr := validator.Validate(ctx, tokenString)
 		if validateErr != nil {
 			b.Fatal(validateErr)

@@ -1,0 +1,40 @@
+{{define "components/date_picker"}}
+<div class="date-picker-wrapper">
+    <input type="date"
+           name="{{.Name}}"
+           value="{{if .Value}}{{.Value | formatDateInput}}{{end}}"
+           hx-put="{{.HxPut}}"
+           hx-trigger="change"
+           hx-swap="none"
+           class="date-input">
+    {{if and .AllowEmpty .Value}}
+    <button type="button"
+            class="clear-date"
+            hx-put="{{.HxPut}}"
+            hx-vals='{"{{.Name}}": ""}'
+            hx-swap="none"
+            title="Clear date">
+        &times;
+    </button>
+    {{end}}
+</div>
+
+<style>
+.date-picker-wrapper {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.date-picker-wrapper .date-input {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.clear-date {
+    width: auto;
+    padding: 0 0.5rem;
+    background: none;
+    border: 1px solid var(--muted-border-color);
+}
+</style>
+{{end}}

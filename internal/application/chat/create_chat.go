@@ -10,13 +10,13 @@ import (
 
 // CreateChatUseCase обрабатывает создание нового чата
 type CreateChatUseCase struct {
-	eventStore appcore.EventStore
+	chatRepo CommandRepository
 }
 
 // NewCreateChatUseCase создает новый CreateChatUseCase
-func NewCreateChatUseCase(eventStore appcore.EventStore) *CreateChatUseCase {
+func NewCreateChatUseCase(chatRepo CommandRepository) *CreateChatUseCase {
 	return &CreateChatUseCase{
-		eventStore: eventStore,
+		chatRepo: chatRepo,
 	}
 }
 
@@ -34,28 +34,56 @@ func (uc *CreateChatUseCase) Execute(ctx context.Context, cmd CreateChatCommand)
 		return Result{}, fmt.Errorf("failed to create chat: %w", err)
 	}
 
-	// Для typed чатов (Task/Bug/Epic) конвертируем и устанавливаем title
-	if cmd.Type != chat.TypeDiscussion {
-		switch cmd.Type {
-		case chat.TypeTask:
-			if convertErr := chatAggregate.ConvertToTask(cmd.Title, cmd.CreatedBy); convertErr != nil {
-				return Result{}, fmt.Errorf("failed to convert to task: %w", convertErr)
-			}
-		case chat.TypeBug:
-			if convertErr := chatAggregate.ConvertToBug(cmd.Title, cmd.CreatedBy); convertErr != nil {
-				return Result{}, fmt.Errorf("failed to convert to bug: %w", convertErr)
-			}
-		case chat.TypeEpic:
-			if convertErr := chatAggregate.ConvertToEpic(cmd.Title, cmd.CreatedBy); convertErr != nil {
-				return Result{}, fmt.Errorf("failed to convert to epic: %w", convertErr)
-			}
-		case chat.TypeDiscussion:
-			// Discussion type is already handled above, no conversion needed
-		}
+	// Применяем тип и заголовок
+	if err = uc.applyChatTypeAndTitle(chatAggregate, cmd); err != nil {
+		return Result{}, err
 	}
 
-	// Сохранение событий
-	return saveAggregate(ctx, uc.eventStore, chatAggregate, chatAggregate.ID().String())
+	// Capture events before saving (for response)
+	uncommittedEvents := chatAggregate.GetUncommittedEvents()
+
+	// Сохранение через репозиторий (обновляет и event store, и read model)
+	if err = uc.chatRepo.Save(ctx, chatAggregate); err != nil {
+		return Result{}, fmt.Errorf("failed to save chat: %w", err)
+	}
+
+	return Result{
+		Result: appcore.Result[*chat.Chat]{
+			Value:   chatAggregate,
+			Version: chatAggregate.Version(),
+		},
+		Events: convertToInterfaceSlice(uncommittedEvents),
+	}, nil
+}
+
+func (uc *CreateChatUseCase) applyChatTypeAndTitle(chatAggregate *chat.Chat, cmd CreateChatCommand) error {
+	// Для typed чатов (Task/Bug/Epic) конвертируем и устанавливаем title
+	if cmd.Type != chat.TypeDiscussion {
+		var err error
+		switch cmd.Type {
+		case chat.TypeTask:
+			err = chatAggregate.ConvertToTask(cmd.Title, cmd.CreatedBy)
+		case chat.TypeBug:
+			err = chatAggregate.ConvertToBug(cmd.Title, cmd.CreatedBy)
+		case chat.TypeEpic:
+			err = chatAggregate.ConvertToEpic(cmd.Title, cmd.CreatedBy)
+		case chat.TypeDiscussion:
+			// Unreachable because of outer if, but needed for exhaustive linter
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("failed to convert to %s: %w", cmd.Type, err)
+		}
+		return nil
+	}
+
+	if cmd.Title != "" {
+		// Для Discussion чатов устанавливаем title через Rename, если он передан
+		if err := chatAggregate.Rename(cmd.Title, cmd.CreatedBy); err != nil {
+			return fmt.Errorf("failed to set title: %w", err)
+		}
+	}
+	return nil
 }
 
 func (uc *CreateChatUseCase) validate(cmd CreateChatCommand) error {
@@ -79,6 +107,11 @@ func (uc *CreateChatUseCase) validate(cmd CreateChatCommand) error {
 		if err := appcore.ValidateRequired("title", cmd.Title); err != nil {
 			return ErrTitleRequired
 		}
+		if err := appcore.ValidateMaxLength("title", cmd.Title, appcore.MaxTitleLength); err != nil {
+			return err
+		}
+	} else if cmd.Title != "" {
+		// Для Discussion чатов title опционален, но если передан - проверяем длину
 		if err := appcore.ValidateMaxLength("title", cmd.Title, appcore.MaxTitleLength); err != nil {
 			return err
 		}

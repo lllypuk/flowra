@@ -208,7 +208,7 @@ func TestContainer_RealWorkspaceAccessChecker_Type(t *testing.T) {
 	var _ middleware.WorkspaceAccessChecker = checker
 
 	// Verify it's NOT a mock
-	_, isMock := interface{}(checker).(*middleware.MockWorkspaceAccessChecker)
+	_, isMock := any(checker).(*middleware.MockWorkspaceAccessChecker)
 	assert.False(t, isMock, "RealWorkspaceAccessChecker should not be a mock")
 }
 

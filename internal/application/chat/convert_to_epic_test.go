@@ -3,11 +3,9 @@ package chat_test
 import (
 	"testing"
 
-	"github.com/lllypuk/flowra/internal/application/chat"
-
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
+	"github.com/lllypuk/flowra/internal/application/chat"
 	domainChat "github.com/lllypuk/flowra/internal/domain/chat"
 )
 
@@ -15,20 +13,13 @@ import (
 func TestConvertToEpicUseCase_Success(t *testing.T) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
+	workspaceID := generateUUID(t)
 
-	createUseCase := chat.NewCreateChatUseCase(eventStore)
-	createCmd := chat.CreateChatCommand{
-		WorkspaceID: generateUUID(t),
-		Type:        domainChat.TypeDiscussion,
-		IsPublic:    true,
-		CreatedBy:   creatorID,
-	}
-	createResult, err := createUseCase.Execute(testContext(), createCmd)
-	require.NoError(t, err)
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID)
 
 	convertUseCase := chat.NewConvertToEpicUseCase(eventStore)
 	convertCmd := chat.ConvertToEpicCommand{
-		ChatID:      createResult.Value.ID(),
+		ChatID:      createdChat.ID(),
 		Title:       "Q4 Epic",
 		ConvertedBy: creatorID,
 	}
@@ -43,21 +34,20 @@ func TestConvertToEpicUseCase_Success(t *testing.T) {
 func TestConvertToEpicUseCase_Error_AlreadyEpic(t *testing.T) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
+	workspaceID := generateUUID(t)
 
-	createUseCase := chat.NewCreateChatUseCase(eventStore)
-	createCmd := chat.CreateChatCommand{
-		WorkspaceID: generateUUID(t),
-		Type:        domainChat.TypeEpic,
-		Title:       "Existing Epic",
-		IsPublic:    true,
-		CreatedBy:   creatorID,
-	}
-	createResult, err := createUseCase.Execute(testContext(), createCmd)
-	require.NoError(t, err)
+	createdChat := createTestChatWithParams(
+		t,
+		eventStore,
+		domainChat.TypeEpic,
+		"Existing Epic",
+		workspaceID,
+		creatorID,
+	)
 
 	convertUseCase := chat.NewConvertToEpicUseCase(eventStore)
 	convertCmd := chat.ConvertToEpicCommand{
-		ChatID:      createResult.Value.ID(),
+		ChatID:      createdChat.ID(),
 		Title:       "Another Epic",
 		ConvertedBy: creatorID,
 	}

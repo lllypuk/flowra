@@ -141,10 +141,7 @@ func RateLimit(config RateLimitConfig) echo.MiddlewareFunc {
 			totalLimit := int64(config.Limit + config.BurstSize)
 
 			// Set rate limit headers
-			remaining := totalLimit - count
-			if remaining < 0 {
-				remaining = 0
-			}
+			remaining := max(totalLimit-count, 0)
 
 			c.Response().Header().Set("X-Ratelimit-Limit", strconv.FormatInt(totalLimit, 10))
 			c.Response().Header().Set("X-Ratelimit-Remaining", strconv.FormatInt(remaining, 10))
@@ -519,10 +516,7 @@ func (w *WorkspaceRateLimiter) Middleware() echo.MiddlewareFunc {
 			}
 
 			// Set headers
-			remaining := int64(limit) - count
-			if remaining < 0 {
-				remaining = 0
-			}
+			remaining := max(int64(limit)-count, 0)
 
 			c.Response().Header().Set("X-Ratelimit-Limit", strconv.Itoa(limit))
 			c.Response().Header().Set("X-Ratelimit-Remaining", strconv.FormatInt(remaining, 10))

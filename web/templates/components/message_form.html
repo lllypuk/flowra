@@ -1,0 +1,209 @@
+{{define "message_form"}}
+<form
+    class="message-form"
+    ws-send
+    hx-on::ws-after-send="this.reset(); autoResize(this.querySelector('textarea')); scrollToBottom('messages-{{.Data.Chat.ID}}')"
+>
+    <input type="hidden" name="type" value="chat.send" />
+    <input type="hidden" name="chat_id" value="{{.Data.Chat.ID}}" />
+
+    <div class="message-input-wrapper">
+        <textarea
+            name="content"
+            id="message-input-{{.Data.Chat.ID}}"
+            placeholder="Type a message... Use # for tags, @ for mentions"
+            rows="1"
+            required
+            oninput="autoResize(this); handleTyping('{{.Data.Chat.ID}}')"
+            onkeydown="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); this.form.requestSubmit(); }"
+        ></textarea>
+
+        <!-- Tag autocomplete dropdown -->
+        <div
+            id="tag-autocomplete-{{.Data.Chat.ID}}"
+            class="autocomplete-dropdown hidden"
+        >
+            <ul>
+                <li data-tag="#createTask" tabindex="0">
+                    <span class="autocomplete-icon">T</span>
+                    <span class="autocomplete-label">Create Task</span>
+                </li>
+                <li data-tag="#createBug" tabindex="0">
+                    <span class="autocomplete-icon bug">B</span>
+                    <span class="autocomplete-label">Create Bug</span>
+                </li>
+                <li data-tag="#setStatus" tabindex="0">
+                    <span class="autocomplete-icon status">S</span>
+                    <span class="autocomplete-label">Set Status</span>
+                </li>
+                <li data-tag="#assign" tabindex="0">
+                    <span class="autocomplete-icon assign">@</span>
+                    <span class="autocomplete-label">Assign to</span>
+                </li>
+                <li data-tag="#setPriority" tabindex="0">
+                    <span class="autocomplete-icon priority">!</span>
+                    <span class="autocomplete-label">Set Priority</span>
+                </li>
+                <li data-tag="#setDueDate" tabindex="0">
+                    <span class="autocomplete-icon due">D</span>
+                    <span class="autocomplete-label">Set Due Date</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <button type="submit" title="Send message (Enter)">
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+        >
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+        <span class="sr-only">Send</span>
+    </button>
+</form>
+
+<style>
+    .message-form {
+        display: flex;
+        gap: 0.5rem;
+        padding: 1rem;
+        border-top: 1px solid var(--muted-border-color);
+        background: var(--background-color);
+        align-items: flex-end;
+    }
+
+    .message-input-wrapper {
+        flex: 1;
+        position: relative;
+    }
+
+    .message-form textarea {
+        width: 100%;
+        resize: none;
+        min-height: 2.5rem;
+        max-height: 10rem;
+        margin-bottom: 0;
+        padding: 0.5rem 0.75rem;
+        line-height: 1.5;
+    }
+
+    .message-form button[type="submit"] {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.5rem;
+        height: 2.5rem;
+        padding: 0;
+        margin-bottom: 0;
+        border-radius: 50%;
+    }
+
+    .message-form button[type="submit"] svg {
+        margin: 0;
+    }
+
+    .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+
+    .autocomplete-dropdown {
+        position: absolute;
+        bottom: 100%;
+        left: 0;
+        right: 0;
+        background: var(--card-background-color);
+        border: 1px solid var(--muted-border-color);
+        border-radius: 4px;
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+        max-height: 250px;
+        overflow-y: auto;
+        z-index: 100;
+        margin-bottom: 0.25rem;
+    }
+
+    .autocomplete-dropdown ul {
+        list-style: none;
+        margin: 0;
+        padding: 0.25rem;
+    }
+
+    .autocomplete-dropdown li {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: background-color 0.15s ease;
+    }
+
+    .autocomplete-dropdown li:hover,
+    .autocomplete-dropdown li.active {
+        background: var(--primary-focus);
+    }
+
+    .autocomplete-dropdown li:focus {
+        outline: none;
+        background: var(--primary-focus);
+    }
+
+    .autocomplete-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        background: #3b82f6;
+        color: white;
+    }
+
+    .autocomplete-icon.bug {
+        background: #ef4444;
+    }
+
+    .autocomplete-icon.status {
+        background: #10b981;
+    }
+
+    .autocomplete-icon.assign {
+        background: #f59e0b;
+    }
+
+    .autocomplete-icon.priority {
+        background: #ec4899;
+    }
+
+    .autocomplete-icon.due {
+        background: #8b5cf6;
+    }
+
+    .autocomplete-label {
+        font-size: 0.875rem;
+    }
+
+    .hidden {
+        display: none !important;
+    }
+</style>
+{{end}}

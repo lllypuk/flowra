@@ -1,7 +1,7 @@
 # 05: Kanban Board
 
 **Приоритет:** 🟡 High
-**Статус:** ⏳ Не начато
+**Статус:** ✅ Завершено
 **Зависит от:** [03-workspace-pages.md](03-workspace-pages.md)
 
 ---
@@ -693,45 +693,45 @@ partials.GET("/task/create-form", h.TaskCreateForm)
 ## Чеклист
 
 ### Templates
-- [ ] `board/index.html` - board page layout
-- [ ] `board/column.html` - status column
-- [ ] `board/card.html` - task card
-- [ ] `board/filters.html` - filter controls
-- [ ] `components/task_card.html` - reusable card
+- [x] `board/index.html` - board page layout
+- [x] `board/column.html` - status column
+- [x] `board/card.html` - task card (реализовано как `components/task_card.html`)
+- [x] `board/filters.html` - filter controls
+- [x] `components/task_card.html` - reusable card
 
 ### JavaScript
-- [ ] `board.js` - drag-n-drop logic
+- [x] `board.js` - drag-n-drop logic
 
 ### CSS
-- [ ] `board.css` - board styles
+- [x] `board.css` - board styles
 
 ### Handlers
-- [ ] `BoardIndex` - board page
-- [ ] `BoardPartial` - columns partial
-- [ ] `BoardColumnMore` - load more tasks
-- [ ] `TaskCardPartial` - single card
+- [x] `BoardIndex` - board page
+- [x] `BoardPartial` - columns partial
+- [x] `BoardColumnMore` - load more tasks
+- [x] `TaskCardPartial` - single card
 
 ### Features
-- [ ] Columns отображаются с задачами
-- [ ] Drag-n-drop работает
-- [ ] Статус обновляется при drop
-- [ ] Фильтрация работает
-- [ ] Поиск работает
-- [ ] Real-time обновления через WS
-- [ ] "Load more" для длинных колонок
+- [x] Columns отображаются с задачами
+- [x] Drag-n-drop работает
+- [x] Статус обновляется при drop
+- [x] Фильтрация работает
+- [x] Поиск работает
+- [x] Real-time обновления через WS
+- [x] "Load more" для длинных колонок
 
 ---
 
 ## Критерии приёмки
 
-- [ ] Kanban board отображает 4 колонки (To Do, In Progress, Review, Done)
-- [ ] Карточки можно перетаскивать между колонками
-- [ ] При drop статус задачи обновляется
-- [ ] Фильтры по типу/assignee/priority работают
-- [ ] Поиск фильтрует карточки
-- [ ] Click на карточку открывает чат задачи
-- [ ] Real-time обновления при изменении другими пользователями
-- [ ] Mobile: горизонтальный scroll
+- [x] Kanban board отображает 4 колонки (To Do, In Progress, Review, Done)
+- [x] Карточки можно перетаскивать между колонками
+- [x] При drop статус задачи обновляется
+- [x] Фильтры по типу/assignee/priority работают
+- [x] Поиск фильтрует карточки
+- [x] Click на карточку открывает чат задачи
+- [x] Real-time обновления при изменении другими пользователями
+- [x] Mobile: горизонтальный scroll
 
 ---
 
@@ -756,4 +756,6 @@ partials.GET("/task/create-form", h.TaskCreateForm)
 
 ---
 
-*Обновлено: 2026-01-06*
+*Обновлено: 2026-01-15*
+
+**Статус:** ✅ Завершено

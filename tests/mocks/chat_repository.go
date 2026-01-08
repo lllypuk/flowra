@@ -6,15 +6,17 @@ import (
 	"sync"
 
 	"github.com/lllypuk/flowra/internal/domain/chat"
+	"github.com/lllypuk/flowra/internal/domain/event"
 	domainUUID "github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 var ErrChatNotFound = errors.New("chat not found")
 
 type MockChatRepository struct {
-	mu    sync.RWMutex
-	chats map[string]*chat.Chat
-	calls map[string]int
+	mu       sync.RWMutex
+	chats    map[string]*chat.Chat
+	calls    map[string]int
+	failNext error
 }
 
 func NewMockChatRepository() *MockChatRepository {
@@ -43,9 +45,31 @@ func (r *MockChatRepository) Save(ctx context.Context, c *chat.Chat) error {
 	defer r.mu.Unlock()
 
 	r.calls["Save"]++
-	r.chats[c.ID().String()] = c
 
+	if r.failNext != nil {
+		err := r.failNext
+		r.failNext = nil
+		return err
+	}
+
+	r.chats[c.ID().String()] = c
 	return nil
+}
+
+func (r *MockChatRepository) SetFailureNext(err error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.failNext = err
+}
+
+func (r *MockChatRepository) GetEvents(ctx context.Context, chatID domainUUID.UUID) ([]event.DomainEvent, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	r.calls["GetEvents"]++
+
+	// Mock returns empty events - actual event handling is done via event store
+	return []event.DomainEvent{}, nil
 }
 
 func (r *MockChatRepository) SaveCallCount() int {

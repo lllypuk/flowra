@@ -15,18 +15,11 @@ import (
 func TestConvertToTaskUseCase_Success_FromDiscussion(t *testing.T) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
+	workspaceID := generateUUID(t)
 
-	// Create Discussion chat
-	createUseCase := chat.NewCreateChatUseCase(eventStore)
-	createCmd := chat.CreateChatCommand{
-		WorkspaceID: generateUUID(t),
-		Type:        domainChat.TypeDiscussion,
-		IsPublic:    true,
-		CreatedBy:   creatorID,
-	}
-	createResult, err := createUseCase.Execute(testContext(), createCmd)
-	require.NoError(t, err)
-	chatID := createResult.Value.ID()
+	// Create Discussion chat using helper
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID)
+	chatID := createdChat.ID()
 
 	// Act
 	convertUseCase := chat.NewConvertToTaskUseCase(eventStore)
@@ -48,19 +41,18 @@ func TestConvertToTaskUseCase_Success_FromDiscussion(t *testing.T) {
 func TestConvertToTaskUseCase_Error_AlreadyTask(t *testing.T) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
+	workspaceID := generateUUID(t)
 
-	// Create Task chat
-	createUseCase := chat.NewCreateChatUseCase(eventStore)
-	createCmd := chat.CreateChatCommand{
-		WorkspaceID: generateUUID(t),
-		Type:        domainChat.TypeTask,
-		Title:       "Existing Task",
-		IsPublic:    true,
-		CreatedBy:   creatorID,
-	}
-	createResult, err := createUseCase.Execute(testContext(), createCmd)
-	require.NoError(t, err)
-	chatID := createResult.Value.ID()
+	// Create Task chat using helper
+	createdChat := createTestChatWithParams(
+		t,
+		eventStore,
+		domainChat.TypeTask,
+		"Existing Task",
+		workspaceID,
+		creatorID,
+	)
+	chatID := createdChat.ID()
 
 	// Try to convert to Task again
 	convertUseCase := chat.NewConvertToTaskUseCase(eventStore)

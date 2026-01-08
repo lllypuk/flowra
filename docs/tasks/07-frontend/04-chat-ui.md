@@ -1,7 +1,7 @@
 # 04: Chat UI
 
 **Приоритет:** 🔴 Critical
-**Статус:** ⏳ Не начато
+**Статус:** ✅ Завершено
 **Зависит от:** [03-workspace-pages.md](03-workspace-pages.md)
 
 ---
@@ -778,48 +778,48 @@ partials.GET("/chat/create-form", h.ChatCreateForm)
 ## Чеклист
 
 ### Templates
-- [ ] `chat/layout.html` - 3-column layout
-- [ ] `chat/list.html` - chat list sidebar
-- [ ] `chat/view.html` - messages view
-- [ ] `chat/create.html` - create chat form
-- [ ] `components/message.html` - message component
-- [ ] `components/message_form.html` - message input
-- [ ] `components/chat_item.html` - chat list item
-- [ ] `components/typing.html` - typing indicator
+- [x] `chat/layout.html` - 3-column layout
+- [x] `chat/list.html` - chat list sidebar
+- [x] `chat/view.html` - messages view
+- [x] `chat/create.html` - create chat form
+- [x] `components/message.html` - message component
+- [x] `components/message_form.html` - message input
+- [x] `components/chat_item.html` - chat list item
+- [x] `components/typing.html` - typing indicator
 
 ### JavaScript
-- [ ] `chat.js` - typing, autocomplete, scroll
+- [x] `chat.js` - typing, autocomplete, scroll
 
 ### Handlers
-- [ ] `ChatLayout` - chat page with layout
-- [ ] `ChatView` - specific chat
-- [ ] `ChatListPartial` - chat list
-- [ ] `MessagesPartial` - messages list
-- [ ] `SingleMessagePartial` - single message
-- [ ] `MessageEditForm` - edit message form
+- [x] `ChatLayout` - chat page with layout
+- [x] `ChatView` - specific chat
+- [x] `ChatListPartial` - chat list
+- [x] `MessagesPartial` - messages list
+- [x] `SingleMessagePartial` - single message
+- [x] `MessageEditForm` - edit message form
 
 ### Features
-- [ ] Chat list загружается
-- [ ] Click на chat показывает сообщения
-- [ ] Отправка сообщений работает
-- [ ] Real-time сообщения через WebSocket
-- [ ] Typing indicator работает
-- [ ] Tag autocomplete работает
-- [ ] Edit/delete сообщений работает
-- [ ] Task sidebar для task chats
+- [x] Chat list загружается
+- [x] Click на chat показывает сообщения
+- [x] Отправка сообщений работает
+- [x] Real-time сообщения через WebSocket
+- [x] Typing indicator работает
+- [x] Tag autocomplete работает
+- [x] Edit/delete сообщений работает
+- [x] Task sidebar для task chats
 
 ---
 
 ## Критерии приёмки
 
-- [ ] 3-column layout отображается корректно
-- [ ] Chat list показывает чаты workspace
-- [ ] Сообщения загружаются при выборе чата
-- [ ] Новые сообщения появляются в real-time
-- [ ] Typing indicator показывается
-- [ ] Tags (#createTask etc.) autocomplete работает
-- [ ] Task sidebar показывает и обновляет task details
-- [ ] Mobile responsive (single column)
+- [x] 3-column layout отображается корректно
+- [x] Chat list показывает чаты workspace
+- [x] Сообщения загружаются при выборе чата
+- [x] Новые сообщения появляются в real-time
+- [x] Typing indicator показывается
+- [x] Tags (#createTask etc.) autocomplete работает
+- [x] Task sidebar показывает и обновляет task details
+- [x] Mobile responsive (single column)
 
 ---
 

@@ -1,7 +1,6 @@
 package websocket_test
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -134,8 +133,7 @@ func TestClient_Close(t *testing.T) {
 func TestClient_Send(t *testing.T) {
 	t.Run("sends message to client", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -157,7 +155,7 @@ func TestClient_Send(t *testing.T) {
 		_, received, err := clientConn.ReadMessage()
 		require.NoError(t, err)
 
-		var expectedJSON, receivedJSON interface{}
+		var expectedJSON, receivedJSON any
 		require.NoError(t, json.Unmarshal(message, &expectedJSON))
 		require.NoError(t, json.Unmarshal(received, &receivedJSON))
 		assert.Equal(t, expectedJSON, receivedJSON)
@@ -179,8 +177,7 @@ func TestClient_Send(t *testing.T) {
 func TestClient_HandleClientMessage(t *testing.T) {
 	t.Run("handles subscribe message", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -199,7 +196,7 @@ func TestClient_HandleClientMessage(t *testing.T) {
 		go client.ReadPump()
 
 		// Send subscribe message from client
-		subscribeMsg := map[string]interface{}{
+		subscribeMsg := map[string]any{
 			"type":    "subscribe",
 			"chat_id": chatID.String(),
 		}
@@ -219,7 +216,7 @@ func TestClient_HandleClientMessage(t *testing.T) {
 		_, response, err := clientConn.ReadMessage()
 		require.NoError(t, err)
 
-		var ack map[string]interface{}
+		var ack map[string]any
 		require.NoError(t, json.Unmarshal(response, &ack))
 		assert.Equal(t, "ack", ack["type"])
 		assert.Equal(t, "subscribed", ack["action"])
@@ -227,8 +224,7 @@ func TestClient_HandleClientMessage(t *testing.T) {
 
 	t.Run("handles unsubscribe message", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -248,7 +244,7 @@ func TestClient_HandleClientMessage(t *testing.T) {
 		go client.ReadPump()
 
 		// Send unsubscribe message from client
-		unsubscribeMsg := map[string]interface{}{
+		unsubscribeMsg := map[string]any{
 			"type":    "unsubscribe",
 			"chat_id": chatID.String(),
 		}
@@ -266,8 +262,7 @@ func TestClient_HandleClientMessage(t *testing.T) {
 
 	t.Run("handles ping message", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -294,15 +289,14 @@ func TestClient_HandleClientMessage(t *testing.T) {
 		_, response, err := clientConn.ReadMessage()
 		require.NoError(t, err)
 
-		var pong map[string]interface{}
+		var pong map[string]any
 		require.NoError(t, json.Unmarshal(response, &pong))
 		assert.Equal(t, "pong", pong["type"])
 	})
 
 	t.Run("handles unknown message type", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -329,7 +323,7 @@ func TestClient_HandleClientMessage(t *testing.T) {
 		_, response, err := clientConn.ReadMessage()
 		require.NoError(t, err)
 
-		var errorResp map[string]interface{}
+		var errorResp map[string]any
 		require.NoError(t, json.Unmarshal(response, &errorResp))
 		assert.Equal(t, "error", errorResp["type"])
 		assert.Contains(t, errorResp["message"], "unknown message type")
@@ -337,8 +331,7 @@ func TestClient_HandleClientMessage(t *testing.T) {
 
 	t.Run("handles invalid JSON message", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -363,15 +356,14 @@ func TestClient_HandleClientMessage(t *testing.T) {
 		_, response, err := clientConn.ReadMessage()
 		require.NoError(t, err)
 
-		var errorResp map[string]interface{}
+		var errorResp map[string]any
 		require.NoError(t, json.Unmarshal(response, &errorResp))
 		assert.Equal(t, "error", errorResp["type"])
 	})
 
 	t.Run("subscribe without chat_id returns error", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -398,7 +390,7 @@ func TestClient_HandleClientMessage(t *testing.T) {
 		_, response, err := clientConn.ReadMessage()
 		require.NoError(t, err)
 
-		var errorResp map[string]interface{}
+		var errorResp map[string]any
 		require.NoError(t, json.Unmarshal(response, &errorResp))
 		assert.Equal(t, "error", errorResp["type"])
 		assert.Contains(t, errorResp["message"], "chat_id")

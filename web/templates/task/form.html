@@ -1,0 +1,127 @@
+{{define "task/form"}}
+<form class="task-form"
+      hx-put="/api/v1/tasks/{{.Task.ID}}"
+      hx-swap="none"
+      hx-trigger="submit">
+
+    <div class="form-group">
+        <label for="task-title">Title</label>
+        <input type="text"
+               id="task-title"
+               name="title"
+               value="{{.Task.Title}}"
+               required
+               minlength="3"
+               maxlength="200"
+               placeholder="Enter task title">
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label for="task-status">Status</label>
+            <select id="task-status" name="status" class="status-select">
+                {{range .Statuses}}
+                <option value="{{.Value}}"
+                        {{if eq .Value $.Task.Status}}selected{{end}}>
+                    {{.Label}}
+                </option>
+                {{end}}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="task-priority">Priority</label>
+            <select id="task-priority" name="priority" class="priority-select">
+                {{range .Priorities}}
+                <option value="{{.Value}}"
+                        {{if eq .Value $.Task.Priority}}selected{{end}}>
+                    {{.Label}}
+                </option>
+                {{end}}
+            </select>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label for="task-assignee">Assignee</label>
+            <select id="task-assignee" name="assignee_id">
+                <option value="">Unassigned</option>
+                {{range .Participants}}
+                <option value="{{.UserID}}"
+                        {{if eq .UserID $.Task.AssigneeID}}selected{{end}}>
+                    {{.DisplayName}} (@{{.Username}})
+                </option>
+                {{end}}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="task-due-date">Due Date</label>
+            <input type="date"
+                   id="task-due-date"
+                   name="due_date"
+                   value="{{if .Task.DueDate}}{{.Task.DueDate | formatDateInput}}{{end}}">
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="task-description">Description</label>
+        <textarea id="task-description"
+                  name="description"
+                  rows="4"
+                  maxlength="2000"
+                  placeholder="Add a description...">{{.Task.Description}}</textarea>
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" class="btn primary">
+            Save Changes
+        </button>
+        <button type="button"
+                class="btn secondary outline"
+                onclick="closeTaskForm()">
+            Cancel
+        </button>
+    </div>
+</form>
+
+<style>
+.task-form {
+    padding: 1rem;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+    font-size: 0.875rem;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    margin-bottom: 0;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.form-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--muted-border-color);
+}
+</style>
+{{end}}

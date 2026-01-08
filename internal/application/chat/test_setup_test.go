@@ -6,6 +6,7 @@ import (
 
 	"github.com/lllypuk/flowra/internal/application/chat"
 	domainChat "github.com/lllypuk/flowra/internal/domain/chat"
+	domainEvent "github.com/lllypuk/flowra/internal/domain/event"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 	"github.com/lllypuk/flowra/tests/mocks"
 	"github.com/stretchr/testify/require"
@@ -19,6 +20,55 @@ func testContext() context.Context {
 // NewTestEventStore creates a mock EventStore
 func newTestEventStore() *mocks.MockEventStore {
 	return mocks.NewMockEventStore()
+}
+
+// NewTestChatRepo creates a mock ChatRepository (implements CommandRepository)
+func newTestChatRepo() *mocks.MockChatRepository {
+	return mocks.NewMockChatRepository()
+}
+
+// createTestChatWithParams creates a chat with specific parameters and syncs events to eventStore.
+func createTestChatWithParams(
+	t *testing.T,
+	eventStore *mocks.MockEventStore,
+	chatType domainChat.Type,
+	title string,
+	workspaceID uuid.UUID,
+	creatorID uuid.UUID,
+) *domainChat.Chat {
+	t.Helper()
+
+	chatRepo := newTestChatRepo()
+	createUC := chat.NewCreateChatUseCase(chatRepo)
+
+	cmd := chat.CreateChatCommand{
+		WorkspaceID: workspaceID,
+		Type:        chatType,
+		Title:       title,
+		IsPublic:    true,
+		CreatedBy:   creatorID,
+	}
+
+	result, err := createUC.Execute(testContext(), cmd)
+	require.NoError(t, err)
+	require.NotNil(t, result.Value)
+
+	// Sync events to eventStore so other use cases can load the chat
+	createdChat := result.Value
+	events := createdChat.GetUncommittedEvents()
+	if len(events) == 0 {
+		// Events already committed, re-apply from result
+		for _, e := range result.Events {
+			if evt, ok := e.(domainEvent.DomainEvent); ok {
+				events = append(events, evt)
+			}
+		}
+	}
+	if len(events) > 0 {
+		_ = eventStore.SaveEvents(testContext(), createdChat.ID().String(), events, 0)
+	}
+
+	return createdChat
 }
 
 // ExecuteAndAssertSuccess executes a use case and asserts no error
@@ -51,18 +101,21 @@ func assertChatStatus(t *testing.T, chat *domainChat.Chat, expectedStatus string
 	require.Equal(t, expectedStatus, chat.Status(), "Expected status %q, got %q", expectedStatus, chat.Status())
 }
 
-// AssertEventStoreCallCount asserts EventStore method call count
-func assertEventStoreCallCount(t *testing.T, es *mocks.MockEventStore, method string, expected int) {
-	actual := es.GetCallCount(method)
+// AssertChatRepoCallCount asserts ChatRepository method call count
+func assertChatRepoCallCount(t *testing.T, repo *mocks.MockChatRepository, method string, expected int) {
+	var actual int
+	switch method {
+	case "Save":
+		actual = repo.SaveCallCount()
+	case "Load":
+		actual = repo.LoadCallCount()
+	default:
+		require.Fail(t, "Unknown method: "+method)
+	}
 	require.Equal(t, expected, actual, "Expected %d calls to %s, got %d", expected, method, actual)
 }
 
 // GenerateUUID generates a new UUID for tests
 func generateUUID(_ *testing.T) uuid.UUID {
 	return uuid.NewUUID()
-}
-
-// SetEventStoreError sets error for next call
-func setEventStoreError(es *mocks.MockEventStore, err error) {
-	es.SetFailureNext(err)
 }

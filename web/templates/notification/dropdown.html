@@ -1,0 +1,192 @@
+{{define "notification/dropdown"}}
+<details class="notification-dropdown" role="list" dir="rtl">
+    <summary aria-haspopup="listbox" role="link">
+        <span class="notification-icon">🔔</span>
+        {{template "notification/badge" .}}
+    </summary>
+
+    <ul role="listbox"
+        id="notification-dropdown-list"
+        hx-get="/partials/notifications?limit=10"
+        hx-trigger="toggle once"
+        hx-swap="innerHTML">
+        <li class="loading">Loading...</li>
+    </ul>
+</details>
+
+<style>
+.notification-dropdown {
+    position: relative;
+}
+
+.notification-dropdown summary {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    cursor: pointer;
+}
+
+.notification-dropdown ul {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    width: 350px;
+    max-height: 400px;
+    overflow-y: auto;
+    background: var(--pico-background-color);
+    border: 1px solid var(--pico-muted-border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 0;
+    margin: 0.5rem 0 0 0;
+    list-style: none;
+    z-index: 1000;
+}
+
+.notification-dropdown li.loading {
+    padding: 1rem;
+    text-align: center;
+    color: var(--pico-muted-color);
+}
+</style>
+{{end}}
+
+{{define "notification/dropdown-content"}}
+{{if .Notifications}}
+    <li class="dropdown-header">
+        <span>Notifications</span>
+        {{if gt .UnreadCount 0}}
+        <button hx-put="/api/v1/notifications/mark-all-read"
+                hx-swap="none"
+                hx-on::after-request="htmx.trigger(document.body, 'notification-update')"
+                class="small outline">
+            Mark all read
+        </button>
+        {{end}}
+    </li>
+
+    {{range .Notifications}}
+        {{template "notification/dropdown-item" .}}
+    {{end}}
+
+    <li class="dropdown-footer">
+        <a href="/notifications">View all notifications</a>
+    </li>
+{{else}}
+    <li class="empty-state">
+        <span class="empty-icon">🔔</span>
+        <p>No notifications</p>
+    </li>
+{{end}}
+
+<style>
+.dropdown-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--pico-muted-border-color);
+    font-weight: 600;
+}
+
+.dropdown-header button {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    margin: 0;
+}
+
+.dropdown-footer {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--pico-muted-border-color);
+    text-align: center;
+}
+
+.dropdown-footer a {
+    font-size: 0.875rem;
+}
+
+.notification-dropdown li.empty-state {
+    padding: 2rem;
+    text-align: center;
+    color: var(--pico-muted-color);
+}
+
+.empty-icon {
+    font-size: 2rem;
+    opacity: 0.5;
+}
+</style>
+{{end}}
+
+{{define "notification/dropdown-item"}}
+<li class="notification-item {{if not .IsRead}}unread{{end}}"
+    hx-get="/notifications/{{.ID}}/redirect"
+    hx-push-url="true">
+    <div class="notification-icon-type">
+        {{if eq .Type "chat.mention"}}💬
+        {{else if eq .Type "task.assigned"}}👤
+        {{else if eq .Type "task.status_changed"}}🔄
+        {{else if eq .Type "chat.message"}}💭
+        {{else if eq .Type "task.created"}}📋
+        {{else if eq .Type "workspace.invite"}}📨
+        {{else if eq .Type "system"}}📢
+        {{else}}📢
+        {{end}}
+    </div>
+    <div class="notification-content">
+        <p class="notification-message">{{.Message}}</p>
+        <time class="notification-time">{{.CreatedAt | timeAgo}}</time>
+    </div>
+    {{if not .IsRead}}
+    <div class="unread-dot"></div>
+    {{end}}
+</li>
+
+<style>
+.notification-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.notification-item:hover {
+    background: var(--pico-primary-focus);
+}
+
+.notification-item.unread {
+    background: color-mix(in srgb, var(--pico-primary) 5%, transparent);
+}
+
+.notification-icon-type {
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.notification-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.notification-message {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.4;
+}
+
+.notification-time {
+    font-size: 0.75rem;
+    color: var(--pico-muted-color);
+}
+
+.unread-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--pico-primary);
+    flex-shrink: 0;
+}
+</style>
+{{end}}

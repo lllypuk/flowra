@@ -1,0 +1,55 @@
+{{define "components/task_card"}}
+<article class="task-card"
+         id="task-{{.ID}}"
+         data-task-id="{{.ID}}"
+         data-priority="{{.Priority | lower}}"
+         data-type="{{.Type | lower}}"
+         draggable="true"
+         ondragstart="handleDragStart(event)"
+         ondragend="handleDragEnd(event)"
+         hx-get="/workspaces/{{.WorkspaceID}}/chats/{{.ChatID}}"
+         hx-push-url="true"
+         hx-target="body">
+
+    <!-- Type indicator -->
+    <div class="card-type type-{{.Type | lower}}">
+        {{if eq .Type "bug"}}
+            <span title="Bug">B</span>
+        {{else if eq .Type "epic"}}
+            <span title="Epic">E</span>
+        {{else}}
+            <span title="Task">T</span>
+        {{end}}
+    </div>
+
+    <!-- Title -->
+    <h4 class="card-title">{{.Title | truncate 60}}</h4>
+
+    <!-- Meta info -->
+    <div class="card-meta">
+        {{if .Assignee}}
+        <span class="card-assignee" title="{{.Assignee.DisplayName}}">
+            {{if .Assignee.AvatarURL}}
+            <img src="{{.Assignee.AvatarURL}}" alt="" class="avatar-tiny">
+            {{else}}
+            <span class="avatar-tiny avatar-placeholder">
+                {{.Assignee.Username | slice 0 1 | upper}}
+            </span>
+            {{end}}
+            {{.Assignee.Username}}
+        </span>
+        {{end}}
+
+        {{if .DueDate}}
+        <span class="card-due {{if .IsOverdue}}overdue{{end}}" title="Due date">
+            {{.DueDate | formatDate}}
+        </span>
+        {{end}}
+    </div>
+
+    <!-- Priority indicator -->
+    <div class="card-priority priority-{{.Priority | lower}}"
+         title="{{.Priority}} priority">
+    </div>
+</article>
+{{end}}

@@ -1,0 +1,88 @@
+{{define "components/activity_item"}}
+<div class="activity-item">
+    <div class="activity-dot"></div>
+    <div class="activity-content">
+        <div class="activity-header">
+            <strong>{{.Actor.Username}}</strong>
+            <span class="activity-action">{{.ActionText}}</span>
+        </div>
+
+        {{if .Details}}
+        <div class="activity-details">
+            {{if .OldValue}}
+            <span class="old-value">{{.OldValue}}</span>
+            <span class="arrow">→</span>
+            {{end}}
+            <span class="new-value">{{.NewValue}}</span>
+        </div>
+        {{end}}
+
+        <time class="activity-time text-muted">
+            {{.CreatedAt | timeAgo}}
+        </time>
+    </div>
+</div>
+
+<style>
+.activity-list {
+    position: relative;
+    padding-left: 1rem;
+}
+
+.activity-list::before {
+    content: '';
+    position: absolute;
+    left: 0.25rem;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--muted-border-color);
+}
+
+.activity-item {
+    position: relative;
+    padding-bottom: 1rem;
+    padding-left: 1rem;
+}
+
+.activity-dot {
+    position: absolute;
+    left: -0.75rem;
+    top: 0.25rem;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: 2px solid var(--background-color);
+}
+
+.activity-content {
+    font-size: 0.875rem;
+}
+
+.activity-header {
+    margin-bottom: 0.25rem;
+}
+
+.activity-details {
+    background: var(--card-background-color);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    margin-bottom: 0.25rem;
+}
+
+.old-value {
+    text-decoration: line-through;
+    color: var(--muted-color);
+}
+
+.arrow {
+    margin: 0 0.25rem;
+}
+
+.activity-time {
+    font-size: 0.75rem;
+}
+</style>
+{{end}}

@@ -3,11 +3,9 @@ package chat_test
 import (
 	"testing"
 
-	"github.com/lllypuk/flowra/internal/application/chat"
-
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
+	"github.com/lllypuk/flowra/internal/application/chat"
 	domainChat "github.com/lllypuk/flowra/internal/domain/chat"
 )
 
@@ -15,20 +13,13 @@ import (
 func TestConvertToBugUseCase_Success(t *testing.T) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
+	workspaceID := generateUUID(t)
 
-	createUseCase := chat.NewCreateChatUseCase(eventStore)
-	createCmd := chat.CreateChatCommand{
-		WorkspaceID: generateUUID(t),
-		Type:        domainChat.TypeDiscussion,
-		IsPublic:    true,
-		CreatedBy:   creatorID,
-	}
-	createResult, err := createUseCase.Execute(testContext(), createCmd)
-	require.NoError(t, err)
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID)
 
 	convertUseCase := chat.NewConvertToBugUseCase(eventStore)
 	convertCmd := chat.ConvertToBugCommand{
-		ChatID:      createResult.Value.ID(),
+		ChatID:      createdChat.ID(),
 		Title:       "Critical Bug",
 		ConvertedBy: creatorID,
 	}
@@ -43,21 +34,20 @@ func TestConvertToBugUseCase_Success(t *testing.T) {
 func TestConvertToBugUseCase_Error_AlreadyBug(t *testing.T) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
+	workspaceID := generateUUID(t)
 
-	createUseCase := chat.NewCreateChatUseCase(eventStore)
-	createCmd := chat.CreateChatCommand{
-		WorkspaceID: generateUUID(t),
-		Type:        domainChat.TypeBug,
-		Title:       "Existing Bug",
-		IsPublic:    true,
-		CreatedBy:   creatorID,
-	}
-	createResult, err := createUseCase.Execute(testContext(), createCmd)
-	require.NoError(t, err)
+	createdChat := createTestChatWithParams(
+		t,
+		eventStore,
+		domainChat.TypeBug,
+		"Existing Bug",
+		workspaceID,
+		creatorID,
+	)
 
 	convertUseCase := chat.NewConvertToBugUseCase(eventStore)
 	convertCmd := chat.ConvertToBugCommand{
-		ChatID:      createResult.Value.ID(),
+		ChatID:      createdChat.ID(),
 		Title:       "Another Bug",
 		ConvertedBy: creatorID,
 	}

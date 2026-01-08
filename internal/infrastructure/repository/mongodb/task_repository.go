@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -22,17 +23,36 @@ import (
 type MongoTaskRepository struct {
 	eventStore    appcore.EventStore
 	readModelColl *mongo.Collection
+	logger        *slog.Logger
+}
+
+// TaskRepoOption configures MongoTaskRepository.
+type TaskRepoOption func(*MongoTaskRepository)
+
+// WithTaskRepoLogger sets the logger for task repository.
+func WithTaskRepoLogger(logger *slog.Logger) TaskRepoOption {
+	return func(r *MongoTaskRepository) {
+		r.logger = logger
+	}
 }
 
 // NewMongoTaskRepository создает новый MongoDB Task Repository
 func NewMongoTaskRepository(
 	eventStore appcore.EventStore,
 	readModelColl *mongo.Collection,
+	opts ...TaskRepoOption,
 ) *MongoTaskRepository {
-	return &MongoTaskRepository{
+	r := &MongoTaskRepository{
 		eventStore:    eventStore,
 		readModelColl: readModelColl,
+		logger:        slog.Default(),
 	}
+
+	for _, opt := range opts {
+		opt(r)
+	}
+
+	return r
 }
 
 // Load загружает Task из event store путем восстановления состояния из событий
@@ -47,6 +67,10 @@ func (r *MongoTaskRepository) Load(ctx context.Context, taskID uuid.UUID) (*task
 		if errors.Is(err, appcore.ErrAggregateNotFound) {
 			return nil, errs.ErrNotFound
 		}
+		r.logger.ErrorContext(ctx, "failed to load task events from event store",
+			slog.String("task_id", taskID.String()),
+			slog.String("error", err.Error()),
+		)
 		return nil, fmt.Errorf("failed to load events for task %s: %w", taskID, err)
 	}
 
@@ -80,16 +104,28 @@ func (r *MongoTaskRepository) Save(ctx context.Context, task *taskdomain.Aggrega
 	err := r.eventStore.SaveEvents(ctx, task.ID().String(), uncommittedEvents, expectedVersion)
 	if err != nil {
 		if errors.Is(err, appcore.ErrConcurrencyConflict) {
+			r.logger.WarnContext(ctx, "concurrency conflict while saving task events",
+				slog.String("task_id", task.ID().String()),
+				slog.Int("expected_version", expectedVersion),
+				slog.Int("events_count", len(uncommittedEvents)),
+			)
 			return errs.ErrConcurrentModification
 		}
+		r.logger.ErrorContext(ctx, "failed to save task events to event store",
+			slog.String("task_id", task.ID().String()),
+			slog.Int("events_count", len(uncommittedEvents)),
+			slog.String("error", err.Error()),
+		)
 		return fmt.Errorf("failed to save events: %w", err)
 	}
 
 	// 2. Обновляем read model
 	if updateErr := r.updateReadModel(ctx, task); updateErr != nil {
-		// Логируем ошибку, но не падаем (read model можно пересчитать)
-		// TODO: добавить proper logging
-		_ = updateErr
+		r.logger.ErrorContext(ctx, "failed to update task read model",
+			slog.String("task_id", task.ID().String()),
+			slog.String("error", updateErr.Error()),
+		)
+		// Не падаем - read model можно пересчитать
 	}
 
 	// 3. Помечаем события как committed

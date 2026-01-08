@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
@@ -24,6 +25,14 @@ const (
 	maxParticipantsPerChat = 100
 )
 
+// Chat type string constants for request parsing.
+const (
+	chatTypeDiscussion = "discussion"
+	chatTypeTask       = "task"
+	chatTypeBug        = "bug"
+	chatTypeEpic       = "epic"
+)
+
 // Chat handler errors.
 var (
 	ErrChatNotFound          = errors.New("chat not found")
@@ -42,21 +51,21 @@ var (
 
 // CreateChatRequest represents the request to create a chat.
 type CreateChatRequest struct {
-	Name           string      `json:"name"`
-	Type           string      `json:"type"`
-	IsPublic       bool        `json:"is_public"`
-	ParticipantIDs []uuid.UUID `json:"participant_ids"`
+	Name           string      `json:"name"            form:"name"`
+	Type           string      `json:"type"            form:"type"`
+	IsPublic       bool        `json:"is_public"       form:"is_public"`
+	ParticipantIDs []uuid.UUID `json:"participant_ids" form:"participant_ids"`
 }
 
 // UpdateChatRequest represents the request to update a chat.
 type UpdateChatRequest struct {
-	Name string `json:"name"`
+	Name string `json:"name" form:"name"`
 }
 
 // AddParticipantRequest represents the request to add a participant.
 type AddParticipantRequest struct {
-	UserID uuid.UUID `json:"user_id"`
-	Role   string    `json:"role"`
+	UserID uuid.UUID `json:"user_id" form:"user_id"`
+	Role   string    `json:"role"    form:"role"`
 }
 
 // ChatResponse represents a chat in API responses.
@@ -455,7 +464,7 @@ func (h *ChatHandler) RemoveParticipant(c echo.Context) error {
 
 func validateCreateChatRequest(req *CreateChatRequest) error {
 	// Name validation for non-discussion types
-	if req.Type != "" && req.Type != "discussion" {
+	if req.Type != "" && req.Type != chatTypeDiscussion {
 		if req.Name == "" {
 			return ErrChatNameRequired
 		}
@@ -468,14 +477,16 @@ func validateCreateChatRequest(req *CreateChatRequest) error {
 	}
 	// Validate type if provided
 	if req.Type != "" {
-		validTypes := []string{"discussion", "task", "bug", "epic", "direct", "group", "channel"}
-		valid := false
-		for _, t := range validTypes {
-			if req.Type == t {
-				valid = true
-				break
-			}
+		validTypes := []string{
+			chatTypeDiscussion,
+			chatTypeTask,
+			chatTypeBug,
+			chatTypeEpic,
+			"direct",
+			"group",
+			"channel",
 		}
+		valid := slices.Contains(validTypes, req.Type)
 		if !valid {
 			return ErrInvalidChatType
 		}
@@ -485,13 +496,13 @@ func validateCreateChatRequest(req *CreateChatRequest) error {
 
 func parseChatType(typeStr string) chat.Type {
 	switch typeStr {
-	case "discussion":
+	case chatTypeDiscussion:
 		return chat.TypeDiscussion
-	case "task":
+	case chatTypeTask:
 		return chat.TypeTask
-	case "bug":
+	case chatTypeBug:
 		return chat.TypeBug
-	case "epic":
+	case chatTypeEpic:
 		return chat.TypeEpic
 	case "direct", "group", "channel":
 		// Map legacy types to discussion
@@ -503,9 +514,9 @@ func parseChatType(typeStr string) chat.Type {
 
 func parseParticipantRole(roleStr string) chat.Role {
 	switch roleStr {
-	case "admin":
+	case roleAdmin:
 		return chat.RoleAdmin
-	case "member":
+	case roleMember:
 		return chat.RoleMember
 	default:
 		return ""
@@ -518,10 +529,7 @@ func parseChatPagination(c echo.Context) (int, int) {
 
 	if limitStr := c.QueryParam("limit"); limitStr != "" {
 		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
-			limit = l
-			if limit > maxChatListLimit {
-				limit = maxChatListLimit
-			}
+			limit = min(l, maxChatListLimit)
 		}
 	}
 
@@ -769,14 +777,8 @@ func (m *MockChatService) ListChats(_ context.Context, query chatapp.ListChatsQu
 
 	// Apply pagination
 	total := len(chats)
-	start := query.Offset
-	if start > total {
-		start = total
-	}
-	end := start + query.Limit
-	if end > total {
-		end = total
-	}
+	start := min(query.Offset, total)
+	end := min(start+query.Limit, total)
 
 	return &chatapp.ListChatsResult{
 		Chats:   chats[start:end],

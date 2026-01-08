@@ -87,8 +87,7 @@ func TestHub_Run(t *testing.T) {
 
 	t.Run("does not start twice", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		done1 := make(chan struct{})
 		go func() {
@@ -119,8 +118,7 @@ func TestHub_Run(t *testing.T) {
 func TestHub_RegisterUnregister(t *testing.T) {
 	t.Run("registers and counts client", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -137,8 +135,7 @@ func TestHub_RegisterUnregister(t *testing.T) {
 
 	t.Run("unregisters client", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -158,8 +155,7 @@ func TestHub_RegisterUnregister(t *testing.T) {
 
 	t.Run("handles multiple clients for same user", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -185,8 +181,7 @@ func TestHub_RegisterUnregister(t *testing.T) {
 func TestHub_ChatRooms(t *testing.T) {
 	t.Run("joins chat room", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -208,8 +203,7 @@ func TestHub_ChatRooms(t *testing.T) {
 
 	t.Run("leaves chat room", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -232,8 +226,7 @@ func TestHub_ChatRooms(t *testing.T) {
 
 	t.Run("multiple clients in same chat", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -254,8 +247,7 @@ func TestHub_ChatRooms(t *testing.T) {
 
 	t.Run("removes chat room when empty", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -277,8 +269,7 @@ func TestHub_ChatRooms(t *testing.T) {
 func TestHub_BroadcastToChat(t *testing.T) {
 	t.Run("broadcasts message to chat members", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -304,8 +295,7 @@ func TestHub_BroadcastToChat(t *testing.T) {
 
 	t.Run("does not broadcast to clients not in chat", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -334,8 +324,7 @@ func TestHub_BroadcastToChat(t *testing.T) {
 func TestHub_SendToUser(t *testing.T) {
 	t.Run("sends message to specific user", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -359,8 +348,7 @@ func TestHub_SendToUser(t *testing.T) {
 
 	t.Run("sends message to all user connections", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -473,7 +461,7 @@ func assertReceived(t *testing.T, ch chan []byte, expected []byte) {
 	select {
 	case received := <-ch:
 		// Compare JSON to handle formatting differences
-		var expectedJSON, receivedJSON interface{}
+		var expectedJSON, receivedJSON any
 		if unmarshalErr := json.Unmarshal(expected, &expectedJSON); unmarshalErr == nil {
 			if unmarshalErr2 := json.Unmarshal(received, &receivedJSON); unmarshalErr2 == nil {
 				assert.Equal(t, expectedJSON, receivedJSON)

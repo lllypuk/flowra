@@ -10,8 +10,11 @@ import (
 
 	chatapp "github.com/lllypuk/flowra/internal/application/chat"
 	"github.com/lllypuk/flowra/internal/application/notification"
+	taskapp "github.com/lllypuk/flowra/internal/application/task"
 	wsapp "github.com/lllypuk/flowra/internal/application/workspace"
 	"github.com/lllypuk/flowra/internal/config"
+	notificationdomain "github.com/lllypuk/flowra/internal/domain/notification"
+	taskdomain "github.com/lllypuk/flowra/internal/domain/task"
 	httphandler "github.com/lllypuk/flowra/internal/handler/http"
 	wshandler "github.com/lllypuk/flowra/internal/handler/websocket"
 	"github.com/lllypuk/flowra/internal/infrastructure/auth"
@@ -86,12 +89,21 @@ type Container struct {
 	WSHandler           *wshandler.Handler
 
 	// Template Rendering
-	TemplateRenderer *httphandler.TemplateRenderer
-	TemplateHandler  *httphandler.TemplateHandler
+	TemplateRenderer            *httphandler.TemplateRenderer
+	TemplateHandler             *httphandler.TemplateHandler
+	NotificationTemplateHandler *httphandler.NotificationTemplateHandler
+	ChatTemplateHandler         *httphandler.ChatTemplateHandler
+	BoardTemplateHandler        *httphandler.BoardTemplateHandler
+	TaskDetailTemplateHandler   *httphandler.TaskDetailTemplateHandler
 
 	// Auth middleware components
 	TokenValidator middleware.TokenValidator
+	UserResolver   middleware.UserResolver
 	AccessChecker  middleware.WorkspaceAccessChecker
+	JWTValidator   keycloak.JWTValidator // for cleanup on shutdown
+
+	// OAuth client (for Keycloak integration)
+	OAuthClient *keycloak.OAuthClient
 }
 
 // Ensure Container implements httpserver.HealthChecker.
@@ -333,7 +345,11 @@ func (c *Container) setupRedis(ctx context.Context) error {
 
 // setupEventStore initializes the event store.
 func (c *Container) setupEventStore() {
-	c.EventStore = eventstore.NewMongoEventStore(c.MongoDB, c.MongoDBName)
+	c.EventStore = eventstore.NewMongoEventStore(
+		c.MongoDB,
+		c.MongoDBName,
+		eventstore.WithLogger(c.Logger),
+	)
 	c.Logger.Debug("event store initialized")
 }
 
@@ -365,37 +381,50 @@ func (c *Container) setupRepositories() {
 	db := c.MongoDB.Database(c.MongoDBName)
 
 	// User repository
-	c.UserRepo = mongodb.NewMongoUserRepository(db.Collection("users"))
+	c.UserRepo = mongodb.NewMongoUserRepository(
+		db.Collection("users"),
+		mongodb.WithUserRepoLogger(c.Logger),
+	)
 
 	// Workspace repository
 	c.WorkspaceRepo = mongodb.NewMongoWorkspaceRepository(
 		db.Collection("workspaces"),
 		db.Collection("workspace_members"),
+		mongodb.WithWorkspaceRepoLogger(c.Logger),
 	)
 
 	// Chat repository (event sourced - command side)
 	c.ChatRepo = mongodb.NewMongoChatRepository(
 		c.EventStore,
 		db.Collection("chats_read_model"),
+		mongodb.WithChatRepoLogger(c.Logger),
 	)
 
 	// Chat read model repository (query side)
 	c.ChatQueryRepo = mongodb.NewMongoChatReadModelRepository(
 		db.Collection("chats_read_model"),
 		c.EventStore,
+		mongodb.WithChatReadModelRepoLogger(c.Logger),
 	)
 
 	// Message repository
-	c.MessageRepo = mongodb.NewMongoMessageRepository(db.Collection("messages"))
+	c.MessageRepo = mongodb.NewMongoMessageRepository(
+		db.Collection("messages"),
+		mongodb.WithMessageRepoLogger(c.Logger),
+	)
 
 	// Task repository (event sourced)
 	c.TaskRepo = mongodb.NewMongoTaskRepository(
 		c.EventStore,
 		db.Collection("tasks_read_model"),
+		mongodb.WithTaskRepoLogger(c.Logger),
 	)
 
 	// Notification repository
-	c.NotificationRepo = mongodb.NewMongoNotificationRepository(db.Collection("notifications"))
+	c.NotificationRepo = mongodb.NewMongoNotificationRepository(
+		db.Collection("notifications"),
+		mongodb.WithNotificationRepoLogger(c.Logger),
+	)
 
 	c.Logger.Debug("repositories initialized")
 }
@@ -491,6 +520,12 @@ func (c *Container) setupHTTPHandlers() {
 	authService := c.createAuthService()
 	c.AuthHandler = httphandler.NewAuthHandler(authService, c.createUserRepoAdapter())
 
+	// Inject OAuth client into template handler for login/callback
+	if c.TemplateHandler != nil && c.OAuthClient != nil {
+		c.TemplateHandler.SetOAuthClient(&oauthClientAdapter{client: c.OAuthClient})
+		c.Logger.Debug("OAuth client injected into template handler")
+	}
+
 	// === 7. WebSocket Handler (unchanged) ===
 	c.WSHandler = wshandler.NewHandler(
 		c.Hub,
@@ -502,8 +537,28 @@ func (c *Container) setupHTTPHandlers() {
 		}),
 	)
 
-	// === 8. Token Validator (unchanged) ===
-	c.TokenValidator = middleware.NewStaticTokenValidator(c.Config.Auth.JWTSecret)
+	// === 8. Token Validator and User Resolver ===
+	c.setupTokenValidator()
+	c.setupUserResolver()
+
+	// Configure page auth middleware with token validator and user resolver
+	httphandler.SetPageAuthConfig(&httphandler.PageAuthConfig{
+		TokenValidator: c.TokenValidator,
+		UserResolver:   c.UserResolver,
+		Logger:         c.Logger,
+	})
+
+	// === 9. Notification Service and Template Handler ===
+	c.setupNotificationTemplateHandler()
+
+	// === 10. Chat Template Handler ===
+	c.setupChatTemplateHandler()
+
+	// === 11. Board Template Handler ===
+	c.setupBoardTemplateHandler()
+
+	// === 12. Task Detail Template Handler ===
+	c.setupTaskDetailTemplateHandler()
 
 	// Note: MessageHandler, TaskHandler, NotificationHandler, UserHandler
 	// are left nil - routes.go will create placeholder endpoints for them.
@@ -514,9 +569,9 @@ func (c *Container) setupHTTPHandlers() {
 
 // createWorkspaceService creates the workspace service with all dependencies.
 func (c *Container) createWorkspaceService() *service.WorkspaceService {
-	// Create Keycloak client or NoOp if not configured
+	// Create Keycloak client or NoOp if not configured/enabled
 	var keycloakClient wsapp.KeycloakClient
-	if c.Config.Keycloak.URL != "" && c.Config.Keycloak.AdminUsername != "" {
+	if c.Config.Keycloak.Enabled && c.Config.Keycloak.URL != "" && c.Config.Keycloak.AdminUsername != "" {
 		c.Logger.Debug("using real Keycloak GroupClient for workspace service",
 			slog.String("url", c.Config.Keycloak.URL),
 			slog.String("realm", c.Config.Keycloak.Realm),
@@ -559,7 +614,8 @@ func (c *Container) createWorkspaceService() *service.WorkspaceService {
 // createChatService creates the chat service with all dependencies.
 func (c *Container) createChatService() *service.ChatService {
 	// Create use cases
-	createUC := chatapp.NewCreateChatUseCase(c.EventStore)
+	// CreateChatUseCase uses ChatRepo which updates both event store AND read model
+	createUC := chatapp.NewCreateChatUseCase(c.ChatRepo)
 	getUC := chatapp.NewGetChatUseCase(c.EventStore)
 	listUC := chatapp.NewListChatsUseCase(c.ChatQueryRepo, c.EventStore)
 	renameUC := chatapp.NewRenameChatUseCase(c.EventStore)
@@ -586,8 +642,8 @@ func (c *Container) createAuthService() httphandler.AuthService {
 		return httphandler.NewMockAuthService()
 	}
 
-	// Create real auth service with Keycloak
-	oauthClient := keycloak.NewOAuthClient(keycloak.OAuthClientConfig{
+	// Create OAuth client (store in container for reuse)
+	c.OAuthClient = keycloak.NewOAuthClient(keycloak.OAuthClientConfig{
 		KeycloakURL:  c.Config.Keycloak.URL,
 		Realm:        c.Config.Keycloak.Realm,
 		ClientID:     c.Config.Keycloak.ClientID,
@@ -605,17 +661,481 @@ func (c *Container) createAuthService() httphandler.AuthService {
 	)
 
 	return service.NewAuthService(service.AuthServiceConfig{
-		OAuthClient: oauthClient,
+		OAuthClient: c.OAuthClient,
 		TokenStore:  tokenStore,
 		UserRepo:    c.UserRepo,
 		Logger:      c.Logger,
 	})
 }
 
+// setupNotificationTemplateHandler creates the notification template handler with all dependencies.
+func (c *Container) setupNotificationTemplateHandler() {
+	// Create notification service that implements NotificationTemplateService
+	notifService := c.createNotificationTemplateService()
+
+	// Create template handler
+	c.NotificationTemplateHandler = httphandler.NewNotificationTemplateHandler(
+		c.TemplateRenderer,
+		c.Logger,
+		notifService,
+	)
+
+	c.Logger.Debug("notification template handler initialized")
+}
+
+// setupChatTemplateHandler creates the chat template handler with all dependencies.
+func (c *Container) setupChatTemplateHandler() {
+	// Create chat template service adapter
+	chatService := c.createChatTemplateService()
+
+	// For now, message service is nil - will be implemented with message use cases
+	c.ChatTemplateHandler = httphandler.NewChatTemplateHandler(
+		c.TemplateRenderer,
+		c.Logger,
+		chatService,
+		nil, // MessageTemplateService - TODO: implement when message use cases are ready
+	)
+
+	c.Logger.Debug("chat template handler initialized")
+}
+
+// createChatTemplateService creates a service implementing ChatTemplateService.
+func (c *Container) createChatTemplateService() httphandler.ChatTemplateService {
+	return &chatTemplateServiceAdapter{
+		chatService: c.ChatService,
+	}
+}
+
+// chatTemplateServiceAdapter adapts ChatService to ChatTemplateService.
+type chatTemplateServiceAdapter struct {
+	chatService *service.ChatService
+}
+
+// CreateChat implements ChatTemplateService.
+func (a *chatTemplateServiceAdapter) CreateChat(
+	ctx context.Context,
+	cmd chatapp.CreateChatCommand,
+) (chatapp.Result, error) {
+	if a.chatService == nil {
+		return chatapp.Result{}, chatapp.ErrChatNotFound
+	}
+	return a.chatService.CreateChat(ctx, cmd)
+}
+
+// GetChat implements ChatTemplateService.
+func (a *chatTemplateServiceAdapter) GetChat(
+	ctx context.Context,
+	query chatapp.GetChatQuery,
+) (*chatapp.GetChatResult, error) {
+	if a.chatService == nil {
+		return nil, chatapp.ErrChatNotFound
+	}
+	return a.chatService.GetChat(ctx, query)
+}
+
+// ListChats implements ChatTemplateService.
+func (a *chatTemplateServiceAdapter) ListChats(
+	ctx context.Context,
+	query chatapp.ListChatsQuery,
+) (*chatapp.ListChatsResult, error) {
+	if a.chatService == nil {
+		return &chatapp.ListChatsResult{}, nil
+	}
+	return a.chatService.ListChats(ctx, query)
+}
+
+// setupBoardTemplateHandler creates the board template handler with all dependencies.
+func (c *Container) setupBoardTemplateHandler() {
+	// Create board task service adapter
+	taskService := c.createBoardTaskService()
+
+	// Create board member service adapter
+	memberService := c.createBoardMemberService()
+
+	c.BoardTemplateHandler = httphandler.NewBoardTemplateHandler(
+		c.TemplateRenderer,
+		c.Logger,
+		taskService,
+		memberService,
+	)
+
+	c.Logger.Debug("board template handler initialized")
+}
+
+// createBoardTaskService creates a service implementing BoardTaskService.
+func (c *Container) createBoardTaskService() httphandler.BoardTaskService {
+	return &boardTaskServiceAdapter{
+		collection: c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model"),
+	}
+}
+
+// boardTaskServiceAdapter adapts MongoDB collection to BoardTaskService.
+type boardTaskServiceAdapter struct {
+	collection *mongo.Collection
+}
+
+// ListTasks implements BoardTaskService.
+func (a *boardTaskServiceAdapter) ListTasks(
+	ctx context.Context,
+	filters taskapp.Filters,
+) ([]*taskapp.ReadModel, error) {
+	if a.collection == nil {
+		return []*taskapp.ReadModel{}, nil
+	}
+	return a.queryTasks(ctx, filters)
+}
+
+// CountTasks implements BoardTaskService.
+func (a *boardTaskServiceAdapter) CountTasks(
+	ctx context.Context,
+	filters taskapp.Filters,
+) (int, error) {
+	if a.collection == nil {
+		return 0, nil
+	}
+	filter := a.buildFilter(filters)
+	count, err := a.collection.CountDocuments(ctx, filter)
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
+}
+
+// GetTask implements BoardTaskService.
+func (a *boardTaskServiceAdapter) GetTask(ctx context.Context, taskID uuid.UUID) (*taskapp.ReadModel, error) {
+	if a.collection == nil {
+		return nil, taskapp.ErrTaskNotFound
+	}
+	filter := map[string]any{"_id": taskID.String()}
+	var result taskReadModelDoc
+	if err := a.collection.FindOne(ctx, filter).Decode(&result); err != nil {
+		return nil, taskapp.ErrTaskNotFound
+	}
+	return result.toReadModel(), nil
+}
+
+// queryTasks queries tasks with filters.
+func (a *boardTaskServiceAdapter) queryTasks(
+	ctx context.Context,
+	filters taskapp.Filters,
+) ([]*taskapp.ReadModel, error) {
+	filter := a.buildFilter(filters)
+
+	opts := options.Find()
+	if filters.Limit > 0 {
+		opts.SetLimit(int64(filters.Limit))
+	}
+	if filters.Offset > 0 {
+		opts.SetSkip(int64(filters.Offset))
+	}
+	opts.SetSort(map[string]int{"created_at": -1})
+
+	cursor, err := a.collection.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var results []*taskapp.ReadModel
+	for cursor.Next(ctx) {
+		var doc taskReadModelDoc
+		if decodeErr := cursor.Decode(&doc); decodeErr != nil {
+			continue
+		}
+		results = append(results, doc.toReadModel())
+	}
+
+	return results, nil
+}
+
+// buildFilter builds a MongoDB filter from task filters.
+func (a *boardTaskServiceAdapter) buildFilter(filters taskapp.Filters) map[string]any {
+	filter := make(map[string]any)
+
+	if filters.Status != nil {
+		filter["status"] = string(*filters.Status)
+	}
+	if filters.Priority != nil {
+		filter["priority"] = string(*filters.Priority)
+	}
+	if filters.EntityType != nil {
+		filter["entity_type"] = string(*filters.EntityType)
+	}
+	if filters.AssigneeID != nil {
+		filter["assigned_to"] = filters.AssigneeID.String()
+	}
+	if filters.ChatID != nil {
+		filter["chat_id"] = filters.ChatID.String()
+	}
+
+	return filter
+}
+
+// taskReadModelDoc represents a task document in MongoDB.
+type taskReadModelDoc struct {
+	ID         string     `bson:"_id"`
+	ChatID     string     `bson:"chat_id"`
+	Title      string     `bson:"title"`
+	EntityType string     `bson:"entity_type"`
+	Status     string     `bson:"status"`
+	Priority   string     `bson:"priority"`
+	AssignedTo *string    `bson:"assigned_to,omitempty"`
+	DueDate    *time.Time `bson:"due_date,omitempty"`
+	CreatedBy  string     `bson:"created_by"`
+	CreatedAt  time.Time  `bson:"created_at"`
+	Version    int        `bson:"version"`
+}
+
+// toReadModel converts the document to a ReadModel.
+func (d *taskReadModelDoc) toReadModel() *taskapp.ReadModel {
+	id, _ := uuid.ParseUUID(d.ID)
+	chatID, _ := uuid.ParseUUID(d.ChatID)
+	createdBy, _ := uuid.ParseUUID(d.CreatedBy)
+
+	model := &taskapp.ReadModel{
+		ID:         id,
+		ChatID:     chatID,
+		Title:      d.Title,
+		EntityType: taskdomain.EntityType(d.EntityType),
+		Status:     taskdomain.Status(d.Status),
+		Priority:   taskdomain.Priority(d.Priority),
+		DueDate:    d.DueDate,
+		CreatedBy:  createdBy,
+		CreatedAt:  d.CreatedAt,
+		Version:    d.Version,
+	}
+
+	if d.AssignedTo != nil {
+		assignedTo, _ := uuid.ParseUUID(*d.AssignedTo)
+		model.AssignedTo = &assignedTo
+	}
+
+	return model
+}
+
+// createBoardMemberService creates a service implementing BoardMemberService.
+func (c *Container) createBoardMemberService() httphandler.BoardMemberService {
+	return &boardMemberServiceAdapter{
+		memberService: c.MemberService,
+	}
+}
+
+// boardMemberServiceAdapter adapts MemberService to BoardMemberService.
+type boardMemberServiceAdapter struct {
+	memberService *service.MemberService
+}
+
+// ListWorkspaceMembers implements BoardMemberService.
+func (a *boardMemberServiceAdapter) ListWorkspaceMembers(
+	ctx context.Context,
+	workspaceID uuid.UUID,
+	offset, limit int,
+) ([]httphandler.MemberViewData, error) {
+	if a.memberService == nil {
+		return []httphandler.MemberViewData{}, nil
+	}
+	members, _, err := a.memberService.ListMembers(ctx, workspaceID, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]httphandler.MemberViewData, 0, len(members))
+	for _, m := range members {
+		result = append(result, httphandler.MemberViewData{
+			UserID:   m.UserID().String(),
+			Username: "user" + m.UserID().String()[:8], // TODO: get actual username
+			Role:     m.Role().String(),
+			JoinedAt: m.JoinedAt(),
+		})
+	}
+	return result, nil
+}
+
+// setupTaskDetailTemplateHandler creates the task detail template handler with all dependencies.
+func (c *Container) setupTaskDetailTemplateHandler() {
+	// Create task detail service adapter
+	taskService := c.createTaskDetailService()
+
+	// For now, event service is nil - will be implemented for activity timeline
+	c.TaskDetailTemplateHandler = httphandler.NewTaskDetailTemplateHandler(
+		c.TemplateRenderer,
+		c.Logger,
+		taskService,
+		nil, // TaskEventService - TODO: implement for activity timeline
+		c.createBoardMemberService(),
+	)
+
+	c.Logger.Debug("task detail template handler initialized")
+}
+
+// createTaskDetailService creates a service implementing TaskDetailService.
+// Reuses the boardTaskServiceAdapter since both interfaces require the same GetTask method.
+func (c *Container) createTaskDetailService() httphandler.TaskDetailService {
+	return c.createBoardTaskService()
+}
+
+// createNotificationTemplateService creates a service implementing NotificationTemplateService.
+func (c *Container) createNotificationTemplateService() httphandler.NotificationTemplateService {
+	// Create use cases
+	listUC := notification.NewListNotificationsUseCase(c.NotificationRepo)
+	countUC := notification.NewCountUnreadUseCase(c.NotificationRepo)
+	markAsReadUC := notification.NewMarkAsReadUseCase(c.NotificationRepo)
+	getUC := notification.NewGetNotificationUseCase(c.NotificationRepo)
+
+	return &notificationTemplateService{
+		listUC:       listUC,
+		countUC:      countUC,
+		markAsReadUC: markAsReadUC,
+		getUC:        getUC,
+	}
+}
+
+// notificationTemplateService implements httphandler.NotificationTemplateService.
+type notificationTemplateService struct {
+	listUC       *notification.ListNotificationsUseCase
+	countUC      *notification.CountUnreadUseCase
+	markAsReadUC *notification.MarkAsReadUseCase
+	getUC        *notification.GetNotificationUseCase
+}
+
+// ListNotifications lists notifications for a user.
+func (s *notificationTemplateService) ListNotifications(
+	ctx context.Context,
+	query notification.ListNotificationsQuery,
+) (notification.ListResult, error) {
+	return s.listUC.Execute(ctx, query)
+}
+
+// CountUnread counts unread notifications for a user.
+func (s *notificationTemplateService) CountUnread(
+	ctx context.Context,
+	query notification.CountUnreadQuery,
+) (notification.CountResult, error) {
+	return s.countUC.Execute(ctx, query)
+}
+
+// MarkAsRead marks a notification as read.
+func (s *notificationTemplateService) MarkAsRead(
+	ctx context.Context,
+	cmd notification.MarkAsReadCommand,
+) (notification.Result, error) {
+	return s.markAsReadUC.Execute(ctx, cmd)
+}
+
+// GetNotification gets a notification by ID.
+func (s *notificationTemplateService) GetNotification(
+	ctx context.Context,
+	notificationID uuid.UUID,
+	userID uuid.UUID,
+) (*notificationdomain.Notification, error) {
+	query := notification.GetNotificationQuery{
+		NotificationID: notificationID,
+		UserID:         userID,
+	}
+	result, err := s.getUC.Execute(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	return result.Value, nil
+}
+
 // createUserRepoAdapter creates an adapter for UserRepository that works with echo.Context.
 // This bridges the gap between service layer (uses context.Context) and handler layer (uses echo.Context).
 func (c *Container) createUserRepoAdapter() httphandler.UserRepository {
 	return &userRepoAdapter{repo: c.UserRepo}
+}
+
+// setupTokenValidator configures the JWT token validator.
+// Uses KeycloakValidatorAdapter when Keycloak is enabled, otherwise falls back to static validator.
+func (c *Container) setupTokenValidator() {
+	if c.Config.Keycloak.Enabled && c.Config.Keycloak.URL != "" {
+		// Create Keycloak JWT validator
+		// JWTAudience is separate from ClientID: empty = skip audience validation
+		jwtValidator, err := keycloak.NewJWTValidator(keycloak.JWTValidatorConfig{
+			KeycloakURL:     c.Config.Keycloak.URL,
+			Realm:           c.Config.Keycloak.Realm,
+			ClientID:        c.Config.Keycloak.JWTAudience, // Use JWTAudience for validation, not OAuth ClientID
+			Leeway:          c.Config.Keycloak.JWT.Leeway,
+			RefreshInterval: c.Config.Keycloak.JWT.RefreshInterval,
+			Logger:          c.Logger,
+		})
+		if err != nil {
+			c.Logger.Warn("failed to create Keycloak JWT validator, falling back to static validator",
+				slog.String("error", err.Error()),
+			)
+			c.TokenValidator = middleware.NewStaticTokenValidator(c.Config.Auth.JWTSecret)
+			return
+		}
+
+		// Store for cleanup
+		c.JWTValidator = jwtValidator
+
+		// Wrap with adapter
+		c.TokenValidator = middleware.NewKeycloakValidatorAdapter(jwtValidator)
+
+		c.Logger.Info("token validator initialized with Keycloak",
+			slog.String("url", c.Config.Keycloak.URL),
+			slog.String("realm", c.Config.Keycloak.Realm),
+		)
+	} else {
+		c.Logger.Warn("Keycloak not enabled, using static token validator (development mode)")
+		c.TokenValidator = middleware.NewStaticTokenValidator(c.Config.Auth.JWTSecret)
+	}
+}
+
+// setupUserResolver configures the user resolver for mapping external IDs to internal IDs.
+func (c *Container) setupUserResolver() {
+	c.UserResolver = &userResolver{
+		userRepo: c.UserRepo,
+		logger:   c.Logger,
+	}
+	c.Logger.Debug("user resolver initialized")
+}
+
+// userResolver implements middleware.UserResolver.
+type userResolver struct {
+	userRepo *mongodb.MongoUserRepository
+	logger   *slog.Logger
+}
+
+// ResolveUser finds or creates a user by external ID and returns their internal ID.
+func (r *userResolver) ResolveUser(ctx context.Context, externalID, username, email string) (uuid.UUID, error) {
+	// Try to find existing user by external ID
+	existingUser, err := r.userRepo.FindByExternalID(ctx, externalID)
+	if err == nil {
+		return existingUser.ID(), nil
+	}
+
+	// User not found - create new user
+	r.logger.InfoContext(ctx, "creating new user from Keycloak",
+		slog.String("external_id", externalID),
+		slog.String("username", username),
+		slog.String("email", email),
+	)
+
+	newUser, createErr := user.NewUser(externalID, username, email, username)
+	if createErr != nil {
+		r.logger.ErrorContext(ctx, "failed to create user",
+			slog.String("external_id", externalID),
+			slog.String("error", createErr.Error()),
+		)
+		return uuid.UUID(""), createErr
+	}
+
+	if saveErr := r.userRepo.Save(ctx, newUser); saveErr != nil {
+		r.logger.ErrorContext(ctx, "failed to save user",
+			slog.String("external_id", externalID),
+			slog.String("error", saveErr.Error()),
+		)
+		return uuid.UUID(""), saveErr
+	}
+
+	r.logger.InfoContext(ctx, "user created successfully",
+		slog.String("user_id", newUser.ID().String()),
+		slog.String("external_id", externalID),
+	)
+
+	return newUser.ID(), nil
 }
 
 // userRepoAdapter adapts MongoUserRepository to httphandler.UserRepository.
@@ -639,6 +1159,15 @@ func (c *Container) Close() error {
 	c.Logger.Info("closing container resources...")
 
 	var errs []error
+
+	// Close JWT Validator (stops JWKS refresh goroutine)
+	if c.JWTValidator != nil {
+		if err := c.JWTValidator.Close(); err != nil {
+			errs = append(errs, fmt.Errorf("jwt validator close: %w", err))
+		} else {
+			c.Logger.Debug("jwt validator closed")
+		}
+	}
 
 	// Close Hub
 	if c.Hub != nil {
@@ -790,4 +1319,30 @@ func (c *Container) GetHealthStatus(ctx context.Context) []httpserver.ComponentS
 	statuses = append(statuses, eventBusStatus)
 
 	return statuses
+}
+
+// oauthClientAdapter adapts keycloak.OAuthClient to httphandler.OAuthClient interface.
+type oauthClientAdapter struct {
+	client *keycloak.OAuthClient
+}
+
+// AuthorizationURL implements httphandler.OAuthClient.
+func (a *oauthClientAdapter) AuthorizationURL(redirectURI, state string) string {
+	return a.client.AuthorizationURL(redirectURI, state)
+}
+
+// ExchangeCode implements httphandler.OAuthClient.
+func (a *oauthClientAdapter) ExchangeCode(
+	ctx context.Context,
+	code, redirectURI string,
+) (*httphandler.OAuthTokenResponse, error) {
+	resp, err := a.client.ExchangeCode(ctx, code, redirectURI)
+	if err != nil {
+		return nil, err
+	}
+	return &httphandler.OAuthTokenResponse{
+		AccessToken:  resp.AccessToken,
+		RefreshToken: resp.RefreshToken,
+		ExpiresIn:    resp.ExpiresIn,
+	}, nil
 }

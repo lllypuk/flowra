@@ -3,11 +3,9 @@ package chat_test
 import (
 	"testing"
 
-	"github.com/lllypuk/flowra/internal/application/chat"
-
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
+	"github.com/lllypuk/flowra/internal/application/chat"
 	domainChat "github.com/lllypuk/flowra/internal/domain/chat"
 )
 
@@ -15,21 +13,20 @@ import (
 func TestChangeStatusUseCase_Success_TaskStatus(t *testing.T) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
+	workspaceID := generateUUID(t)
 
-	createUseCase := chat.NewCreateChatUseCase(eventStore)
-	createCmd := chat.CreateChatCommand{
-		WorkspaceID: generateUUID(t),
-		Type:        domainChat.TypeTask,
-		Title:       "Test Task",
-		IsPublic:    true,
-		CreatedBy:   creatorID,
-	}
-	createResult, err := createUseCase.Execute(testContext(), createCmd)
-	require.NoError(t, err)
+	createdChat := createTestChatWithParams(
+		t,
+		eventStore,
+		domainChat.TypeTask,
+		"Test Task",
+		workspaceID,
+		creatorID,
+	)
 
 	changeUseCase := chat.NewChangeStatusUseCase(eventStore)
 	changeCmd := chat.ChangeStatusCommand{
-		ChatID:    createResult.Value.ID(),
+		ChatID:    createdChat.ID(),
 		Status:    "In Progress",
 		ChangedBy: creatorID,
 	}
@@ -43,21 +40,13 @@ func TestChangeStatusUseCase_Success_TaskStatus(t *testing.T) {
 func TestChangeStatusUseCase_Success_BugStatus(t *testing.T) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
+	workspaceID := generateUUID(t)
 
-	createUseCase := chat.NewCreateChatUseCase(eventStore)
-	createCmd := chat.CreateChatCommand{
-		WorkspaceID: generateUUID(t),
-		Type:        domainChat.TypeBug,
-		Title:       "Test Bug",
-		IsPublic:    true,
-		CreatedBy:   creatorID,
-	}
-	createResult, err := createUseCase.Execute(testContext(), createCmd)
-	require.NoError(t, err)
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeBug, "Test Bug", workspaceID, creatorID)
 
 	changeUseCase := chat.NewChangeStatusUseCase(eventStore)
 	changeCmd := chat.ChangeStatusCommand{
-		ChatID:    createResult.Value.ID(),
+		ChatID:    createdChat.ID(),
 		Status:    "Fixed",
 		ChangedBy: creatorID,
 	}
@@ -71,21 +60,20 @@ func TestChangeStatusUseCase_Success_BugStatus(t *testing.T) {
 func TestChangeStatusUseCase_Success_EpicStatus(t *testing.T) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
+	workspaceID := generateUUID(t)
 
-	createUseCase := chat.NewCreateChatUseCase(eventStore)
-	createCmd := chat.CreateChatCommand{
-		WorkspaceID: generateUUID(t),
-		Type:        domainChat.TypeEpic,
-		Title:       "Test Epic",
-		IsPublic:    true,
-		CreatedBy:   creatorID,
-	}
-	createResult, err := createUseCase.Execute(testContext(), createCmd)
-	require.NoError(t, err)
+	createdChat := createTestChatWithParams(
+		t,
+		eventStore,
+		domainChat.TypeEpic,
+		"Test Epic",
+		workspaceID,
+		creatorID,
+	)
 
 	changeUseCase := chat.NewChangeStatusUseCase(eventStore)
 	changeCmd := chat.ChangeStatusCommand{
-		ChatID:    createResult.Value.ID(),
+		ChatID:    createdChat.ID(),
 		Status:    "In Progress",
 		ChangedBy: creatorID,
 	}

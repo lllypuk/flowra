@@ -1,0 +1,78 @@
+{{define "typing"}}
+<div id="typing-indicator-{{.ChatID}}" class="typing-indicator {{if not .IsTyping}}hidden{{end}}">
+    <span class="typing-dots">
+        <span></span><span></span><span></span>
+    </span>
+    <span class="typing-users">{{.Username}}</span> is typing...
+</div>
+{{end}}
+
+{{define "typing-multiple"}}
+<div id="typing-indicator-{{.ChatID}}" class="typing-indicator {{if not .IsTyping}}hidden{{end}}">
+    <span class="typing-dots">
+        <span></span><span></span><span></span>
+    </span>
+    {{if eq (len .Users) 1}}
+    <span class="typing-users">{{index .Users 0}}</span> is typing...
+    {{else if eq (len .Users) 2}}
+    <span class="typing-users">{{index .Users 0}} and {{index .Users 1}}</span> are typing...
+    {{else if gt (len .Users) 2}}
+    <span class="typing-users">Several people</span> are typing...
+    {{end}}
+</div>
+{{end}}
+
+<style>
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    color: var(--muted-color);
+}
+
+.typing-indicator.hidden {
+    display: none;
+}
+
+.typing-dots {
+    display: inline-flex;
+    gap: 2px;
+}
+
+.typing-dots span {
+    width: 6px;
+    height: 6px;
+    background: var(--muted-color);
+    border-radius: 50%;
+    animation: typing-bounce 1.4s infinite ease-in-out both;
+}
+
+.typing-dots span:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.typing-dots span:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+.typing-dots span:nth-child(3) {
+    animation-delay: 0s;
+}
+
+@keyframes typing-bounce {
+    0%, 80%, 100% {
+        transform: scale(0.6);
+        opacity: 0.5;
+    }
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.typing-users {
+    font-weight: 500;
+}
+</style>

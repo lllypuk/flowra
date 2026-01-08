@@ -14,6 +14,7 @@ type ReadModel struct {
 	ID            uuid.UUID
 	WorkspaceID   uuid.UUID
 	Type          chat.Type
+	Title         string
 	IsPublic      bool
 	CreatedBy     uuid.UUID
 	CreatedAt     time.Time

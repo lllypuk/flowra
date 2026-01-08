@@ -189,8 +189,8 @@ func (h *Handler) getUserID(c echo.Context) uuid.UUID {
 		authHeader := c.Request().Header.Get(echo.HeaderAuthorization)
 		if authHeader != "" {
 			const bearerPrefix = "Bearer "
-			if strings.HasPrefix(authHeader, bearerPrefix) {
-				token = strings.TrimPrefix(authHeader, bearerPrefix)
+			if after, ok := strings.CutPrefix(authHeader, bearerPrefix); ok {
+				token = after
 			}
 		}
 	}

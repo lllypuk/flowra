@@ -3,11 +3,9 @@ package chat_test
 import (
 	"testing"
 
-	"github.com/lllypuk/flowra/internal/application/chat"
-
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
+	"github.com/lllypuk/flowra/internal/application/chat"
 	domainChat "github.com/lllypuk/flowra/internal/domain/chat"
 )
 
@@ -15,21 +13,20 @@ import (
 func TestRenameChatUseCase_Success(t *testing.T) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
+	workspaceID := generateUUID(t)
 
-	createUseCase := chat.NewCreateChatUseCase(eventStore)
-	createCmd := chat.CreateChatCommand{
-		WorkspaceID: generateUUID(t),
-		Type:        domainChat.TypeTask,
-		Title:       "Old Title",
-		IsPublic:    true,
-		CreatedBy:   creatorID,
-	}
-	createResult, err := createUseCase.Execute(testContext(), createCmd)
-	require.NoError(t, err)
+	createdChat := createTestChatWithParams(
+		t,
+		eventStore,
+		domainChat.TypeTask,
+		"Old Title",
+		workspaceID,
+		creatorID,
+	)
 
 	renameUseCase := chat.NewRenameChatUseCase(eventStore)
 	renameCmd := chat.RenameChatCommand{
-		ChatID:    createResult.Value.ID(),
+		ChatID:    createdChat.ID(),
 		NewTitle:  "New Title",
 		RenamedBy: creatorID,
 	}

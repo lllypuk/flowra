@@ -31,14 +31,14 @@ var (
 
 // CreateWorkspaceRequest represents the request to create a workspace.
 type CreateWorkspaceRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	Name        string `json:"name"        form:"name"`
+	Description string `json:"description" form:"description"`
 }
 
 // UpdateWorkspaceRequest represents the request to update a workspace.
 type UpdateWorkspaceRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	Name        string `json:"name"        form:"name"`
+	Description string `json:"description" form:"description"`
 }
 
 // AddMemberRequest represents the request to add a member to a workspace.
@@ -793,9 +793,9 @@ func ParseRole(roleStr string) (workspace.Role, error) {
 	switch roleStr {
 	case "owner":
 		return workspace.RoleOwner, nil
-	case "admin":
+	case roleAdmin:
 		return workspace.RoleAdmin, nil
-	case "member":
+	case roleMember:
 		return workspace.RoleMember, nil
 	default:
 		return "", ErrInvalidRole
@@ -849,9 +849,9 @@ func (m *MockWorkspaceService) AddWorkspace(ws *workspace.Workspace, memberCount
 func (m *MockWorkspaceService) CreateWorkspace(
 	_ context.Context,
 	ownerID uuid.UUID,
-	name, _ string,
+	name, description string,
 ) (*workspace.Workspace, error) {
-	ws, err := workspace.NewWorkspace(name, "keycloak-group-"+uuid.NewUUID().String(), ownerID)
+	ws, err := workspace.NewWorkspace(name, description, "keycloak-group-"+uuid.NewUUID().String(), ownerID)
 	if err != nil {
 		return nil, err
 	}
@@ -885,10 +885,7 @@ func (m *MockWorkspaceService) ListUserWorkspaces(
 		return []*workspace.Workspace{}, total, nil
 	}
 
-	end := offset + limit
-	if end > total {
-		end = total
-	}
+	end := min(offset+limit, total)
 
 	return all[offset:end], total, nil
 }
@@ -1024,10 +1021,7 @@ func (m *MockMemberService) ListMembers(
 		return []*workspace.Member{}, total, nil
 	}
 
-	end := offset + limit
-	if end > total {
-		end = total
-	}
+	end := min(offset+limit, total)
 
 	return members[offset:end], total, nil
 }

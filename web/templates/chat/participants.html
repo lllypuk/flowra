@@ -1,0 +1,190 @@
+{{define "chat/participants"}}
+<dialog open>
+    <article>
+        <header>
+            <button
+                aria-label="Close"
+                rel="prev"
+                onclick="this.closest('dialog').remove()"
+            ></button>
+            <h3>Participants</h3>
+        </header>
+
+        <div class="participants-list">
+            {{range .Participants}}
+            <div class="participant-item">
+                <div class="participant-avatar">
+                    {{if .AvatarURL}}
+                    <img src="{{.AvatarURL}}" alt="{{.Username}}" />
+                    {{else}}
+                    <div class="avatar-placeholder">
+                        {{slice .Username 0 1 | upper}}
+                    </div>
+                    {{end}}
+                </div>
+                <div class="participant-info">
+                    <strong>{{.DisplayName}}</strong>
+                    <small class="text-muted">@{{.Username}}</small>
+                </div>
+                <div class="participant-role">
+                    <span class="role-badge role-{{.Role | lower}}"
+                        >{{.Role}}</span
+                    >
+                </div>
+                {{if and $.CanManage (ne .Role "creator")}}
+                <div class="participant-actions">
+                    <button
+                        class="outline small secondary"
+                        hx-delete="/api/v1/chats/{{$.ChatID}}/participants/{{.UserID}}"
+                        hx-target="closest .participant-item"
+                        hx-swap="outerHTML"
+                        hx-confirm="Remove {{.Username}} from this chat?"
+                        title="Remove participant"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                {{end}}
+            </div>
+            {{else}}
+            <p class="text-muted text-center">No participants yet</p>
+            {{end}}
+        </div>
+
+        {{if .CanManage}}
+        <hr />
+        <form
+            hx-post="/api/v1/chats/{{.ChatID}}/participants"
+            hx-target=".participants-list"
+            hx-swap="beforeend"
+            hx-on::after-request="this.reset()"
+        >
+            <label for="add-participant">Add participant</label>
+            <div class="grid">
+                <input
+                    type="text"
+                    id="add-participant"
+                    name="user_id"
+                    placeholder="Enter user ID or email"
+                    required
+                />
+                <button type="submit">Add</button>
+            </div>
+        </form>
+        {{end}}
+
+        <footer>
+            <button class="secondary" onclick="this.closest('dialog').remove()">
+                Close
+            </button>
+        </footer>
+    </article>
+</dialog>
+
+<style>
+    .participants-list {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .participant-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--muted-border-color);
+    }
+
+    .participant-item:last-child {
+        border-bottom: none;
+    }
+
+    .participant-avatar {
+        flex-shrink: 0;
+    }
+
+    .participant-avatar img,
+    .participant-avatar .avatar-placeholder {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .avatar-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--secondary-focus);
+        color: var(--secondary);
+        font-weight: 600;
+        font-size: 1rem;
+    }
+
+    .participant-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .participant-info strong {
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .participant-info small {
+        display: block;
+    }
+
+    .participant-role {
+        flex-shrink: 0;
+    }
+
+    .role-badge {
+        padding: 0.125rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: capitalize;
+    }
+
+    .role-badge.role-creator,
+    .role-badge.role-owner {
+        background: #fce4ec;
+        color: #c2185b;
+    }
+
+    .role-badge.role-admin {
+        background: #e8eaf6;
+        color: #3f51b5;
+    }
+
+    .role-badge.role-member {
+        background: var(--secondary-focus);
+        color: var(--secondary);
+    }
+
+    .participant-actions {
+        flex-shrink: 0;
+    }
+
+    .participant-actions button {
+        padding: 0.25rem 0.5rem;
+        margin-bottom: 0;
+    }
+</style>
+{{end}}

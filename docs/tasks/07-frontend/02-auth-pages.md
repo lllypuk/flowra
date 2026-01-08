@@ -1,7 +1,7 @@
 # 02: Auth Pages
 
 **Приоритет:** 🔴 Critical
-**Статус:** ⏳ Не начато
+**Статус:** ✅ Завершено
 **Зависит от:** [01-base-infrastructure.md](01-base-infrastructure.md)
 
 ---
@@ -458,39 +458,39 @@ func (h *TemplateHandler) RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 ## Чеклист
 
 ### Templates
-- [ ] `auth/login.html` - Login page с SSO button
-- [ ] `auth/callback.html` - OAuth callback processing
-- [ ] `auth/logout.html` - Logout confirmation
+- [x] `auth/login.html` - Login page с SSO button
+- [x] `auth/callback.html` - OAuth callback processing
+- [x] `auth/logout.html` - Logout confirmation
 
 ### Handlers
-- [ ] `LoginPage` - отображает login page
-- [ ] `AuthCallback` - обрабатывает OAuth callback
-- [ ] `LogoutPage` - отображает logout confirmation
-- [ ] `Logout` - выполняет logout
+- [x] `LoginPage` - отображает login page
+- [x] `AuthCallback` - обрабатывает OAuth callback
+- [x] `LogoutPage` - отображает logout confirmation
+- [x] `Logout` - выполняет logout
 
 ### Cookies
-- [ ] Session cookie management
-- [ ] State cookie for CSRF protection
-- [ ] Redirect cookie for return URL
+- [x] Session cookie management
+- [x] State cookie for CSRF protection
+- [x] Redirect cookie for return URL
 
 ### Integration
-- [ ] Keycloak auth URL генерируется корректно
-- [ ] OAuth callback обрабатывается
-- [ ] Session создаётся при успешном login
-- [ ] Logout очищает session
-- [ ] Protected routes редиректят на login
+- [x] Keycloak auth URL генерируется корректно
+- [x] OAuth callback обрабатывается
+- [x] Session создаётся при успешном login
+- [x] Logout очищает session
+- [x] Protected routes редиректят на login
 
 ---
 
 ## Критерии приёмки
 
-- [ ] `/login` отображает страницу входа
-- [ ] Click на "Sign in with SSO" редиректит на Keycloak
-- [ ] После успешной авторизации пользователь попадает на `/workspaces`
-- [ ] `/logout` отображает подтверждение
-- [ ] После logout session удалён
-- [ ] Попытка доступа к protected route редиректит на login
-- [ ] После login пользователь возвращается на исходную страницу
+- [x] `/login` отображает страницу входа
+- [x] Click на "Sign in with SSO" редиректит на Keycloak
+- [x] После успешной авторизации пользователь попадает на `/workspaces`
+- [x] `/logout` отображает подтверждение
+- [x] После logout session удалён
+- [x] Попытка доступа к protected route редиректит на login
+- [x] После login пользователь возвращается на исходную страницу
 
 ---
 

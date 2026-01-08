@@ -319,10 +319,7 @@ func parseMessagePagination(c echo.Context) (int, int) {
 
 	if limitStr := c.QueryParam("limit"); limitStr != "" {
 		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
-			limit = l
-			if limit > maxMessageListLimit {
-				limit = maxMessageListLimit
-			}
+			limit = min(l, maxMessageListLimit)
 		}
 	}
 
@@ -443,14 +440,8 @@ func (m *MockMessageService) ListMessages(
 	}
 
 	// Apply pagination
-	start := query.Offset
-	if start > len(msgs) {
-		start = len(msgs)
-	}
-	end := start + query.Limit
-	if end > len(msgs) {
-		end = len(msgs)
-	}
+	start := min(query.Offset, len(msgs))
+	end := min(start+query.Limit, len(msgs))
 
 	return messageapp.ListResult{Value: msgs[start:end]}, nil
 }

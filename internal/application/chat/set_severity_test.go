@@ -3,11 +3,9 @@ package chat_test
 import (
 	"testing"
 
-	"github.com/lllypuk/flowra/internal/application/chat"
-
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
+	"github.com/lllypuk/flowra/internal/application/chat"
 	domainChat "github.com/lllypuk/flowra/internal/domain/chat"
 )
 
@@ -34,21 +32,13 @@ func TestSetSeverityUseCase_Success_Blocker(t *testing.T) {
 func testSetSeveritySuccess(t *testing.T, severity string) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
+	workspaceID := generateUUID(t)
 
-	createUseCase := chat.NewCreateChatUseCase(eventStore)
-	createCmd := chat.CreateChatCommand{
-		WorkspaceID: generateUUID(t),
-		Type:        domainChat.TypeBug,
-		Title:       "Test Bug",
-		IsPublic:    true,
-		CreatedBy:   creatorID,
-	}
-	createResult, err := createUseCase.Execute(testContext(), createCmd)
-	require.NoError(t, err)
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeBug, "Test Bug", workspaceID, creatorID)
 
 	setSeverityUseCase := chat.NewSetSeverityUseCase(eventStore)
 	setSeverityCmd := chat.SetSeverityCommand{
-		ChatID:   createResult.Value.ID(),
+		ChatID:   createdChat.ID(),
 		Severity: severity,
 		SetBy:    creatorID,
 	}
@@ -62,21 +52,20 @@ func testSetSeveritySuccess(t *testing.T, severity string) {
 func TestSetSeverityUseCase_Error_OnlyForBugs(t *testing.T) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
+	workspaceID := generateUUID(t)
 
-	createUseCase := chat.NewCreateChatUseCase(eventStore)
-	createCmd := chat.CreateChatCommand{
-		WorkspaceID: generateUUID(t),
-		Type:        domainChat.TypeTask,
-		Title:       "Test Task",
-		IsPublic:    true,
-		CreatedBy:   creatorID,
-	}
-	createResult, err := createUseCase.Execute(testContext(), createCmd)
-	require.NoError(t, err)
+	createdChat := createTestChatWithParams(
+		t,
+		eventStore,
+		domainChat.TypeTask,
+		"Test Task",
+		workspaceID,
+		creatorID,
+	)
 
 	setSeverityUseCase := chat.NewSetSeverityUseCase(eventStore)
 	setSeverityCmd := chat.SetSeverityCommand{
-		ChatID:   createResult.Value.ID(),
+		ChatID:   createdChat.ID(),
 		Severity: "Critical",
 		SetBy:    creatorID,
 	}

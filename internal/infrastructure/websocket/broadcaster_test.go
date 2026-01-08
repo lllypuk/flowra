@@ -74,7 +74,7 @@ func newTestDomainEvent(eventType, aggregateID, aggregateType string) *testDomai
 	}
 }
 
-func newTestDomainEventWithPayload(eventType, aggregateID, aggregateType string, payload interface{}) *testDomainEvent {
+func newTestDomainEventWithPayload(eventType, aggregateID, aggregateType string, payload any) *testDomainEvent {
 	payloadBytes, _ := json.Marshal(payload)
 	return &testDomainEvent{
 		BaseEvent: event.NewBaseEvent(
@@ -208,8 +208,7 @@ func TestBroadcaster_Start(t *testing.T) {
 func TestBroadcaster_HandleEvent(t *testing.T) {
 	t.Run("broadcasts message.sent event to chat", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -239,7 +238,7 @@ func TestBroadcaster_HandleEvent(t *testing.T) {
 		// Verify message was received
 		select {
 		case msg := <-receiveChan:
-			var wsMsg map[string]interface{}
+			var wsMsg map[string]any
 			require.NoError(t, json.Unmarshal(msg, &wsMsg))
 			assert.Equal(t, "message.new", wsMsg["type"])
 		case <-time.After(100 * time.Millisecond):
@@ -249,8 +248,7 @@ func TestBroadcaster_HandleEvent(t *testing.T) {
 
 	t.Run("broadcasts notification to specific user", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -282,7 +280,7 @@ func TestBroadcaster_HandleEvent(t *testing.T) {
 		// Only user1 should receive
 		select {
 		case msg := <-receiveChan1:
-			var wsMsg map[string]interface{}
+			var wsMsg map[string]any
 			require.NoError(t, json.Unmarshal(msg, &wsMsg))
 			assert.Equal(t, "notification.new", wsMsg["type"])
 		case <-time.After(100 * time.Millisecond):
@@ -299,8 +297,7 @@ func TestBroadcaster_HandleEvent(t *testing.T) {
 
 	t.Run("does not broadcast unregistered event types", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -337,8 +334,7 @@ func TestBroadcaster_HandleEvent(t *testing.T) {
 
 	t.Run("handles chat.updated event", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -368,7 +364,7 @@ func TestBroadcaster_HandleEvent(t *testing.T) {
 		// Verify message was received
 		select {
 		case msg := <-receiveChan:
-			var wsMsg map[string]interface{}
+			var wsMsg map[string]any
 			require.NoError(t, json.Unmarshal(msg, &wsMsg))
 			assert.Equal(t, "chat.updated", wsMsg["type"])
 		case <-time.After(100 * time.Millisecond):
@@ -378,8 +374,7 @@ func TestBroadcaster_HandleEvent(t *testing.T) {
 
 	t.Run("handles task.status_changed event", func(t *testing.T) {
 		hub := ws.NewHub()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		go hub.Run(ctx)
 		time.Sleep(10 * time.Millisecond)
@@ -410,7 +405,7 @@ func TestBroadcaster_HandleEvent(t *testing.T) {
 		// Verify message was received (task.status_changed maps to task.updated)
 		select {
 		case msg := <-receiveChan:
-			var wsMsg map[string]interface{}
+			var wsMsg map[string]any
 			require.NoError(t, json.Unmarshal(msg, &wsMsg))
 			assert.Equal(t, "task.updated", wsMsg["type"])
 		case <-time.After(100 * time.Millisecond):

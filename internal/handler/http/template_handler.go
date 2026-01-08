@@ -1,7 +1,10 @@
 package httphandler
 
 import (
+	"bytes"
+	"context"
 	"embed"
+	"fmt"
 	"html/template"
 	"io"
 	"io/fs"
@@ -13,6 +16,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/domain/workspace"
 	"github.com/lllypuk/flowra/internal/middleware"
 )
 
@@ -112,6 +116,7 @@ func (r *TemplateRenderer) Render(w io.Writer, name string, data any, _ echo.Con
 	if r.devMode {
 		if err := r.loadTemplates(); err != nil {
 			r.logger.Error("failed to reload templates", slog.String("error", err.Error()))
+			return fmt.Errorf("failed to reload templates: %w", err)
 		}
 	}
 
@@ -147,12 +152,28 @@ type UserView struct {
 	AvatarURL   string
 }
 
+// OAuthClient defines the interface for OAuth operations.
+type OAuthClient interface {
+	// AuthorizationURL generates the OAuth authorization URL.
+	AuthorizationURL(redirectURI, state string) string
+	// ExchangeCode exchanges an authorization code for tokens.
+	ExchangeCode(ctx context.Context, code, redirectURI string) (*OAuthTokenResponse, error)
+}
+
+// OAuthTokenResponse represents OAuth token response.
+type OAuthTokenResponse struct {
+	AccessToken  string
+	RefreshToken string
+	ExpiresIn    int
+}
+
 // TemplateHandler provides handlers for rendering HTML pages.
 type TemplateHandler struct {
 	renderer         *TemplateRenderer
 	logger           *slog.Logger
 	workspaceService WorkspaceService
 	memberService    MemberService
+	oauthClient      OAuthClient
 }
 
 // NewTemplateHandler creates a new template handler.
@@ -180,6 +201,11 @@ func (h *TemplateHandler) SetServices(workspaceService WorkspaceService, memberS
 	h.memberService = memberService
 }
 
+// SetOAuthClient sets the OAuth client for authentication.
+func (h *TemplateHandler) SetOAuthClient(client OAuthClient) {
+	h.oauthClient = client
+}
+
 // render is a helper to render a template with common page data.
 func (h *TemplateHandler) render(c echo.Context, templateName string, title string, data any) error {
 	pageData := PageData{
@@ -196,8 +222,17 @@ func (h *TemplateHandler) render(c echo.Context, templateName string, title stri
 // RenderPartial renders a template without the base layout.
 // This is used for HTMX partial updates.
 func (h *TemplateHandler) RenderPartial(c echo.Context, templateName string, data any) error {
+	// Buffer the template output to prevent partial writes on error
+	var buf bytes.Buffer
+	if err := h.renderer.Render(&buf, templateName, data, c); err != nil {
+		h.logger.Error("failed to render partial template",
+			slog.String("template", templateName),
+			slog.String("error", err.Error()))
+		return c.String(http.StatusInternalServerError, "Failed to render template")
+	}
+
 	c.Response().Header().Set("Content-Type", "text/html; charset=utf-8")
-	return h.renderer.Render(c.Response().Writer, templateName, data, c)
+	return c.HTMLBlob(http.StatusOK, buf.Bytes())
 }
 
 // getUserView extracts user information from the context for templates.
@@ -267,9 +302,18 @@ func (h *TemplateHandler) LoginPage(c echo.Context) error {
 	state := generateState()
 	setStateCookie(c, state)
 
-	// Build auth URL (for now using a placeholder)
-	// When real Keycloak is integrated, this will be the actual OAuth URL
-	authURL := "/auth/callback?code=mock-code&state=" + state
+	// Build auth URL
+	var authURL string
+	redirectURI := GetRedirectURI(c)
+
+	if h.oauthClient != nil {
+		// Use real Keycloak OAuth URL
+		authURL = h.oauthClient.AuthorizationURL(redirectURI, state)
+	} else {
+		// Fallback to mock for development without Keycloak
+		h.logger.Warn("OAuth client not configured, using mock auth flow")
+		authURL = "/auth/callback?code=mock-code&state=" + state
+	}
 
 	// Template expects AuthURL and Error at top level
 	data := map[string]any{
@@ -301,14 +345,37 @@ func (h *TemplateHandler) AuthCallback(c echo.Context) error {
 		return h.renderCallback(c, "", "Invalid state parameter. Please try again.")
 	}
 
-	// For mock mode, create a simple session
-	// In production, this would exchange the code for tokens with Keycloak
+	// Exchange code for tokens
+	if h.oauthClient != nil {
+		// Real OAuth flow with Keycloak
+		redirectURI := GetRedirectURI(c)
+		tokens, err := h.oauthClient.ExchangeCode(c.Request().Context(), code, redirectURI)
+		if err != nil {
+			h.logger.Error("failed to exchange code for tokens",
+				slog.String("error", err.Error()),
+			)
+			return h.renderCallback(c, "", "Authentication failed. Please try again.")
+		}
+
+		// Store access token in session cookie
+		setSessionCookie(c, tokens.AccessToken, tokens.ExpiresIn)
+
+		// Get redirect URL or default to workspaces
+		redirectURL := getRedirectCookie(c)
+		if redirectURL == "" {
+			redirectURL = "/workspaces"
+		}
+		clearRedirectCookie(c)
+
+		return h.renderCallback(c, redirectURL, "")
+	}
+
+	// Fallback mock mode (only when OAuth client is not configured)
 	if code == "mock-code" {
-		// Create a mock session (in real implementation, call auth service)
+		h.logger.Warn("using mock authentication flow")
 		const mockExpiresIn = 3600 // 1 hour
 		setSessionCookie(c, "mock-session-token", mockExpiresIn)
 
-		// Get redirect URL or default to workspaces
 		redirectURL := getRedirectCookie(c)
 		if redirectURL == "" {
 			redirectURL = "/workspaces"
@@ -418,6 +485,7 @@ func (h *TemplateHandler) SetupPageRoutes(e *echo.Echo) {
 	partials := e.Group("/partials", RequireAuth)
 	partials.GET("/workspaces", h.WorkspaceListPartial)
 	partials.GET("/workspace/create-form", h.WorkspaceCreateForm)
+	partials.POST("/workspace/create", h.WorkspaceCreate)
 	partials.GET("/workspace/:id/members", h.WorkspaceMembersPartial)
 	partials.GET("/workspace/:id/invite-form", h.WorkspaceInviteForm)
 }
@@ -457,7 +525,7 @@ func (h *TemplateHandler) WorkspaceListPartial(c echo.Context) error {
 		workspaceViews = append(workspaceViews, WorkspaceViewData{
 			ID:          ws.ID().String(),
 			Name:        ws.Name(),
-			Description: "", // Description not in domain model yet
+			Description: ws.Description(),
 			MemberCount: memberCount,
 			CreatedAt:   ws.CreatedAt(),
 			UnreadCount: 0, // TODO: implement unread count
@@ -508,7 +576,7 @@ func (h *TemplateHandler) WorkspaceView(c echo.Context) error {
 		"Workspace": WorkspaceViewData{
 			ID:          ws.ID().String(),
 			Name:        ws.Name(),
-			Description: "",
+			Description: ws.Description(),
 			MemberCount: memberCount,
 			CreatedAt:   ws.CreatedAt(),
 		},
@@ -523,6 +591,58 @@ func (h *TemplateHandler) WorkspaceView(c echo.Context) error {
 // WorkspaceCreateForm returns the create workspace form partial.
 func (h *TemplateHandler) WorkspaceCreateForm(c echo.Context) error {
 	return h.RenderPartial(c, "workspace/create-form", nil)
+}
+
+// WorkspaceCreate handles POST /partials/workspace/create and returns HTML partial.
+func (h *TemplateHandler) WorkspaceCreate(c echo.Context) error {
+	user := h.getUserView(c)
+	if user == nil {
+		//nolint:canonicalheader // HTMX uses non-canonical header names
+		c.Response().Header().Set("HX-Retarget", "#modal-container")
+		return c.String(http.StatusUnauthorized, `<div class="error">Unauthorized</div>`)
+	}
+
+	if h.workspaceService == nil {
+		//nolint:canonicalheader // HTMX uses non-canonical header names
+		c.Response().Header().Set("HX-Retarget", "#modal-container")
+		return c.String(http.StatusServiceUnavailable, `<div class="error">Service unavailable</div>`)
+	}
+
+	userID, err := uuid.ParseUUID(user.ID)
+	if err != nil {
+		//nolint:canonicalheader // HTMX uses non-canonical header names
+		c.Response().Header().Set("HX-Retarget", "#modal-container")
+		return c.String(http.StatusBadRequest, `<div class="error">Invalid user ID</div>`)
+	}
+
+	name := c.FormValue("name")
+	description := c.FormValue("description")
+
+	if name == "" {
+		//nolint:canonicalheader // HTMX uses non-canonical header names
+		c.Response().Header().Set("HX-Retarget", "#modal-container")
+		return c.String(http.StatusBadRequest, `<div class="error">Workspace name is required</div>`)
+	}
+
+	ws, err := h.workspaceService.CreateWorkspace(c.Request().Context(), userID, name, description)
+	if err != nil {
+		h.logger.Error("failed to create workspace", slog.String("error", err.Error()))
+		//nolint:canonicalheader // HTMX uses non-canonical header names
+		c.Response().Header().Set("HX-Retarget", "#modal-container")
+		return c.String(http.StatusInternalServerError, `<div class="error">Failed to create workspace</div>`)
+	}
+
+	// Return the workspace card HTML partial
+	data := WorkspaceViewData{
+		ID:          ws.ID().String(),
+		Name:        ws.Name(),
+		Description: description,
+		MemberCount: 1, // Owner is the first member
+		CreatedAt:   ws.CreatedAt(),
+		UnreadCount: 0,
+	}
+
+	return h.RenderPartial(c, "workspace_card", data)
 }
 
 // WorkspaceMembers renders the workspace members page.
@@ -563,7 +683,7 @@ func (h *TemplateHandler) WorkspaceMembers(c echo.Context) error {
 		"Workspace": WorkspaceViewData{
 			ID:          ws.ID().String(),
 			Name:        ws.Name(),
-			Description: "",
+			Description: ws.Description(),
 			MemberCount: memberCount,
 			CreatedAt:   ws.CreatedAt(),
 		},
@@ -641,6 +761,137 @@ func (h *TemplateHandler) WorkspaceMembersPartial(c echo.Context) error {
 	return h.RenderPartial(c, "workspace/members-partial", data)
 }
 
+// WorkspaceMembersOptionsPartial returns workspace members as <option> elements for select dropdowns.
+// This is used by the chat creation form to populate the participants select.
+func (h *TemplateHandler) WorkspaceMembersOptionsPartial(c echo.Context) error {
+	user := h.getUserView(c)
+	if user == nil {
+		return c.String(http.StatusUnauthorized, "Unauthorized")
+	}
+
+	// Check if services are available
+	if h.memberService == nil {
+		return c.String(http.StatusServiceUnavailable, "Service unavailable")
+	}
+
+	workspaceID, err := uuid.ParseUUID(c.Param("id"))
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid workspace ID")
+	}
+
+	userID, err := uuid.ParseUUID(user.ID)
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid user ID")
+	}
+
+	// Verify user is a member of this workspace
+	_, err = h.memberService.GetMember(c.Request().Context(), workspaceID, userID)
+	if err != nil {
+		return c.String(http.StatusForbidden, "Not a member of this workspace")
+	}
+
+	members, _, err := h.memberService.ListMembers(c.Request().Context(), workspaceID, 0, defaultPageLimit)
+	if err != nil {
+		h.logger.Error("failed to list members", slog.String("error", err.Error()))
+		return c.String(http.StatusInternalServerError, "Failed to load members")
+	}
+
+	// Build <option> elements HTML, excluding the current user
+	var options bytes.Buffer
+	for _, m := range members {
+		memberUserID := m.UserID().String()
+		// Skip current user (they shouldn't add themselves as participant)
+		if memberUserID == user.ID {
+			continue
+		}
+		// TODO: get actual username/display name from user service
+		displayName := "User " + memberUserID[:8]
+		options.WriteString(fmt.Sprintf(`<option value="%s">%s</option>`, memberUserID, displayName))
+	}
+
+	c.Response().Header().Set("Content-Type", "text/html; charset=utf-8")
+	return c.HTMLBlob(http.StatusOK, options.Bytes())
+}
+
+// UpdateMemberRolePartial handles role update for HTMX and returns the updated member row.
+func (h *TemplateHandler) UpdateMemberRolePartial(c echo.Context) error {
+	user := h.getUserView(c)
+	if user == nil {
+		return c.String(http.StatusUnauthorized, "Unauthorized")
+	}
+
+	if h.memberService == nil {
+		return c.String(http.StatusServiceUnavailable, "Service unavailable")
+	}
+
+	workspaceID, err := uuid.ParseUUID(c.Param("id"))
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid workspace ID")
+	}
+
+	targetUserID, err := uuid.ParseUUID(c.Param("user_id"))
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid user ID")
+	}
+
+	currentUserID, err := uuid.ParseUUID(user.ID)
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid current user ID")
+	}
+
+	// Only owner can change roles
+	isOwner, _ := h.memberService.IsOwner(c.Request().Context(), workspaceID, currentUserID)
+	if !isOwner {
+		return c.String(http.StatusForbidden, "Only workspace owner can change roles")
+	}
+
+	// Cannot change owner's role
+	isTargetOwner, _ := h.memberService.IsOwner(c.Request().Context(), workspaceID, targetUserID)
+	if isTargetOwner {
+		return c.String(http.StatusBadRequest, "Cannot change owner's role")
+	}
+
+	// Parse role from form
+	roleStr := c.FormValue("role")
+	var role workspace.Role
+	switch roleStr {
+	case "admin":
+		role = workspace.RoleAdmin
+	case "member":
+		role = workspace.RoleMember
+	default:
+		return c.String(http.StatusBadRequest, "Invalid role")
+	}
+
+	member, err := h.memberService.UpdateMemberRole(c.Request().Context(), workspaceID, targetUserID, role)
+	if err != nil {
+		h.logger.Error("failed to update member role", slog.String("error", err.Error()))
+		return c.String(http.StatusInternalServerError, "Failed to update role")
+	}
+
+	currentMember, _ := h.memberService.GetMember(c.Request().Context(), workspaceID, currentUserID)
+	currentRole := "member"
+	if currentMember != nil {
+		currentRole = currentMember.Role().String()
+	}
+
+	data := map[string]any{
+		"Member": MemberViewData{
+			UserID:      member.UserID().String(),
+			Username:    "user" + member.UserID().String()[:8],
+			DisplayName: "User " + member.UserID().String()[:8],
+			AvatarURL:   "",
+			Role:        member.Role().String(),
+			JoinedAt:    member.JoinedAt(),
+		},
+		"WorkspaceID":   workspaceID.String(),
+		"UserRole":      currentRole,
+		"CurrentUserID": user.ID,
+	}
+
+	return h.RenderPartial(c, "member_row", data)
+}
+
 // WorkspaceSettings renders the workspace settings page.
 func (h *TemplateHandler) WorkspaceSettings(c echo.Context) error {
 	user := h.getUserView(c)
@@ -684,7 +935,7 @@ func (h *TemplateHandler) WorkspaceSettings(c echo.Context) error {
 		"Workspace": WorkspaceViewData{
 			ID:          ws.ID().String(),
 			Name:        ws.Name(),
-			Description: "",
+			Description: ws.Description(),
 			MemberCount: memberCount,
 			CreatedAt:   ws.CreatedAt(),
 		},

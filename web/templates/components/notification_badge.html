@@ -1,0 +1,45 @@
+{{define "notification/badge"}}
+<span id="notification-badge"
+      class="notification-badge {{if eq .Count 0}}hidden{{end}}"
+      hx-get="/partials/notifications/count"
+      hx-trigger="load, every 60s, notification-update from:body"
+      hx-swap="outerHTML">
+    {{if gt .Count 99}}
+        99+
+    {{else if gt .Count 0}}
+        {{.Count}}
+    {{end}}
+</span>
+
+<style>
+.notification-badge {
+    background: var(--pico-del-color, #c62828);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: bold;
+    padding: 0.15rem 0.4rem;
+    border-radius: 10px;
+    min-width: 1.2rem;
+    text-align: center;
+    display: inline-block;
+}
+
+.notification-badge.hidden {
+    display: none;
+}
+</style>
+{{end}}
+
+{{define "notification/badge-count"}}
+<span id="notification-badge"
+      class="notification-badge {{if eq .Count 0}}hidden{{end}}"
+      hx-get="/partials/notifications/count"
+      hx-trigger="every 60s, notification-update from:body"
+      hx-swap="outerHTML">
+    {{if gt .Count 99}}
+        99+
+    {{else if gt .Count 0}}
+        {{.Count}}
+    {{end}}
+</span>
+{{end}}

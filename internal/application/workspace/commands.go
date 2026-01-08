@@ -13,8 +13,9 @@ type Command interface {
 
 // CreateWorkspaceCommand - создание workspace
 type CreateWorkspaceCommand struct {
-	Name      string
-	CreatedBy uuid.UUID
+	Name        string
+	Description string
+	CreatedBy   uuid.UUID
 }
 
 func (c CreateWorkspaceCommand) CommandName() string { return "CreateWorkspace" }

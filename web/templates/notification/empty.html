@@ -1,0 +1,33 @@
+{{define "notification/empty"}}
+<div class="notification-empty">
+    <span class="empty-icon">🔔</span>
+    <h3>{{if .Title}}{{.Title}}{{else}}All caught up!{{end}}</h3>
+    <p class="text-muted">
+        {{if .Message}}{{.Message}}{{else}}You have no notifications{{end}}
+    </p>
+</div>
+
+<style>
+.notification-empty {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--pico-muted-color);
+}
+
+.notification-empty .empty-icon {
+    font-size: 3rem;
+    opacity: 0.5;
+    display: block;
+    margin-bottom: 1rem;
+}
+
+.notification-empty h3 {
+    margin: 0 0 0.5rem;
+    color: var(--pico-color);
+}
+
+.notification-empty p {
+    margin: 0;
+}
+</style>
+{{end}}

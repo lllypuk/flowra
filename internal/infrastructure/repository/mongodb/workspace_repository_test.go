@@ -32,6 +32,7 @@ func createTestWorkspace(t *testing.T, suffix string) *workspace.Workspace {
 	createdBy := uuid.NewUUID()
 	ws, err := workspace.NewWorkspace(
 		"Test Workspace "+suffix,
+		"Test description "+suffix,
 		"keycloak-group-"+suffix,
 		createdBy,
 	)

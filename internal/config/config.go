@@ -124,10 +124,12 @@ type RedisConfig struct {
 //
 //nolint:golines // Struct tags require longer lines for readability
 type KeycloakConfig struct {
+	Enabled       bool      `yaml:"enabled" env:"KEYCLOAK_ENABLED"`
 	URL           string    `yaml:"url" env:"KEYCLOAK_URL"`
 	Realm         string    `yaml:"realm" env:"KEYCLOAK_REALM"`
 	ClientID      string    `yaml:"client_id" env:"KEYCLOAK_CLIENT_ID"`
 	ClientSecret  string    `yaml:"client_secret" env:"KEYCLOAK_CLIENT_SECRET"`
+	JWTAudience   string    `yaml:"jwt_audience" env:"KEYCLOAK_JWT_AUDIENCE"` // Audience for JWT validation. Empty = skip.
 	AdminUsername string    `yaml:"admin_username" env:"KEYCLOAK_ADMIN_USERNAME"`
 	AdminPassword string    `yaml:"admin_password" env:"KEYCLOAK_ADMIN_PASSWORD"`
 	JWT           JWTConfig `yaml:"jwt"`
@@ -514,7 +516,7 @@ func (l *Loader) setFieldFromEnv(field reflect.Value, value string) error {
 
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		// Check if it's a time.Duration
-		if field.Type() == reflect.TypeOf(time.Duration(0)) {
+		if field.Type() == reflect.TypeFor[time.Duration]() {
 			d, err := time.ParseDuration(value)
 			if err != nil {
 				return fmt.Errorf("%w: %s", ErrInvalidDuration, value)

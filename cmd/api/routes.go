@@ -23,6 +23,7 @@ func SetupRoutes(c *Container) *httpserver.Router {
 		AuthMiddleware: middleware.Auth(middleware.AuthConfig{
 			Logger:         c.Logger,
 			TokenValidator: c.TokenValidator,
+			UserResolver:   c.UserResolver,
 			SkipPaths: []string{
 				"/health",
 				"/ready",
@@ -35,7 +36,6 @@ func SetupRoutes(c *Container) *httpserver.Router {
 			},
 			// Session cookie support for HTMX frontend
 			SessionCookieName: "flowra_session",
-			MockSessionToken:  "mock-session-token",
 		}),
 		WorkspaceMiddleware: middleware.WorkspaceAccess(middleware.WorkspaceConfig{
 			Logger:           c.Logger,
@@ -258,11 +258,32 @@ func registerPageRoutes(e *echo.Echo, c *Container) {
 	partials := e.Group("/partials", httphandler.RequireAuth)
 	partials.GET("/workspaces", c.TemplateHandler.WorkspaceListPartial)
 	partials.GET("/workspace/create-form", c.TemplateHandler.WorkspaceCreateForm)
+	partials.POST("/workspace/create", c.TemplateHandler.WorkspaceCreate)
 	partials.GET("/workspace/:id/members", c.TemplateHandler.WorkspaceMembersPartial)
+	partials.GET("/workspace/:id/members-options", c.TemplateHandler.WorkspaceMembersOptionsPartial)
+	partials.PUT("/workspace/:id/members/:user_id/role", c.TemplateHandler.UpdateMemberRolePartial)
 	partials.GET("/workspace/:id/invite-form", c.TemplateHandler.WorkspaceInviteForm)
 
+	// Notification pages and partials
+	if c.NotificationTemplateHandler != nil {
+		c.NotificationTemplateHandler.SetupNotificationRoutes(e)
+	}
+
+	// Chat pages and partials
+	if c.ChatTemplateHandler != nil {
+		c.ChatTemplateHandler.SetupChatRoutes(e)
+	}
+
+	// Board pages and partials
+	if c.BoardTemplateHandler != nil {
+		c.BoardTemplateHandler.SetupBoardRoutes(e)
+	}
+
+	// Task detail partials
+	if c.TaskDetailTemplateHandler != nil {
+		c.TaskDetailTemplateHandler.SetupTaskDetailRoutes(e)
+	}
+
 	// TODO: Add more protected pages as frontend features are implemented:
-	// - /workspaces/:id/chats/:chat_id (chat view)
-	// - /workspaces/:id/board (kanban board)
 	// - /settings (user settings)
 }

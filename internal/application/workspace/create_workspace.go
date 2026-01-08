@@ -52,7 +52,7 @@ func (uc *CreateWorkspaceUseCase) Execute(
 	}
 
 	// Создание workspace
-	ws, err := workspace.NewWorkspace(cmd.Name, keycloakGroupID, cmd.CreatedBy)
+	ws, err := workspace.NewWorkspace(cmd.Name, cmd.Description, keycloakGroupID, cmd.CreatedBy)
 	if err != nil {
 		// Rollback: удаляем группу в Keycloak
 		_ = uc.keycloakClient.DeleteGroup(ctx, keycloakGroupID)
@@ -64,6 +64,14 @@ func (uc *CreateWorkspaceUseCase) Execute(
 		// Rollback: удаляем группу в Keycloak
 		_ = uc.keycloakClient.DeleteGroup(ctx, keycloakGroupID)
 		return Result{}, uc.WrapError("save workspace", errSave)
+	}
+
+	// Добавление создателя как владельца workspace
+	ownerMember := workspace.NewMember(cmd.CreatedBy, ws.ID(), workspace.RoleOwner)
+	if errMember := uc.workspaceRepo.AddMember(ctx, &ownerMember); errMember != nil {
+		// Workspace создан, но член не добавлен - это критичная ошибка
+		// TODO: возможно нужен rollback workspace
+		return Result{}, uc.WrapError("add owner member", errMember)
 	}
 
 	// Добавление создателя в группу Keycloak

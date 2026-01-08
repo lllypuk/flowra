@@ -20,9 +20,9 @@ type EventBus interface {
 
 // OutboundMessage represents a message to be sent over WebSocket.
 type OutboundMessage struct {
-	Type   string      `json:"type"`
-	ChatID *string     `json:"chat_id,omitempty"`
-	Data   interface{} `json:"data,omitempty"`
+	Type   string  `json:"type"`
+	ChatID *string `json:"chat_id,omitempty"`
+	Data   any     `json:"data,omitempty"`
 }
 
 // Broadcaster listens to the event bus and broadcasts events via WebSocket.
@@ -201,12 +201,12 @@ func (b *Broadcaster) transformEvent(evt event.DomainEvent) *OutboundMessage {
 	}
 
 	// Extract payload from event if it has one
-	var data interface{}
+	var data any
 	if payloadEvent, ok := evt.(PayloadProvider); ok {
 		data = payloadEvent.Payload()
 	} else {
 		// Create basic payload from event metadata
-		data = map[string]interface{}{
+		data = map[string]any{
 			"aggregate_id":   evt.AggregateID(),
 			"aggregate_type": evt.AggregateType(),
 			"occurred_at":    evt.OccurredAt(),

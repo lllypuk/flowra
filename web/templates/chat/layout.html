@@ -1,0 +1,218 @@
+{{define "chat/layout.html"}}
+<!doctype html>
+<html lang="en" data-theme="light">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>{{if .Title}}{{.Title}} - {{end}}Flowra</title>
+
+        <!-- Pico CSS -->
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"
+        />
+
+        <!-- Custom CSS -->
+        <link rel="stylesheet" href="/static/css/custom.css" />
+
+        <!-- HTMX -->
+        <script
+            src="https://unpkg.com/htmx.org@2.0.0"
+            crossorigin="anonymous"
+        ></script>
+
+        <!-- HTMX WebSocket Extension -->
+        <script src="https://unpkg.com/htmx-ext-ws@2.0.0/ws.js"></script>
+    </head>
+    <body hx-boost="true">
+        {{template "navbar" .}}
+
+        <div
+            class="chat-layout {{with .Data.Chat}}{{if .IsTaskChat}}with-task-sidebar{{end}}{{end}}"
+        >
+            <!-- Chat List Sidebar -->
+            <aside class="chat-sidebar">
+                <header>
+                    <input
+                        type="search"
+                        placeholder="Search chats..."
+                        hx-get="/partials/chats/search"
+                        hx-trigger="input changed delay:300ms"
+                        hx-target="#chat-list"
+                        hx-include="[name='workspace_id']"
+                        name="q"
+                    />
+                    <input
+                        type="hidden"
+                        name="workspace_id"
+                        value="{{.Data.Workspace.ID}}"
+                    />
+                </header>
+
+                <nav
+                    id="chat-list"
+                    hx-get="/partials/workspace/{{.Data.Workspace.ID}}/chats"
+                    hx-trigger="load"
+                    hx-swap="innerHTML"
+                >
+                    {{template "loading" (dict "ID" "chat-list-loading")}}
+                </nav>
+
+                <footer>
+                    <button
+                        hx-get="/partials/chat/create-form?workspace_id={{.Data.Workspace.ID}}"
+                        hx-target="#modal-container"
+                        hx-swap="innerHTML"
+                        class="outline small"
+                    >
+                        + New Chat
+                    </button>
+                </footer>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="chat-main">
+                {{if .Data.Chat}} {{template "chat/view" .}} {{else}} {{template
+                "chat/empty" .}} {{end}}
+            </main>
+
+            <!-- Task Sidebar (for task/bug/epic chats) -->
+            {{with .Data.Chat}}{{if .IsTaskChat}}
+            <aside class="task-sidebar">
+                {{template "chat/task-sidebar" $}}
+            </aside>
+            {{end}}{{end}}
+
+            <!-- Modal container -->
+            <div id="modal-container"></div>
+        </div>
+
+        {{template "footer" .}}
+
+        <script src="/static/js/app.js"></script>
+        <script src="/static/js/chat.js"></script>
+
+        <style>
+            .chat-layout {
+                display: grid;
+                grid-template-columns: 250px 1fr;
+                height: calc(100vh - 60px);
+            }
+
+            .chat-layout.with-task-sidebar {
+                grid-template-columns: 250px 1fr 300px;
+            }
+
+            .chat-sidebar {
+                display: flex;
+                flex-direction: column;
+                border-right: 1px solid var(--muted-border-color);
+                background: var(--card-background-color);
+            }
+
+            .chat-sidebar header {
+                padding: 1rem;
+                border-bottom: 1px solid var(--muted-border-color);
+            }
+
+            .chat-sidebar header input[type="search"] {
+                margin-bottom: 0;
+            }
+
+            .chat-sidebar nav {
+                flex: 1;
+                overflow-y: auto;
+            }
+
+            .chat-sidebar footer {
+                padding: 1rem;
+                border-top: 1px solid var(--muted-border-color);
+            }
+
+            .chat-sidebar footer button {
+                width: 100%;
+                margin-bottom: 0;
+            }
+
+            .chat-main {
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+
+            .task-sidebar {
+                border-left: 1px solid var(--muted-border-color);
+                background: var(--card-background-color);
+                padding: 1rem;
+                overflow-y: auto;
+            }
+
+            @media (max-width: 1024px) {
+                .chat-layout {
+                    grid-template-columns: 1fr;
+                }
+
+                .chat-sidebar,
+                .task-sidebar {
+                    display: none;
+                }
+            }
+
+            /* Chat list styles */
+            .chat-list {
+                list-style: none;
+                margin: 0;
+                padding: 0;
+            }
+        </style>
+    </body>
+</html>
+{{end}} {{define "chat/empty"}}
+<div class="chat-empty">
+    <div class="empty-state">
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="64"
+            height="64"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+        >
+            <path
+                d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+            ></path>
+        </svg>
+        <h3>Select a chat</h3>
+        <p class="text-muted">
+            Choose a chat from the sidebar or start a new conversation.
+        </p>
+    </div>
+</div>
+
+<style>
+    .chat-empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        background: var(--background-color);
+    }
+
+    .chat-empty .empty-state {
+        text-align: center;
+        color: var(--muted-color);
+    }
+
+    .chat-empty .empty-state svg {
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    .chat-empty .empty-state h3 {
+        margin-bottom: 0.5rem;
+    }
+</style>
+{{end}}

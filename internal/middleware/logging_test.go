@@ -481,7 +481,7 @@ func TestLoggingLogFormat(t *testing.T) {
 	e.ServeHTTP(rec, req)
 
 	// Parse log output as JSON
-	var logEntry map[string]interface{}
+	var logEntry map[string]any
 	err := json.Unmarshal(logBuffer.Bytes(), &logEntry)
 	require.NoError(t, err)
 

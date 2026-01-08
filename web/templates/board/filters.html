@@ -1,0 +1,51 @@
+{{define "board/filters"}}
+<div class="board-filters">
+    <select name="type"
+            hx-get="/partials/workspace/{{.Workspace.ID}}/board"
+            hx-target="#board-columns"
+            hx-include="[name='assignee'], [name='priority'], [name='search']">
+        <option value="">All Types</option>
+        <option value="task" {{if eq .Filters.Type "task"}}selected{{end}}>Tasks</option>
+        <option value="bug" {{if eq .Filters.Type "bug"}}selected{{end}}>Bugs</option>
+        <option value="epic" {{if eq .Filters.Type "epic"}}selected{{end}}>Epics</option>
+    </select>
+
+    <select name="assignee"
+            hx-get="/partials/workspace/{{.Workspace.ID}}/board"
+            hx-target="#board-columns"
+            hx-include="[name='type'], [name='priority'], [name='search']">
+        <option value="">All Assignees</option>
+        <option value="unassigned" {{if eq .Filters.Assignee "unassigned"}}selected{{end}}>
+            Unassigned
+        </option>
+        <option value="me" {{if eq .Filters.Assignee "me"}}selected{{end}}>
+            Assigned to me
+        </option>
+        {{range .Members}}
+        <option value="{{.UserID}}" {{if eq .UserID $.Filters.Assignee}}selected{{end}}>
+            {{.Username}}
+        </option>
+        {{end}}
+    </select>
+
+    <select name="priority"
+            hx-get="/partials/workspace/{{.Workspace.ID}}/board"
+            hx-target="#board-columns"
+            hx-include="[name='type'], [name='assignee'], [name='search']">
+        <option value="">All Priorities</option>
+        <option value="critical" {{if eq .Filters.Priority "critical"}}selected{{end}}>Critical</option>
+        <option value="high" {{if eq .Filters.Priority "high"}}selected{{end}}>High</option>
+        <option value="medium" {{if eq .Filters.Priority "medium"}}selected{{end}}>Medium</option>
+        <option value="low" {{if eq .Filters.Priority "low"}}selected{{end}}>Low</option>
+    </select>
+
+    <input type="search"
+           name="search"
+           placeholder="Search tasks..."
+           value="{{.Filters.Search}}"
+           hx-get="/partials/workspace/{{.Workspace.ID}}/board"
+           hx-target="#board-columns"
+           hx-trigger="input changed delay:300ms"
+           hx-include="[name='type'], [name='assignee'], [name='priority']">
+</div>
+{{end}}

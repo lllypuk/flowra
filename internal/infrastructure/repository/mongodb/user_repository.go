@@ -2,6 +2,8 @@ package mongodb
 
 import (
 	"context"
+	"errors"
+	"log/slog"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -16,13 +18,31 @@ import (
 // MongoUserRepository реализует userapp.Repository (application layer interface)
 type MongoUserRepository struct {
 	collection *mongo.Collection
+	logger     *slog.Logger
+}
+
+// UserRepoOption configures MongoUserRepository.
+type UserRepoOption func(*MongoUserRepository)
+
+// WithUserRepoLogger sets the logger for user repository.
+func WithUserRepoLogger(logger *slog.Logger) UserRepoOption {
+	return func(r *MongoUserRepository) {
+		r.logger = logger
+	}
 }
 
 // NewMongoUserRepository создает новый MongoDB User Repository
-func NewMongoUserRepository(collection *mongo.Collection) *MongoUserRepository {
-	return &MongoUserRepository{
+func NewMongoUserRepository(collection *mongo.Collection, opts ...UserRepoOption) *MongoUserRepository {
+	r := &MongoUserRepository{
 		collection: collection,
+		logger:     slog.Default(),
 	}
+
+	for _, opt := range opts {
+		opt(r)
+	}
+
+	return r
 }
 
 // FindByID находит пользователя по ID
@@ -35,6 +55,12 @@ func (r *MongoUserRepository) FindByID(ctx context.Context, id uuid.UUID) (*user
 	var doc userDocument
 	err := r.collection.FindOne(ctx, filter).Decode(&doc)
 	if err != nil {
+		if !errors.Is(err, mongo.ErrNoDocuments) {
+			r.logger.ErrorContext(ctx, "failed to find user by ID",
+				slog.String("user_id", id.String()),
+				slog.String("error", err.Error()),
+			)
+		}
 		return nil, HandleMongoError(err, "user")
 	}
 
@@ -51,6 +77,12 @@ func (r *MongoUserRepository) FindByExternalID(ctx context.Context, externalID s
 	var doc userDocument
 	err := r.collection.FindOne(ctx, filter).Decode(&doc)
 	if err != nil {
+		if !errors.Is(err, mongo.ErrNoDocuments) {
+			r.logger.ErrorContext(ctx, "failed to find user by external ID",
+				slog.String("external_id", externalID),
+				slog.String("error", err.Error()),
+			)
+		}
 		return nil, HandleMongoError(err, "user")
 	}
 
@@ -149,6 +181,13 @@ func (r *MongoUserRepository) Save(ctx context.Context, user *userdomain.User) e
 	update := bson.M{"$set": doc}
 
 	_, err := r.collection.UpdateOne(ctx, filter, update, UpsertOptions())
+	if err != nil {
+		r.logger.ErrorContext(ctx, "failed to save user",
+			slog.String("user_id", user.ID().String()),
+			slog.String("email", user.Email()),
+			slog.String("error", err.Error()),
+		)
+	}
 	return HandleMongoError(err, "user")
 }
 
@@ -161,6 +200,10 @@ func (r *MongoUserRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	filter := bson.M{"user_id": id.String()}
 	result, err := r.collection.DeleteOne(ctx, filter)
 	if err != nil {
+		r.logger.ErrorContext(ctx, "failed to delete user",
+			slog.String("user_id", id.String()),
+			slog.String("error", err.Error()),
+		)
 		return HandleMongoError(err, "user")
 	}
 

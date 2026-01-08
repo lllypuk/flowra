@@ -1,7 +1,7 @@
 # HTMX Frontend
 
 **Цель:** Реализовать минимальный работающий UI на HTMX + Pico CSS
-**Статус:** ⏳ Запланировано
+**Статус:** ✅ Завершено
 
 ---
 
@@ -34,24 +34,24 @@
 
 | № | Задача | Файл | Приоритет | Статус |
 |---|--------|------|-----------|--------|
-| 01 | Base Infrastructure | [01-base-infrastructure.md](01-base-infrastructure.md) | 🔴 Critical | ⏳ |
-| 02 | Auth Pages | [02-auth-pages.md](02-auth-pages.md) | 🔴 Critical | ⏳ |
+| 01 | Base Infrastructure | [01-base-infrastructure.md](01-base-infrastructure.md) | 🔴 Critical | ✅ |
+| 02 | Auth Pages | [02-auth-pages.md](02-auth-pages.md) | 🔴 Critical | ✅ |
 
 ### Фаза 2: Core Features
 
 | № | Задача | Файл | Приоритет | Статус |
 |---|--------|------|-----------|--------|
-| 03 | Workspace Pages | [03-workspace-pages.md](03-workspace-pages.md) | 🔴 Critical | ⏳ |
-| 04 | Chat UI | [04-chat-ui.md](04-chat-ui.md) | 🔴 Critical | ⏳ |
-| 05 | Kanban Board | [05-kanban-board.md](05-kanban-board.md) | 🟡 High | ⏳ |
+| 03 | Workspace Pages | [03-workspace-pages.md](03-workspace-pages.md) | 🔴 Critical | ✅ |
+| 04 | Chat UI | [04-chat-ui.md](04-chat-ui.md) | 🔴 Critical | ✅ |
+| 05 | Kanban Board | [05-kanban-board.md](05-kanban-board.md) | 🟡 High | ✅ |
 
 ### Фаза 3: Task Management & Polish
 
 | № | Задача | Файл | Приоритет | Статус |
 |---|--------|------|-----------|--------|
-| 06 | Task Details | [06-task-details.md](06-task-details.md) | 🟡 High | ⏳ |
-| 07 | Notifications | [07-notifications.md](07-notifications.md) | 🟢 Medium | ⏳ |
-| 08 | Polish & Testing | [08-polish.md](08-polish.md) | 🟢 Medium | ⏳ |
+| 06 | Task Details | [06-task-details.md](06-task-details.md) | 🟡 High | ✅ |
+| 07 | Notifications | [07-notifications.md](07-notifications.md) | 🟢 Medium | ✅ |
+| 08 | Polish & Testing | [08-polish.md](08-polish.md) | 🟢 Medium | ✅ |
 
 ---
 
@@ -239,26 +239,26 @@ partials.GET("/tasks/:id", h.TaskCardPartial)
 
 ### Функциональные требования
 
-- [ ] Пользователь может войти через Keycloak
-- [ ] CRUD операции с workspaces через UI
-- [ ] Real-time чат с WebSocket
-- [ ] Kanban board с drag-n-drop
-- [ ] Inline редактирование задач
-- [ ] Real-time notifications
+- [x] Пользователь может войти через Keycloak
+- [x] CRUD операции с workspaces через UI
+- [x] Real-time чат с WebSocket
+- [x] Kanban board с drag-n-drop
+- [x] Inline редактирование задач
+- [x] Real-time notifications
 
 ### UI/UX Targets
 
-- [ ] Время загрузки страницы < 500ms
-- [ ] Работает без JavaScript (degraded mode)
-- [ ] Mobile-friendly (responsive)
-- [ ] Accessibility: keyboard navigation
+- [x] Время загрузки страницы < 500ms
+- [x] Работает без JavaScript (degraded mode)
+- [x] Mobile-friendly (responsive)
+- [x] Accessibility: keyboard navigation
 
 ### Code Quality
 
-- [ ] Template coverage: 100% страниц
-- [ ] E2E tests для всех flows
-- [ ] No JavaScript frameworks (только HTMX + vanilla)
-- [ ] CSS < 300 LOC
+- [x] Template coverage: 100% страниц
+- [x] E2E tests для всех flows
+- [x] No JavaScript frameworks (только HTMX + vanilla)
+- [x] CSS < 300 LOC
 
 ---
 
@@ -289,4 +289,4 @@ partials.GET("/tasks/:id", h.TaskCardPartial)
 
 ---
 
-*Обновлено: 2026-01-06*
+*Обновлено: 2026-01-07*

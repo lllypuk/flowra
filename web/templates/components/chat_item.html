@@ -1,0 +1,41 @@
+{{define "chat_item"}}
+<li>
+    <a
+        href="/workspaces/{{.WorkspaceID}}/chats/{{.Chat.ID}}"
+        class="chat-item {{if eq .Chat.ID .ActiveChatID}}active{{end}}"
+        hx-get="/partials/chats/{{.Chat.ID}}"
+        hx-target=".chat-main"
+        hx-push-url="true"
+        hx-swap="innerHTML"
+    >
+        <div class="chat-item-icon">
+            {{if eq .Chat.Type "task"}}
+            <span class="type-icon type-task" title="Task">T</span>
+            {{else if eq .Chat.Type "bug"}}
+            <span class="type-icon type-bug" title="Bug">B</span>
+            {{else if eq .Chat.Type "epic"}}
+            <span class="type-icon type-epic" title="Epic">E</span>
+            {{else}}
+            <span class="type-icon type-discussion" title="Discussion">D</span>
+            {{end}}
+        </div>
+
+        <div class="chat-item-content">
+            <div class="chat-item-title">{{.Chat.Title | truncate 30}}</div>
+            {{if .Chat.LastMessage}}
+            <div class="chat-item-preview text-muted">
+                {{.Chat.LastMessage.AuthorUsername}}:
+                {{.Chat.LastMessage.Content | truncate 40}}
+            </div>
+            {{end}}
+        </div>
+
+        <div class="chat-item-meta">
+            {{if gt .Chat.UnreadCount 0}}
+            <span class="badge">{{.Chat.UnreadCount}}</span>
+            {{end}}
+            <small class="text-muted">{{.Chat.UpdatedAt | timeAgo}}</small>
+        </div>
+    </a>
+</li>
+{{end}}

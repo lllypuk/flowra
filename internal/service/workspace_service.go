@@ -92,11 +92,12 @@ func NewWorkspaceService(cfg WorkspaceServiceConfig) *WorkspaceService {
 func (s *WorkspaceService) CreateWorkspace(
 	ctx context.Context,
 	ownerID uuid.UUID,
-	name, _ string,
+	name, description string,
 ) (*workspace.Workspace, error) {
 	result, err := s.createUC.Execute(ctx, wsapp.CreateWorkspaceCommand{
-		Name:      name,
-		CreatedBy: ownerID,
+		Name:        name,
+		Description: description,
+		CreatedBy:   ownerID,
 	})
 	if err != nil {
 		return nil, err
