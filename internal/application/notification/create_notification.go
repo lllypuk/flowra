@@ -8,12 +8,12 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/notification"
 )
 
-// CreateNotificationUseCase обрабатывает создание notification
+// CreateNotificationUseCase handles notification creation
 type CreateNotificationUseCase struct {
 	notificationRepo Repository
 }
 
-// NewCreateNotificationUseCase создает новый use case для создания notification
+// NewCreateNotificationUseCase creates New use case for creating notification
 func NewCreateNotificationUseCase(
 	notificationRepo Repository,
 ) *CreateNotificationUseCase {
@@ -22,17 +22,17 @@ func NewCreateNotificationUseCase(
 	}
 }
 
-// Execute выполняет создание notification
+// Execute performs notification creation
 func (uc *CreateNotificationUseCase) Execute(
 	ctx context.Context,
 	cmd CreateNotificationCommand,
 ) (Result, error) {
-	// Валидация
+	// validation
 	if err := uc.validate(cmd); err != nil {
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Создание notification
+	// notification creation
 	notif, err := notification.NewNotification(
 		cmd.UserID,
 		cmd.Type,
@@ -44,7 +44,7 @@ func (uc *CreateNotificationUseCase) Execute(
 		return Result{}, fmt.Errorf("failed to create notification: %w", err)
 	}
 
-	// Сохранение
+	// storage
 	if saveErr := uc.notificationRepo.Save(ctx, notif); saveErr != nil {
 		return Result{}, fmt.Errorf("failed to save notification: %w", saveErr)
 	}
@@ -56,7 +56,7 @@ func (uc *CreateNotificationUseCase) Execute(
 	}, nil
 }
 
-// validate проверяет валидность команды
+// validate validates commands
 func (uc *CreateNotificationUseCase) validate(cmd CreateNotificationCommand) error {
 	if err := appcore.ValidateUUID("userID", cmd.UserID); err != nil {
 		return err

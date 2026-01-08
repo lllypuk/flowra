@@ -9,13 +9,13 @@ import (
 
 // ===== Query Definitions =====
 
-// GetChatQuery - запрос на получение чата
+// GetChatQuery - request to retrieve a chat
 type GetChatQuery struct {
 	ChatID      uuid.UUID
-	RequestedBy uuid.UUID // для проверки доступа
+	RequestedBy uuid.UUID // for access verification
 }
 
-// ListChatsQuery - запрос на список чатов
+// ListChatsQuery - request to retrieve a list of chats
 type ListChatsQuery struct {
 	WorkspaceID uuid.UUID
 	Type        *chat.Type // optional filter
@@ -24,7 +24,7 @@ type ListChatsQuery struct {
 	RequestedBy uuid.UUID
 }
 
-// ListParticipantsQuery - запрос на список участников
+// ListParticipantsQuery - request to retrieve a list of participants
 type ListParticipantsQuery struct {
 	ChatID      uuid.UUID
 	RequestedBy uuid.UUID
@@ -32,27 +32,27 @@ type ListParticipantsQuery struct {
 
 // ===== Result Definitions =====
 
-// GetChatResult - результат получения чата
+// GetChatResult - result of retrieving a chat
 type GetChatResult struct {
 	Chat        *Chat
 	Permissions Permissions // read/write/admin
 }
 
-// ListChatsResult - результат списка чатов
+// ListChatsResult - result of retrieving a list of chats
 type ListChatsResult struct {
 	Chats   []Chat `json:"chats"`
 	Total   int    `json:"total"`
 	HasMore bool   `json:"has_more"`
 }
 
-// ListParticipantsResult - результат списка участников
+// ListParticipantsResult - result of retrieving a list of participants
 type ListParticipantsResult struct {
 	Participants []Participant `json:"participants"`
 }
 
 // ===== DTOs =====
 
-// Chat - Data Transfer Object для чата
+// Chat - Data Transfer Object for a chat
 type Chat struct {
 	ID          uuid.UUID `json:"id"`
 	WorkspaceID uuid.UUID `json:"workspace_id"`
@@ -76,14 +76,14 @@ type Chat struct {
 	Participants []Participant `json:"participants"`
 }
 
-// Permissions - права пользователя на чат
+// Permissions - user permissions for a chat
 type Permissions struct {
 	CanRead   bool `json:"can_read"`
 	CanWrite  bool `json:"can_write"`
 	CanManage bool `json:"can_manage"` // admin rights
 }
 
-// Participant - участник чата
+// Participant - a chat participant
 type Participant struct {
 	UserID   uuid.UUID `json:"user_id"`
 	Role     chat.Role `json:"role"`

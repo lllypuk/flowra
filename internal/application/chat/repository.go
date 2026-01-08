@@ -9,7 +9,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// ReadModel представляет read model для чата (материализованное представление)
+// ReadModel represents the read model for chat (materialized view)
 type ReadModel struct {
 	ID            uuid.UUID
 	WorkspaceID   uuid.UUID
@@ -23,48 +23,48 @@ type ReadModel struct {
 	Participants  []chat.Participant
 }
 
-// Filters представляет фильтры для поиска чатов
+// Filters represents filters for searching chats
 type Filters struct {
 	Type     *chat.Type
 	IsPublic *bool
-	UserID   *uuid.UUID // участник
+	UserID   *uuid.UUID // participant
 	Offset   int
 	Limit    int
 }
 
-// CommandRepository определяет интерфейс для команд (изменение состояния) чатов
-// Интерфейс объявлен на стороне потребителя (application layer)
-// Использует Event Sourcing pattern
+// CommandRepository defines the interface for commands (state changes) of chats
+// Interface is declared on the consumer side (application layer)
+// Uses Event Sourcing pattern
 type CommandRepository interface {
-	// Load загружает Chat из event store путем восстановления состояния из событий
+	// Load loads Chat from event store by reconstructing state from events
 	Load(ctx context.Context, chatID uuid.UUID) (*chat.Chat, error)
 
-	// Save сохраняет новые события Chat в event store
+	// Save saves new Chat events in event store
 	Save(ctx context.Context, c *chat.Chat) error
 
-	// GetEvents возвращает все события чата
+	// GetEvents returns all events of a chat
 	GetEvents(ctx context.Context, chatID uuid.UUID) ([]event.DomainEvent, error)
 }
 
-// QueryRepository определяет интерфейс для запросов (только чтение) чатов
-// Интерфейс объявлен на стороне потребителя (application layer)
-// Использует Read Model для быстрых запросов
+// QueryRepository defines the interface for queries (read-only) of chats
+// Interface is declared on the consumer side (application layer)
+// Uses Read Model for fast queries
 type QueryRepository interface {
-	// FindByID находит чат по ID (из read model)
+	// FindByID finds a chat by ID (from read model)
 	FindByID(ctx context.Context, chatID uuid.UUID) (*ReadModel, error)
 
-	// FindByWorkspace находит чаты workspace с фильтрами
+	// FindByWorkspace finds workspace chats with filters
 	FindByWorkspace(ctx context.Context, workspaceID uuid.UUID, filters Filters) ([]*ReadModel, error)
 
-	// FindByParticipant находит чаты пользователя
+	// FindByParticipant finds user chats
 	FindByParticipant(ctx context.Context, userID uuid.UUID, offset, limit int) ([]*ReadModel, error)
 
-	// Count возвращает общее количество чатов в workspace
+	// Count returns the total number of chats in a workspace
 	Count(ctx context.Context, workspaceID uuid.UUID) (int, error)
 }
 
-// Repository объединяет Command и Query интерфейсы для удобства
-// Используется когда use case нужны оба типа операций
+// Repository combines Command and Query interfaces for convenience
+// Used when use case needs both types of operations
 type Repository interface {
 	CommandRepository
 	QueryRepository

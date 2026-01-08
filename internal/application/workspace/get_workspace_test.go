@@ -15,7 +15,7 @@ func TestGetWorkspaceUseCase_Execute_Success(t *testing.T) {
 	repo := newMockWorkspaceRepository()
 	useCase := workspace.NewGetWorkspaceUseCase(repo)
 
-	// Создаем workspace
+	// Creating workspace
 	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
 	_ = repo.Save(context.Background(), ws)
 

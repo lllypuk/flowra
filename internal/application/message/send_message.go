@@ -12,12 +12,12 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// ChatRepository определяет интерфейс для доступа к чатам (consumer-side interface)
+// ChatRepository defines interface for access to чатам (consumer-side interface)
 type ChatRepository interface {
 	FindByID(ctx context.Context, chatID uuid.UUID) (*chatapp.ReadModel, error)
 }
 
-// SendMessageUseCase обрабатывает отправку сообщения
+// SendMessageUseCase handles sendу messages
 type SendMessageUseCase struct {
 	messageRepo  Repository
 	chatRepo     ChatRepository
@@ -26,7 +26,7 @@ type SendMessageUseCase struct {
 	tagExecutor  *tag.CommandExecutor // Tag executor for executing tag commands
 }
 
-// NewSendMessageUseCase создает новый SendMessageUseCase
+// NewSendMessageUseCase creates New SendMessageUseCase
 func NewSendMessageUseCase(
 	messageRepo Repository,
 	chatRepo ChatRepository,
@@ -43,41 +43,41 @@ func NewSendMessageUseCase(
 	}
 }
 
-// Execute выполняет отправку сообщения
+// Execute performs sendу messages
 func (uc *SendMessageUseCase) Execute(
 	ctx context.Context,
 	cmd SendMessageCommand,
 ) (Result, error) {
-	// 1. Валидация
+	// 1. validation
 	if err := uc.validate(cmd); err != nil {
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// 2. Проверка доступа к чату
+	// 2. check access to chat
 	chatReadModel, err := uc.chatRepo.FindByID(ctx, cmd.ChatID)
 	if err != nil {
 		return Result{}, ErrChatNotFound
 	}
 
-	// Проверяем, что пользователь является участником чата
+	// Checking, that userель is участником chat
 	if !uc.isParticipant(chatReadModel, cmd.AuthorID) {
 		return Result{}, ErrNotChatParticipant
 	}
 
-	// 3. Проверка parent message (если это reply)
+	// 3. check parent message (if it is reply)
 	if !cmd.ParentMessageID.IsZero() {
 		parent, parentErr := uc.messageRepo.FindByID(ctx, cmd.ParentMessageID)
 		if parentErr != nil {
 			return Result{}, ErrParentNotFound
 		}
-		// Проверка, что parent в том же чате
+		// check, that parent in том же чате
 		if parent.ChatID() != cmd.ChatID {
 			return Result{}, ErrParentInDifferentChat
 		}
 	}
 
-	// 4. Создание сообщения
-	// 2. Создаем сообщение
+	// 4. creation messages
+	// 2. Creating message
 	msg, err := messagedomain.NewMessage(
 		cmd.ChatID,
 		cmd.AuthorID,
@@ -88,12 +88,12 @@ func (uc *SendMessageUseCase) Execute(
 		return Result{}, fmt.Errorf("failed to create message: %w", err)
 	}
 
-	// 5. Сохранение
+	// 5. storage
 	if saveErr := uc.messageRepo.Save(ctx, msg); saveErr != nil {
 		return Result{}, fmt.Errorf("failed to save message: %w", saveErr)
 	}
 
-	// 6. Публикация события (для WebSocket broadcast)
+	// 6. Publishing event (for WebSocket broadcast)
 	evt := messagedomain.NewCreated(
 		msg.ID(),
 		cmd.ChatID,
@@ -105,11 +105,11 @@ func (uc *SendMessageUseCase) Execute(
 			Timestamp: msg.CreatedAt(),
 		},
 	)
-	// Не критично, сообщение уже сохранено
+	// not критично, message уже savено
 	// TODO: log error
 	_ = uc.eventBus.Publish(ctx, evt)
 
-	// 7. Асинхронная обработка тегов (не блокируем ответ)
+	// 7. Асинхронная handling тегов (not блокируем response)
 	if uc.tagProcessor != nil && uc.tagExecutor != nil {
 		go uc.processTagsAsync(ctx, msg, cmd.AuthorID)
 	}
@@ -144,8 +144,8 @@ func (uc *SendMessageUseCase) isParticipant(chatReadModel *chatapp.ReadModel, us
 	return false
 }
 
-// processTagsAsync обрабатывает теги в содержимом сообщения асинхронно
-// Выполняется в горутине для того чтобы не блокировать основной ответ
+// processTagsAsync handles tags in содержимом messages asynchronously
+// Выполняется in горутине for того чтобы not блокировать основной response
 func (uc *SendMessageUseCase) processTagsAsync(
 	ctx context.Context,
 	msg *messagedomain.Message,
@@ -180,5 +180,5 @@ func (uc *SendMessageUseCase) processTagsAsync(
 		// For now just ignore the error
 	}
 
-	// TODO: форматирование результатов через tag.Formatter и отправка reply
+	// TODO: форматирование результатов via tag.Formatter and sendа reply
 }

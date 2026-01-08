@@ -14,13 +14,13 @@ const (
 	noneUsername = "@none"
 )
 
-// CommandExecutor выполняет tag команды через Chat UseCases
+// CommandExecutor performs tag commands via Chat UseCases
 type CommandExecutor struct {
 	chatUseCases *ChatUseCases
 	userRepo     UserRepository
 }
 
-// NewCommandExecutor создает новый CommandExecutor
+// NewCommandExecutor creates New CommandExecutor
 func NewCommandExecutor(
 	chatUseCases *ChatUseCases,
 	userRepo UserRepository,
@@ -31,7 +31,7 @@ func NewCommandExecutor(
 	}
 }
 
-// Execute выполняет команду
+// Execute performs команду
 func (e *CommandExecutor) Execute(ctx context.Context, cmd Command, actorID uuid.UUID) error {
 	switch c := cmd.(type) {
 	case CreateTaskCommand:
@@ -57,7 +57,7 @@ func (e *CommandExecutor) Execute(ctx context.Context, cmd Command, actorID uuid
 	}
 }
 
-// executeCreateTask выполняет команду создания Task через UseCase
+// executeCreateTask performs команду creating Task via UseCase
 func (e *CommandExecutor) executeCreateTask(ctx context.Context, cmd CreateTaskCommand, actorID uuid.UUID) error {
 	usecaseCmd := chatApp.ConvertToTaskCommand{
 		ChatID:      domainUUID.FromGoogleUUID(cmd.ChatID),
@@ -73,7 +73,7 @@ func (e *CommandExecutor) executeCreateTask(ctx context.Context, cmd CreateTaskC
 	return nil
 }
 
-// executeCreateBug выполняет команду создания Bug через UseCase
+// executeCreateBug performs команду creating Bug via UseCase
 func (e *CommandExecutor) executeCreateBug(ctx context.Context, cmd CreateBugCommand, actorID uuid.UUID) error {
 	usecaseCmd := chatApp.ConvertToBugCommand{
 		ChatID:      domainUUID.FromGoogleUUID(cmd.ChatID),
@@ -89,7 +89,7 @@ func (e *CommandExecutor) executeCreateBug(ctx context.Context, cmd CreateBugCom
 	return nil
 }
 
-// executeCreateEpic выполняет команду создания Epic через UseCase
+// executeCreateEpic performs команду creating Epic via UseCase
 func (e *CommandExecutor) executeCreateEpic(ctx context.Context, cmd CreateEpicCommand, actorID uuid.UUID) error {
 	usecaseCmd := chatApp.ConvertToEpicCommand{
 		ChatID:      domainUUID.FromGoogleUUID(cmd.ChatID),
@@ -105,7 +105,7 @@ func (e *CommandExecutor) executeCreateEpic(ctx context.Context, cmd CreateEpicC
 	return nil
 }
 
-// executeChangeStatus выполняет команду изменения статуса через UseCase
+// executeChangeStatus performs команду changing status via UseCase
 func (e *CommandExecutor) executeChangeStatus(ctx context.Context, cmd ChangeStatusCommand, actorID uuid.UUID) error {
 	usecaseCmd := chatApp.ChangeStatusCommand{
 		ChatID:    domainUUID.FromGoogleUUID(cmd.ChatID),
@@ -121,9 +121,9 @@ func (e *CommandExecutor) executeChangeStatus(ctx context.Context, cmd ChangeSta
 	return nil
 }
 
-// executeAssignUser выполняет команду назначения пользователя через UseCase
+// executeAssignUser performs команду наvalueения user via UseCase
 func (e *CommandExecutor) executeAssignUser(ctx context.Context, cmd AssignUserCommand, actorID uuid.UUID) error {
-	// Резолвинг пользователя по username
+	// Резолвинг user по username
 	var assigneeID *domainUUID.UUID
 	if cmd.Username != "" && cmd.Username != noneUsername {
 		username := strings.TrimPrefix(cmd.Username, "@")
@@ -149,7 +149,7 @@ func (e *CommandExecutor) executeAssignUser(ctx context.Context, cmd AssignUserC
 	return nil
 }
 
-// executeChangePriority выполняет команду изменения приоритета через UseCase
+// executeChangePriority performs команду changing priority via UseCase
 func (e *CommandExecutor) executeChangePriority(
 	ctx context.Context,
 	cmd ChangePriorityCommand,
@@ -169,7 +169,7 @@ func (e *CommandExecutor) executeChangePriority(
 	return nil
 }
 
-// executeSetDueDate выполняет команду установки дедлайна через UseCase
+// executeSetDueDate performs команду setting deadline via UseCase
 func (e *CommandExecutor) executeSetDueDate(ctx context.Context, cmd SetDueDateCommand, actorID uuid.UUID) error {
 	usecaseCmd := chatApp.SetDueDateCommand{
 		ChatID:  domainUUID.FromGoogleUUID(cmd.ChatID),
@@ -185,7 +185,7 @@ func (e *CommandExecutor) executeSetDueDate(ctx context.Context, cmd SetDueDateC
 	return nil
 }
 
-// executeChangeTitle выполняет команду изменения названия через UseCase
+// executeChangeTitle performs команду changing названия via UseCase
 func (e *CommandExecutor) executeChangeTitle(ctx context.Context, cmd ChangeTitleCommand, actorID uuid.UUID) error {
 	usecaseCmd := chatApp.RenameChatCommand{
 		ChatID:    domainUUID.FromGoogleUUID(cmd.ChatID),
@@ -201,11 +201,11 @@ func (e *CommandExecutor) executeChangeTitle(ctx context.Context, cmd ChangeTitl
 	return nil
 }
 
-// executeSetSeverity выполняет команду установки severity через UseCase
+// executeSetSeverity performs команду setting severity via UseCase
 func (e *CommandExecutor) executeSetSeverity(ctx context.Context, cmd SetSeverityCommand, actorID uuid.UUID) error {
 	usecaseCmd := chatApp.SetSeverityCommand{
 		ChatID:   domainUUID.FromGoogleUUID(cmd.ChatID),
-		Severity: cmd.Severity,
+		severity: cmd.severity,
 		SetBy:    domainUUID.FromGoogleUUID(actorID),
 	}
 

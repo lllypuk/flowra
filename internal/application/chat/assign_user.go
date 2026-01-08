@@ -7,19 +7,19 @@ import (
 	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
-// AssignUserUseCase обрабатывает назначение пользователя на чат
+// AssignUserUseCase handles assigning a user to a chat
 type AssignUserUseCase struct {
 	eventStore appcore.EventStore
 }
 
-// NewAssignUserUseCase создает новый AssignUserUseCase
+// NewAssignUserUseCase creates a new AssignUserUseCase
 func NewAssignUserUseCase(eventStore appcore.EventStore) *AssignUserUseCase {
 	return &AssignUserUseCase{
 		eventStore: eventStore,
 	}
 }
 
-// Execute выполняет назначение пользователя
+// Execute performs assigning a user
 func (uc *AssignUserUseCase) Execute(ctx context.Context, cmd AssignUserCommand) (Result, error) {
 	if err := uc.validate(cmd); err != nil {
 		return Result{}, fmt.Errorf("validation failed: %w", err)

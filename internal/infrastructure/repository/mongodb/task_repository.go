@@ -36,7 +36,7 @@ func WithTaskRepoLogger(logger *slog.Logger) TaskRepoOption {
 	}
 }
 
-// NewMongoTaskRepository создает новый MongoDB Task Repository
+// NewMongoTaskRepository creates New MongoDB Task Repository
 func NewMongoTaskRepository(
 	eventStore appcore.EventStore,
 	readModelColl *mongo.Collection,
@@ -55,13 +55,13 @@ func NewMongoTaskRepository(
 	return r
 }
 
-// Load загружает Task из event store путем восстановления состояния из событий
+// Load loads Task from event store путем reconstruction state from events
 func (r *MongoTaskRepository) Load(ctx context.Context, taskID uuid.UUID) (*taskdomain.Aggregate, error) {
 	if taskID.IsZero() {
 		return nil, errs.ErrInvalidInput
 	}
 
-	// Загружаем события из event store
+	// Loading event from event store
 	events, err := r.eventStore.LoadEvents(ctx, taskID.String())
 	if err != nil {
 		if errors.Is(err, appcore.ErrAggregateNotFound) {
@@ -78,17 +78,17 @@ func (r *MongoTaskRepository) Load(ctx context.Context, taskID uuid.UUID) (*task
 		return nil, errs.ErrNotFound
 	}
 
-	// Создаем агрегат и применяем события
+	// Creating aggregate and применяем event
 	aggregate := taskdomain.NewTaskAggregate(taskID)
 	aggregate.ReplayEvents(events)
 
-	// Помечаем события как committed
+	// Помечаем event as committed
 	aggregate.MarkEventsAsCommitted()
 
 	return aggregate, nil
 }
 
-// Save сохраняет новые события Task в event store и обновляет read model
+// Save saves новые event Task in event store and обновляет read model
 func (r *MongoTaskRepository) Save(ctx context.Context, task *taskdomain.Aggregate) error {
 	if task == nil {
 		return errs.ErrInvalidInput
@@ -96,10 +96,10 @@ func (r *MongoTaskRepository) Save(ctx context.Context, task *taskdomain.Aggrega
 
 	uncommittedEvents := task.UncommittedEvents()
 	if len(uncommittedEvents) == 0 {
-		return nil // Нечего сохранять
+		return nil // Нечего savять
 	}
 
-	// 1. Сохраняем события в event store
+	// 1. Saving event in event store
 	expectedVersion := task.Version() - len(uncommittedEvents)
 	err := r.eventStore.SaveEvents(ctx, task.ID().String(), uncommittedEvents, expectedVersion)
 	if err != nil {
@@ -119,22 +119,22 @@ func (r *MongoTaskRepository) Save(ctx context.Context, task *taskdomain.Aggrega
 		return fmt.Errorf("failed to save events: %w", err)
 	}
 
-	// 2. Обновляем read model
+	// 2. Updating read model
 	if updateErr := r.updateReadModel(ctx, task); updateErr != nil {
 		r.logger.ErrorContext(ctx, "failed to update task read model",
 			slog.String("task_id", task.ID().String()),
 			slog.String("error", updateErr.Error()),
 		)
-		// Не падаем - read model можно пересчитать
+		// not падаем - read model можно пересчитать
 	}
 
-	// 3. Помечаем события как committed
+	// 3. Помечаем event as committed
 	task.MarkEventsAsCommitted()
 
 	return nil
 }
 
-// GetEvents возвращает все события задачи
+// GetEvents returns all event tasks
 func (r *MongoTaskRepository) GetEvents(ctx context.Context, taskID uuid.UUID) ([]event.DomainEvent, error) {
 	if taskID.IsZero() {
 		return nil, errs.ErrInvalidInput
@@ -151,7 +151,7 @@ func (r *MongoTaskRepository) GetEvents(ctx context.Context, taskID uuid.UUID) (
 	return events, nil
 }
 
-// updateReadModel обновляет денормализованное представление в read model
+// updateReadModel обновляет денормализованное view in read model
 func (r *MongoTaskRepository) updateReadModel(ctx context.Context, task *taskdomain.Aggregate) error {
 	if task.ID().IsZero() {
 		return errs.ErrInvalidInput
@@ -195,7 +195,7 @@ type MongoTaskQueryRepository struct {
 	eventStore appcore.EventStore
 }
 
-// NewMongoTaskQueryRepository создает новый MongoDB Task Query Repository
+// NewMongoTaskQueryRepository creates New MongoDB Task Query Repository
 func NewMongoTaskQueryRepository(
 	collection *mongo.Collection,
 	eventStore appcore.EventStore,
@@ -206,7 +206,7 @@ func NewMongoTaskQueryRepository(
 	}
 }
 
-// FindByID находит задачу по ID из read model
+// FindByID finds задачу по ID from read model
 func (r *MongoTaskQueryRepository) FindByID(ctx context.Context, taskID uuid.UUID) (*taskapp.ReadModel, error) {
 	if taskID.IsZero() {
 		return nil, errs.ErrInvalidInput
@@ -222,7 +222,7 @@ func (r *MongoTaskQueryRepository) FindByID(ctx context.Context, taskID uuid.UUI
 	return r.documentToReadModel(&doc)
 }
 
-// FindByChatID находит задачу по ID чата
+// FindByChatID finds задачу по ID chat
 func (r *MongoTaskQueryRepository) FindByChatID(ctx context.Context, chatID uuid.UUID) (*taskapp.ReadModel, error) {
 	if chatID.IsZero() {
 		return nil, errs.ErrInvalidInput
@@ -238,7 +238,7 @@ func (r *MongoTaskQueryRepository) FindByChatID(ctx context.Context, chatID uuid
 	return r.documentToReadModel(&doc)
 }
 
-// FindByAssignee находит задачи назначенные пользователю
+// FindByAssignee finds tasks наvalueенные user
 func (r *MongoTaskQueryRepository) FindByAssignee(
 	ctx context.Context,
 	assigneeID uuid.UUID,
@@ -254,7 +254,7 @@ func (r *MongoTaskQueryRepository) FindByAssignee(
 	return r.findMany(ctx, filter, filters)
 }
 
-// FindByStatus находит задачи с определенным статусом
+// FindByStatus finds tasks с определенным статусом
 func (r *MongoTaskQueryRepository) FindByStatus(
 	ctx context.Context,
 	status taskdomain.Status,
@@ -266,7 +266,7 @@ func (r *MongoTaskQueryRepository) FindByStatus(
 	return r.findMany(ctx, filter, filters)
 }
 
-// List возвращает список задач с фильтрами
+// List returns list задач с фильтрами
 func (r *MongoTaskQueryRepository) List(ctx context.Context, filters taskapp.Filters) ([]*taskapp.ReadModel, error) {
 	filter := bson.M{}
 	r.applyFilters(filter, filters)
@@ -274,7 +274,7 @@ func (r *MongoTaskQueryRepository) List(ctx context.Context, filters taskapp.Fil
 	return r.findMany(ctx, filter, filters)
 }
 
-// Count возвращает количество задач с фильтрами
+// Count returns count задач с фильтрами
 func (r *MongoTaskQueryRepository) Count(ctx context.Context, filters taskapp.Filters) (int, error) {
 	filter := bson.M{}
 	r.applyFilters(filter, filters)
@@ -287,7 +287,7 @@ func (r *MongoTaskQueryRepository) Count(ctx context.Context, filters taskapp.Fi
 	return int(count), nil
 }
 
-// applyFilters применяет фильтры к MongoDB запросу
+// applyFilters применяет filters to MongoDB query
 func (r *MongoTaskQueryRepository) applyFilters(filter bson.M, filters taskapp.Filters) {
 	if filters.ChatID != nil {
 		filter["chat_id"] = filters.ChatID.String()
@@ -309,13 +309,13 @@ func (r *MongoTaskQueryRepository) applyFilters(filter bson.M, filters taskapp.F
 	}
 }
 
-// findMany выполняет поиск с пагинацией
+// findMany performs search с пагинацией
 func (r *MongoTaskQueryRepository) findMany(
 	ctx context.Context,
 	filter bson.M,
 	filters taskapp.Filters,
 ) ([]*taskapp.ReadModel, error) {
-	// Применяем дефолтный лимит если не указан
+	// Применяем дефолтный лимит if not указан
 	limit := DefaultLimitWithMax(filters.Limit, DefaultPaginationLimit, MaxPaginationLimit)
 
 	opts := options.Find().
@@ -355,7 +355,7 @@ func (r *MongoTaskQueryRepository) findMany(
 	return results, nil
 }
 
-// taskReadModelDocument структура документа read model
+// taskReadModelDocument struct документа read model
 type taskReadModelDocument struct {
 	TaskID     string     `bson:"task_id"`
 	ChatID     string     `bson:"chat_id"`
@@ -370,7 +370,7 @@ type taskReadModelDocument struct {
 	Version    int        `bson:"version"`
 }
 
-// documentToReadModel преобразует документ в ReadModel
+// documentToReadModel преобразует документ in ReadModel
 func (r *MongoTaskQueryRepository) documentToReadModel(doc *taskReadModelDocument) (*taskapp.ReadModel, error) {
 	if doc == nil {
 		return nil, errs.ErrInvalidInput
@@ -400,13 +400,13 @@ func (r *MongoTaskQueryRepository) documentToReadModel(doc *taskReadModelDocumen
 	return rm, nil
 }
 
-// MongoTaskFullRepository объединяет Command и Query репозитории
+// MongoTaskFullRepository combines Command and Query репозитории
 type MongoTaskFullRepository struct {
 	*MongoTaskRepository
 	*MongoTaskQueryRepository
 }
 
-// NewMongoTaskFullRepository создает полный репозиторий
+// NewMongoTaskFullRepository creates full репозиторий
 func NewMongoTaskFullRepository(
 	eventStore appcore.EventStore,
 	readModelColl *mongo.Collection,

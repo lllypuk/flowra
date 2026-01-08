@@ -8,16 +8,16 @@ import (
 )
 
 const (
-	// maxNotificationsToMarkAsRead - максимальное количество notifications для пометки как прочитанных за один раз
+	// maxNotificationsToMarkAsRead - максимальное count notifications for пометки as прочитанных за one раз
 	maxNotificationsToMarkAsRead = 1000
 )
 
-// MarkAllAsReadUseCase обрабатывает пометку всех notifications пользователя как прочитанных
+// MarkAllAsReadUseCase handles пометку all notifications user as прочитанных
 type MarkAllAsReadUseCase struct {
 	notificationRepo Repository
 }
 
-// NewMarkAllAsReadUseCase создает новый use case для пометки всех notifications как прочитанных
+// NewMarkAllAsReadUseCase creates New use case for пометки all notifications as прочитанных
 func NewMarkAllAsReadUseCase(
 	notificationRepo Repository,
 ) *MarkAllAsReadUseCase {
@@ -26,27 +26,27 @@ func NewMarkAllAsReadUseCase(
 	}
 }
 
-// Execute выполняет пометку всех notifications пользователя как прочитанных
+// Execute performs пометку all notifications user as прочитанных
 func (uc *MarkAllAsReadUseCase) Execute(
 	ctx context.Context,
 	cmd MarkAllAsReadCommand,
 ) (CountResult, error) {
-	// Валидация
+	// validation
 	if err := uc.validate(cmd); err != nil {
 		return CountResult{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Получение всех непрочитанных notifications
+	// retrieval all unread notifications
 	notifications, err := uc.notificationRepo.FindUnreadByUserID(ctx, cmd.UserID, maxNotificationsToMarkAsRead)
 	if err != nil {
 		return CountResult{}, fmt.Errorf("failed to find unread notifications: %w", err)
 	}
 
-	// Пометка всех как прочитанных
+	// Пометка all as прочитанных
 	markedCount := 0
 	for _, notif := range notifications {
 		if markErr := notif.MarkAsRead(); markErr != nil {
-			// Пропускаем уже прочитанные (не должно быть, но на всякий случай)
+			// Пропускаем уже прочитанные (not должно быть, но on всякий случай)
 			continue
 		}
 
@@ -61,7 +61,7 @@ func (uc *MarkAllAsReadUseCase) Execute(
 	}, nil
 }
 
-// validate проверяет валидность команды
+// validate validates commands
 func (uc *MarkAllAsReadUseCase) validate(cmd MarkAllAsReadCommand) error {
 	if err := appcore.ValidateUUID("userID", cmd.UserID); err != nil {
 		return err

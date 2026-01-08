@@ -8,19 +8,19 @@ import (
 	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
-// ChangeStatusUseCase обрабатывает изменение статуса чата
+// ChangeStatusUseCase handles changing chat status
 type ChangeStatusUseCase struct {
 	eventStore appcore.EventStore
 }
 
-// NewChangeStatusUseCase создает новый ChangeStatusUseCase
+// NewChangeStatusUseCase creates a new ChangeStatusUseCase
 func NewChangeStatusUseCase(eventStore appcore.EventStore) *ChangeStatusUseCase {
 	return &ChangeStatusUseCase{
 		eventStore: eventStore,
 	}
 }
 
-// Execute выполняет изменение статуса
+// Execute performs changing status
 func (uc *ChangeStatusUseCase) Execute(ctx context.Context, cmd ChangeStatusCommand) (Result, error) {
 	if err := uc.validate(cmd); err != nil {
 		return Result{}, fmt.Errorf("validation failed: %w", err)

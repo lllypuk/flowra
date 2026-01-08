@@ -10,26 +10,26 @@ import (
 
 const minYear = 2020
 
-// SetDueDateUseCase обрабатывает установку дедлайна задачи
+// SetDueDateUseCase handles установку deadline tasks
 type SetDueDateUseCase struct {
 	baseExecutor *BaseExecutor
 }
 
-// NewSetDueDateUseCase создает новый use case для установки дедлайна
+// NewSetDueDateUseCase creates New use case for setting deadline
 func NewSetDueDateUseCase(eventStore appcore.EventStore) *SetDueDateUseCase {
 	return &SetDueDateUseCase{
 		baseExecutor: NewBaseExecutor(eventStore),
 	}
 }
 
-// Execute устанавливает дедлайн задачи
+// Execute устанавливает дедлайн tasks
 func (uc *SetDueDateUseCase) Execute(ctx context.Context, cmd SetDueDateCommand) (TaskResult, error) {
-	// Валидация команды
+	// validation commands
 	if err := uc.validate(cmd); err != nil {
 		return TaskResult{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Выполнение операции через базовый executor
+	// performing операции via базовый executor
 	return uc.baseExecutor.Execute(
 		ctx,
 		cmd.TaskID,
@@ -40,15 +40,15 @@ func (uc *SetDueDateUseCase) Execute(ctx context.Context, cmd SetDueDateCommand)
 	)
 }
 
-// validate проверяет корректность команды
+// validate checks command correctness
 func (uc *SetDueDateUseCase) validate(cmd SetDueDateCommand) error {
 	if cmd.TaskID.IsZero() {
 		return ErrInvalidTaskID
 	}
 
-	// DueDate может быть nil (снятие дедлайна) — это валидно
+	// DueDate может быть nil (снятие deadline) — it is validно
 
-	// Sanity check: дата не должна быть слишком далеко в прошлом
+	// Sanity check: date not должна быть слишком далеко in прошлом
 	if cmd.DueDate != nil && cmd.DueDate.Year() < minYear {
 		return fmt.Errorf("%w: date is too far in the past", ErrInvalidDate)
 	}

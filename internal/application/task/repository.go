@@ -9,48 +9,48 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// CommandRepository предоставляет методы для работы с агрегатом Task
-// через Event Sourcing (запись)
+// CommandRepository предоставляет методы for workы с агрегатом Task
+// via Event Sourcing (writing)
 type CommandRepository interface {
-	// Load загружает Task из event store путем восстановления состояния из событий
+	// Load loads Task from event store путем reconstruction state from events
 	Load(ctx context.Context, taskID uuid.UUID) (*taskdomain.Aggregate, error)
 
-	// Save сохраняет новые события Task в event store
+	// Save saves новые event Task in event store
 	Save(ctx context.Context, task *taskdomain.Aggregate) error
 
-	// GetEvents возвращает все события задачи
+	// GetEvents returns all event tasks
 	GetEvents(ctx context.Context, taskID uuid.UUID) ([]event.DomainEvent, error)
 }
 
-// QueryRepository предоставляет методы для чтения данных Task
-// из read model (денормализованное представление)
+// QueryRepository предоставляет методы for чтения данных Task
+// from read model (денормализованное view)
 type QueryRepository interface {
-	// FindByID находит задачу по ID (из read model)
+	// FindByID finds задачу по ID (from read model)
 	FindByID(ctx context.Context, taskID uuid.UUID) (*ReadModel, error)
 
-	// FindByChatID находит задачу по ID чата
+	// FindByChatID finds задачу по ID chat
 	FindByChatID(ctx context.Context, chatID uuid.UUID) (*ReadModel, error)
 
-	// FindByAssignee находит задачи назначенные пользователю
+	// FindByAssignee finds tasks наvalueенные user
 	FindByAssignee(ctx context.Context, assigneeID uuid.UUID, filters Filters) ([]*ReadModel, error)
 
-	// FindByStatus находит задачи с определенным статусом
+	// FindByStatus finds tasks с определенным статусом
 	FindByStatus(ctx context.Context, status taskdomain.Status, filters Filters) ([]*ReadModel, error)
 
-	// List возвращает список задач с фильтрами
+	// List returns list задач с фильтрами
 	List(ctx context.Context, filters Filters) ([]*ReadModel, error)
 
-	// Count возвращает количество задач с фильтрами
+	// Count returns count задач с фильтрами
 	Count(ctx context.Context, filters Filters) (int, error)
 }
 
-// Repository объединяет Command и Query репозитории
+// Repository combines Command and Query репозитории
 type Repository interface {
 	CommandRepository
 	QueryRepository
 }
 
-// Filters содержит параметры фильтрации для запросов
+// Filters contains parameters filtering for запросов
 type Filters struct {
 	ChatID     *uuid.UUID
 	AssigneeID *uuid.UUID
@@ -62,7 +62,7 @@ type Filters struct {
 	Limit      int
 }
 
-// ReadModel представляет денормализованное представление Task для запросов
+// ReadModel represents денормализованное view Task for запросов
 type ReadModel struct {
 	ID         uuid.UUID
 	ChatID     uuid.UUID

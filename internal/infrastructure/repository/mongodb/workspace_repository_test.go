@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// setupTestWorkspaceRepository создает тестовый репозиторий workspace
+// setupTestWorkspaceRepository creates test репозиторий workspace
 func setupTestWorkspaceRepository(t *testing.T) *mongodb.MongoWorkspaceRepository {
 	t.Helper()
 
@@ -25,7 +25,7 @@ func setupTestWorkspaceRepository(t *testing.T) *mongodb.MongoWorkspaceRepositor
 	return mongodb.NewMongoWorkspaceRepository(coll, membersColl)
 }
 
-// createTestWorkspace создает тестовый workspace с уникальными данными
+// createTestWorkspace creates test workspace с uniqueыми данными
 func createTestWorkspace(t *testing.T, suffix string) *workspace.Workspace {
 	t.Helper()
 
@@ -40,7 +40,7 @@ func createTestWorkspace(t *testing.T, suffix string) *workspace.Workspace {
 	return ws
 }
 
-// TestMongoWorkspaceRepository_Save_And_FindByID проверяет сохранение и поиск workspace по ID
+// TestMongoWorkspaceRepository_Save_And_FindByID checks storage and searching workspace по ID
 func TestMongoWorkspaceRepository_Save_And_FindByID(t *testing.T) {
 	repo := setupTestWorkspaceRepository(t)
 	ctx := context.Background()
@@ -62,7 +62,7 @@ func TestMongoWorkspaceRepository_Save_And_FindByID(t *testing.T) {
 	assert.Equal(t, ws.CreatedBy(), loaded.CreatedBy())
 }
 
-// TestMongoWorkspaceRepository_FindByID_NotFound проверяет поиск несуществующего workspace
+// TestMongoWorkspaceRepository_FindByID_NotFound checks search неexistingего workspace
 func TestMongoWorkspaceRepository_FindByID_NotFound(t *testing.T) {
 	repo := setupTestWorkspaceRepository(t)
 	ctx := context.Background()
@@ -72,7 +72,7 @@ func TestMongoWorkspaceRepository_FindByID_NotFound(t *testing.T) {
 	assert.ErrorIs(t, err, errs.ErrNotFound)
 }
 
-// TestMongoWorkspaceRepository_FindByKeycloakGroup проверяет поиск workspace по Keycloak group ID
+// TestMongoWorkspaceRepository_FindByKeycloakGroup checks searching workspace по Keycloak group ID
 func TestMongoWorkspaceRepository_FindByKeycloakGroup(t *testing.T) {
 	repo := setupTestWorkspaceRepository(t)
 	ctx := context.Background()
@@ -95,7 +95,7 @@ func TestMongoWorkspaceRepository_FindByKeycloakGroup(t *testing.T) {
 	assert.ErrorIs(t, err, errs.ErrNotFound)
 }
 
-// TestMongoWorkspaceRepository_List проверяет получение списка workspaces
+// TestMongoWorkspaceRepository_List checks retrieval list workspaces
 func TestMongoWorkspaceRepository_List(t *testing.T) {
 	repo := setupTestWorkspaceRepository(t)
 	ctx := context.Background()
@@ -128,7 +128,7 @@ func TestMongoWorkspaceRepository_List(t *testing.T) {
 	assert.Empty(t, workspaces)
 }
 
-// TestMongoWorkspaceRepository_Count проверяет подсчет workspaces
+// TestMongoWorkspaceRepository_Count checks подсчет workspaces
 func TestMongoWorkspaceRepository_Count(t *testing.T) {
 	repo := setupTestWorkspaceRepository(t)
 	ctx := context.Background()
@@ -150,7 +150,7 @@ func TestMongoWorkspaceRepository_Count(t *testing.T) {
 	assert.Equal(t, 3, count)
 }
 
-// TestMongoWorkspaceRepository_Delete проверяет удаление workspace
+// TestMongoWorkspaceRepository_Delete checks deletion workspace
 func TestMongoWorkspaceRepository_Delete(t *testing.T) {
 	repo := setupTestWorkspaceRepository(t)
 	ctx := context.Background()
@@ -177,7 +177,7 @@ func TestMongoWorkspaceRepository_Delete(t *testing.T) {
 	require.ErrorIs(t, err, errs.ErrNotFound)
 }
 
-// TestMongoWorkspaceRepository_Update проверяет обновление workspace
+// TestMongoWorkspaceRepository_Update checks update workspace
 func TestMongoWorkspaceRepository_Update(t *testing.T) {
 	repo := setupTestWorkspaceRepository(t)
 	ctx := context.Background()
@@ -201,7 +201,7 @@ func TestMongoWorkspaceRepository_Update(t *testing.T) {
 	assert.Equal(t, "Updated Workspace Name", loaded.Name())
 }
 
-// TestMongoWorkspaceRepository_FindInviteByToken проверяет поиск приглашения по токену
+// TestMongoWorkspaceRepository_FindInviteByToken checks search приглашения по токену
 func TestMongoWorkspaceRepository_FindInviteByToken(t *testing.T) {
 	repo := setupTestWorkspaceRepository(t)
 	ctx := context.Background()
@@ -230,7 +230,7 @@ func TestMongoWorkspaceRepository_FindInviteByToken(t *testing.T) {
 	assert.ErrorIs(t, err, errs.ErrNotFound)
 }
 
-// TestMongoWorkspaceRepository_MultiInvites проверяет workspace с несколькими приглашениями
+// TestMongoWorkspaceRepository_MultiInvites checks workspace с несколькими приглашениями
 func TestMongoWorkspaceRepository_MultiInvites(t *testing.T) {
 	repo := setupTestWorkspaceRepository(t)
 	ctx := context.Background()
@@ -271,7 +271,7 @@ func TestMongoWorkspaceRepository_MultiInvites(t *testing.T) {
 	assert.Equal(t, 0, found3.MaxUses())
 }
 
-// TestMongoWorkspaceRepository_InputValidation проверяет валидацию входных данных
+// TestMongoWorkspaceRepository_InputValidation checks validацию входных данных
 func TestMongoWorkspaceRepository_InputValidation(t *testing.T) {
 	repo := setupTestWorkspaceRepository(t)
 	ctx := context.Background()
@@ -302,7 +302,7 @@ func TestMongoWorkspaceRepository_InputValidation(t *testing.T) {
 	})
 }
 
-// TestMongoWorkspaceRepository_DocToWorkspace проверяет преобразование документа в Workspace
+// TestMongoWorkspaceRepository_DocToWorkspace checks converting документа in Workspace
 func TestMongoWorkspaceRepository_DocToWorkspace(t *testing.T) {
 	repo := setupTestWorkspaceRepository(t)
 	ctx := context.Background()
@@ -335,7 +335,7 @@ func TestMongoWorkspaceRepository_DocToWorkspace(t *testing.T) {
 
 // ============== Member Tests ==============
 
-// TestMongoWorkspaceRepository_AddMember проверяет добавление члена в workspace
+// TestMongoWorkspaceRepository_AddMember checks adding члена in workspace
 func TestMongoWorkspaceRepository_AddMember(t *testing.T) {
 	repo := setupTestWorkspaceRepository(t)
 	ctx := context.Background()
@@ -360,7 +360,7 @@ func TestMongoWorkspaceRepository_AddMember(t *testing.T) {
 	assert.Equal(t, member.Role(), loaded.Role())
 }
 
-// TestMongoWorkspaceRepository_AddMember_Owner проверяет добавление владельца
+// TestMongoWorkspaceRepository_AddMember_Owner checks adding владельца
 func TestMongoWorkspaceRepository_AddMember_Owner(t *testing.T) {
 	repo := setupTestWorkspaceRepository(t)
 	ctx := context.Background()
@@ -383,7 +383,7 @@ func TestMongoWorkspaceRepository_AddMember_Owner(t *testing.T) {
 	assert.True(t, loaded.CanManageMembers())
 }
 
-// TestMongoWorkspaceRepository_AddMember_Admin проверяет добавление администратора
+// TestMongoWorkspaceRepository_AddMember_Admin checks adding administratorа
 func TestMongoWorkspaceRepository_AddMember_Admin(t *testing.T) {
 	repo := setupTestWorkspaceRepository(t)
 	ctx := context.Background()
@@ -406,7 +406,7 @@ func TestMongoWorkspaceRepository_AddMember_Admin(t *testing.T) {
 	assert.True(t, loaded.CanInvite())
 }
 
-// TestMongoWorkspaceRepository_RemoveMember проверяет удаление члена из workspace
+// TestMongoWorkspaceRepository_RemoveMember checks deletion члена from workspace
 func TestMongoWorkspaceRepository_RemoveMember(t *testing.T) {
 	repo := setupTestWorkspaceRepository(t)
 	ctx := context.Background()
@@ -434,7 +434,7 @@ func TestMongoWorkspaceRepository_RemoveMember(t *testing.T) {
 	assert.ErrorIs(t, err, errs.ErrNotFound)
 }
 
-// TestMongoWorkspaceRepository_RemoveMemberNotFound проверяет удаление несуществующего члена
+// TestMongoWorkspaceRepository_RemoveMemberNotFound checks deletion неexistingего члена
 func TestMongoWorkspaceRepository_RemoveMemberNotFound(t *testing.T) {
 	repo := setupTestWorkspaceRepository(t)
 	ctx := context.Background()
@@ -449,7 +449,7 @@ func TestMongoWorkspaceRepository_RemoveMemberNotFound(t *testing.T) {
 	assert.ErrorIs(t, err, errs.ErrNotFound)
 }
 
-// TestMongoWorkspaceRepository_GetMember проверяет получение члена workspace
+// TestMongoWorkspaceRepository_GetMember checks retrieval члена workspace
 func TestMongoWorkspaceRepository_GetMember(t *testing.T) {
 	repo := setupTestWorkspaceRepository(t)
 	ctx := context.Background()
@@ -476,7 +476,7 @@ func TestMongoWorkspaceRepository_GetMember(t *testing.T) {
 	assert.WithinDuration(t, member.JoinedAt(), loaded.JoinedAt(), time.Millisecond)
 }
 
-// TestMongoWorkspaceRepository_GetMemberNotFound проверяет получение несуществующего члена
+// TestMongoWorkspaceRepository_GetMemberNotFound checks retrieval неexistingего члена
 func TestMongoWorkspaceRepository_GetMemberNotFound(t *testing.T) {
 	repo := setupTestWorkspaceRepository(t)
 	ctx := context.Background()
@@ -491,7 +491,7 @@ func TestMongoWorkspaceRepository_GetMemberNotFound(t *testing.T) {
 	assert.ErrorIs(t, err, errs.ErrNotFound)
 }
 
-// TestMongoWorkspaceRepository_IsMember проверяет проверку членства
+// TestMongoWorkspaceRepository_IsMember checks проверку членства
 func TestMongoWorkspaceRepository_IsMember(t *testing.T) {
 	repo := setupTestWorkspaceRepository(t)
 	ctx := context.Background()
@@ -519,7 +519,7 @@ func TestMongoWorkspaceRepository_IsMember(t *testing.T) {
 	assert.False(t, isMember)
 }
 
-// TestMongoWorkspaceRepository_ListMembers проверяет получение списка членов workspace
+// TestMongoWorkspaceRepository_ListMembers checks retrieval list членов workspace
 func TestMongoWorkspaceRepository_ListMembers(t *testing.T) {
 	repo := setupTestWorkspaceRepository(t)
 	ctx := context.Background()
@@ -561,7 +561,7 @@ func TestMongoWorkspaceRepository_ListMembers(t *testing.T) {
 	assert.Len(t, members, 3)
 }
 
-// TestMongoWorkspaceRepository_CountMembers проверяет подсчет членов workspace
+// TestMongoWorkspaceRepository_CountMembers checks подсчет членов workspace
 func TestMongoWorkspaceRepository_CountMembers(t *testing.T) {
 	repo := setupTestWorkspaceRepository(t)
 	ctx := context.Background()
@@ -589,7 +589,7 @@ func TestMongoWorkspaceRepository_CountMembers(t *testing.T) {
 	assert.Equal(t, 4, count)
 }
 
-// TestMongoWorkspaceRepository_ListByUser проверяет получение workspaces пользователя
+// TestMongoWorkspaceRepository_ListByUser checks retrieval workspaces user
 func TestMongoWorkspaceRepository_ListByUser(t *testing.T) {
 	repo := setupTestWorkspaceRepository(t)
 	ctx := context.Background()
@@ -629,7 +629,7 @@ func TestMongoWorkspaceRepository_ListByUser(t *testing.T) {
 	assert.Len(t, workspaces, 2)
 }
 
-// TestMongoWorkspaceRepository_ListByUserEmpty проверяет случай без workspaces
+// TestMongoWorkspaceRepository_ListByUserEmpty checks случай без workspaces
 func TestMongoWorkspaceRepository_ListByUserEmpty(t *testing.T) {
 	repo := setupTestWorkspaceRepository(t)
 	ctx := context.Background()
@@ -643,7 +643,7 @@ func TestMongoWorkspaceRepository_ListByUserEmpty(t *testing.T) {
 	assert.NotNil(t, workspaces) // Should return empty slice, not nil
 }
 
-// TestMongoWorkspaceRepository_CountByUser проверяет подсчет workspaces пользователя
+// TestMongoWorkspaceRepository_CountByUser checks подсчет workspaces user
 func TestMongoWorkspaceRepository_CountByUser(t *testing.T) {
 	repo := setupTestWorkspaceRepository(t)
 	ctx := context.Background()
@@ -673,7 +673,7 @@ func TestMongoWorkspaceRepository_CountByUser(t *testing.T) {
 	assert.Equal(t, 5, count)
 }
 
-// TestMongoWorkspaceRepository_MemberValidation проверяет валидацию входных данных для методов членов
+// TestMongoWorkspaceRepository_MemberValidation checks validацию входных данных for methods членов
 func TestMongoWorkspaceRepository_MemberValidation(t *testing.T) {
 	repo := setupTestWorkspaceRepository(t)
 	ctx := context.Background()
@@ -734,7 +734,7 @@ func TestMongoWorkspaceRepository_MemberValidation(t *testing.T) {
 	})
 }
 
-// TestMongoWorkspaceRepository_DeleteRemovesMembers проверяет, что удаление workspace удаляет и членов
+// TestMongoWorkspaceRepository_DeleteRemovesMembers checks, that deletion workspace удаляет and членов
 func TestMongoWorkspaceRepository_DeleteRemovesMembers(t *testing.T) {
 	repo := setupTestWorkspaceRepository(t)
 	ctx := context.Background()
@@ -774,7 +774,7 @@ func TestMongoWorkspaceRepository_DeleteRemovesMembers(t *testing.T) {
 	}
 }
 
-// TestMongoWorkspaceRepository_UpsertMember проверяет обновление члена (upsert)
+// TestMongoWorkspaceRepository_UpsertMember checks update члена (upsert)
 func TestMongoWorkspaceRepository_UpsertMember(t *testing.T) {
 	repo := setupTestWorkspaceRepository(t)
 	ctx := context.Background()
@@ -811,7 +811,7 @@ func TestMongoWorkspaceRepository_UpsertMember(t *testing.T) {
 	assert.Equal(t, 1, count)
 }
 
-// TestMongoWorkspaceRepository_Isolation проверяет изоляцию членов между workspaces
+// TestMongoWorkspaceRepository_Isolation checks изоляцию членов between workspaces
 func TestMongoWorkspaceRepository_Isolation(t *testing.T) {
 	repo := setupTestWorkspaceRepository(t)
 	ctx := context.Background()

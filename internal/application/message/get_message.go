@@ -7,29 +7,29 @@ import (
 	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
-// GetMessageUseCase обрабатывает получение сообщения по ID
+// GetMessageUseCase handles retrieval messages по ID
 type GetMessageUseCase struct {
 	messageRepo Repository
 }
 
-// NewGetMessageUseCase создает новый GetMessageUseCase
+// NewGetMessageUseCase creates New GetMessageUseCase
 func NewGetMessageUseCase(messageRepo Repository) *GetMessageUseCase {
 	return &GetMessageUseCase{
 		messageRepo: messageRepo,
 	}
 }
 
-// Execute выполняет получение сообщения
+// Execute performs retrieval messages
 func (uc *GetMessageUseCase) Execute(
 	ctx context.Context,
 	query GetMessageQuery,
 ) (Result, error) {
-	// Валидация
+	// validation
 	if err := uc.validate(query); err != nil {
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Загрузка сообщения
+	// Loading message
 	msg, err := uc.messageRepo.FindByID(ctx, query.MessageID)
 	if err != nil {
 		return Result{}, ErrMessageNotFound

@@ -5,12 +5,12 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/notification"
 )
 
-// Result - результат операции с notification
+// Result - result операции с notification
 type Result struct {
 	appcore.Result[*notification.Notification]
 }
 
-// ListResult - результат операции со списком notifications
+// ListResult - result операции with списком notifications
 type ListResult struct {
 	Notifications []*notification.Notification
 	TotalCount    int
@@ -18,7 +18,7 @@ type ListResult struct {
 	Limit         int
 }
 
-// CountResult - результат подсчета
+// CountResult - result подсчета
 type CountResult struct {
 	Count int
 }

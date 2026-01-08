@@ -16,7 +16,7 @@ const (
 	entityTypeEpic = "Epic"
 )
 
-// Handler обрабатывает сообщения с тегами
+// Handler handles messages с тегами
 type Handler struct {
 	processor   *Processor
 	executor    *CommandExecutor
@@ -24,7 +24,7 @@ type Handler struct {
 	chatRepo    ChatRepository
 }
 
-// NewHandler создает новый Handler
+// NewHandler creates New Handler
 func NewHandler(
 	processor *Processor,
 	executor *CommandExecutor,
@@ -39,7 +39,7 @@ func NewHandler(
 	}
 }
 
-// HandleMessageWithTags обрабатывает сообщение с тегами
+// HandleMessageWithTags handles message с тегами
 func (h *Handler) HandleMessageWithTags(
 	ctx context.Context,
 	chatID uuid.UUID,
@@ -49,24 +49,24 @@ func (h *Handler) HandleMessageWithTags(
 	// Конвертация UUID
 	domainChatID := domainUUID.FromGoogleUUID(chatID)
 
-	// 1. Получение контекста чата
+	// 1. retrieval context chat
 	c, err := h.chatRepo.Load(ctx, domainChatID)
 	if err != nil {
 		return fmt.Errorf("failed to load chat: %w", err)
 	}
 
-	// Определяем текущий тип entity для валидации
+	// Определяем текущий type entity for validации
 	currentEntityType := h.getEntityType(c)
 
-	// 2. Обработка тегов через Processor
+	// 2. handling тегов via Processor
 	result := h.processor.ProcessMessage(chatID, content, currentEntityType)
 
-	// 3. Сохранение сообщения пользователя
+	// 3. storage messages user
 	msg, err := message.NewMessage(
 		domainChatID,
 		domainUUID.FromGoogleUUID(authorID),
-		result.PlainText,    // текст без тегов
-		domainUUID.UUID(""), // не thread
+		result.PlainText,    // text без тегов
+		domainUUID.UUID(""), // not thread
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create message: %w", err)
@@ -76,25 +76,25 @@ func (h *Handler) HandleMessageWithTags(
 		return fmt.Errorf("failed to save message: %w", err)
 	}
 
-	// 4. Выполнение команд
+	// 4. performing commands
 	executionErrors := h.executeCommands(ctx, result.AppliedTags, authorID)
 
-	// 5. Добавление ошибок выполнения к результату
+	// 5. Adding errors выполнения to результату
 	result.Errors = append(result.Errors, executionErrors...)
 
-	// 6. Генерация и отправка bot response
+	// 6. Генерация and sendа bot response
 	if botResponse := result.GenerateBotResponse(); botResponse != "" {
 		if sendErr := h.sendBotResponse(ctx, chatID, botResponse); sendErr != nil {
-			// Логируем, но не фейлим весь процесс
+			// Логируем, но not фейлим весь процесс
 			// TODO: add proper logging
-			_ = sendErr // временно игнорируем ошибку отправки bot response
+			_ = sendErr // временно игнорируем error sendи bot response
 		}
 	}
 
 	return nil
 }
 
-// executeCommands выполняет все команды из результата обработки
+// executeCommands performs all commands from result обworkки
 func (h *Handler) executeCommands(
 	ctx context.Context,
 	applications []TagApplication,
@@ -112,7 +112,7 @@ func (h *Handler) executeCommands(
 				TagKey:   app.TagKey,
 				TagValue: app.TagValue,
 				Error:    err,
-				Severity: ErrorSeverityError,
+				severity: ErrorSeverityError,
 			})
 		}
 	}
@@ -120,17 +120,17 @@ func (h *Handler) executeCommands(
 	return errors
 }
 
-// sendBotResponse отправляет bot response в чат
+// sendBotResponse отправляет bot response in chat
 func (h *Handler) sendBotResponse(ctx context.Context, chatID uuid.UUID, response string) error {
 	domainChatID := domainUUID.FromGoogleUUID(chatID)
 
-	// Создаем системное сообщение от бота
-	// TODO: использовать настоящий bot user ID вместо пустого
+	// Creating системное message от бота
+	// TODO: исuserь настоящий bot user ID вместо пустого
 	botMessage, err := message.NewMessage(
 		domainChatID,
 		domainUUID.UUID("00000000-0000-0000-0000-000000000000"), // System bot ID
 		response,
-		domainUUID.UUID(""), // не thread
+		domainUUID.UUID(""), // not thread
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create bot message: %w", err)
@@ -143,7 +143,7 @@ func (h *Handler) sendBotResponse(ctx context.Context, chatID uuid.UUID, respons
 	return nil
 }
 
-// getEntityType возвращает тип entity для валидации
+// getEntityType returns type entity for validации
 func (h *Handler) getEntityType(c *chat.Chat) string {
 	switch c.Type() {
 	case chat.TypeTask:

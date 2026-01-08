@@ -10,25 +10,25 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// ChatRepository определяет интерфейс для работы с Chat aggregate.
-// Интерфейс объявлен здесь (на стороне потребителя - tag domain),
-// следуя идиоматичному Go подходу.
+// ChatRepository defines interface for workы с Chat aggregate.
+// interface declared здесь (on стороне потребителя - tag domain),
+// following idiomatic Go approach.
 type ChatRepository interface {
 	Load(ctx context.Context, chatID uuid.UUID) (*chat.Chat, error)
 	Save(ctx context.Context, chat *chat.Chat) error
 	GetEvents(ctx context.Context, chatID uuid.UUID) ([]event.DomainEvent, error)
 }
 
-// UserRepository определяет интерфейс для работы с пользователями.
-// Интерфейс объявлен здесь (на стороне потребителя - tag domain),
-// следуя идиоматичному Go подходу.
+// UserRepository defines interface for workы с userелями.
+// interface declared здесь (on стороне потребителя - tag domain),
+// following idiomatic Go approach.
 type UserRepository interface {
 	FindByUsername(ctx context.Context, username string) (*user.User, error)
 }
 
-// MessageRepository определяет интерфейс для работы с сообщениями.
-// Интерфейс объявлен здесь (на стороне потребителя - tag domain),
-// следуя идиоматичному Go подходу.
+// MessageRepository defines interface for workы с messagesми.
+// interface declared здесь (on стороне потребителя - tag domain),
+// following idiomatic Go approach.
 type MessageRepository interface {
 	Save(ctx context.Context, message *message.Message) error
 }

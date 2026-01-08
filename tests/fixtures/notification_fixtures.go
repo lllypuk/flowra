@@ -6,12 +6,12 @@ import (
 	domainUUID "github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// CreateNotificationCommandBuilder создает builder для CreateNotificationCommand
+// CreateNotificationCommandBuilder creates builder for CreateNotificationCommand
 type CreateNotificationCommandBuilder struct {
 	cmd notifapp.CreateNotificationCommand
 }
 
-// NewCreateNotificationCommandBuilder создает новый builder (accepts domain UUID)
+// NewCreateNotificationCommandBuilder creates New builder (accepts domain UUID)
 func NewCreateNotificationCommandBuilder(userID domainUUID.UUID) *CreateNotificationCommandBuilder {
 	return &CreateNotificationCommandBuilder{
 		cmd: notifapp.CreateNotificationCommand{
@@ -48,17 +48,17 @@ func (b *CreateNotificationCommandBuilder) WithResourceID(resourceID string) *Cr
 	return b
 }
 
-// Build возвращает готовую команду
+// Build returns prepared command
 func (b *CreateNotificationCommandBuilder) Build() notifapp.CreateNotificationCommand {
 	return b.cmd
 }
 
-// MarkAsReadCommandBuilder создает builder для MarkAsReadCommand
+// MarkAsReadCommandBuilder creates builder for MarkAsReadCommand
 type MarkAsReadCommandBuilder struct {
 	cmd notifapp.MarkAsReadCommand
 }
 
-// NewMarkAsReadCommandBuilder создает новый builder (accepts domain UUID)
+// NewMarkAsReadCommandBuilder creates New builder (accepts domain UUID)
 func NewMarkAsReadCommandBuilder(notificationID domainUUID.UUID, userID domainUUID.UUID) *MarkAsReadCommandBuilder {
 	return &MarkAsReadCommandBuilder{
 		cmd: notifapp.MarkAsReadCommand{
@@ -68,17 +68,17 @@ func NewMarkAsReadCommandBuilder(notificationID domainUUID.UUID, userID domainUU
 	}
 }
 
-// Build возвращает готовую команду
+// Build returns prepared command
 func (b *MarkAsReadCommandBuilder) Build() notifapp.MarkAsReadCommand {
 	return b.cmd
 }
 
-// DeleteNotificationCommandBuilder создает builder для DeleteNotificationCommand
+// DeleteNotificationCommandBuilder creates builder for DeleteNotificationCommand
 type DeleteNotificationCommandBuilder struct {
 	cmd notifapp.DeleteNotificationCommand
 }
 
-// NewDeleteNotificationCommandBuilder создает новый builder (accepts domain UUID)
+// NewDeleteNotificationCommandBuilder creates New builder (accepts domain UUID)
 func NewDeleteNotificationCommandBuilder(
 	notificationID domainUUID.UUID,
 	userID domainUUID.UUID,
@@ -91,7 +91,7 @@ func NewDeleteNotificationCommandBuilder(
 	}
 }
 
-// Build возвращает готовую команду
+// Build returns prepared command
 func (b *DeleteNotificationCommandBuilder) Build() notifapp.DeleteNotificationCommand {
 	return b.cmd
 }

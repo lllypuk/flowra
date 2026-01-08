@@ -7,7 +7,7 @@ import (
 	"github.com/lllypuk/flowra/tests/mocks"
 )
 
-// TestSuite представляет полный набор для интеграционного тестирования
+// TestSuite represents full set for integration testing
 type TestSuite struct {
 	t *testing.T
 
@@ -28,7 +28,7 @@ type TestSuite struct {
 	AssignUser     *chatapp.AssignUserUseCase
 }
 
-// NewTestSuite создает новый test suite со всеми инициализированными компонентами
+// NewTestSuite creates New test suite with all initialized components
 func NewTestSuite(t *testing.T) *TestSuite {
 	suite := &TestSuite{
 		t:                t,
@@ -52,7 +52,7 @@ func NewTestSuite(t *testing.T) *TestSuite {
 	return suite
 }
 
-// Reset очищает все repositories (полезно между тестами)
+// Reset clears all repositories (helpful between tests)
 func (s *TestSuite) Reset() {
 	s.ChatRepo.Reset()
 	s.MessageRepo.Reset()

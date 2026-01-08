@@ -9,44 +9,44 @@ import (
 	"time"
 )
 
-// ErrNoActiveEntity возвращается когда Entity Management Tag используется без активной сущности
+// ErrNoActiveEntity возвращается when Entity Management Tag used без активной сущности
 var ErrNoActiveEntity = errors.New("❌ No active entity to modify. Create an entity first with #task, #bug, or #epic")
 
-// usernameRegex определяет допустимый формат username: @[a-zA-Z0-9._-]+
+// usernameRegex defines допустимый формат username: @[a-zA-Z0-9._-]+
 var usernameRegex = regexp.MustCompile(`^@[a-zA-Z0-9._-]+$`)
 
 // ====== Task 04: Status Validation Constants ======
 
 //nolint:gochecknoglobals // Domain constants for entity statuses
 var (
-	// TaskStatuses - допустимые статусы для Task (CASE-SENSITIVE)
+	// TaskStatuses - допустимые статусы for Task (CASE-SENSITIVE)
 	TaskStatuses = []string{"To Do", "In Progress", "Done"}
 
-	// BugStatuses - допустимые статусы для Bug (CASE-SENSITIVE)
+	// BugStatuses - допустимые статусы for Bug (CASE-SENSITIVE)
 	BugStatuses = []string{"New", "Investigating", "Fixed", "Verified"}
 
-	// EpicStatuses - допустимые статусы для Epic (CASE-SENSITIVE)
+	// EpicStatuses - допустимые статусы for Epic (CASE-SENSITIVE)
 	EpicStatuses = []string{"Planned", "In Progress", "Completed"}
 )
 
-// validateUsername проверяет формат username (@username)
+// validateUsername checks формат username (@username)
 func validateUsername(value string) error {
-	// Пустое значение допустимо (снятие assignee)
+	// Пустое value допустимо (снятие assignee)
 	if value == "" || value == "@none" {
 		return nil
 	}
 
-	// Проверка наличия @
+	// check наличия @
 	if !strings.HasPrefix(value, "@") {
 		return errors.New("invalid assignee format. Use @username")
 	}
 
-	// Проверка что после @ есть имя
+	// check that after @ есть имя
 	if len(value) == 1 {
 		return errors.New("invalid assignee format. Use @username")
 	}
 
-	// Проверка формата username
+	// check формата username
 	if !usernameRegex.MatchString(value) {
 		return errors.New("invalid assignee format. Use @username")
 	}
@@ -54,9 +54,9 @@ func validateUsername(value string) error {
 	return nil
 }
 
-// validateISODate проверяет формат даты ISO 8601
+// validateISODate checks формат даты ISO 8601
 func validateISODate(value string) error {
-	// Пустое значение допустимо (снятие due date)
+	// Пустое value допустимо (снятие due date)
 	if value == "" {
 		return nil
 	}
@@ -66,11 +66,11 @@ func validateISODate(value string) error {
 		"2006-01-02",                // YYYY-MM-DD
 		"2006-01-02T15:04",          // YYYY-MM-DDTHH:MM
 		"2006-01-02T15:04:05",       // YYYY-MM-DDTHH:MM:SS
-		time.RFC3339,                // YYYY-MM-DDTHH:MM:SSZ или с timezone
-		"2006-01-02T15:04:05Z07:00", // с explicit timezone
+		time.RFC3339,                // YYYY-MM-DDTHH:MM:SSZ or с timezone
+		"2006-01-02T15:04:05Z07:00", // with explicit timezone
 	}
 
-	// Пытаемся распарсить дату в одном из форматов
+	// Пытаемся распарсить дату in одном from форматов
 	for _, format := range formats {
 		if _, err := time.Parse(format, value); err == nil {
 			return nil
@@ -80,7 +80,7 @@ func validateISODate(value string) error {
 	return errors.New("invalid date format. Use ISO 8601: YYYY-MM-DD")
 }
 
-// validatePriority проверяет значение приоритета
+// validatePriority checks value priority
 func validatePriority(value string) error {
 	allowedValues := []string{"High", "Medium", "Low"}
 
@@ -92,7 +92,7 @@ func validatePriority(value string) error {
 		value, strings.Join(allowedValues, ", "))
 }
 
-// validateSeverity проверяет значение серьезности бага
+// validateSeverity checks value серьезности бага
 func validateSeverity(value string) error {
 	allowedValues := []string{"Critical", "Major", "Minor", "Trivial"}
 
@@ -104,12 +104,12 @@ func validateSeverity(value string) error {
 		value, strings.Join(allowedValues, ", "))
 }
 
-// noValidation - валидатор-заглушка для тегов без дополнительной валидации
+// noValidation - validатор-заглушка for тегов без дополнительной validации
 func noValidation(_ string) error {
 	return nil
 }
 
-// ValidateEntityCreation проверяет валидность title для создания сущности
+// ValidateEntityCreation validates title for creating сущности
 func ValidateEntityCreation(tagKey, title string) error {
 	trimmed := strings.TrimSpace(title)
 
@@ -125,8 +125,8 @@ func ValidateEntityCreation(tagKey, title string) error {
 
 // ====== Task 04: Entity Management Validators ======
 
-// ValidateStatus проверяет валидность статуса для конкретного типа сущности
-// entityType должен быть "Task", "Bug" или "Epic"
+// ValidateStatus validates status for конкретного type сущности
+// entityType должен быть "Task", "Bug" or "Epic"
 // Статусы CASE-SENSITIVE
 func ValidateStatus(entityType, status string) error {
 	var allowedStatuses []string
@@ -150,12 +150,12 @@ func ValidateStatus(entityType, status string) error {
 		status, entityType, strings.Join(allowedStatuses, ", "))
 }
 
-// ValidateDueDate парсит дату и возвращает *time.Time
-// Пустое значение возвращает nil (снятие due date)
+// ValidateDueDate парсит дату and returns *time.Time
+// Пустое value returns nil (снятие due date)
 //
 //nolint:nilnil // Returning (nil, nil) is intentional for empty date (remove due date)
 func ValidateDueDate(dateStr string) (*time.Time, error) {
-	// Пустое значение допустимо (снятие due date)
+	// Пустое value допустимо (снятие due date)
 	if dateStr == "" {
 		return nil, nil
 	}
@@ -165,11 +165,11 @@ func ValidateDueDate(dateStr string) (*time.Time, error) {
 		"2006-01-02",                // YYYY-MM-DD
 		"2006-01-02T15:04",          // YYYY-MM-DDTHH:MM
 		"2006-01-02T15:04:05",       // YYYY-MM-DDTHH:MM:SS
-		time.RFC3339,                // YYYY-MM-DDTHH:MM:SSZ или с timezone
-		"2006-01-02T15:04:05Z07:00", // с explicit timezone
+		time.RFC3339,                // YYYY-MM-DDTHH:MM:SSZ or с timezone
+		"2006-01-02T15:04:05Z07:00", // with explicit timezone
 	}
 
-	// Пытаемся распарсить дату в одном из форматов
+	// Пытаемся распарсить дату in одном from форматов
 	for _, format := range formats {
 		if t, err := time.Parse(format, dateStr); err == nil {
 			return &t, nil
@@ -179,7 +179,7 @@ func ValidateDueDate(dateStr string) (*time.Time, error) {
 	return nil, errors.New("❌ Invalid date format. Use ISO 8601: YYYY-MM-DD")
 }
 
-// ValidateTitle проверяет что title не пустой
+// ValidateTitle checks that title not empty
 func ValidateTitle(title string) error {
 	trimmed := strings.TrimSpace(title)
 	if trimmed == "" {

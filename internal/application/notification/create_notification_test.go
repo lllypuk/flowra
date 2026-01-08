@@ -11,7 +11,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// mockNotificationRepository - мок репозитория для тестирования
+// mockNotificationRepository - мок репозитория for testing
 type mockNotificationRepository struct {
 	notifications map[uuid.UUID]*domainnotification.Notification
 	saveError     error
@@ -270,7 +270,7 @@ func TestCreateNotificationUseCase_Execute_Success(t *testing.T) {
 		t.Error("expected notification to be unread")
 	}
 
-	// Проверка, что notification сохранен
+	// check, that notification savен
 	if len(repo.notifications) != 1 {
 		t.Errorf("expected 1 notification in repository, got %d", len(repo.notifications))
 	}

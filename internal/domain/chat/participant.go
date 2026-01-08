@@ -6,24 +6,24 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// Role представляет роль участника в чате
+// Role represents роль participant in чате
 type Role string
 
 const (
-	// RoleMember обычный участник
+	// RoleMember regular участник
 	RoleMember Role = "member"
-	// RoleAdmin администратор чата
+	// RoleAdmin administrator chat
 	RoleAdmin Role = "admin"
 )
 
-// Participant представляет участника чата (value object)
+// Participant represents participant chat (value object)
 type Participant struct {
 	userID   uuid.UUID
 	role     Role
 	joinedAt time.Time
 }
 
-// NewParticipant создает нового участника
+// NewParticipant creates нового participant
 func NewParticipant(userID uuid.UUID, role Role) Participant {
 	return Participant{
 		userID:   userID,
@@ -32,14 +32,14 @@ func NewParticipant(userID uuid.UUID, role Role) Participant {
 	}
 }
 
-// UserID возвращает ID пользователя
+// UserID returns ID user
 func (p Participant) UserID() uuid.UUID { return p.userID }
 
-// Role возвращает роль участника
+// Role returns роль participant
 func (p Participant) Role() Role { return p.role }
 
-// JoinedAt возвращает время присоединения
+// JoinedAt returns time присоединения
 func (p Participant) JoinedAt() time.Time { return p.joinedAt }
 
-// IsAdmin проверяет, является ли участник администратором
+// IsAdmin checks, is ли участник administratorом
 func (p Participant) IsAdmin() bool { return p.role == RoleAdmin }

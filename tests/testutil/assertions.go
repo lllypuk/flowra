@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// AssertEventPublished проверяет, что событие определенного типа было опубликовано
+// AssertEventPublished checks, that event specific type было опубликовано
 func AssertEventPublished(t *testing.T, events []event.DomainEvent, eventType string) event.DomainEvent {
 	t.Helper()
 
@@ -24,7 +24,7 @@ func AssertEventPublished(t *testing.T, events []event.DomainEvent, eventType st
 	return nil
 }
 
-// AssertEventCount проверяет количество опубликованных событий
+// AssertEventCount checks count published events
 func AssertEventCount(t *testing.T, events []event.DomainEvent, expected int) {
 	t.Helper()
 
@@ -33,91 +33,91 @@ func AssertEventCount(t *testing.T, events []event.DomainEvent, expected int) {
 	}
 }
 
-// AssertEventType проверяет тип события
+// AssertEventType checks type event
 func AssertEventType(t *testing.T, evt event.DomainEvent, expectedType string) {
 	t.Helper()
 
 	require.Equal(t, expectedType, evt.EventType())
 }
 
-// AssertAggregateID проверяет ID агрегата в событии
+// AssertAggregateID checks ID aggregate in событии
 func AssertAggregateID(t *testing.T, evt event.DomainEvent, expectedID string) {
 	t.Helper()
 
 	require.Equal(t, expectedID, evt.AggregateID())
 }
 
-// AssertVersion проверяет версию агрегата в событии
+// AssertVersion checks version aggregate in событии
 func AssertVersion(t *testing.T, evt event.DomainEvent, expectedVersion int) {
 	t.Helper()
 
 	assert.Equal(t, expectedVersion, evt.Version())
 }
 
-// AssertError проверяет наличие ошибки
+// AssertError checks presence error
 func AssertError(t *testing.T, err error, msgAndArgs ...any) {
 	t.Helper()
 
 	require.Error(t, err, msgAndArgs...)
 }
 
-// AssertErrorIs проверяет, что ошибка является конкретным типом
+// AssertErrorIs checks, that error is specific типом
 func AssertErrorIs(t *testing.T, err, target error, msgAndArgs ...any) {
 	t.Helper()
 
 	require.ErrorIs(t, err, target, msgAndArgs...)
 }
 
-// AssertEqual проверяет равенство
+// AssertEqual checks equality
 func AssertEqual(t *testing.T, expected, actual any, msgAndArgs ...any) {
 	t.Helper()
 
 	require.Equal(t, expected, actual, msgAndArgs...)
 }
 
-// AssertNotNil проверяет, что значение не nil
+// AssertNotNil checks, that value not nil
 func AssertNotNil(t *testing.T, value any, msgAndArgs ...any) {
 	t.Helper()
 
 	require.NotNil(t, value, msgAndArgs...)
 }
 
-// AssertNil проверяет, что значение является nil
+// AssertNil checks, that value is nil
 func AssertNil(t *testing.T, value any, msgAndArgs ...any) {
 	t.Helper()
 
-	require.Nil(t, value, msgAndArgs...)
+	require.nil(t, value, msgAndArgs...)
 }
 
-// AssertLen проверяет длину слайса/массива
+// AssertLen checks length slice/array
 func AssertLen(t *testing.T, collection any, length int, msgAndArgs ...any) {
 	t.Helper()
 
 	require.Len(t, collection, length, msgAndArgs...)
 }
 
-// AssertGreater проверяет, что значение больше
+// AssertGreater checks, that value greater
 func AssertGreater(t *testing.T, value1, value2 any, msgAndArgs ...any) {
 	t.Helper()
 
 	require.Greater(t, value1, value2, msgAndArgs...)
 }
 
-// AssertGreaterOrEqual проверяет, что значение больше или равно
+// AssertGreaterOrEqual checks, that value greater or equal
 func AssertGreaterOrEqual(t *testing.T, value1, value2 any, msgAndArgs ...any) {
 	t.Helper()
 
 	require.GreaterOrEqual(t, value1, value2, msgAndArgs...)
 }
 
-// AssertTrue проверяет, что значение true
+// AssertTrue checks, that value true
 func AssertTrue(t *testing.T, value bool, msgAndArgs ...any) {
 	t.Helper()
 
 	require.True(t, value, msgAndArgs...)
 }
 
-// AssertFalse проверяет, что значение false
+// AssertFalse checks, that value false
 func AssertFalse(t *testing.T, value bool, msgAndArgs ...any) {
 	t.Helper()
 
@@ -126,21 +126,21 @@ func AssertFalse(t *testing.T, value bool, msgAndArgs ...any) {
 
 // ==================== UUID Assertions ====================
 
-// AssertUUIDEqual проверяет равенство двух UUID
+// AssertUUIDEqual checks equality двух UUID
 func AssertUUIDEqual(t *testing.T, expected, actual uuid.UUID, msgAndArgs ...any) {
 	t.Helper()
 
 	assert.Equal(t, expected, actual, msgAndArgs...)
 }
 
-// RequireUUIDEqual проверяет равенство двух UUID и останавливает тест при ошибке
+// RequireUUIDEqual checks equality двух UUID and stops test at error
 func RequireUUIDEqual(t *testing.T, expected, actual uuid.UUID, msgAndArgs ...any) {
 	t.Helper()
 
 	require.Equal(t, expected, actual, msgAndArgs...)
 }
 
-// AssertNotZeroUUID проверяет, что UUID не пустой
+// AssertNotZeroUUID checks, that UUID not empty
 func AssertNotZeroUUID(t *testing.T, id uuid.UUID, msgAndArgs ...any) {
 	t.Helper()
 
@@ -148,7 +148,7 @@ func AssertNotZeroUUID(t *testing.T, id uuid.UUID, msgAndArgs ...any) {
 	assert.NotEqual(t, uuid.UUID(""), id, msgAndArgs...)
 }
 
-// RequireNotZeroUUID проверяет, что UUID не пустой и останавливает тест при ошибке
+// RequireNotZeroUUID checks, that UUID not empty and stops test at error
 func RequireNotZeroUUID(t *testing.T, id uuid.UUID, msgAndArgs ...any) {
 	t.Helper()
 
@@ -156,14 +156,14 @@ func RequireNotZeroUUID(t *testing.T, id uuid.UUID, msgAndArgs ...any) {
 	require.NotEqual(t, uuid.UUID(""), id, msgAndArgs...)
 }
 
-// AssertZeroUUID проверяет, что UUID пустой
+// AssertZeroUUID checks, that UUID empty
 func AssertZeroUUID(t *testing.T, id uuid.UUID, msgAndArgs ...any) {
 	t.Helper()
 
 	assert.Empty(t, id, msgAndArgs...)
 }
 
-// RequireZeroUUID проверяет, что UUID пустой и останавливает тест при ошибке
+// RequireZeroUUID checks, that UUID empty and stops test at error
 func RequireZeroUUID(t *testing.T, id uuid.UUID, msgAndArgs ...any) {
 	t.Helper()
 
@@ -172,8 +172,8 @@ func RequireZeroUUID(t *testing.T, id uuid.UUID, msgAndArgs ...any) {
 
 // ==================== Time Assertions ====================
 
-// AssertTimeApproximatelyEqual проверяет, что два времени приблизительно равны
-// с допустимой погрешностью delta (обычно time.Second или time.Millisecond)
+// AssertTimeApproximatelyEqual checks, that two time approximately equal
+// с acceptable tolerance delta (usually time.Second or time.Millisecond)
 func AssertTimeApproximatelyEqual(t *testing.T, expected, actual time.Time, delta time.Duration, msgAndArgs ...any) {
 	t.Helper()
 
@@ -188,8 +188,8 @@ func AssertTimeApproximatelyEqual(t *testing.T, expected, actual time.Time, delt
 	}, msgAndArgs...)...)
 }
 
-// RequireTimeApproximatelyEqual проверяет, что два времени приблизительно равны
-// и останавливает тест при ошибке
+// RequireTimeApproximatelyEqual checks, that two time approximately equal
+// and stops test at error
 func RequireTimeApproximatelyEqual(t *testing.T, expected, actual time.Time, delta time.Duration, msgAndArgs ...any) {
 	t.Helper()
 
@@ -204,21 +204,21 @@ func RequireTimeApproximatelyEqual(t *testing.T, expected, actual time.Time, del
 	}, msgAndArgs...)...)
 }
 
-// AssertTimeNotZero проверяет, что время не нулевое
+// AssertTimeNotZero checks, that time not nil
 func AssertTimeNotZero(t *testing.T, tm time.Time, msgAndArgs ...any) {
 	t.Helper()
 
 	assert.False(t, tm.IsZero(), msgAndArgs...)
 }
 
-// RequireTimeNotZero проверяет, что время не нулевое и останавливает тест при ошибке
+// RequireTimeNotZero checks, that time not nil and stops test at error
 func RequireTimeNotZero(t *testing.T, tm time.Time, msgAndArgs ...any) {
 	t.Helper()
 
 	require.False(t, tm.IsZero(), msgAndArgs...)
 }
 
-// AssertTimeAfter проверяет, что actual время после expected
+// AssertTimeAfter checks, that actual time after expected
 func AssertTimeAfter(t *testing.T, actual, expected time.Time, msgAndArgs ...any) {
 	t.Helper()
 
@@ -227,7 +227,7 @@ func AssertTimeAfter(t *testing.T, actual, expected time.Time, msgAndArgs ...any
 	}, msgAndArgs...)...)
 }
 
-// AssertTimeBefore проверяет, что actual время до expected
+// AssertTimeBefore checks, that actual time before expected
 func AssertTimeBefore(t *testing.T, actual, expected time.Time, msgAndArgs ...any) {
 	t.Helper()
 

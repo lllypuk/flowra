@@ -33,7 +33,7 @@ func WithWorkspaceRepoLogger(logger *slog.Logger) WorkspaceRepoOption {
 	}
 }
 
-// NewMongoWorkspaceRepository создает новый MongoDB Workspace Repository
+// NewMongoWorkspaceRepository creates New MongoDB Workspace Repository
 func NewMongoWorkspaceRepository(
 	collection *mongo.Collection,
 	membersCollection *mongo.Collection,
@@ -52,7 +52,7 @@ func NewMongoWorkspaceRepository(
 	return r
 }
 
-// FindByID находит рабочее пространство по ID
+// FindByID finds workspaceее пространство по ID
 func (r *MongoWorkspaceRepository) FindByID(ctx context.Context, id uuid.UUID) (*workspacedomain.Workspace, error) {
 	if id.IsZero() {
 		return nil, errs.ErrInvalidInput
@@ -74,7 +74,7 @@ func (r *MongoWorkspaceRepository) FindByID(ctx context.Context, id uuid.UUID) (
 	return r.documentToWorkspace(&doc)
 }
 
-// FindByKeycloakGroup находит рабочее пространство по ID группы Keycloak
+// FindByKeycloakGroup finds workspaceее пространство по ID groupsы Keycloak
 func (r *MongoWorkspaceRepository) FindByKeycloakGroup(
 	ctx context.Context,
 	keycloakGroupID string,
@@ -99,7 +99,7 @@ func (r *MongoWorkspaceRepository) FindByKeycloakGroup(
 	return r.documentToWorkspace(&doc)
 }
 
-// Save сохраняет рабочее пространство
+// Save saves workspaceее пространство
 func (r *MongoWorkspaceRepository) Save(ctx context.Context, workspace *workspacedomain.Workspace) error {
 	if workspace == nil {
 		return errs.ErrInvalidInput
@@ -124,13 +124,13 @@ func (r *MongoWorkspaceRepository) Save(ctx context.Context, workspace *workspac
 	return HandleMongoError(err, "workspace")
 }
 
-// Delete удаляет рабочее пространство и всех его членов
+// Delete удаляет workspaceее пространство and all его членов
 func (r *MongoWorkspaceRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	if id.IsZero() {
 		return errs.ErrInvalidInput
 	}
 
-	// Удаляем само рабочее пространство
+	// Удаляем само workspaceее пространство
 	filter := bson.M{"workspace_id": id.String()}
 	result, err := r.collection.DeleteOne(ctx, filter)
 	if err != nil {
@@ -145,8 +145,8 @@ func (r *MongoWorkspaceRepository) Delete(ctx context.Context, id uuid.UUID) err
 		return errs.ErrNotFound
 	}
 
-	// Удаляем членов рабочего пространства
-	// Примечание: в production среде рекомендуется использовать транзакции (replica set)
+	// Удаляем членов workspace пространства
+	// Примечание: in production среде рекомендуется исuserь транзакции (replica set)
 	memberFilter := bson.M{"workspace_id": id.String()}
 	_, err = r.membersCollection.DeleteMany(ctx, memberFilter)
 	if err != nil {
@@ -156,12 +156,12 @@ func (r *MongoWorkspaceRepository) Delete(ctx context.Context, id uuid.UUID) err
 	return nil
 }
 
-// List возвращает список рабочих пространств с пагинацией
+// List returns list workspaceих пространств с пагинацией
 func (r *MongoWorkspaceRepository) List(ctx context.Context, offset, limit int) ([]*workspacedomain.Workspace, error) {
 	return listDocuments(ctx, r.collection, offset, limit, r.documentToWorkspace, "workspaces")
 }
 
-// Count возвращает общее количество рабочих пространств
+// Count returns общее count workspaceих пространств
 func (r *MongoWorkspaceRepository) Count(ctx context.Context) (int, error) {
 	count, err := CountAll(ctx, r.collection)
 	if err != nil {
@@ -170,7 +170,7 @@ func (r *MongoWorkspaceRepository) Count(ctx context.Context) (int, error) {
 	return count, nil
 }
 
-// FindInviteByToken находит приглашение по токену
+// FindInviteByToken finds приглашение по токену
 func (r *MongoWorkspaceRepository) FindInviteByToken(
 	ctx context.Context,
 	token string,
@@ -187,7 +187,7 @@ func (r *MongoWorkspaceRepository) FindInviteByToken(
 		return nil, HandleMongoError(err, "invite")
 	}
 
-	// Находим конкретное приглашение в массиве
+	// Находим конкретное приглашение in массиве
 	for _, inv := range doc.Invites {
 		if inv.Token == token {
 			return r.documentToInvite(&inv)
@@ -197,7 +197,7 @@ func (r *MongoWorkspaceRepository) FindInviteByToken(
 	return nil, errs.ErrNotFound
 }
 
-// workspaceDocument представляет структуру документа в MongoDB
+// workspaceDocument represents структуру документа in MongoDB
 type workspaceDocument struct {
 	WorkspaceID     string           `bson:"workspace_id"`
 	Name            string           `bson:"name"`
@@ -209,7 +209,7 @@ type workspaceDocument struct {
 	Invites         []inviteDocument `bson:"invites"`
 }
 
-// inviteDocument представляет приглашение в документе
+// inviteDocument represents приглашение in документе
 type inviteDocument struct {
 	InviteID    string    `bson:"invite_id"`
 	WorkspaceID string    `bson:"workspace_id"`
@@ -222,7 +222,7 @@ type inviteDocument struct {
 	IsRevoked   bool      `bson:"is_revoked"`
 }
 
-// workspaceToDocument преобразует Workspace в Document
+// workspaceToDocument преобразует Workspace in Document
 func (r *MongoWorkspaceRepository) workspaceToDocument(ws *workspacedomain.Workspace) workspaceDocument {
 	// Преобразуем приглашения
 	invites := make([]inviteDocument, 0, len(ws.Invites()))
@@ -252,7 +252,7 @@ func (r *MongoWorkspaceRepository) workspaceToDocument(ws *workspacedomain.Works
 	}
 }
 
-// documentToWorkspace преобразует Document в Workspace
+// documentToWorkspace преобразует Document in Workspace
 func (r *MongoWorkspaceRepository) documentToWorkspace(doc *workspaceDocument) (*workspacedomain.Workspace, error) {
 	if doc == nil {
 		return nil, errs.ErrInvalidInput
@@ -290,7 +290,7 @@ func (r *MongoWorkspaceRepository) documentToWorkspace(doc *workspaceDocument) (
 	), nil
 }
 
-// documentToInvite преобразует inviteDocument в Invite
+// documentToInvite преобразует inviteDocument in Invite
 func (r *MongoWorkspaceRepository) documentToInvite(doc *inviteDocument) (*workspacedomain.Invite, error) {
 	if doc == nil {
 		return nil, errs.ErrInvalidInput
@@ -324,7 +324,7 @@ func (r *MongoWorkspaceRepository) documentToInvite(doc *inviteDocument) (*works
 	), nil
 }
 
-// memberDocument представляет члена workspace в отдельной коллекции
+// memberDocument represents члена workspace in отдельной коллекции
 type memberDocument struct {
 	UserID      string    `bson:"user_id"`
 	WorkspaceID string    `bson:"workspace_id"`
@@ -332,7 +332,7 @@ type memberDocument struct {
 	JoinedAt    time.Time `bson:"joined_at"`
 }
 
-// GetMember возвращает члена workspace по userID
+// GetMember returns члена workspace по userID
 func (r *MongoWorkspaceRepository) GetMember(
 	ctx context.Context,
 	workspaceID uuid.UUID,
@@ -362,7 +362,7 @@ func (r *MongoWorkspaceRepository) GetMember(
 	return &member, nil
 }
 
-// IsMember проверяет, является ли пользователь членом workspace
+// IsMember checks, is ли userель членом workspace
 func (r *MongoWorkspaceRepository) IsMember(
 	ctx context.Context,
 	workspaceID uuid.UUID,
@@ -385,7 +385,7 @@ func (r *MongoWorkspaceRepository) IsMember(
 	return count > 0, nil
 }
 
-// ListWorkspacesByUser возвращает workspaces, в которых пользователь является членом
+// ListWorkspacesByUser returns workspaces, in которых userель is членом
 func (r *MongoWorkspaceRepository) ListWorkspacesByUser(
 	ctx context.Context,
 	userID uuid.UUID,
@@ -395,7 +395,7 @@ func (r *MongoWorkspaceRepository) ListWorkspacesByUser(
 		return nil, errs.ErrInvalidInput
 	}
 
-	// Находим все workspace_id, где пользователь является членом
+	// Находим all workspace_id, где userель is членом
 	filter := bson.M{"user_id": userID.String()}
 	opts := options.Find().
 		SetSort(bson.D{{Key: "joined_at", Value: -1}}).
@@ -421,7 +421,7 @@ func (r *MongoWorkspaceRepository) ListWorkspacesByUser(
 		return make([]*workspacedomain.Workspace, 0), nil
 	}
 
-	// Загружаем workspaces по найденным ID
+	// Loading workspaces по найденным ID
 	wsFilter := bson.M{"workspace_id": bson.M{"$in": workspaceIDs}}
 	wsCursor, err := r.collection.Find(ctx, wsFilter)
 	if err != nil {
@@ -429,7 +429,7 @@ func (r *MongoWorkspaceRepository) ListWorkspacesByUser(
 	}
 	defer wsCursor.Close(ctx)
 
-	// Создаём map для сохранения порядка
+	// Создаём map for saving порядка
 	workspaceMap := make(map[string]*workspacedomain.Workspace)
 	for wsCursor.Next(ctx) {
 		var doc workspaceDocument
@@ -445,7 +445,7 @@ func (r *MongoWorkspaceRepository) ListWorkspacesByUser(
 		workspaceMap[doc.WorkspaceID] = ws
 	}
 
-	// Собираем результат в порядке workspaceIDs
+	// Собираем result in порядке workspaceIDs
 	workspaces := make([]*workspacedomain.Workspace, 0, len(workspaceIDs))
 	for _, wsID := range workspaceIDs {
 		if ws, ok := workspaceMap[wsID]; ok {
@@ -456,7 +456,7 @@ func (r *MongoWorkspaceRepository) ListWorkspacesByUser(
 	return workspaces, nil
 }
 
-// CountWorkspacesByUser возвращает количество workspaces пользователя
+// CountWorkspacesByUser returns count workspaces user
 func (r *MongoWorkspaceRepository) CountWorkspacesByUser(ctx context.Context, userID uuid.UUID) (int, error) {
 	if userID.IsZero() {
 		return 0, errs.ErrInvalidInput
@@ -471,7 +471,7 @@ func (r *MongoWorkspaceRepository) CountWorkspacesByUser(ctx context.Context, us
 	return int(count), nil
 }
 
-// AddMember добавляет члена в workspace
+// AddMember добавляет члена in workspace
 func (r *MongoWorkspaceRepository) AddMember(ctx context.Context, member *workspacedomain.Member) error {
 	if member == nil {
 		return errs.ErrInvalidInput
@@ -498,7 +498,7 @@ func (r *MongoWorkspaceRepository) AddMember(ctx context.Context, member *worksp
 	return HandleMongoError(err, "member")
 }
 
-// UpdateMember обновляет данные члена workspace
+// UpdateMember обновляет data члена workspace
 func (r *MongoWorkspaceRepository) UpdateMember(ctx context.Context, member *workspacedomain.Member) error {
 	if member == nil {
 		return errs.ErrInvalidInput
@@ -531,7 +531,7 @@ func (r *MongoWorkspaceRepository) UpdateMember(ctx context.Context, member *wor
 	return nil
 }
 
-// RemoveMember удаляет члена из workspace
+// RemoveMember удаляет члена from workspace
 func (r *MongoWorkspaceRepository) RemoveMember(
 	ctx context.Context,
 	workspaceID uuid.UUID,
@@ -558,7 +558,7 @@ func (r *MongoWorkspaceRepository) RemoveMember(
 	return nil
 }
 
-// ListMembers возвращает всех членов workspace
+// ListMembers returns all членов workspace
 func (r *MongoWorkspaceRepository) ListMembers(
 	ctx context.Context,
 	workspaceID uuid.UUID,
@@ -613,7 +613,7 @@ func (r *MongoWorkspaceRepository) ListMembers(
 	return members, nil
 }
 
-// CountMembers возвращает количество членов workspace
+// CountMembers returns count членов workspace
 func (r *MongoWorkspaceRepository) CountMembers(ctx context.Context, workspaceID uuid.UUID) (int, error) {
 	if workspaceID.IsZero() {
 		return 0, errs.ErrInvalidInput

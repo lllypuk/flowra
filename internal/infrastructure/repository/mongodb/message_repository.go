@@ -34,7 +34,7 @@ func WithMessageRepoLogger(logger *slog.Logger) MessageRepoOption {
 	}
 }
 
-// NewMongoMessageRepository создает новый MongoDB Message Repository
+// NewMongoMessageRepository creates New MongoDB Message Repository
 func NewMongoMessageRepository(collection *mongo.Collection, opts ...MessageRepoOption) *MongoMessageRepository {
 	r := &MongoMessageRepository{
 		collection: collection,
@@ -48,7 +48,7 @@ func NewMongoMessageRepository(collection *mongo.Collection, opts ...MessageRepo
 	return r
 }
 
-// FindByID находит сообщение по ID
+// FindByID finds message по ID
 func (r *MongoMessageRepository) FindByID(ctx context.Context, id uuid.UUID) (*messagedomain.Message, error) {
 	if id.IsZero() {
 		return nil, errs.ErrInvalidInput
@@ -70,7 +70,7 @@ func (r *MongoMessageRepository) FindByID(ctx context.Context, id uuid.UUID) (*m
 	return r.documentToMessage(&doc)
 }
 
-// FindByChatID находит сообщения в чате с пагинацией (от новых к старым)
+// FindByChatID finds messages in чате с пагинацией (от New to старым)
 func (r *MongoMessageRepository) FindByChatID(
 	ctx context.Context,
 	chatID uuid.UUID,
@@ -133,7 +133,7 @@ func (r *MongoMessageRepository) FindByChatID(
 	return messages, nil
 }
 
-// FindThread находит все ответы в треде
+// FindThread finds all responses in треде
 func (r *MongoMessageRepository) FindThread(
 	ctx context.Context,
 	parentMessageID uuid.UUID,
@@ -173,7 +173,7 @@ func (r *MongoMessageRepository) FindThread(
 	return messages, nil
 }
 
-// CountByChatID возвращает количество сообщений в чате
+// CountByChatID returns count сообщений in чате
 func (r *MongoMessageRepository) CountByChatID(ctx context.Context, chatID uuid.UUID) (int, error) {
 	if chatID.IsZero() {
 		return 0, errs.ErrInvalidInput
@@ -191,7 +191,7 @@ func (r *MongoMessageRepository) CountByChatID(ctx context.Context, chatID uuid.
 	return int(count), nil
 }
 
-// Save сохраняет сообщение (создание или обновление)
+// Save saves message (creation or update)
 func (r *MongoMessageRepository) Save(ctx context.Context, message *messagedomain.Message) error {
 	if message == nil {
 		return errs.ErrInvalidInput
@@ -216,7 +216,7 @@ func (r *MongoMessageRepository) Save(ctx context.Context, message *messagedomai
 	return HandleMongoError(err, "message")
 }
 
-// Delete физически удаляет сообщение
+// Delete физически удаляет message
 func (r *MongoMessageRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	if id.IsZero() {
 		return errs.ErrInvalidInput
@@ -239,7 +239,7 @@ func (r *MongoMessageRepository) Delete(ctx context.Context, id uuid.UUID) error
 	return nil
 }
 
-// CountThreadReplies возвращает количество ответов в треде
+// CountThreadReplies returns count responseов in треде
 func (r *MongoMessageRepository) CountThreadReplies(
 	ctx context.Context,
 	parentMessageID uuid.UUID,
@@ -261,7 +261,7 @@ func (r *MongoMessageRepository) CountThreadReplies(
 	return int(count), nil
 }
 
-// AddReaction добавляет реакцию к сообщению
+// AddReaction добавляет реакцию to сообщению
 func (r *MongoMessageRepository) AddReaction(
 	ctx context.Context,
 	messageID uuid.UUID,
@@ -295,7 +295,7 @@ func (r *MongoMessageRepository) AddReaction(
 	return nil
 }
 
-// RemoveReaction удаляет реакцию с сообщения
+// RemoveReaction удаляет реакцию с messages
 func (r *MongoMessageRepository) RemoveReaction(
 	ctx context.Context,
 	messageID uuid.UUID,
@@ -328,7 +328,7 @@ func (r *MongoMessageRepository) RemoveReaction(
 	return nil
 }
 
-// GetReactionUsers возвращает пользователей, поставивших определенную реакцию
+// GetReactionUsers returns users, поставивших определенную реакцию
 func (r *MongoMessageRepository) GetReactionUsers(
 	ctx context.Context,
 	messageID uuid.UUID,
@@ -362,7 +362,7 @@ func (r *MongoMessageRepository) GetReactionUsers(
 	return userIDs, nil
 }
 
-// SearchInChat ищет сообщения в чате по тексту
+// SearchInChat ищет messages in чате по textу
 func (r *MongoMessageRepository) SearchInChat(
 	ctx context.Context,
 	chatID uuid.UUID,
@@ -424,7 +424,7 @@ func (r *MongoMessageRepository) SearchInChat(
 	return messages, nil
 }
 
-// FindByAuthor находит сообщения автора в чате
+// FindByAuthor finds messages автора in чате
 func (r *MongoMessageRepository) FindByAuthor(
 	ctx context.Context,
 	chatID uuid.UUID,
@@ -480,7 +480,7 @@ func (r *MongoMessageRepository) FindByAuthor(
 	return messages, nil
 }
 
-// messageDocument представляет структуру документа в MongoDB
+// messageDocument represents структуру документа in MongoDB
 type messageDocument struct {
 	MessageID   string               `bson:"message_id"`
 	ChatID      string               `bson:"chat_id"`
@@ -495,7 +495,7 @@ type messageDocument struct {
 	Reactions   []reactionDocument   `bson:"reactions"`
 }
 
-// attachmentDocument представляет вложение в документе
+// attachmentDocument represents вложение in документе
 type attachmentDocument struct {
 	FileID   string `bson:"file_id"`
 	FileName string `bson:"file_name"`
@@ -503,14 +503,14 @@ type attachmentDocument struct {
 	MimeType string `bson:"mime_type"`
 }
 
-// reactionDocument представляет реакцию в документе
+// reactionDocument represents реакцию in документе
 type reactionDocument struct {
 	UserID    string    `bson:"user_id"`
 	EmojiCode string    `bson:"emoji_code"`
 	AddedAt   time.Time `bson:"added_at"`
 }
 
-// messageToDocument преобразует Message в Document
+// messageToDocument преобразует Message in Document
 func (r *MongoMessageRepository) messageToDocument(msg *messagedomain.Message) messageDocument {
 	// Преобразуем вложения
 	attachments := make([]attachmentDocument, 0, len(msg.Attachments()))
@@ -555,7 +555,7 @@ func (r *MongoMessageRepository) messageToDocument(msg *messagedomain.Message) m
 	}
 }
 
-// documentToMessage преобразует Document в Message
+// documentToMessage преобразует Document in Message
 func (r *MongoMessageRepository) documentToMessage(doc *messageDocument) (*messagedomain.Message, error) {
 	if doc == nil {
 		return nil, errs.ErrInvalidInput

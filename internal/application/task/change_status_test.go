@@ -19,7 +19,7 @@ func TestChangeStatusUseCase_Success(t *testing.T) {
 	createUseCase := taskapp.NewCreateTaskUseCase(store)
 	changeStatusUseCase := taskapp.NewChangeStatusUseCase(store)
 
-	// Создаем задачу
+	// Creating task
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
@@ -28,7 +28,7 @@ func TestChangeStatusUseCase_Success(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// Меняем статус
+	// Меняем status
 	userID := uuid.NewUUID()
 	changeCmd := taskapp.ChangeStatusCommand{
 		TaskID:    createResult.TaskID,
@@ -42,10 +42,10 @@ func TestChangeStatusUseCase_Success(t *testing.T) {
 	// Assert
 	require.NoError(t, err)
 	assert.Equal(t, createResult.TaskID, result.TaskID)
-	assert.Equal(t, 2, result.Version) // 1 событие создания + 1 событие изменения статуса
+	assert.Equal(t, 2, result.Version) // 1 event creating + 1 event changing status
 	require.Len(t, result.Events, 1)
 
-	// Проверяем событие
+	// Checking event
 	event, ok := result.Events[0].(*task.StatusChanged)
 	require.True(t, ok, "Expected *task.StatusChanged event")
 	assert.Equal(t, createResult.TaskID, uuid.UUID(event.AggregateID()))
@@ -53,7 +53,7 @@ func TestChangeStatusUseCase_Success(t *testing.T) {
 	assert.Equal(t, task.StatusInProgress, event.NewStatus)
 	assert.Equal(t, userID, event.ChangedBy)
 
-	// Проверяем, что события сохранены
+	// Checking, that event savены
 	storedEvents, err := store.LoadEvents(context.Background(), result.TaskID.String())
 	require.NoError(t, err)
 	assert.Len(t, storedEvents, 2)
@@ -65,7 +65,7 @@ func TestChangeStatusUseCase_MultipleTransitions(t *testing.T) {
 	createUseCase := taskapp.NewCreateTaskUseCase(store)
 	changeStatusUseCase := taskapp.NewChangeStatusUseCase(store)
 
-	// Создаем задачу
+	// Creating task
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
@@ -104,7 +104,7 @@ func TestChangeStatusUseCase_MultipleTransitions(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 4, result3.Version)
 
-	// Проверяем полную историю
+	// Checking full history
 	storedEvents, err := store.LoadEvents(context.Background(), createResult.TaskID.String())
 	require.NoError(t, err)
 	assert.Len(t, storedEvents, 4) // Create + 3x StatusChanged
@@ -124,7 +124,7 @@ func TestChangeStatusUseCase_Idempotent(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// Первое изменение статуса
+	// Первое change status
 	changeCmd := taskapp.ChangeStatusCommand{
 		TaskID:    createResult.TaskID,
 		NewStatus: task.StatusInProgress,
@@ -134,12 +134,12 @@ func TestChangeStatusUseCase_Idempotent(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, result1.Events, 1)
 
-	// Act: Повторное изменение на тот же статус
+	// Act: Повторное change on тот же status
 	result2, err := changeStatusUseCase.Execute(context.Background(), changeCmd)
 
-	// Assert: Должно быть успешно, но без новых событий
+	// Assert: Должно быть successfully, но без New events
 	require.NoError(t, err)
-	assert.Empty(t, result2.Events, "No new events should be generated for idempotent operation")
+	assert.Empty(t, result2.Events, "No New events should be generated for idempotent operation")
 	assert.Equal(t, result1.Version, result2.Version, "Version should not change")
 	assert.True(t, result2.IsSuccess())
 	assert.Equal(t, "Status unchanged (idempotent operation)", result2.Message)
@@ -173,7 +173,7 @@ func TestChangeStatusUseCase_ValidationErrors(t *testing.T) {
 			name: "Invalid Status",
 			cmd: taskapp.ChangeStatusCommand{
 				TaskID:    uuid.NewUUID(),
-				NewStatus: "Completed", // не существует
+				NewStatus: "Completed", // not существует
 				ChangedBy: uuid.NewUUID(),
 			},
 			expectedErr: taskapp.ErrInvalidStatus,
@@ -212,7 +212,7 @@ func TestChangeStatusUseCase_TaskNotFound(t *testing.T) {
 	useCase := taskapp.NewChangeStatusUseCase(store)
 
 	cmd := taskapp.ChangeStatusCommand{
-		TaskID:    uuid.NewUUID(), // не существует
+		TaskID:    uuid.NewUUID(), // not существует
 		NewStatus: task.StatusDone,
 		ChangedBy: uuid.NewUUID(),
 	}
@@ -232,7 +232,7 @@ func TestChangeStatusUseCase_InvalidStatusTransition(t *testing.T) {
 	createUseCase := taskapp.NewCreateTaskUseCase(store)
 	changeStatusUseCase := taskapp.NewChangeStatusUseCase(store)
 
-	// Создаем задачу в статусе To Do
+	// Creating task in статусе To Do
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
@@ -241,7 +241,7 @@ func TestChangeStatusUseCase_InvalidStatusTransition(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// Act: Пытаемся перейти из To Do сразу в Done (невалидный переход)
+	// Act: Пытаемся перейти from To Do сразу in Done (неvalidный переход)
 	changeCmd := taskapp.ChangeStatusCommand{
 		TaskID:    createResult.TaskID,
 		NewStatus: task.StatusDone,
@@ -262,19 +262,19 @@ func TestChangeStatusUseCase_AllValidTransitions(t *testing.T) {
 		to         task.Status
 		shouldPass bool
 	}{
-		// Из To Do
+		// from To Do
 		{"To Do → In Progress", task.StatusToDo, task.StatusInProgress, true},
 		{"To Do → Backlog", task.StatusToDo, task.StatusBacklog, true},
 		{"To Do → Cancelled", task.StatusToDo, task.StatusCancelled, true},
 		{"To Do → Done (invalid)", task.StatusToDo, task.StatusDone, false},
 
-		// Из In Progress
+		// from In Progress
 		{"In Progress → In Review", task.StatusInProgress, task.StatusInReview, true},
 		{"In Progress → To Do", task.StatusInProgress, task.StatusToDo, true},
 		{"In Progress → Cancelled", task.StatusInProgress, task.StatusCancelled, true},
 		{"In Progress → Done (invalid)", task.StatusInProgress, task.StatusDone, false},
 
-		// Из In Review
+		// from In Review
 		{"In Review → Done", task.StatusInReview, task.StatusDone, true},
 		{"In Review → In Progress", task.StatusInReview, task.StatusInProgress, true},
 		{"In Review → Cancelled", task.StatusInReview, task.StatusCancelled, true},
@@ -288,7 +288,7 @@ func TestChangeStatusUseCase_AllValidTransitions(t *testing.T) {
 			createUseCase := taskapp.NewCreateTaskUseCase(store)
 			changeStatusUseCase := taskapp.NewChangeStatusUseCase(store)
 
-			// Создаем задачу
+			// Creating task
 			createCmd := taskapp.CreateTaskCommand{
 				ChatID:    uuid.NewUUID(),
 				Title:     "Test Task",
@@ -297,9 +297,9 @@ func TestChangeStatusUseCase_AllValidTransitions(t *testing.T) {
 			createResult, err := createUseCase.Execute(context.Background(), createCmd)
 			require.NoError(t, err)
 
-			// Переводим задачу в нужный начальный статус
+			// Переводим задачу in нужный начальный status
 			if tt.from != task.StatusToDo {
-				// Сначала переводим в валидный промежуточный статус
+				// Сначала переводим in validный промежуточный status
 				switch tt.from { //nolint:exhaustive // Only testing specific transitions from In Progress and In Review
 				case task.StatusInProgress:
 					_, err = changeStatusUseCase.Execute(context.Background(), taskapp.ChangeStatusCommand{
@@ -324,7 +324,7 @@ func TestChangeStatusUseCase_AllValidTransitions(t *testing.T) {
 				}
 			}
 
-			// Act: Пытаемся выполнить проверяемый переход
+			// Act: Пытаемся perform checkingый переход
 			changeCmd := taskapp.ChangeStatusCommand{
 				TaskID:    createResult.TaskID,
 				NewStatus: tt.to,
@@ -350,7 +350,7 @@ func TestChangeStatusUseCase_Backlog(t *testing.T) {
 	createUseCase := taskapp.NewCreateTaskUseCase(store)
 	changeStatusUseCase := taskapp.NewChangeStatusUseCase(store)
 
-	// Создаем задачу
+	// Creating task
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
@@ -389,7 +389,7 @@ func TestChangeStatusUseCase_CancelledTransition(t *testing.T) {
 	createUseCase := taskapp.NewCreateTaskUseCase(store)
 	changeStatusUseCase := taskapp.NewChangeStatusUseCase(store)
 
-	// Создаем задачу
+	// Creating task
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
@@ -409,7 +409,7 @@ func TestChangeStatusUseCase_CancelledTransition(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, result1.Events, 1)
 
-	// Assert: Cancelled → Backlog (единственный валидный переход из Cancelled)
+	// Assert: Cancelled → Backlog (единственный validный переход from Cancelled)
 	result2, err := changeStatusUseCase.Execute(context.Background(), taskapp.ChangeStatusCommand{
 		TaskID:    createResult.TaskID,
 		NewStatus: task.StatusBacklog,
@@ -418,7 +418,7 @@ func TestChangeStatusUseCase_CancelledTransition(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, result2.Events, 1)
 
-	// Cancelled → To Do должно быть невалидно
+	// Cancelled → To Do должно быть неvalidно
 	_, err = changeStatusUseCase.Execute(context.Background(), taskapp.ChangeStatusCommand{
 		TaskID:    createResult.TaskID,
 		NewStatus: task.StatusCancelled,
@@ -441,7 +441,7 @@ func TestChangeStatusUseCase_DoneReopening(t *testing.T) {
 	createUseCase := taskapp.NewCreateTaskUseCase(store)
 	changeStatusUseCase := taskapp.NewChangeStatusUseCase(store)
 
-	// Создаем задачу и доводим до Done
+	// Creating task and доводим before Done
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",

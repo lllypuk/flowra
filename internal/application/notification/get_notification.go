@@ -8,12 +8,12 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/notification"
 )
 
-// GetNotificationUseCase обрабатывает получение notification по ID
+// GetNotificationUseCase handles retrieval notification по ID
 type GetNotificationUseCase struct {
 	notificationRepo Repository
 }
 
-// NewGetNotificationUseCase создает новый use case для получения notification
+// NewGetNotificationUseCase creates New use case for receivения notification
 func NewGetNotificationUseCase(
 	notificationRepo Repository,
 ) *GetNotificationUseCase {
@@ -22,23 +22,23 @@ func NewGetNotificationUseCase(
 	}
 }
 
-// Execute выполняет получение notification по ID
+// Execute performs retrieval notification по ID
 func (uc *GetNotificationUseCase) Execute(
 	ctx context.Context,
 	query GetNotificationQuery,
 ) (Result, error) {
-	// Валидация
+	// validation
 	if err := uc.validate(query); err != nil {
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Получение notification
+	// retrieval notification
 	notif, err := uc.notificationRepo.FindByID(ctx, query.NotificationID)
 	if err != nil {
 		return Result{}, fmt.Errorf("failed to find notification: %w", ErrNotificationNotFound)
 	}
 
-	// Проверка принадлежности
+	// check принадлежности
 	if notif.UserID() != query.UserID {
 		return Result{}, ErrNotificationAccessDenied
 	}
@@ -50,7 +50,7 @@ func (uc *GetNotificationUseCase) Execute(
 	}, nil
 }
 
-// validate проверяет валидность запроса
+// validate validates request
 func (uc *GetNotificationUseCase) validate(query GetNotificationQuery) error {
 	if err := appcore.ValidateUUID("notificationID", query.NotificationID); err != nil {
 		return err

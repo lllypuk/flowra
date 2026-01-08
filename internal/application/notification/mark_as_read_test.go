@@ -15,7 +15,7 @@ func TestMarkAsReadUseCase_Execute_Success(t *testing.T) {
 	repo := newMockNotificationRepository()
 	userID := uuid.NewUUID()
 
-	// Создаем notification
+	// Creating notification
 	notif, _ := domainnotification.NewNotification(
 		userID,
 		domainnotification.TypeTaskAssigned,
@@ -82,7 +82,7 @@ func TestMarkAsReadUseCase_Execute_AccessDenied(t *testing.T) {
 	userID := uuid.NewUUID()
 	otherUserID := uuid.NewUUID()
 
-	// Создаем notification для другого пользователя
+	// Creating notification for other user
 	notif, _ := domainnotification.NewNotification(
 		userID,
 		domainnotification.TypeTaskAssigned,
@@ -96,7 +96,7 @@ func TestMarkAsReadUseCase_Execute_AccessDenied(t *testing.T) {
 
 	cmd := notification.MarkAsReadCommand{
 		NotificationID: notif.ID(),
-		UserID:         otherUserID, // другой пользователь
+		UserID:         otherUserID, // другой userель
 	}
 
 	// Act
@@ -117,7 +117,7 @@ func TestMarkAsReadUseCase_Execute_AlreadyRead(t *testing.T) {
 	repo := newMockNotificationRepository()
 	userID := uuid.NewUUID()
 
-	// Создаем и сразу помечаем как прочитанное
+	// Creating and сразу помечаем as прочитанное
 	notif, _ := domainnotification.NewNotification(
 		userID,
 		domainnotification.TypeTaskAssigned,

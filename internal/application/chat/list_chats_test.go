@@ -17,14 +17,14 @@ type MockChatQueryRepository struct {
 	readModels map[uuid.UUID]*chat.ReadModel
 }
 
-// NewMockChatQueryRepository creates a new mock query repository
+// NewMockChatQueryRepository creates a New mock query repository
 func NewMockChatQueryRepository() *MockChatQueryRepository {
 	return &MockChatQueryRepository{
 		readModels: make(map[uuid.UUID]*chat.ReadModel),
 	}
 }
 
-// FindByID находит чат по ID (из read model)
+// FindByID finds chat по ID (from read model)
 func (m *MockChatQueryRepository) FindByID(_ context.Context, chatID uuid.UUID) (*chat.ReadModel, error) {
 	if rm, ok := m.readModels[chatID]; ok {
 		return rm, nil
@@ -32,7 +32,7 @@ func (m *MockChatQueryRepository) FindByID(_ context.Context, chatID uuid.UUID) 
 	return nil, chat.ErrChatNotFound
 }
 
-// FindByWorkspace находит чаты workspace с фильтрами
+// FindByWorkspace finds чаты workspace с фильтрами
 func (m *MockChatQueryRepository) FindByWorkspace(
 	_ context.Context,
 	workspaceID uuid.UUID,
@@ -123,7 +123,7 @@ func (m *MockChatQueryRepository) applyPagination(result []*chat.ReadModel, offs
 	return result[offset:end]
 }
 
-// FindByParticipant находит чаты пользователя
+// FindByParticipant finds чаты user
 func (m *MockChatQueryRepository) FindByParticipant(
 	_ context.Context,
 	userID uuid.UUID,
@@ -149,7 +149,7 @@ func (m *MockChatQueryRepository) FindByParticipant(
 	return result[offset:end], nil
 }
 
-// Count возвращает общее количество чатов в workspace
+// Count returns общее count chats in workspace
 func (m *MockChatQueryRepository) Count(_ context.Context, workspaceID uuid.UUID) (int, error) {
 	count := 0
 	for _, rm := range m.readModels {
@@ -449,6 +449,6 @@ func TestListChatsUseCase_ValidationError_InvalidWorkspaceID(t *testing.T) {
 
 	// Assert
 	require.Error(t, err)
-	require.Nil(t, result)
+	require.nil(t, result)
 	assert.Contains(t, err.Error(), "validation failed")
 }

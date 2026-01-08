@@ -62,7 +62,7 @@ func TestGenerateBotResponse(t *testing.T) {
 						TagKey:   "assignee",
 						TagValue: "@nonexistent",
 						Error:    errors.New("User @nonexistent not found"),
-						Severity: tag.ErrorSeverityError,
+						severity: tag.ErrorSeverityError,
 					},
 				},
 			},
@@ -76,13 +76,13 @@ func TestGenerateBotResponse(t *testing.T) {
 						TagKey:   "status",
 						TagValue: "done",
 						Error:    errors.New("Invalid status 'done' for Task. Available: To Do, In Progress, Done"),
-						Severity: tag.ErrorSeverityError,
+						severity: tag.ErrorSeverityError,
 					},
 					{
 						TagKey:   "assignee",
 						TagValue: "@nobody",
 						Error:    errors.New("User @nobody not found"),
-						Severity: tag.ErrorSeverityError,
+						severity: tag.ErrorSeverityError,
 					},
 				},
 			},
@@ -123,12 +123,12 @@ func TestGenerateBotResponse(t *testing.T) {
 					{
 						TagKey:   "severity",
 						TagValue: "Critical",
-						Error:    errors.New("Severity is only applicable to Bugs"),
-						Severity: tag.ErrorSeverityWarning,
+						Error:    errors.New("severity is only applicable to Bugs"),
+						severity: tag.ErrorSeverityWarning,
 					},
 				},
 			},
-			expected: "⚠️ Severity is only applicable to Bugs",
+			expected: "⚠️ severity is only applicable to Bugs",
 		},
 	}
 
@@ -263,10 +263,10 @@ func TestFormatSuccess_AllCommandTypes(t *testing.T) {
 			applied: tag.TagApplication{
 				TagKey:   "severity",
 				TagValue: "Critical",
-				Command:  tag.SetSeverityCommand{ChatID: chatID, Severity: "Critical"},
+				Command:  tag.SetSeverityCommand{ChatID: chatID, severity: "Critical"},
 				Success:  true,
 			},
-			expected: "✅ Severity set to Critical",
+			expected: "✅ severity set to Critical",
 		},
 	}
 
@@ -324,7 +324,7 @@ func TestProcessingResult_HelperMethods(t *testing.T) {
 			AppliedTags: []tag.TagApplication{
 				{TagKey: "task", Success: true},
 				{TagKey: "bug", Success: true},
-				{TagKey: "epic", Success: false}, // не должен считаться
+				{TagKey: "epic", Success: false}, // not должен считаться
 			},
 		}
 		assert.Equal(t, 2, result.SuccessCount())

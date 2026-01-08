@@ -21,7 +21,7 @@ import (
 
 // Helper functions
 
-// setupTaskTestRepository создает тестовые репозитории с mock event store
+// setupTaskTestRepository creates тестовые репозитории с mock event store
 func setupTaskTestRepository(t *testing.T) (
 	*mongodb.MongoTaskRepository,
 	*mongodb.MongoTaskQueryRepository,
@@ -31,11 +31,11 @@ func setupTaskTestRepository(t *testing.T) (
 
 	eventStore := mocks.NewMockEventStore()
 
-	// Используем testcontainers для MongoDB 6
+	// Используем testcontainers for MongoDB 6
 	_, db := testutil.SetupTestMongoDBWithClient(t)
 	readModelColl := db.Collection("task_read_model")
 
-	// Создаем индексы
+	// Creating indexes
 	ctx := context.Background()
 	indexModels := []mongo.IndexModel{
 		{Keys: bson.D{{Key: "task_id", Value: 1}}},
@@ -52,7 +52,7 @@ func setupTaskTestRepository(t *testing.T) (
 	return commandRepo, queryRepo, eventStore
 }
 
-// setupTaskFullRepository создает полный репозиторий для тестов
+// setupTaskFullRepository creates full репозиторий for tests
 func setupTaskFullRepository(t *testing.T) *mongodb.MongoTaskFullRepository {
 	t.Helper()
 
@@ -61,7 +61,7 @@ func setupTaskFullRepository(t *testing.T) *mongodb.MongoTaskFullRepository {
 	_, db := testutil.SetupTestMongoDBWithClient(t)
 	readModelColl := db.Collection("task_read_model")
 
-	// Создаем индексы
+	// Creating indexes
 	ctx := context.Background()
 	indexModels := []mongo.IndexModel{
 		{Keys: bson.D{{Key: "task_id", Value: 1}}},
@@ -76,7 +76,7 @@ func setupTaskFullRepository(t *testing.T) *mongodb.MongoTaskFullRepository {
 	return repo
 }
 
-// createTestTask создает тестовый агрегат задачи
+// createTestTask creates test aggregate tasks
 func createTestTask(t *testing.T) *taskdomain.Aggregate {
 	t.Helper()
 
@@ -171,7 +171,7 @@ func TestMongoTaskRepository_Save_NoChanges(t *testing.T) {
 	err := commandRepo.Save(ctx, aggregate)
 	require.NoError(t, err)
 
-	// Load the task (это очищает uncommittedEvents)
+	// Load the task (it is clears uncommittedEvents)
 	loaded, err := commandRepo.Load(ctx, aggregate.ID())
 	require.NoError(t, err)
 

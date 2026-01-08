@@ -33,7 +33,7 @@ func WithLogger(logger *slog.Logger) Option {
 	}
 }
 
-// NewMongoEventStore создает новый MongoDB Event Store
+// NewMongoEventStore creates New MongoDB Event Store
 func NewMongoEventStore(client *mongo.Client, databaseName string, opts ...Option) *MongoEventStore {
 	database := client.Database(databaseName)
 	collection := database.Collection("events")
@@ -53,7 +53,7 @@ func NewMongoEventStore(client *mongo.Client, databaseName string, opts ...Optio
 	return s
 }
 
-// SaveEvents сохраняет события для агрегата с оптимистичной блокировкой
+// SaveEvents saves event for aggregate с оптимистичной блокировкой
 func (s *MongoEventStore) SaveEvents(
 	ctx context.Context,
 	aggregateID string,
@@ -64,7 +64,7 @@ func (s *MongoEventStore) SaveEvents(
 		return nil
 	}
 
-	// Запускаем сессию для транзакции
+	// Runningаем сессию for транзакции
 	session, err := s.client.StartSession()
 	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to start MongoDB session for event store",
@@ -75,9 +75,9 @@ func (s *MongoEventStore) SaveEvents(
 	}
 	defer session.EndSession(ctx)
 
-	// Выполняем операцию в транзакции
+	// Выполняем операцию in транзакции
 	_, err = session.WithTransaction(ctx, func(txCtx context.Context) (any, error) {
-		// 1. Проверяем текущую версию (оптимистичная блокировка)
+		// 1. Checking current version (optimistic locking)
 		currentVersion, errVersion := s.getCurrentVersion(txCtx, aggregateID)
 		if errVersion != nil {
 			s.logger.ErrorContext(ctx, "failed to get current version for aggregate",
@@ -96,7 +96,7 @@ func (s *MongoEventStore) SaveEvents(
 			return nil, appcore.ErrConcurrencyConflict
 		}
 
-		// 2. Сериализуем события
+		// 2. Serializing event
 		documents, errSerialize := s.serializer.SerializeMany(events)
 		if errSerialize != nil {
 			s.logger.ErrorContext(ctx, "failed to serialize events",
@@ -107,16 +107,16 @@ func (s *MongoEventStore) SaveEvents(
 			return nil, errSerialize
 		}
 
-		// 3. Преобразуем в interface{} для InsertMany
+		// 3. Преобразуем in interface{} for InsertMany
 		docs := make([]any, len(documents))
 		for i, doc := range documents {
 			docs[i] = doc
 		}
 
-		// 4. Вставляем события (bulk)
+		// 4. Вставляем event (bulk)
 		_, errInsert := s.collection.InsertMany(txCtx, docs)
 		if errInsert != nil {
-			// Проверяем ошибку дублирования ключа (конфликт concurrency)
+			// Checking error дублирования ключа (конфликт concurrency)
 			if mongo.IsDuplicateKeyError(errInsert) {
 				s.logger.WarnContext(ctx, "duplicate key error in event store (concurrency)",
 					slog.String("aggregate_id", aggregateID),
@@ -146,7 +146,7 @@ func (s *MongoEventStore) SaveEvents(
 	return err
 }
 
-// LoadEvents загружает все события для агрегата
+// LoadEvents loads all event for aggregate
 func (s *MongoEventStore) LoadEvents(ctx context.Context, aggregateID string) ([]event.DomainEvent, error) {
 	filter := bson.M{"aggregate_id": aggregateID}
 	opts := options.Find().SetSort(bson.D{{Key: "version", Value: 1}})
@@ -170,12 +170,12 @@ func (s *MongoEventStore) LoadEvents(ctx context.Context, aggregateID string) ([
 		return nil, fmt.Errorf("failed to decode events: %w", err)
 	}
 
-	// Если нет документов, возвращаем ошибку
+	// if no документов, возвращаем error
 	if len(docs) == 0 {
 		return nil, appcore.ErrAggregateNotFound
 	}
 
-	// Десериализуем события через сериализатор
+	// Деserializing event via сериализатор
 	events, err := s.serializer.DeserializeMany(docs)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to deserialize events from event store",
@@ -189,7 +189,7 @@ func (s *MongoEventStore) LoadEvents(ctx context.Context, aggregateID string) ([
 	return events, nil
 }
 
-// GetVersion возвращает текущую версию агрегата
+// GetVersion returns current version aggregate
 func (s *MongoEventStore) GetVersion(ctx context.Context, aggregateID string) (int, error) {
 	filter := bson.M{"aggregate_id": aggregateID}
 	opts := options.FindOne().SetSort(bson.D{{Key: "version", Value: -1}})
@@ -198,7 +198,7 @@ func (s *MongoEventStore) GetVersion(ctx context.Context, aggregateID string) (i
 	err := s.collection.FindOne(ctx, filter, opts).Decode(&doc)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return 0, nil // Нет событий еще
+			return 0, nil // no events еще
 		}
 		return 0, fmt.Errorf("failed to get current version: %w", err)
 	}
@@ -206,7 +206,7 @@ func (s *MongoEventStore) GetVersion(ctx context.Context, aggregateID string) (i
 	return doc.Version, nil
 }
 
-// getCurrentVersion получает текущую версию агрегата (внутренний метод)
+// getCurrentVersion receivает current version aggregate (внутренний method)
 func (s *MongoEventStore) getCurrentVersion(ctx context.Context, aggregateID string) (int, error) {
 	return s.GetVersion(ctx, aggregateID)
 }

@@ -84,14 +84,14 @@ func TestSendMessageUseCase_NotParticipant(t *testing.T) {
 
 	chatID := uuid.NewUUID()
 	otherUserID := uuid.NewUUID()
-	chatRepo.AddChat(chatID, []uuid.UUID{otherUserID}) // Другой пользователь
+	chatRepo.AddChat(chatID, []uuid.UUID{otherUserID}) // Другой userель
 
 	useCase := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus, nil, nil)
 
 	cmd := message.SendMessageCommand{
 		ChatID:          chatID,
 		Content:         "Hello",
-		AuthorID:        uuid.NewUUID(), // Не участник
+		AuthorID:        uuid.NewUUID(), // not участник
 		ParentMessageID: "",
 	}
 
@@ -99,7 +99,7 @@ func TestSendMessageUseCase_NotParticipant(t *testing.T) {
 
 	require.Error(t, err)
 	require.ErrorIs(t, err, message.ErrNotChatParticipant)
-	assert.Nil(t, result.Value)
+	assert.nil(t, result.Value)
 }
 
 func TestSendMessageUseCase_ChatNotFound(t *testing.T) {
@@ -110,7 +110,7 @@ func TestSendMessageUseCase_ChatNotFound(t *testing.T) {
 	useCase := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus, nil, nil)
 
 	cmd := message.SendMessageCommand{
-		ChatID:          uuid.NewUUID(), // Несуществующий чат
+		ChatID:          uuid.NewUUID(), // Неexistingий chat
 		Content:         "Hello",
 		AuthorID:        uuid.NewUUID(),
 		ParentMessageID: "",
@@ -120,7 +120,7 @@ func TestSendMessageUseCase_ChatNotFound(t *testing.T) {
 
 	require.Error(t, err)
 	require.ErrorIs(t, err, message.ErrChatNotFound)
-	assert.Nil(t, result.Value)
+	assert.nil(t, result.Value)
 }
 
 func TestSendMessageUseCase_EmptyContent(t *testing.T) {
@@ -136,7 +136,7 @@ func TestSendMessageUseCase_EmptyContent(t *testing.T) {
 
 	cmd := message.SendMessageCommand{
 		ChatID:          chatID,
-		Content:         "", // Пустой контент
+		Content:         "", // empty контент
 		AuthorID:        authorID,
 		ParentMessageID: "",
 	}
@@ -145,7 +145,7 @@ func TestSendMessageUseCase_EmptyContent(t *testing.T) {
 
 	require.Error(t, err)
 	require.ErrorIs(t, err, message.ErrEmptyContent)
-	assert.Nil(t, result.Value)
+	assert.nil(t, result.Value)
 }
 
 func TestSendMessageUseCase_ContentTooLong(t *testing.T) {
@@ -159,7 +159,7 @@ func TestSendMessageUseCase_ContentTooLong(t *testing.T) {
 
 	useCase := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus, nil, nil)
 
-	// Создаем контент > message.MaxContentLength
+	// Creating контент > message.MaxContentLength
 	longContent := make([]byte, message.MaxContentLength+1)
 	for i := range longContent {
 		longContent[i] = 'a'
@@ -176,7 +176,7 @@ func TestSendMessageUseCase_ContentTooLong(t *testing.T) {
 
 	require.Error(t, err)
 	require.ErrorIs(t, err, message.ErrContentTooLong)
-	assert.Nil(t, result.Value)
+	assert.nil(t, result.Value)
 }
 
 func TestSendMessageUseCase_ParentNotFound(t *testing.T) {
@@ -194,14 +194,14 @@ func TestSendMessageUseCase_ParentNotFound(t *testing.T) {
 		ChatID:          chatID,
 		Content:         "Reply",
 		AuthorID:        authorID,
-		ParentMessageID: uuid.NewUUID(), // Несуществующий parent
+		ParentMessageID: uuid.NewUUID(), // Неexistingий parent
 	}
 
 	result, err := useCase.Execute(context.Background(), cmd)
 
 	require.Error(t, err)
 	require.ErrorIs(t, err, message.ErrParentNotFound)
-	assert.Nil(t, result.Value)
+	assert.nil(t, result.Value)
 }
 
 func TestSendMessageUseCase_ParentInDifferentChat(t *testing.T) {
@@ -223,7 +223,7 @@ func TestSendMessageUseCase_ParentInDifferentChat(t *testing.T) {
 	useCase := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus, nil, nil)
 
 	cmd := message.SendMessageCommand{
-		ChatID:          chatID2, // Другой чат
+		ChatID:          chatID2, // Другой chat
 		Content:         "Reply",
 		AuthorID:        authorID,
 		ParentMessageID: parentMsg.ID(),
@@ -233,5 +233,5 @@ func TestSendMessageUseCase_ParentInDifferentChat(t *testing.T) {
 
 	require.Error(t, err)
 	require.ErrorIs(t, err, message.ErrParentInDifferentChat)
-	assert.Nil(t, result.Value)
+	assert.nil(t, result.Value)
 }

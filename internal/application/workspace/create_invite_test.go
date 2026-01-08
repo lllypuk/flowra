@@ -16,14 +16,14 @@ func TestCreateInviteUseCase_Execute_Success(t *testing.T) {
 	repo := newMockWorkspaceRepository()
 	useCase := workspace.NewCreateInviteUseCase(repo)
 
-	// Создаем существующий workspace
+	// Creating existing workspace
 	existingWs, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
 	_ = repo.Save(context.Background(), existingWs)
 
 	cmd := workspace.CreateInviteCommand{
 		WorkspaceID: existingWs.ID(),
-		ExpiresAt:   nil, // будет использовано значение по умолчанию (7 дней)
-		MaxUses:     nil, // будет использовано значение по умолчанию (0 - unlimited)
+		ExpiresAt:   nil, // будет использовано value by default (7 дней)
+		MaxUses:     nil, // будет использовано value by default (0 - unlimited)
 		CreatedBy:   uuid.NewUUID(),
 	}
 
@@ -47,7 +47,7 @@ func TestCreateInviteUseCase_Execute_Success(t *testing.T) {
 		t.Error("expected invite token to be generated")
 	}
 
-	// Проверка, что инвайт добавлен в workspace
+	// check, that инвайт добавлен in workspace
 	updatedWs, _ := repo.FindByID(context.Background(), existingWs.ID())
 	if len(updatedWs.Invites()) != 1 {
 		t.Errorf("expected 1 invite in workspace, got %d", len(updatedWs.Invites()))
@@ -59,7 +59,7 @@ func TestCreateInviteUseCase_Execute_WithCustomExpiresAt(t *testing.T) {
 	repo := newMockWorkspaceRepository()
 	useCase := workspace.NewCreateInviteUseCase(repo)
 
-	// Создаем существующий workspace
+	// Creating existing workspace
 	existingWs, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
 	_ = repo.Save(context.Background(), existingWs)
 
@@ -205,11 +205,11 @@ func TestCreateInviteUseCase_Execute_SaveError(t *testing.T) {
 	// Arrange
 	repo := newMockWorkspaceRepository()
 
-	// Создаем существующий workspace
+	// Creating existing workspace
 	existingWs, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
 	_ = repo.Save(context.Background(), existingWs)
 
-	// Устанавливаем ошибку сохранения
+	// Setting error saving
 	repo.saveError = errors.New("database error")
 
 	useCase := workspace.NewCreateInviteUseCase(repo)

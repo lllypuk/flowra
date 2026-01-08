@@ -7,19 +7,19 @@ import (
 	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
-// RemoveParticipantUseCase обрабатывает удаление участника из чата
+// RemoveParticipantUseCase handles removing a participant from a chat
 type RemoveParticipantUseCase struct {
 	eventStore appcore.EventStore
 }
 
-// NewRemoveParticipantUseCase создает новый RemoveParticipantUseCase
+// NewRemoveParticipantUseCase creates a new RemoveParticipantUseCase
 func NewRemoveParticipantUseCase(eventStore appcore.EventStore) *RemoveParticipantUseCase {
 	return &RemoveParticipantUseCase{
 		eventStore: eventStore,
 	}
 }
 
-// Execute выполняет удаление участника
+// Execute performs removing a participant
 func (uc *RemoveParticipantUseCase) Execute(ctx context.Context, cmd RemoveParticipantCommand) (Result, error) {
 	if err := uc.validate(cmd); err != nil {
 		return Result{}, fmt.Errorf("validation failed: %w", err)

@@ -6,109 +6,109 @@ import (
 	"github.com/google/uuid"
 )
 
-// Command представляет команду, которая должна быть выполнена
+// Command represents команду, которая должна быть выполнена
 type Command interface {
 	CommandType() string
 }
 
-// CreateTaskCommand - команда создания Task
+// CreateTaskCommand - command creating Task
 type CreateTaskCommand struct {
 	ChatID uuid.UUID
 	Title  string
 }
 
-// CommandType возвращает тип команды
+// CommandType returns type commands
 func (c CreateTaskCommand) CommandType() string {
 	return "CreateTask"
 }
 
-// CreateBugCommand - команда создания Bug
+// CreateBugCommand - command creating Bug
 type CreateBugCommand struct {
 	ChatID uuid.UUID
 	Title  string
 }
 
-// CommandType возвращает тип команды
+// CommandType returns type commands
 func (c CreateBugCommand) CommandType() string {
 	return "CreateBug"
 }
 
-// CreateEpicCommand - команда создания Epic
+// CreateEpicCommand - command creating Epic
 type CreateEpicCommand struct {
 	ChatID uuid.UUID
 	Title  string
 }
 
-// CommandType возвращает тип команды
+// CommandType returns type commands
 func (c CreateEpicCommand) CommandType() string {
 	return "CreateEpic"
 }
 
 // ====== Task 04: Entity Management Commands ======
 
-// ChangeStatusCommand - команда изменения статуса
+// ChangeStatusCommand - command changing status
 type ChangeStatusCommand struct {
 	ChatID uuid.UUID
 	Status string
 }
 
-// CommandType возвращает тип команды
+// CommandType returns type commands
 func (c ChangeStatusCommand) CommandType() string {
 	return "ChangeStatus"
 }
 
-// AssignUserCommand - команда назначения исполнителя
+// AssignUserCommand - command наvalueения исполнителя
 type AssignUserCommand struct {
 	ChatID   uuid.UUID
 	Username string     // @alex
-	UserID   *uuid.UUID // резолвленный ID (может быть nil при снятии)
+	UserID   *uuid.UUID // резолвленный ID (может быть nil at снятии)
 }
 
-// CommandType возвращает тип команды
+// CommandType returns type commands
 func (c AssignUserCommand) CommandType() string {
 	return "AssignUser"
 }
 
-// ChangePriorityCommand - команда изменения приоритета
+// ChangePriorityCommand - command changing priority
 type ChangePriorityCommand struct {
 	ChatID   uuid.UUID
 	Priority string
 }
 
-// CommandType возвращает тип команды
+// CommandType returns type commands
 func (c ChangePriorityCommand) CommandType() string {
 	return "ChangePriority"
 }
 
-// SetDueDateCommand - команда установки дедлайна
+// SetDueDateCommand - command setting deadline
 type SetDueDateCommand struct {
 	ChatID  uuid.UUID
-	DueDate *time.Time // nil означает снять due date
+	DueDate *time.Time // nil оvalueает снять due date
 }
 
-// CommandType возвращает тип команды
+// CommandType returns type commands
 func (c SetDueDateCommand) CommandType() string {
 	return "SetDueDate"
 }
 
-// ChangeTitleCommand - команда изменения названия
+// ChangeTitleCommand - command changing названия
 type ChangeTitleCommand struct {
 	ChatID uuid.UUID
 	Title  string
 }
 
-// CommandType возвращает тип команды
+// CommandType returns type commands
 func (c ChangeTitleCommand) CommandType() string {
 	return "ChangeTitle"
 }
 
-// SetSeverityCommand - команда установки серьезности бага
+// SetSeverityCommand - command setting серьезности бага
 type SetSeverityCommand struct {
 	ChatID   uuid.UUID
-	Severity string
+	severity string
 }
 
-// CommandType возвращает тип команды
+// CommandType returns type commands
 func (c SetSeverityCommand) CommandType() string {
 	return "SetSeverity"
 }

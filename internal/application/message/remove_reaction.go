@@ -9,13 +9,13 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/message"
 )
 
-// RemoveReactionUseCase обрабатывает удаление реакции с сообщения
+// RemoveReactionUseCase handles deletion реакции с messages
 type RemoveReactionUseCase struct {
 	messageRepo Repository
 	eventBus    event.Bus
 }
 
-// NewRemoveReactionUseCase создает новый RemoveReactionUseCase
+// NewRemoveReactionUseCase creates New RemoveReactionUseCase
 func NewRemoveReactionUseCase(
 	messageRepo Repository,
 	eventBus event.Bus,
@@ -26,33 +26,33 @@ func NewRemoveReactionUseCase(
 	}
 }
 
-// Execute выполняет удаление реакции
+// Execute performs deletion реакции
 func (uc *RemoveReactionUseCase) Execute(
 	ctx context.Context,
 	cmd RemoveReactionCommand,
 ) (Result, error) {
-	// Валидация
+	// validation
 	if err := uc.validate(cmd); err != nil {
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Загрузка сообщения
+	// Loading message
 	msg, err := uc.messageRepo.FindByID(ctx, cmd.MessageID)
 	if err != nil {
 		return Result{}, ErrMessageNotFound
 	}
 
-	// Удаление реакции
+	// deletion реакции
 	if removeErr := msg.RemoveReaction(cmd.UserID, cmd.Emoji); removeErr != nil {
 		return Result{}, removeErr
 	}
 
-	// Сохранение
+	// storage
 	if saveErr := uc.messageRepo.Save(ctx, msg); saveErr != nil {
 		return Result{}, fmt.Errorf("failed to save message: %w", saveErr)
 	}
 
-	// Публикация события
+	// Publishing event
 	evt := message.NewReactionRemoved(msg.ID(), cmd.UserID, cmd.Emoji, 1, event.Metadata{
 		UserID: cmd.UserID.String(),
 	})

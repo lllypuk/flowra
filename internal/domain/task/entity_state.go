@@ -6,39 +6,39 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/errs"
 )
 
-// EntityType представляет тип сущности
+// EntityType represents type сущности
 type EntityType string
 
 const (
-	// TypeTask обычная задача
+	// TypeTask обычная task
 	TypeTask EntityType = "task"
-	// TypeBug баг/дефект
+	// TypeBug bug/дефект
 	TypeBug EntityType = "bug"
-	// TypeEpic эпик (большая задача)
+	// TypeEpic эпик (большая task)
 	TypeEpic EntityType = "epic"
-	// TypeDiscussion обсуждение (не типизированная сущность)
+	// TypeDiscussion обсуждение (not типизированная сущность)
 	TypeDiscussion EntityType = "discussion"
 )
 
-// Status представляет статус задачи
+// Status represents status tasks
 type Status string
 
 const (
-	// StatusBacklog задача в бэклоге
+	// StatusBacklog task in бэклоге
 	StatusBacklog Status = "Backlog"
-	// StatusToDo задача готова к работе
+	// StatusToDo task готова to workе
 	StatusToDo Status = "To Do"
-	// StatusInProgress задача в работе
+	// StatusInProgress task in workе
 	StatusInProgress Status = "In Progress"
-	// StatusInReview задача на ревью
+	// StatusInReview task on ревью
 	StatusInReview Status = "In Review"
-	// StatusDone задача завершена
+	// StatusDone task завершена
 	StatusDone Status = "Done"
-	// StatusCancelled задача отменена
+	// StatusCancelled task отменена
 	StatusCancelled Status = "Cancelled"
 )
 
-// Priority представляет приоритет задачи
+// Priority represents приоритет tasks
 type Priority string
 
 const (
@@ -52,14 +52,14 @@ const (
 	PriorityCritical Priority = "Critical"
 )
 
-// EntityState представляет состояние типизированной сущности
+// EntityState represents state типизированной сущности
 type EntityState struct {
 	entityType EntityType
 	status     Status
 	priority   Priority
 }
 
-// NewEntityState создает новое состояние сущности
+// NewEntityState creates новое state сущности
 func NewEntityState(entityType EntityType) (*EntityState, error) {
 	if !isValidEntityType(entityType) {
 		return nil, errs.ErrInvalidInput
@@ -72,7 +72,7 @@ func NewEntityState(entityType EntityType) (*EntityState, error) {
 	}, nil
 }
 
-// ChangeStatus изменяет статус с валидацией перехода
+// ChangeStatus изменяет status с validацией перехода
 func (s *EntityState) ChangeStatus(newStatus Status) error {
 	if !isValidStatus(newStatus) {
 		return errs.ErrInvalidInput
@@ -96,25 +96,25 @@ func (s *EntityState) SetPriority(priority Priority) error {
 	return nil
 }
 
-// isValidTransition проверяет валидность перехода между статусами
+// isValidTransition validates перехода between статусами
 func (s *EntityState) isValidTransition(newStatus Status) bool {
-	// Если статус не меняется, это всегда валидно
+	// if status not меняется, it is always validно
 	if s.status == newStatus {
 		return true
 	}
 
-	// Из Cancelled можно вернуться только в Backlog
+	// from Cancelled можно вернуться only in Backlog
 	if s.status == StatusCancelled {
 		return newStatus == StatusBacklog
 	}
 
-	// Из Done можно вернуться в InReview (reopening)
+	// from Done можно вернуться in InReview (reopening)
 	if s.status == StatusDone {
 		return newStatus == StatusInReview || newStatus == StatusCancelled
 	}
 
-	// Стандартные переходы вперед
-	transitions := map[Status][]Status{ //nolint:exhaustive // task.StatusDone, task.StatusCancelled не имеют переходов вперед
+	// Стандартные переходы вbefore
+	transitions := map[Status][]Status{ //nolint:exhaustive // task.StatusDone, task.StatusCancelled not имеют переходов вbefore
 		StatusBacklog:    {StatusToDo, StatusCancelled},
 		StatusToDo:       {StatusInProgress, StatusBacklog, StatusCancelled},
 		StatusInProgress: {StatusInReview, StatusToDo, StatusCancelled},
@@ -131,13 +131,13 @@ func (s *EntityState) isValidTransition(newStatus Status) bool {
 
 // Getters
 
-// Type возвращает тип сущности
+// Type returns type сущности
 func (s *EntityState) Type() EntityType { return s.entityType }
 
-// Status возвращает статус
+// Status returns status
 func (s *EntityState) Status() Status { return s.status }
 
-// Priority возвращает приоритет
+// Priority returns приоритет
 func (s *EntityState) Priority() Priority { return s.priority }
 
 // Validation helpers

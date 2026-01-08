@@ -7,55 +7,55 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// Pagination представляет параметры пагинации для запросов сообщений
+// Pagination represents parameters пагинации for запросов сообщений
 type Pagination struct {
 	Limit  int
 	Offset int
 }
 
-// CommandRepository определяет интерфейс для команд (изменение состояния) сообщений
-// Интерфейс объявлен на стороне потребителя (application layer)
+// CommandRepository defines interface for commands (change state) сообщений
+// interface declared on the consumer side (application layer)
 type CommandRepository interface {
-	// Save сохраняет сообщение (создание или обновление)
+	// Save saves message (creation or update)
 	Save(ctx context.Context, msg *message.Message) error
 
-	// Delete физически удаляет сообщение
+	// Delete физически удаляет message
 	Delete(ctx context.Context, id uuid.UUID) error
 
-	// AddReaction добавляет реакцию к сообщению
+	// AddReaction добавляет реакцию to сообщению
 	AddReaction(ctx context.Context, messageID uuid.UUID, emojiCode string, userID uuid.UUID) error
 
-	// RemoveReaction удаляет реакцию с сообщения
+	// RemoveReaction удаляет реакцию с messages
 	RemoveReaction(ctx context.Context, messageID uuid.UUID, emojiCode string, userID uuid.UUID) error
 }
 
-// QueryRepository определяет интерфейс для запросов (только чтение) сообщений
-// Интерфейс объявлен на стороне потребителя (application layer)
+// QueryRepository defines interface for запросов (only reading) сообщений
+// interface declared on the consumer side (application layer)
 type QueryRepository interface {
-	// FindByID находит сообщение по ID
+	// FindByID finds message по ID
 	FindByID(ctx context.Context, id uuid.UUID) (*message.Message, error)
 
-	// FindByChatID находит сообщения в чате с пагинацией
-	// Сообщения возвращаются отсортированными по времени создания (от новых к старым)
+	// FindByChatID finds messages in чате с пагинацией
+	// Сообщения возвращаются отсортированными по time creating (от New to старым)
 	FindByChatID(ctx context.Context, chatID uuid.UUID, pagination Pagination) ([]*message.Message, error)
 
-	// FindThread находит все ответы в треде
-	// Возвращает сообщения, у которых ParentMessageID равен указанному
+	// FindThread finds all responses in треде
+	// returns messages, у которых ParentMessageID equal указанному
 	FindThread(ctx context.Context, parentMessageID uuid.UUID) ([]*message.Message, error)
 
-	// CountByChatID возвращает количество сообщений в чате
+	// CountByChatID returns count сообщений in чате
 	CountByChatID(ctx context.Context, chatID uuid.UUID) (int, error)
 
-	// CountThreadReplies возвращает количество ответов в треде
+	// CountThreadReplies returns count responseов in треде
 	CountThreadReplies(ctx context.Context, parentMessageID uuid.UUID) (int, error)
 
-	// GetReactionUsers возвращает пользователей, поставивших определенную реакцию
+	// GetReactionUsers returns users, поставивших определенную реакцию
 	GetReactionUsers(ctx context.Context, messageID uuid.UUID, emojiCode string) ([]uuid.UUID, error)
 
-	// SearchInChat ищет сообщения в чате по тексту
+	// SearchInChat ищет messages in чате по textу
 	SearchInChat(ctx context.Context, chatID uuid.UUID, query string, offset, limit int) ([]*message.Message, error)
 
-	// FindByAuthor находит сообщения автора в чате
+	// FindByAuthor finds messages автора in чате
 	FindByAuthor(
 		ctx context.Context,
 		chatID uuid.UUID,
@@ -64,8 +64,8 @@ type QueryRepository interface {
 	) ([]*message.Message, error)
 }
 
-// Repository объединяет Command и Query интерфейсы для удобства
-// Используется когда use case нужны оба типа операций
+// Repository combines Command and Query interfaces for convenience
+// Used when use case need both types of операций
 type Repository interface {
 	CommandRepository
 	QueryRepository

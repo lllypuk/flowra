@@ -7,50 +7,50 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/workspace"
 )
 
-// ListUserWorkspacesUseCase - use case для получения списка workspace пользователя
+// ListUserWorkspacesUseCase - use case for receivения list workspace user
 type ListUserWorkspacesUseCase struct {
 	appcore.BaseUseCase
 
 	keycloakClient KeycloakClient
-	// Для получения workspaces пользователя нужно:
-	// 1. Получить список групп пользователя из Keycloak
-	// 2. Найти workspaces по этим группам
-	// Но в текущей реализации Repository нет метода FindByKeycloakGroups
-	// Поэтому используем существующий метод FindByKeycloakGroup для каждой группы
+	// for receivения workspaces user нужно:
+	// 1. get list user groups from Keycloak
+	// 2. find workspaces for these groups
+	// Но in текущей реализации Repository no метода FindByKeycloakGroups
+	// Поit isму используем existingий method FindByKeycloakGroup for каждой groupsы
 }
 
-// NewListUserWorkspacesUseCase создает новый ListUserWorkspacesUseCase
+// NewListUserWorkspacesUseCase creates New ListUserWorkspacesUseCase
 func NewListUserWorkspacesUseCase(keycloakClient KeycloakClient) *ListUserWorkspacesUseCase {
 	return &ListUserWorkspacesUseCase{
 		keycloakClient: keycloakClient,
 	}
 }
 
-// Execute выполняет получение списка workspace пользователя
+// Execute performs retrieval list workspace user
 func (uc *ListUserWorkspacesUseCase) Execute(
 	ctx context.Context,
 	query ListUserWorkspacesQuery,
 ) (ListResult, error) {
-	// Валидация контекста
+	// context validation
 	if err := uc.ValidateContext(ctx); err != nil {
 		return ListResult{}, uc.WrapError("validate context", err)
 	}
 
-	// Валидация запроса
+	// validation request
 	if err := uc.validate(query); err != nil {
 		return ListResult{}, uc.WrapError("validation failed", err)
 	}
 
-	// TODO: Реализация требует дополнительных методов в KeycloakClient:
-	// - GetUserGroups(ctx, userID) ([]string, error) - получить список групп пользователя
-	// И в Repository:
+	// TODO: Реализация требует дополнительных methods in KeycloakClient:
+	// - GetUserGroups(ctx, userID) ([]string, error) - get list user groups
+	// and in Repository:
 	// - FindByKeycloakGroups(ctx, groupIDs []string) ([]*Workspace, error)
 
-	// Временная заглушка для компиляции
-	// В реальном проекте нужно:
-	// 1. Добавить GetUserGroups в KeycloakClient
-	// 2. Добавить FindByKeycloakGroups в Repository
-	// 3. Реализовать логику получения и фильтрации workspaces
+	// Временная заглушка for компиляции
+	// in реальном проекте нужно:
+	// 1. Add GetUserGroups in KeycloakClient
+	// 2. Add FindByKeycloakGroups in Repository
+	// 3. Реализовать логику receivения and filtering workspaces
 
 	return ListResult{
 		Workspaces: []*workspace.Workspace{},
@@ -60,7 +60,7 @@ func (uc *ListUserWorkspacesUseCase) Execute(
 	}, nil
 }
 
-// validate проверяет валидность запроса
+// validate validates request
 func (uc *ListUserWorkspacesUseCase) validate(query ListUserWorkspacesQuery) error {
 	if err := appcore.ValidateUUID("userID", query.UserID); err != nil {
 		return err

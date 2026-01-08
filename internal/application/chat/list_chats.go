@@ -7,13 +7,13 @@ import (
 	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
-// ListChatsUseCase - use case для получения списка чатов
+// ListChatsUseCase - use case for retrieving a list of chats
 type ListChatsUseCase struct {
 	chatRepo   QueryRepository
 	eventStore appcore.EventStore
 }
 
-// NewListChatsUseCase - конструктор
+// NewListChatsUseCase - constructor
 func NewListChatsUseCase(chatRepo QueryRepository, eventStore appcore.EventStore) *ListChatsUseCase {
 	return &ListChatsUseCase{
 		chatRepo:   chatRepo,
@@ -21,7 +21,7 @@ func NewListChatsUseCase(chatRepo QueryRepository, eventStore appcore.EventStore
 	}
 }
 
-// Execute - выполнить запрос
+// Execute - execute the query
 func (uc *ListChatsUseCase) Execute(ctx context.Context, query ListChatsQuery) (*ListChatsResult, error) {
 	// 1. Validate input
 	if err := uc.validate(query); err != nil {

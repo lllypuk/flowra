@@ -9,32 +9,32 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/workspace"
 )
 
-// MemberCommandRepository определяет интерфейс для команд (изменение состояния) членов workspace.
-// Интерфейс объявлен на стороне потребителя согласно принципам Go interface design.
+// MemberCommandRepository defines interface for commands (change state) членов workspace.
+// interface declared on the consumer side according to principles Go interface design.
 type MemberCommandRepository interface {
-	// AddMember добавляет члена в workspace
+	// AddMember добавляет члена in workspace
 	AddMember(ctx context.Context, member *workspace.Member) error
 
-	// RemoveMember удаляет члена из workspace
+	// RemoveMember удаляет члена from workspace
 	RemoveMember(ctx context.Context, workspaceID, userID uuid.UUID) error
 
-	// UpdateMember обновляет данные члена workspace
+	// UpdateMember обновляет data члена workspace
 	UpdateMember(ctx context.Context, member *workspace.Member) error
 }
 
-// MemberQueryRepository определяет интерфейс для запросов (только чтение) членов workspace.
-// Интерфейс объявлен на стороне потребителя согласно принципам Go interface design.
+// MemberQueryRepository defines interface for запросов (only reading) членов workspace.
+// interface declared on the consumer side according to principles Go interface design.
 type MemberQueryRepository interface {
-	// FindByID находит рабочее пространство по ID (для проверки существования)
+	// FindByID finds workspaceее пространство по ID (for проверки существования)
 	FindByID(ctx context.Context, id uuid.UUID) (*workspace.Workspace, error)
 
-	// GetMember возвращает члена workspace по userID
+	// GetMember returns члена workspace по userID
 	GetMember(ctx context.Context, workspaceID, userID uuid.UUID) (*workspace.Member, error)
 
-	// ListMembers возвращает всех членов workspace
+	// ListMembers returns all членов workspace
 	ListMembers(ctx context.Context, workspaceID uuid.UUID, offset, limit int) ([]*workspace.Member, error)
 
-	// CountMembers возвращает количество членов workspace
+	// CountMembers returns count членов workspace
 	CountMembers(ctx context.Context, workspaceID uuid.UUID) (int, error)
 }
 
@@ -44,7 +44,7 @@ type MemberService struct {
 	queryRepo   MemberQueryRepository
 }
 
-// NewMemberService создаёт новый MemberService.
+// NewMemberService создаёт New MemberService.
 func NewMemberService(
 	commandRepo MemberCommandRepository,
 	queryRepo MemberQueryRepository,
@@ -55,13 +55,13 @@ func NewMemberService(
 	}
 }
 
-// AddMember добавляет пользователя в workspace.
+// AddMember добавляет user in workspace.
 func (s *MemberService) AddMember(
 	ctx context.Context,
 	workspaceID, userID uuid.UUID,
 	role workspace.Role,
 ) (*workspace.Member, error) {
-	// Проверить, что workspace существует
+	// verify, that workspace существует
 	ws, err := s.queryRepo.FindByID(ctx, workspaceID)
 	if err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ func (s *MemberService) AddMember(
 		return nil, errs.ErrNotFound
 	}
 
-	// Проверить, что пользователь ещё не член
+	// verify, that userель ещё not член
 	existing, err := s.queryRepo.GetMember(ctx, workspaceID, userID)
 	if err != nil && !errors.Is(err, errs.ErrNotFound) {
 		return nil, err
@@ -79,7 +79,7 @@ func (s *MemberService) AddMember(
 		return nil, errs.ErrAlreadyExists
 	}
 
-	// Создать member
+	// create member
 	member := workspace.NewMember(userID, workspaceID, role)
 
 	if addErr := s.commandRepo.AddMember(ctx, &member); addErr != nil {
@@ -89,12 +89,12 @@ func (s *MemberService) AddMember(
 	return &member, nil
 }
 
-// RemoveMember удаляет пользователя из workspace.
+// RemoveMember удаляет user from workspace.
 func (s *MemberService) RemoveMember(
 	ctx context.Context,
 	workspaceID, userID uuid.UUID,
 ) error {
-	// Проверить, что member существует
+	// verify, that member существует
 	member, err := s.queryRepo.GetMember(ctx, workspaceID, userID)
 	if err != nil {
 		return err
@@ -103,7 +103,7 @@ func (s *MemberService) RemoveMember(
 		return errs.ErrNotFound
 	}
 
-	// Нельзя удалить owner
+	// Нельзя delete owner
 	if member.Role() == workspace.RoleOwner {
 		return errs.ErrForbidden
 	}
@@ -111,7 +111,7 @@ func (s *MemberService) RemoveMember(
 	return s.commandRepo.RemoveMember(ctx, workspaceID, userID)
 }
 
-// UpdateMemberRole обновляет роль участника.
+// UpdateMemberRole обновляет роль participant.
 func (s *MemberService) UpdateMemberRole(
 	ctx context.Context,
 	workspaceID, userID uuid.UUID,
@@ -125,17 +125,17 @@ func (s *MemberService) UpdateMemberRole(
 		return nil, errs.ErrNotFound
 	}
 
-	// Нельзя изменить роль owner
+	// Нельзя change роль owner
 	if member.Role() == workspace.RoleOwner {
 		return nil, errs.ErrForbidden
 	}
 
-	// Нельзя назначить owner через этот метод
+	// Нельзя наvalueить owner via it isт method
 	if role == workspace.RoleOwner {
 		return nil, errs.ErrForbidden
 	}
 
-	// Обновить роль (immutable update)
+	// update роль (immutable update)
 	updatedMember := member.WithRole(role)
 
 	if updateErr := s.commandRepo.UpdateMember(ctx, &updatedMember); updateErr != nil {
@@ -145,7 +145,7 @@ func (s *MemberService) UpdateMemberRole(
 	return &updatedMember, nil
 }
 
-// GetMember возвращает информацию об участнике.
+// GetMember returns информацию об участнике.
 func (s *MemberService) GetMember(
 	ctx context.Context,
 	workspaceID, userID uuid.UUID,
@@ -153,7 +153,7 @@ func (s *MemberService) GetMember(
 	return s.queryRepo.GetMember(ctx, workspaceID, userID)
 }
 
-// ListMembers возвращает список участников workspace.
+// ListMembers returns list participants workspace.
 func (s *MemberService) ListMembers(
 	ctx context.Context,
 	workspaceID uuid.UUID,
@@ -172,7 +172,7 @@ func (s *MemberService) ListMembers(
 	return members, total, nil
 }
 
-// IsOwner проверяет, является ли пользователь владельцем workspace.
+// IsOwner checks, is ли userель владельцем workspace.
 func (s *MemberService) IsOwner(
 	ctx context.Context,
 	workspaceID, userID uuid.UUID,

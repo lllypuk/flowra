@@ -6,10 +6,10 @@ import (
 	"github.com/google/uuid"
 )
 
-// UUID type alias для UUID
+// UUID type alias for UUID
 type UUID string
 
-// MustParseUUID парсит строку в UUID или паникует
+// MustParseUUID парсит строку in UUID or паникует
 func MustParseUUID(s string) UUID {
 	id, err := ParseUUID(s)
 	if err != nil {
@@ -18,12 +18,12 @@ func MustParseUUID(s string) UUID {
 	return id
 }
 
-// NewUUID создает новый UUID
+// NewUUID creates New UUID
 func NewUUID() UUID {
 	return UUID(uuid.New().String())
 }
 
-// ParseUUID парсит строку в UUID
+// ParseUUID парсит строку in UUID
 func ParseUUID(s string) (UUID, error) {
 	_, err := uuid.Parse(s)
 	if err != nil {
@@ -32,22 +32,22 @@ func ParseUUID(s string) (UUID, error) {
 	return UUID(s), nil
 }
 
-// String возвращает строковое представление
+// String returns строковое view
 func (u UUID) String() string {
 	return string(u)
 }
 
-// IsZero проверяет, является ли UUID нулевым
+// IsZero checks, is ли UUID нулевым
 func (u UUID) IsZero() bool {
 	return u == ""
 }
 
-// FromGoogleUUID конвертирует google/uuid в domain UUID
+// FromGoogleUUID конвертирует google/uuid in domain UUID
 func FromGoogleUUID(id uuid.UUID) UUID {
 	return UUID(id.String())
 }
 
-// ToGoogleUUID конвертирует domain UUID в google/uuid
+// ToGoogleUUID конвертирует domain UUID in google/uuid
 func (u UUID) ToGoogleUUID() (uuid.UUID, error) {
 	return uuid.Parse(string(u))
 }

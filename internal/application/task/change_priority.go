@@ -8,26 +8,26 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/task"
 )
 
-// ChangePriorityUseCase обрабатывает изменение приоритета задачи
+// ChangePriorityUseCase handles change priority tasks
 type ChangePriorityUseCase struct {
 	baseExecutor *BaseExecutor
 }
 
-// NewChangePriorityUseCase создает новый use case для изменения приоритета
+// NewChangePriorityUseCase creates New use case for changing priority
 func NewChangePriorityUseCase(eventStore appcore.EventStore) *ChangePriorityUseCase {
 	return &ChangePriorityUseCase{
 		baseExecutor: NewBaseExecutor(eventStore),
 	}
 }
 
-// Execute изменяет приоритет задачи
+// Execute изменяет приоритет tasks
 func (uc *ChangePriorityUseCase) Execute(ctx context.Context, cmd ChangePriorityCommand) (TaskResult, error) {
-	// Валидация команды
+	// validation commands
 	if err := uc.validate(cmd); err != nil {
 		return TaskResult{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Выполнение операции через базовый executor
+	// performing операции via базовый executor
 	return uc.baseExecutor.Execute(
 		ctx,
 		cmd.TaskID,
@@ -38,7 +38,7 @@ func (uc *ChangePriorityUseCase) Execute(ctx context.Context, cmd ChangePriority
 	)
 }
 
-// validate проверяет корректность команды
+// validate checks command correctness
 func (uc *ChangePriorityUseCase) validate(cmd ChangePriorityCommand) error {
 	if cmd.TaskID.IsZero() {
 		return ErrInvalidTaskID

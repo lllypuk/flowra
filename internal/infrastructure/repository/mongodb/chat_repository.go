@@ -37,7 +37,7 @@ func WithChatRepoLogger(logger *slog.Logger) ChatRepoOption {
 	}
 }
 
-// NewMongoChatRepository creates a new MongoDB Chat Repository
+// NewMongoChatRepository creates a New MongoDB Chat Repository
 func NewMongoChatRepository(
 	eventStore appcore.EventStore,
 	readModelColl *mongo.Collection,
@@ -79,7 +79,7 @@ func (r *MongoChatRepository) Load(ctx context.Context, chatID uuid.UUID) (*chat
 		return nil, errs.ErrNotFound
 	}
 
-	// Create new Chat and apply events
+	// Create New Chat and apply events
 	chat := &chatdomain.Chat{}
 	for _, domainEvent := range events {
 		if chatErr := chat.Apply(domainEvent); chatErr != nil {
@@ -98,7 +98,7 @@ func (r *MongoChatRepository) Load(ctx context.Context, chatID uuid.UUID) (*chat
 	return chat, nil
 }
 
-// Save saves Chat by storing new events in event store and updating read model
+// Save saves Chat by storing New events in event store and updating read model
 func (r *MongoChatRepository) Save(ctx context.Context, chat *chatdomain.Chat) error {
 	if chat == nil {
 		return errs.ErrInvalidInput
@@ -145,7 +145,7 @@ func (r *MongoChatRepository) Save(ctx context.Context, chat *chatdomain.Chat) e
 	return nil
 }
 
-// GetEvents возвращает все события чата
+// GetEvents returns all event chat
 func (r *MongoChatRepository) GetEvents(ctx context.Context, chatID uuid.UUID) ([]event.DomainEvent, error) {
 	if chatID.IsZero() {
 		return nil, errs.ErrInvalidInput
@@ -166,14 +166,14 @@ func (r *MongoChatRepository) GetEvents(ctx context.Context, chatID uuid.UUID) (
 	return events, nil
 }
 
-// updateReadModel обновляет денормализованное представление в read model коллекции
+// updateReadModel обновляет денормализованное view in read model коллекции
 func (r *MongoChatRepository) updateReadModel(ctx context.Context, chat *chatdomain.Chat) error {
-	// Проверяем, что у нас есть базовая информация для read model
+	// Checking, that у нас есть базовая information for read model
 	if chat.ID().IsZero() {
 		return errs.ErrInvalidInput
 	}
 
-	// Преобразуем участников в строки
+	// Преобразуем participants in строки
 	participantStrs := make([]string, len(chat.Participants()))
 	for i, p := range chat.Participants() {
 		participantStrs[i] = p.UserID().String()
@@ -191,7 +191,7 @@ func (r *MongoChatRepository) updateReadModel(ctx context.Context, chat *chatdom
 		"participants": participantStrs,
 	}
 
-	// Добавляем дополнительные поля для typed чатов (task/bug/epic)
+	// Добавляем дополнительные fields for typed chats (task/bug/epic)
 	if chat.Type() != chatdomain.TypeDiscussion {
 		doc["status"] = chat.Status()
 		doc["priority"] = chat.Priority()
@@ -205,11 +205,11 @@ func (r *MongoChatRepository) updateReadModel(ctx context.Context, chat *chatdom
 		}
 
 		if chat.Type() == chatdomain.TypeBug {
-			doc["severity"] = chat.Severity()
+			doc["severity"] = chat.severity()
 		}
 	}
 
-	// Используем upsert для создания или обновления документа
+	// Используем upsert for creating or updating документа
 	filter := bson.M{"chat_id": chat.ID().String()}
 	update := bson.M{"$set": doc}
 	opts := options.UpdateOne().SetUpsert(true)
@@ -219,7 +219,7 @@ func (r *MongoChatRepository) updateReadModel(ctx context.Context, chat *chatdom
 }
 
 // MongoChatReadModelRepository реализует chatapp.QueryRepository (application layer interface)
-// для query операций
+// for query операций
 type MongoChatReadModelRepository struct {
 	collection *mongo.Collection
 	eventStore appcore.EventStore
@@ -236,7 +236,7 @@ func WithChatReadModelRepoLogger(logger *slog.Logger) ChatReadModelRepoOption {
 	}
 }
 
-// NewMongoChatReadModelRepository создает новый MongoDB Chat Read Model Repository
+// NewMongoChatReadModelRepository creates New MongoDB Chat Read Model Repository
 func NewMongoChatReadModelRepository(
 	collection *mongo.Collection,
 	eventStore appcore.EventStore,
@@ -255,7 +255,7 @@ func NewMongoChatReadModelRepository(
 	return r
 }
 
-// FindByID находит чат по ID из read model
+// FindByID finds chat по ID from read model
 func (r *MongoChatReadModelRepository) FindByID(ctx context.Context, chatID uuid.UUID) (*chatapp.ReadModel, error) {
 	if chatID.IsZero() {
 		return nil, errs.ErrInvalidInput
@@ -277,7 +277,7 @@ func (r *MongoChatReadModelRepository) FindByID(ctx context.Context, chatID uuid
 	return r.documentToReadModel(doc)
 }
 
-// FindByWorkspace находит чаты workspace с фильтрами
+// FindByWorkspace finds чаты workspace с фильтрами
 func (r *MongoChatReadModelRepository) FindByWorkspace(
 	ctx context.Context,
 	workspaceID uuid.UUID,
@@ -287,7 +287,7 @@ func (r *MongoChatReadModelRepository) FindByWorkspace(
 		return nil, errs.ErrInvalidInput
 	}
 
-	// Формируем фильтр
+	// Формируем filter
 	filter := bson.M{"workspace_id": workspaceID.String()}
 
 	if filters.Type != nil {
@@ -302,7 +302,7 @@ func (r *MongoChatReadModelRepository) FindByWorkspace(
 		filter["participants"] = filters.UserID.String()
 	}
 
-	// Формируем опции (пагинация, сортировка)
+	// Формируем опции (пагинация, sort)
 	opts := options.Find().
 		SetSort(bson.D{{Key: "created_at", Value: -1}}).
 		SetLimit(int64(filters.Limit)).
@@ -356,7 +356,7 @@ func (r *MongoChatReadModelRepository) FindByWorkspace(
 	return readModels, nil
 }
 
-// FindByParticipant находит чаты пользователя
+// FindByParticipant finds чаты user
 func (r *MongoChatReadModelRepository) FindByParticipant(
 	ctx context.Context,
 	userID uuid.UUID,
@@ -412,7 +412,7 @@ func (r *MongoChatReadModelRepository) FindByParticipant(
 	return readModels, nil
 }
 
-// Count возвращает количество чатов в workspace
+// Count returns count chats in workspace
 func (r *MongoChatReadModelRepository) Count(ctx context.Context, workspaceID uuid.UUID) (int, error) {
 	if workspaceID.IsZero() {
 		return 0, errs.ErrInvalidInput
@@ -431,7 +431,7 @@ func (r *MongoChatReadModelRepository) Count(ctx context.Context, workspaceID uu
 	return int(count), nil
 }
 
-// documentToReadModel преобразует BSON документ в ReadModel
+// documentToReadModel преобразует BSON документ in ReadModel
 func (r *MongoChatReadModelRepository) documentToReadModel(doc bson.M) (*chatapp.ReadModel, error) {
 	chatIDStr, ok := doc["chat_id"].(string)
 	if !ok {
@@ -469,12 +469,12 @@ func (r *MongoChatReadModelRepository) documentToReadModel(doc bson.M) (*chatapp
 		title = titleVal
 	}
 
-	// Преобразуем участников из списка user ID строк
+	// Преобразуем participants from list user ID строк
 	var participants []chatdomain.Participant
 	if participantsVal, participantOk := doc["participants"].(bson.A); participantOk {
 		for _, pVal := range participantsVal {
 			if userIDStr, strOk := pVal.(string); strOk {
-				// Read model хранит только user IDs, создаем минимальный Participant
+				// Read model хранит only user IDs, creating минимальный Participant
 				participants = append(participants, chatdomain.NewParticipant(
 					uuid.UUID(userIDStr),
 					chatdomain.RoleMember, // Role not stored in read model

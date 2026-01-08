@@ -11,7 +11,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/event"
 )
 
-// EventDocument представляет документ события в MongoDB
+// EventDocument represents документ event in MongoDB
 type EventDocument struct {
 	ID bson.ObjectID `bson:"_id,omitempty"`
 
@@ -25,7 +25,7 @@ type EventDocument struct {
 	CreatedAt     time.Time             `bson:"created_at"`
 }
 
-// EventMetadataDocument представляет метаданные события в MongoDB
+// EventMetadataDocument represents метаданные event in MongoDB
 type EventMetadataDocument struct {
 	Timestamp     time.Time `bson:"timestamp"`
 	UserID        string    `bson:"user_id,omitempty"`
@@ -35,19 +35,19 @@ type EventMetadataDocument struct {
 	UserAgent     string    `bson:"user_agent,omitempty"`
 }
 
-// EventSerializer выполняет сериализацию и десериализацию событий для MongoDB
+// EventSerializer performs сериализацию and десериализацию events for MongoDB
 type EventSerializer struct {
 }
 
-// NewEventSerializer создает новый сериализатор событий
+// NewEventSerializer creates New сериализатор events
 func NewEventSerializer() *EventSerializer {
 	return &EventSerializer{}
 }
 
-// Serialize преобразует доменное событие в MongoDB документ
+// Serialize преобразует доменное event in MongoDB документ
 func (s *EventSerializer) Serialize(e event.DomainEvent) (*EventDocument, error) {
-	// Преобразуем событие в JSON и обратно в BSON.M
-	// для более надежной сериализации сложных типов
+	// Преобразуем event in JSON and обратно in BSON.M
+	// for более надежной сериализации сложных типов
 	jsonData, err := json.Marshal(e)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal event to JSON: %w", err)
@@ -83,7 +83,7 @@ func (s *EventSerializer) Serialize(e event.DomainEvent) (*EventDocument, error)
 	return doc, nil
 }
 
-// SerializeMany сериализует несколько событий сразу
+// SerializeMany сериализует several events сразу
 func (s *EventSerializer) SerializeMany(events []event.DomainEvent) ([]*EventDocument, error) {
 	documents := make([]*EventDocument, 0, len(events))
 
@@ -98,15 +98,15 @@ func (s *EventSerializer) SerializeMany(events []event.DomainEvent) ([]*EventDoc
 	return documents, nil
 }
 
-// Deserialize преобразует MongoDB документ обратно в доменное событие
+// Deserialize преобразует MongoDB документ обратно in доменное event
 func (s *EventSerializer) Deserialize(doc *EventDocument) (event.DomainEvent, error) {
-	// Конвертируем BSON.M в байты для десериализации
+	// Конвертируем BSON.M in байты for десериализации
 	bsonBytes, err := bson.Marshal(doc.Data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal BSON data: %w", err)
 	}
 
-	// Создаем конкретный тип события на основе EventType
+	// Creating конкретный type event on основе EventType
 	var evt event.DomainEvent
 
 	switch doc.EventType {
@@ -140,7 +140,7 @@ func (s *EventSerializer) Deserialize(doc *EventDocument) (event.DomainEvent, er
 		return nil, fmt.Errorf("unknown event type: %s", doc.EventType)
 	}
 
-	// Десериализуем BSON напрямую в конкретный тип события
+	// Деserializing BSON напрямую in конкретный type event
 	if unmarshalErr := bson.Unmarshal(bsonBytes, evt); unmarshalErr != nil {
 		return nil, fmt.Errorf("failed to unmarshal event data: %w", unmarshalErr)
 	}
@@ -148,7 +148,7 @@ func (s *EventSerializer) Deserialize(doc *EventDocument) (event.DomainEvent, er
 	return evt, nil
 }
 
-// DeserializeMany десериализует несколько документов сразу
+// DeserializeMany десериализует several документов сразу
 func (s *EventSerializer) DeserializeMany(docs []*EventDocument) ([]event.DomainEvent, error) {
 	events := make([]event.DomainEvent, 0, len(docs))
 

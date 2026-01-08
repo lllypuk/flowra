@@ -7,7 +7,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// Workspace представляет рабочее пространство (команду/организацию)
+// Workspace represents workspaceее пространство (команду/организацию)
 type Workspace struct {
 	id              uuid.UUID
 	name            string
@@ -19,7 +19,7 @@ type Workspace struct {
 	invites         []*Invite
 }
 
-// NewWorkspace создает новое рабочее пространство
+// NewWorkspace creates новое workspaceее пространство
 func NewWorkspace(name, description, keycloakGroupID string, createdBy uuid.UUID) (*Workspace, error) {
 	if name == "" {
 		return nil, errs.ErrInvalidInput
@@ -43,9 +43,9 @@ func NewWorkspace(name, description, keycloakGroupID string, createdBy uuid.UUID
 	}, nil
 }
 
-// Reconstruct восстанавливает рабочее пространство из хранилища.
-// Используется репозиториями для гидрации объекта без валидации бизнес-правил.
-// Все параметры должны быть валидными значениями из хранилища.
+// Reconstruct восстанавливает workspaceее пространство from storage.
+// Used by repositories for hydration объекта without validation business rules.
+// all parameters должны быть valid values from storage.
 func Reconstruct(
 	id uuid.UUID,
 	name, description, keycloakGroupID string,
@@ -68,7 +68,7 @@ func Reconstruct(
 	}
 }
 
-// UpdateName обновляет название рабочего пространства
+// UpdateName обновляет название workspace пространства
 func (w *Workspace) UpdateName(name string) error {
 	if name == "" {
 		return errs.ErrInvalidInput
@@ -78,7 +78,7 @@ func (w *Workspace) UpdateName(name string) error {
 	return nil
 }
 
-// CreateInvite создает новое приглашение в рабочее пространство
+// CreateInvite creates новое приглашение in workspaceее пространство
 func (w *Workspace) CreateInvite(createdBy uuid.UUID, expiresAt time.Time, maxUses int) (*Invite, error) {
 	if createdBy.IsZero() {
 		return nil, errs.ErrInvalidInput
@@ -110,31 +110,31 @@ func (w *Workspace) FindInviteByToken(token string) (*Invite, error) {
 	return nil, errs.ErrNotFound
 }
 
-// ID возвращает ID рабочего пространства
+// ID returns ID workspace пространства
 func (w *Workspace) ID() uuid.UUID { return w.id }
 
-// Name возвращает название рабочего пространства
+// Name returns название workspace пространства
 func (w *Workspace) Name() string { return w.name }
 
-// Description возвращает описание рабочего пространства
+// Description returns описание workspace пространства
 func (w *Workspace) Description() string { return w.description }
 
-// KeycloakGroupID возвращает ID группы Keycloak
+// KeycloakGroupID returns ID groupsы Keycloak
 func (w *Workspace) KeycloakGroupID() string { return w.keycloakGroupID }
 
-// CreatedBy возвращает ID создателя
+// CreatedBy returns creator ID
 func (w *Workspace) CreatedBy() uuid.UUID { return w.createdBy }
 
-// CreatedAt возвращает время создания
+// CreatedAt returns creation time
 func (w *Workspace) CreatedAt() time.Time { return w.createdAt }
 
-// UpdatedAt возвращает время последнего обновления
+// UpdatedAt returns time последнего updating
 func (w *Workspace) UpdatedAt() time.Time { return w.updatedAt }
 
-// Invites возвращает список приглашений
+// Invites returns list приглашений
 func (w *Workspace) Invites() []*Invite { return w.invites }
 
-// Invite представляет приглашение в рабочее пространство
+// Invite represents приглашение in workspaceее пространство
 type Invite struct {
 	id          uuid.UUID
 	workspaceID uuid.UUID
@@ -147,7 +147,7 @@ type Invite struct {
 	isRevoked   bool
 }
 
-// NewInvite создает новое приглашение
+// NewInvite creates новое приглашение
 func NewInvite(workspaceID, createdBy uuid.UUID, expiresAt time.Time, maxUses int) (*Invite, error) {
 	if workspaceID.IsZero() {
 		return nil, errs.ErrInvalidInput
@@ -175,7 +175,7 @@ func NewInvite(workspaceID, createdBy uuid.UUID, expiresAt time.Time, maxUses in
 	}, nil
 }
 
-// Use использует приглашение (увеличивает счетчик использований)
+// Use uses приглашение (увеличивает счетчик использований)
 func (i *Invite) Use() error {
 	if i.isRevoked {
 		return errs.ErrInvalidState
@@ -200,7 +200,7 @@ func (i *Invite) Revoke() error {
 	return nil
 }
 
-// IsValid проверяет, валидно ли приглашение
+// IsValid checks, validно ли приглашение
 func (i *Invite) IsValid() bool {
 	if i.isRevoked {
 		return false
@@ -214,36 +214,36 @@ func (i *Invite) IsValid() bool {
 	return true
 }
 
-// ID возвращает ID приглашения
+// ID returns ID приглашения
 func (i *Invite) ID() uuid.UUID { return i.id }
 
-// WorkspaceID возвращает ID рабочего пространства
+// WorkspaceID returns ID workspace пространства
 func (i *Invite) WorkspaceID() uuid.UUID { return i.workspaceID }
 
-// Token возвращает токен приглашения
+// Token returns токен приглашения
 func (i *Invite) Token() string { return i.token }
 
-// CreatedBy возвращает ID создателя
+// CreatedBy returns creator ID
 func (i *Invite) CreatedBy() uuid.UUID { return i.createdBy }
 
-// CreatedAt возвращает время создания
+// CreatedAt returns creation time
 func (i *Invite) CreatedAt() time.Time { return i.createdAt }
 
-// ExpiresAt возвращает время истечения
+// ExpiresAt returns time истечения
 func (i *Invite) ExpiresAt() time.Time { return i.expiresAt }
 
-// MaxUses возвращает максимальное количество использований
+// MaxUses returns максимальное count использований
 func (i *Invite) MaxUses() int { return i.maxUses }
 
-// UsedCount возвращает количество использований
+// UsedCount returns count использований
 func (i *Invite) UsedCount() int { return i.usedCount }
 
-// IsRevoked возвращает true если приглашение отменено
+// IsRevoked returns true if приглашение отменено
 func (i *Invite) IsRevoked() bool { return i.isRevoked }
 
-// ReconstructInvite восстанавливает приглашение из хранилища.
-// Используется репозиториями для гидрации объекта без валидации бизнес-правил.
-// Все параметры должны быть валидными значениями из хранилища.
+// ReconstructInvite восстанавливает приглашение from storage.
+// Used by repositories for hydration объекта without validation business rules.
+// all parameters должны быть valid values from storage.
 func ReconstructInvite(
 	id uuid.UUID,
 	workspaceID uuid.UUID,

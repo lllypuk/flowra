@@ -8,21 +8,21 @@ import (
 	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
-// ConvertToBugUseCase обрабатывает конвертацию чата в Bug
+// ConvertToBugUseCase handles converting a chat to Bug
 type ConvertToBugUseCase struct {
 	eventStore appcore.EventStore
 }
 
-// NewConvertToBugUseCase создает новый ConvertToBugUseCase
+// NewConvertToBugUseCase creates a new ConvertToBugUseCase
 func NewConvertToBugUseCase(eventStore appcore.EventStore) *ConvertToBugUseCase {
 	return &ConvertToBugUseCase{
 		eventStore: eventStore,
 	}
 }
 
-// Execute выполняет конвертацию в Bug
+// Execute performs converting to Bug
 func (uc *ConvertToBugUseCase) Execute(ctx context.Context, cmd ConvertToBugCommand) (Result, error) {
-	// Валидация
+	// Validation
 	if err := uc.validate(cmd); err != nil {
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}

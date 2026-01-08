@@ -4,57 +4,57 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// SendMessageCommand - отправка сообщения
+// SendMessageCommand - sendа messages
 type SendMessageCommand struct {
 	ChatID          uuid.UUID
 	Content         string
 	AuthorID        uuid.UUID
-	ParentMessageID uuid.UUID // для replies, zero UUID если не reply
+	ParentMessageID uuid.UUID // for replies, zero UUID if not reply
 }
 
-// CommandName возвращает имя команды
+// CommandName returns command name
 func (c SendMessageCommand) CommandName() string { return "SendMessage" }
 
-// EditMessageCommand - редактирование сообщения
+// EditMessageCommand - редактирование messages
 type EditMessageCommand struct {
 	MessageID uuid.UUID
 	Content   string
 	EditorID  uuid.UUID // должен совпадать с AuthorID
 }
 
-// CommandName возвращает имя команды
+// CommandName returns command name
 func (c EditMessageCommand) CommandName() string { return "EditMessage" }
 
-// DeleteMessageCommand - удаление сообщения
+// DeleteMessageCommand - deletion messages
 type DeleteMessageCommand struct {
 	MessageID uuid.UUID
 	DeletedBy uuid.UUID // должен совпадать с AuthorID
 }
 
-// CommandName возвращает имя команды
+// CommandName returns command name
 func (c DeleteMessageCommand) CommandName() string { return "DeleteMessage" }
 
-// AddReactionCommand - добавление реакции
+// AddReactionCommand - adding реакции
 type AddReactionCommand struct {
 	MessageID uuid.UUID
 	Emoji     string
 	UserID    uuid.UUID
 }
 
-// CommandName возвращает имя команды
+// CommandName returns command name
 func (c AddReactionCommand) CommandName() string { return "AddReaction" }
 
-// RemoveReactionCommand - удаление реакции
+// RemoveReactionCommand - deletion реакции
 type RemoveReactionCommand struct {
 	MessageID uuid.UUID
 	Emoji     string
 	UserID    uuid.UUID
 }
 
-// CommandName возвращает имя команды
+// CommandName returns command name
 func (c RemoveReactionCommand) CommandName() string { return "RemoveReaction" }
 
-// AddAttachmentCommand - добавление вложения
+// AddAttachmentCommand - adding вложения
 type AddAttachmentCommand struct {
 	MessageID uuid.UUID
 	FileID    uuid.UUID
@@ -64,5 +64,5 @@ type AddAttachmentCommand struct {
 	UserID    uuid.UUID // должен совпадать с AuthorID
 }
 
-// CommandName возвращает имя команды
+// CommandName returns command name
 func (c AddAttachmentCommand) CommandName() string { return "AddAttachment" }

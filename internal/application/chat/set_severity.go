@@ -8,17 +8,17 @@ import (
 	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
-// SetSeverityUseCase обрабатывает установку severity (только для Bug)
+// SetSeverityUseCase handles setting severity (only for Bug)
 type SetSeverityUseCase struct {
 	eventStore appcore.EventStore
 }
 
-// NewSetSeverityUseCase создает новый SetSeverityUseCase
+// NewSetSeverityUseCase creates a new SetSeverityUseCase
 func NewSetSeverityUseCase(eventStore appcore.EventStore) *SetSeverityUseCase {
 	return &SetSeverityUseCase{eventStore: eventStore}
 }
 
-// Execute выполняет установку severity
+// Execute performs setting severity
 func (uc *SetSeverityUseCase) Execute(ctx context.Context, cmd SetSeverityCommand) (Result, error) {
 	if err := uc.validate(cmd); err != nil {
 		return Result{}, fmt.Errorf("validation failed: %w", err)

@@ -15,7 +15,7 @@ func TestDeleteNotificationUseCase_Execute_Success(t *testing.T) {
 	repo := newMockNotificationRepository()
 	userID := uuid.NewUUID()
 
-	// Создаем notification
+	// Creating notification
 	notif, _ := domainnotification.NewNotification(
 		userID,
 		domainnotification.TypeTaskAssigned,
@@ -40,7 +40,7 @@ func TestDeleteNotificationUseCase_Execute_Success(t *testing.T) {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	// Проверка, что notification удален
+	// check, that notification удален
 	if len(repo.notifications) != 0 {
 		t.Errorf("expected 0 notifications in repository, got %d", len(repo.notifications))
 	}
@@ -75,7 +75,7 @@ func TestDeleteNotificationUseCase_Execute_AccessDenied(t *testing.T) {
 	userID := uuid.NewUUID()
 	otherUserID := uuid.NewUUID()
 
-	// Создаем notification для другого пользователя
+	// Creating notification for other user
 	notif, _ := domainnotification.NewNotification(
 		userID,
 		domainnotification.TypeTaskAssigned,
@@ -89,7 +89,7 @@ func TestDeleteNotificationUseCase_Execute_AccessDenied(t *testing.T) {
 
 	cmd := notification.DeleteNotificationCommand{
 		NotificationID: notif.ID(),
-		UserID:         otherUserID, // другой пользователь
+		UserID:         otherUserID, // другой userель
 	}
 
 	// Act
@@ -104,7 +104,7 @@ func TestDeleteNotificationUseCase_Execute_AccessDenied(t *testing.T) {
 		t.Errorf("expected ErrNotificationAccessDenied, got: %v", err)
 	}
 
-	// Проверка, что notification НЕ удален
+	// check, that notification not удален
 	if len(repo.notifications) != 1 {
 		t.Errorf("expected 1 notification in repository, got %d", len(repo.notifications))
 	}

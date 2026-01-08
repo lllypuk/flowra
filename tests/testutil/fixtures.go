@@ -10,7 +10,7 @@ import (
 
 const dayDuration = 24 * time.Hour
 
-// CreateTaskCommandFixture возвращает валидную команду создания задачи
+// CreateTaskCommandFixture returns validную команду creating tasks
 func CreateTaskCommandFixture() taskapp.CreateTaskCommand {
 	return taskapp.CreateTaskCommand{
 		ChatID:     uuid.NewUUID(),
@@ -70,7 +70,7 @@ func WithCreatedBy(createdBy uuid.UUID) func(*taskapp.CreateTaskCommand) {
 	}
 }
 
-// BuildCreateTaskCommand создает команду с модификаторами
+// BuildCreateTaskCommand creates команду с модификаторами
 func BuildCreateTaskCommand(modifiers ...func(*taskapp.CreateTaskCommand)) taskapp.CreateTaskCommand {
 	cmd := CreateTaskCommandFixture()
 	for _, modifier := range modifiers {
@@ -79,7 +79,7 @@ func BuildCreateTaskCommand(modifiers ...func(*taskapp.CreateTaskCommand)) taska
 	return cmd
 }
 
-// ChangeStatusCommandFixture возвращает валидную команду изменения статуса
+// ChangeStatusCommandFixture returns validную команду changing status
 func ChangeStatusCommandFixture(taskID uuid.UUID) taskapp.ChangeStatusCommand {
 	return taskapp.ChangeStatusCommand{
 		TaskID:    taskID,
@@ -88,7 +88,7 @@ func ChangeStatusCommandFixture(taskID uuid.UUID) taskapp.ChangeStatusCommand {
 	}
 }
 
-// WithNewStatus модифицирует new status
+// WithNewStatus модифицирует New status
 func WithNewStatus(status task.Status) func(*taskapp.ChangeStatusCommand) {
 	return func(cmd *taskapp.ChangeStatusCommand) {
 		cmd.NewStatus = status
@@ -102,7 +102,7 @@ func WithStatusChangedBy(changedBy uuid.UUID) func(*taskapp.ChangeStatusCommand)
 	}
 }
 
-// BuildChangeStatusCommand создает команду с модификаторами
+// BuildChangeStatusCommand creates команду с модификаторами
 func BuildChangeStatusCommand(
 	taskID uuid.UUID,
 	modifiers ...func(*taskapp.ChangeStatusCommand),
@@ -114,7 +114,7 @@ func BuildChangeStatusCommand(
 	return cmd
 }
 
-// AssignTaskCommandFixture возвращает валидную команду назначения
+// AssignTaskCommandFixture returns validную команду наvalueения
 func AssignTaskCommandFixture(taskID uuid.UUID, assigneeID uuid.UUID) taskapp.AssignTaskCommand {
 	return taskapp.AssignTaskCommand{
 		TaskID:     taskID,
@@ -137,7 +137,7 @@ func WithAssignedBy(assignedBy uuid.UUID) func(*taskapp.AssignTaskCommand) {
 	}
 }
 
-// BuildAssignTaskCommand создает команду с модификаторами
+// BuildAssignTaskCommand creates команду с модификаторами
 func BuildAssignTaskCommand(
 	taskID uuid.UUID,
 	assigneeID uuid.UUID,
@@ -150,7 +150,7 @@ func BuildAssignTaskCommand(
 	return cmd
 }
 
-// ChangePriorityCommandFixture возвращает валидную команду изменения приоритета
+// ChangePriorityCommandFixture returns validную команду changing priority
 func ChangePriorityCommandFixture(taskID uuid.UUID) taskapp.ChangePriorityCommand {
 	return taskapp.ChangePriorityCommand{
 		TaskID:    taskID,
@@ -173,7 +173,7 @@ func WithPriorityChangedBy(changedBy uuid.UUID) func(*taskapp.ChangePriorityComm
 	}
 }
 
-// BuildChangePriorityCommand создает команду с модификаторами
+// BuildChangePriorityCommand creates команду с модификаторами
 func BuildChangePriorityCommand(
 	taskID uuid.UUID,
 	modifiers ...func(*taskapp.ChangePriorityCommand),
@@ -185,7 +185,7 @@ func BuildChangePriorityCommand(
 	return cmd
 }
 
-// SetDueDateCommandFixture возвращает валидную команду установки дедлайна
+// SetDueDateCommandFixture returns validную команду setting deadline
 func SetDueDateCommandFixture(taskID uuid.UUID) taskapp.SetDueDateCommand {
 	tomorrow := time.Now().Add(dayDuration)
 	return taskapp.SetDueDateCommand{
@@ -209,7 +209,7 @@ func WithDueDateChangedBy(changedBy uuid.UUID) func(*taskapp.SetDueDateCommand) 
 	}
 }
 
-// BuildSetDueDateCommand создает команду с модификаторами
+// BuildSetDueDateCommand creates команду с модификаторами
 func BuildSetDueDateCommand(
 	taskID uuid.UUID,
 	modifiers ...func(*taskapp.SetDueDateCommand),

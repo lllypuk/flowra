@@ -9,44 +9,44 @@ import (
 	chatapp "github.com/lllypuk/flowra/internal/application/chat"
 	"github.com/lllypuk/flowra/internal/domain/chat"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
-	httphandler "github.com/lllypuk/flowra/internal/handler/http"
+	httphandler "github.com/lllypuk/flowra/internal/handler/HTTP"
 )
 
 // Compile-time assertion that ChatService implements httphandler.ChatService.
 var _ httphandler.ChatService = (*ChatService)(nil)
 
-// CreateChatUseCase определяет интерфейс для use case создания чата.
+// CreateChatUseCase defines interface for use case creating chat.
 type CreateChatUseCase interface {
 	Execute(ctx context.Context, cmd chatapp.CreateChatCommand) (chatapp.Result, error)
 }
 
-// GetChatUseCase определяет интерфейс для use case получения чата.
+// GetChatUseCase defines interface for use case receivения chat.
 type GetChatUseCase interface {
 	Execute(ctx context.Context, query chatapp.GetChatQuery) (*chatapp.GetChatResult, error)
 }
 
-// ListChatsUseCase определяет интерфейс для use case списка чатов.
+// ListChatsUseCase defines interface for use case list chats.
 type ListChatsUseCase interface {
 	Execute(ctx context.Context, query chatapp.ListChatsQuery) (*chatapp.ListChatsResult, error)
 }
 
-// RenameChatUseCase определяет интерфейс для use case переименования чата.
+// RenameChatUseCase defines interface for use case переименования chat.
 type RenameChatUseCase interface {
 	Execute(ctx context.Context, cmd chatapp.RenameChatCommand) (chatapp.Result, error)
 }
 
-// AddParticipantUseCase определяет интерфейс для use case добавления участника.
+// AddParticipantUseCase defines interface for use case adding participant.
 type AddParticipantUseCase interface {
 	Execute(ctx context.Context, cmd chatapp.AddParticipantCommand) (chatapp.Result, error)
 }
 
-// RemoveParticipantUseCase определяет интерфейс для use case удаления участника.
+// RemoveParticipantUseCase defines interface for use case removing participant.
 type RemoveParticipantUseCase interface {
 	Execute(ctx context.Context, cmd chatapp.RemoveParticipantCommand) (chatapp.Result, error)
 }
 
 // ChatService реализует httphandler.ChatService.
-// Объединяет существующие use cases для работы с чатами.
+// Объединяет existingие use cases for workы с чатами.
 type ChatService struct {
 	createUC     CreateChatUseCase
 	getUC        GetChatUseCase
@@ -57,7 +57,7 @@ type ChatService struct {
 	eventStore   appcore.EventStore
 }
 
-// ChatServiceConfig содержит зависимости для ChatService.
+// ChatServiceConfig contains зависимости for ChatService.
 type ChatServiceConfig struct {
 	CreateUC     CreateChatUseCase
 	GetUC        GetChatUseCase
@@ -68,7 +68,7 @@ type ChatServiceConfig struct {
 	EventStore   appcore.EventStore
 }
 
-// NewChatService создаёт новый ChatService.
+// NewChatService создаёт New ChatService.
 func NewChatService(cfg ChatServiceConfig) *ChatService {
 	return &ChatService{
 		createUC:     cfg.CreateUC,
@@ -81,7 +81,7 @@ func NewChatService(cfg ChatServiceConfig) *ChatService {
 	}
 }
 
-// CreateChat создаёт новый чат.
+// CreateChat создаёт New chat.
 func (s *ChatService) CreateChat(
 	ctx context.Context,
 	cmd chatapp.CreateChatCommand,
@@ -89,7 +89,7 @@ func (s *ChatService) CreateChat(
 	return s.createUC.Execute(ctx, cmd)
 }
 
-// GetChat возвращает чат по ID.
+// GetChat returns chat по ID.
 func (s *ChatService) GetChat(
 	ctx context.Context,
 	query chatapp.GetChatQuery,
@@ -97,7 +97,7 @@ func (s *ChatService) GetChat(
 	return s.getUC.Execute(ctx, query)
 }
 
-// ListChats возвращает список чатов workspace.
+// ListChats returns list chats workspace.
 func (s *ChatService) ListChats(
 	ctx context.Context,
 	query chatapp.ListChatsQuery,
@@ -105,7 +105,7 @@ func (s *ChatService) ListChats(
 	return s.listUC.Execute(ctx, query)
 }
 
-// RenameChat переименовывает чат.
+// RenameChat переименовывает chat.
 func (s *ChatService) RenameChat(
 	ctx context.Context,
 	cmd chatapp.RenameChatCommand,
@@ -113,7 +113,7 @@ func (s *ChatService) RenameChat(
 	return s.renameUC.Execute(ctx, cmd)
 }
 
-// AddParticipant добавляет участника в чат.
+// AddParticipant добавляет participant in chat.
 func (s *ChatService) AddParticipant(
 	ctx context.Context,
 	cmd chatapp.AddParticipantCommand,
@@ -121,7 +121,7 @@ func (s *ChatService) AddParticipant(
 	return s.addPartUC.Execute(ctx, cmd)
 }
 
-// RemoveParticipant удаляет участника из чата.
+// RemoveParticipant удаляет participant from chat.
 func (s *ChatService) RemoveParticipant(
 	ctx context.Context,
 	cmd chatapp.RemoveParticipantCommand,
@@ -129,7 +129,7 @@ func (s *ChatService) RemoveParticipant(
 	return s.removePartUC.Execute(ctx, cmd)
 }
 
-// DeleteChat удаляет чат (soft delete через event sourcing).
+// DeleteChat удаляет chat (soft delete via event sourcing).
 func (s *ChatService) DeleteChat(
 	ctx context.Context,
 	chatID, deletedBy uuid.UUID,
@@ -142,22 +142,22 @@ func (s *ChatService) DeleteChat(
 		return errors.New("deletedBy is required")
 	}
 
-	// Загружаем агрегат из event store
+	// Loading aggregate from event store
 	chatAggregate, err := s.loadAggregate(ctx, chatID)
 	if err != nil {
 		return err
 	}
 
-	// Применяем команду удаления
+	// Применяем команду removing
 	if deleteErr := chatAggregate.Delete(deletedBy); deleteErr != nil {
 		return fmt.Errorf("failed to delete chat: %w", deleteErr)
 	}
 
-	// Сохраняем события
+	// Saving event
 	return s.saveAggregate(ctx, chatAggregate)
 }
 
-// loadAggregate загружает Chat агрегат из event store.
+// loadAggregate loads Chat aggregate from event store.
 func (s *ChatService) loadAggregate(ctx context.Context, chatID uuid.UUID) (*chat.Chat, error) {
 	events, err := s.eventStore.LoadEvents(ctx, chatID.String())
 	if err != nil {
@@ -178,7 +178,7 @@ func (s *ChatService) loadAggregate(ctx context.Context, chatID uuid.UUID) (*cha
 	return chatAggregate, nil
 }
 
-// saveAggregate сохраняет новые события агрегата.
+// saveAggregate saves новые event aggregate.
 func (s *ChatService) saveAggregate(ctx context.Context, chatAggregate *chat.Chat) error {
 	newEvents := chatAggregate.GetUncommittedEvents()
 	if len(newEvents) == 0 {

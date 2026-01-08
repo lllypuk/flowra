@@ -5,12 +5,12 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/user"
 )
 
-// Result - результат операции с одним пользователем
+// Result - result операции с одним userелем
 type Result struct {
 	appcore.Result[*user.User]
 }
 
-// UsersListResult - результат операции со списком пользователей
+// UsersListResult - result операции with списком users
 type UsersListResult struct {
 	Users      []*user.User
 	TotalCount int

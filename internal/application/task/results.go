@@ -5,28 +5,28 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// TaskResult — результат выполнения use case для Task
-// Имя явно указывает на принадлежность к task для избежания путаницы с другими результатами
+// TaskResult — result выполнения use case for Task
+// Имя явно указывает on принадлежность to task for избежания путаницы с другими результатами
 //
-//nolint:revive // осознанное решение для ясности кода
+//nolint:revive // осознанное решение for ясности кода
 type TaskResult struct {
-	// TaskID идентификатор задачи
+	// TaskID identifierатор tasks
 	TaskID uuid.UUID
 
-	// Version текущая версия агрегата после выполнения операции
+	// Version текущая версия aggregate after выполнения операции
 	Version int
 
-	// Events события, сгенерированные в результате выполнения операции
+	// Events event, сгенерированные in результате выполнения операции
 	Events []event.DomainEvent
 
 	// Success флаг успешного выполнения
 	Success bool
 
-	// Message дополнительное сообщение (для ошибок или предупреждений)
+	// Message дополнительное message (for errors or предупреждений)
 	Message string
 }
 
-// NewSuccessResult создает результат успешного выполнения
+// NewSuccessResult creates result успешного выполнения
 func NewSuccessResult(taskID uuid.UUID, version int, events []event.DomainEvent) TaskResult {
 	return TaskResult{
 		TaskID:  taskID,
@@ -36,7 +36,7 @@ func NewSuccessResult(taskID uuid.UUID, version int, events []event.DomainEvent)
 	}
 }
 
-// NewFailureResult создает результат неудачного выполнения
+// NewFailureResult creates result неудачного выполнения
 func NewFailureResult(taskID uuid.UUID, message string) TaskResult {
 	return TaskResult{
 		TaskID:  taskID,
@@ -45,17 +45,17 @@ func NewFailureResult(taskID uuid.UUID, message string) TaskResult {
 	}
 }
 
-// IsSuccess возвращает true если операция выполнена успешно
+// IsSuccess returns true if операция выполнена successfully
 func (r TaskResult) IsSuccess() bool {
 	return r.Success
 }
 
-// IsFailure возвращает true если операция завершилась с ошибкой
+// IsFailure returns true if операция завершилась с ошибкой
 func (r TaskResult) IsFailure() bool {
 	return !r.Success
 }
 
-// EventCount возвращает количество сгенерированных событий
+// EventCount returns count сгенерированных events
 func (r TaskResult) EventCount() int {
 	return len(r.Events)
 }

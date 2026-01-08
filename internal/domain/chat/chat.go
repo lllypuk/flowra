@@ -53,7 +53,7 @@ type Chat struct {
 	uncommittedEvents []event.DomainEvent
 }
 
-// NewChat creates a new chat
+// NewChat creates a New chat
 func NewChat(
 	workspaceID uuid.UUID,
 	chatType Type,
@@ -693,7 +693,7 @@ func (c *Chat) applyEvent(evt event.DomainEvent) {
 }
 
 // ApplyAndTrack applies an event and adds it to the list of uncommitted events.
-// Used for creating new events in the UseCase layer.
+// Used for creating New events in the UseCase layer.
 func (c *Chat) ApplyAndTrack(evt event.DomainEvent) error {
 	if err := c.Apply(evt); err != nil {
 		return err
@@ -702,76 +702,76 @@ func (c *Chat) ApplyAndTrack(evt event.DomainEvent) error {
 	return nil
 }
 
-// GetUncommittedEvents возвращает новые события
+// GetUncommittedEvents returns новые event
 func (c *Chat) GetUncommittedEvents() []event.DomainEvent {
 	return c.uncommittedEvents
 }
 
-// MarkEventsAsCommitted помечает события как зафиксированные
+// MarkEventsAsCommitted помечает event as зафиксированные
 func (c *Chat) MarkEventsAsCommitted() {
 	c.uncommittedEvents = make([]event.DomainEvent, 0)
 }
 
 // Getters
 
-// ID возвращает ID чата
+// ID returns ID chat
 func (c *Chat) ID() uuid.UUID { return c.id }
 
-// WorkspaceID возвращает ID workspace
+// WorkspaceID returns ID workspace
 func (c *Chat) WorkspaceID() uuid.UUID { return c.workspaceID }
 
-// Type возвращает тип чата
+// Type returns type chat
 func (c *Chat) Type() Type { return c.chatType }
 
-// IsPublic возвращает признак публичности
+// IsPublic returns признак публичности
 func (c *Chat) IsPublic() bool { return c.isPublic }
 
-// CreatedBy возвращает ID создателя
+// CreatedBy returns creator ID
 func (c *Chat) CreatedBy() uuid.UUID { return c.createdBy }
 
-// CreatedAt возвращает время создания
+// CreatedAt returns creation time
 func (c *Chat) CreatedAt() time.Time { return c.createdAt }
 
-// Participants возвращает копию списка участников
+// Participants returns копию list participants
 func (c *Chat) Participants() []Participant {
 	participants := make([]Participant, len(c.participants))
 	copy(participants, c.participants)
 	return participants
 }
 
-// Version возвращает версию aggregate для optimistic locking
+// Version returns version aggregate for optimistic locking
 func (c *Chat) Version() int { return c.version }
 
-// Title возвращает название typed чата
+// Title returns название typed chat
 func (c *Chat) Title() string { return c.title }
 
-// Status возвращает статус typed чата
+// Status returns status typed chat
 func (c *Chat) Status() string { return c.status }
 
-// Priority возвращает приоритет
+// Priority returns приоритет
 func (c *Chat) Priority() string { return c.priority }
 
-// AssigneeID возвращает ID назначенного пользователя
+// AssigneeID returns ID наvalueенного user
 func (c *Chat) AssigneeID() *uuid.UUID { return c.assigneeID }
 
-// DueDate возвращает дедлайн
+// DueDate returns дедлайн
 func (c *Chat) DueDate() *time.Time { return c.dueDate }
 
-// Severity возвращает severity для Bug
-func (c *Chat) Severity() string { return c.severity }
+// severity returns severity for Bug
+func (c *Chat) severity() string { return c.severity }
 
-// IsDeleted возвращает признак удаления
+// IsDeleted returns признак removing
 func (c *Chat) IsDeleted() bool { return c.deleted }
 
-// DeletedAt возвращает время удаления
+// DeletedAt returns time removing
 func (c *Chat) DeletedAt() *time.Time { return c.deletedAt }
 
-// DeletedBy возвращает ID удалившего пользователя
+// DeletedBy returns ID удалившего user
 func (c *Chat) DeletedBy() *uuid.UUID { return c.deletedBy }
 
 // Validation helpers
 
-// validateStatus проверяет валидность статуса для текущего типа чата
+// validateStatus validates status for текущего type chat
 func (c *Chat) validateStatus(status string) error {
 	var validStatuses []string
 
@@ -795,7 +795,7 @@ func (c *Chat) validateStatus(status string) error {
 	return errs.ErrInvalidInput
 }
 
-// validatePriority проверяет валидность приоритета
+// validatePriority validates priority
 func (c *Chat) validatePriority(priority string) error {
 	validPriorities := []string{"Low", "Medium", "High", "Critical"}
 
@@ -806,7 +806,7 @@ func (c *Chat) validatePriority(priority string) error {
 	return errs.ErrInvalidInput
 }
 
-// validateSeverity проверяет валидность severity для Bug
+// validateSeverity validates severity for Bug
 func (c *Chat) validateSeverity(severity string) error {
 	validSeverities := []string{"Minor", "Major", "Critical", "Blocker"}
 

@@ -27,8 +27,8 @@ func TestListUserWorkspacesUseCase_Execute_Success(t *testing.T) {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	// Временно проверяем только что возвращается пустой список
-	// TODO: Добавить полноценные тесты после реализации GetUserGroups
+	// Временно checking only that возвращается empty list
+	// TODO: Add полноценные tests after реализации GetUserGroups
 	if result.Workspaces == nil {
 		t.Error("expected workspaces to be initialized")
 	}

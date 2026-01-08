@@ -14,7 +14,7 @@ func TestMarkAllAsReadUseCase_Execute_Success(t *testing.T) {
 	repo := newMockNotificationRepository()
 	userID := uuid.NewUUID()
 
-	// Создаем 5 непрочитанных notifications
+	// Creating 5 unread notifications
 	for range 5 {
 		notif, _ := domainnotification.NewNotification(
 			userID,
@@ -26,7 +26,7 @@ func TestMarkAllAsReadUseCase_Execute_Success(t *testing.T) {
 		repo.Save(context.Background(), notif)
 	}
 
-	// Создаем 2 уже прочитанных notifications
+	// Creating 2 уже прочитанных notifications
 	for range 2 {
 		notif, _ := domainnotification.NewNotification(
 			userID,
@@ -57,7 +57,7 @@ func TestMarkAllAsReadUseCase_Execute_Success(t *testing.T) {
 		t.Errorf("expected 5 notifications to be marked, got %d", result.Count)
 	}
 
-	// Проверяем, что все notifications теперь прочитаны
+	// Checking, that all notifications теперь прочитаны
 	unreadCount, _ := repo.CountUnreadByUserID(context.Background(), userID)
 	if unreadCount != 0 {
 		t.Errorf("expected 0 unread notifications, got %d", unreadCount)
@@ -69,7 +69,7 @@ func TestMarkAllAsReadUseCase_Execute_NoUnreadNotifications(t *testing.T) {
 	repo := newMockNotificationRepository()
 	userID := uuid.NewUUID()
 
-	// Создаем только прочитанные notifications
+	// Creating only прочитанные notifications
 	for range 3 {
 		notif, _ := domainnotification.NewNotification(
 			userID,
@@ -131,7 +131,7 @@ func TestMarkAllAsReadUseCase_Execute_OnlyUserNotifications(t *testing.T) {
 	user1ID := uuid.NewUUID()
 	user2ID := uuid.NewUUID()
 
-	// Создаем 3 notifications для user1
+	// Creating 3 notifications for user1
 	for range 3 {
 		notif, _ := domainnotification.NewNotification(
 			user1ID,
@@ -143,7 +143,7 @@ func TestMarkAllAsReadUseCase_Execute_OnlyUserNotifications(t *testing.T) {
 		repo.Save(context.Background(), notif)
 	}
 
-	// Создаем 2 notifications для user2
+	// Creating 2 notifications for user2
 	for range 2 {
 		notif, _ := domainnotification.NewNotification(
 			user2ID,
@@ -173,7 +173,7 @@ func TestMarkAllAsReadUseCase_Execute_OnlyUserNotifications(t *testing.T) {
 		t.Errorf("expected 3 notifications to be marked for user1, got %d", result.Count)
 	}
 
-	// Проверяем, что у user2 остались непрочитанные
+	// Checking, that у user2 остались непрочитанные
 	unreadCountUser2, _ := repo.CountUnreadByUserID(context.Background(), user2ID)
 	if unreadCountUser2 != 2 {
 		t.Errorf("expected 2 unread notifications for user2, got %d", unreadCountUser2)

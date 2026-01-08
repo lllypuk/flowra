@@ -16,7 +16,7 @@ func TestRevokeInviteUseCase_Execute_Success(t *testing.T) {
 	repo := newMockWorkspaceRepository()
 	useCase := workspace.NewRevokeInviteUseCase(repo)
 
-	// Создаем workspace с инвайтом
+	// Creating workspace with invite
 	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
 	expiresAt := time.Now().Add(24 * time.Hour)
 	invite, _ := ws.CreateInvite(uuid.NewUUID(), expiresAt, 0)
@@ -43,7 +43,7 @@ func TestRevokeInviteUseCase_Execute_Success(t *testing.T) {
 		t.Error("expected invite to be revoked")
 	}
 
-	// Проверка, что инвайт отозван в workspace
+	// check, that инвайт отозван in workspace
 	updatedWs, _ := repo.FindByID(context.Background(), ws.ID())
 	updatedInvite, _ := updatedWs.FindInviteByToken(invite.Token())
 	if !updatedInvite.IsRevoked() {
@@ -79,7 +79,7 @@ func TestRevokeInviteUseCase_Execute_AlreadyRevoked(t *testing.T) {
 	repo := newMockWorkspaceRepository()
 	useCase := workspace.NewRevokeInviteUseCase(repo)
 
-	// Создаем workspace с уже отозванным инвайтом
+	// Creating workspace с уже отозванным инвайтом
 	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
 	expiresAt := time.Now().Add(24 * time.Hour)
 	invite, _ := ws.CreateInvite(uuid.NewUUID(), expiresAt, 0)
@@ -142,13 +142,13 @@ func TestRevokeInviteUseCase_Execute_SaveError(t *testing.T) {
 	// Arrange
 	repo := newMockWorkspaceRepository()
 
-	// Создаем workspace с инвайтом
+	// Creating workspace with invite
 	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
 	expiresAt := time.Now().Add(24 * time.Hour)
 	invite, _ := ws.CreateInvite(uuid.NewUUID(), expiresAt, 0)
 	_ = repo.Save(context.Background(), ws)
 
-	// Устанавливаем ошибку сохранения
+	// Setting error saving
 	repo.saveError = errors.New("database error")
 
 	useCase := workspace.NewRevokeInviteUseCase(repo)

@@ -19,7 +19,7 @@ const (
 	EventTypeCustomFieldSet  = "task.custom_field_set"
 )
 
-// Created событие создания задачи
+// Created event creating tasks
 type Created struct {
 	event.BaseEvent
 
@@ -33,7 +33,7 @@ type Created struct {
 	CreatedBy  uuid.UUID
 }
 
-// NewTaskCreated создает новое событие TaskCreated
+// NewTaskCreated creates новое event TaskCreated
 func NewTaskCreated(
 	taskID, chatID uuid.UUID,
 	title string,
@@ -58,14 +58,14 @@ func NewTaskCreated(
 	}
 }
 
-// Updated событие обновления задачи
+// Updated event updating tasks
 type Updated struct {
 	event.BaseEvent
 
 	Title string
 }
 
-// NewTaskUpdated создает новое событие TaskUpdated
+// NewTaskUpdated creates новое event TaskUpdated
 func NewTaskUpdated(
 	taskID uuid.UUID,
 	title string,
@@ -77,12 +77,12 @@ func NewTaskUpdated(
 	}
 }
 
-// Deleted событие удаления задачи
+// Deleted event removing tasks
 type Deleted struct {
 	event.BaseEvent
 }
 
-// NewTaskDeleted создает новое событие TaskDeleted
+// NewTaskDeleted creates новое event TaskDeleted
 func NewTaskDeleted(
 	taskID uuid.UUID,
 	metadata event.Metadata,
@@ -92,7 +92,7 @@ func NewTaskDeleted(
 	}
 }
 
-// StatusChanged событие изменения статуса
+// StatusChanged event changing status
 type StatusChanged struct {
 	event.BaseEvent
 
@@ -101,7 +101,7 @@ type StatusChanged struct {
 	ChangedBy uuid.UUID
 }
 
-// NewStatusChanged создает новое событие StatusChanged
+// NewStatusChanged creates новое event StatusChanged
 func NewStatusChanged(
 	taskID uuid.UUID,
 	oldStatus, newStatus Status,
@@ -116,7 +116,7 @@ func NewStatusChanged(
 	}
 }
 
-// AssigneeChanged событие изменения исполнителя
+// AssigneeChanged event changing исполнителя
 type AssigneeChanged struct {
 	event.BaseEvent
 
@@ -125,7 +125,7 @@ type AssigneeChanged struct {
 	ChangedBy   uuid.UUID
 }
 
-// NewAssigneeChanged создает новое событие AssigneeChanged
+// NewAssigneeChanged creates новое event AssigneeChanged
 func NewAssigneeChanged(
 	taskID uuid.UUID,
 	oldAssignee, newAssignee *uuid.UUID,
@@ -140,7 +140,7 @@ func NewAssigneeChanged(
 	}
 }
 
-// PriorityChanged событие изменения приоритета
+// PriorityChanged event changing priority
 type PriorityChanged struct {
 	event.BaseEvent
 
@@ -149,7 +149,7 @@ type PriorityChanged struct {
 	ChangedBy   uuid.UUID
 }
 
-// NewPriorityChanged создает новое событие PriorityChanged
+// NewPriorityChanged creates новое event PriorityChanged
 func NewPriorityChanged(
 	taskID uuid.UUID,
 	oldPriority, newPriority Priority,
@@ -164,7 +164,7 @@ func NewPriorityChanged(
 	}
 }
 
-// DueDateChanged событие изменения срока выполнения
+// DueDateChanged event changing срока выполнения
 type DueDateChanged struct {
 	event.BaseEvent
 
@@ -173,7 +173,7 @@ type DueDateChanged struct {
 	ChangedBy  uuid.UUID
 }
 
-// NewDueDateChanged создает новое событие DueDateChanged
+// NewDueDateChanged creates новое event DueDateChanged
 func NewDueDateChanged(
 	taskID uuid.UUID,
 	oldDueDate, newDueDate *time.Time,
@@ -188,7 +188,7 @@ func NewDueDateChanged(
 	}
 }
 
-// CustomFieldSet событие установки кастомного поля
+// CustomFieldSet event setting кастомного fields
 type CustomFieldSet struct {
 	event.BaseEvent
 
@@ -196,7 +196,7 @@ type CustomFieldSet struct {
 	Value string
 }
 
-// NewCustomFieldSet создает новое событие CustomFieldSet
+// NewCustomFieldSet creates новое event CustomFieldSet
 func NewCustomFieldSet(
 	taskID uuid.UUID,
 	key, value string,

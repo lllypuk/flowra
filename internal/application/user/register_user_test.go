@@ -10,7 +10,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// mockUserRepository - мок репозитория для тестирования
+// mockUserRepository - мок репозитория for testing
 type mockUserRepository struct {
 	users               map[string]*domainuser.User    // username -> user
 	usersByEmail        map[string]*domainuser.User    // email -> user
@@ -135,7 +135,7 @@ func TestRegisterUserUseCase_Execute_Success(t *testing.T) {
 		t.Errorf("expected keycloakID %s, got %s", cmd.ExternalID, result.Value.ExternalID())
 	}
 
-	// Проверка, что пользователь сохранен
+	// check, that userель savен
 	if len(repo.users) != 1 {
 		t.Errorf("expected 1 user in repository, got %d", len(repo.users))
 	}
@@ -146,15 +146,15 @@ func TestRegisterUserUseCase_Execute_UsernameAlreadyExists(t *testing.T) {
 	repo := newMockUserRepository()
 	useCase := user.NewRegisterUserUseCase(repo)
 
-	// Сначала создаем пользователя
+	// Сначала creating user
 	existingUser, _ := domainuser.NewUser("external-existing", "testuser", "existing@example.com", "Existing User")
 	_ = repo.Save(context.Background(), existingUser)
 
-	// Пытаемся создать с тем же username
+	// Пытаемся create с тем же username
 	cmd := user.RegisterUserCommand{
-		ExternalID:  "external-new",
+		ExternalID:  "external-New",
 		Username:    "testuser",
-		Email:       "new@example.com",
+		Email:       "New@example.com",
 		DisplayName: "New User",
 	}
 
@@ -172,13 +172,13 @@ func TestRegisterUserUseCase_Execute_EmailAlreadyExists(t *testing.T) {
 	repo := newMockUserRepository()
 	useCase := user.NewRegisterUserUseCase(repo)
 
-	// Сначала создаем пользователя
+	// Сначала creating user
 	existingUser, _ := domainuser.NewUser("external-existing", "existinguser", "test@example.com", "Existing User")
 	_ = repo.Save(context.Background(), existingUser)
 
-	// Пытаемся создать с тем же email
+	// Пытаемся create с тем же email
 	cmd := user.RegisterUserCommand{
-		ExternalID:  "external-new",
+		ExternalID:  "external-New",
 		Username:    "newuser",
 		Email:       "test@example.com",
 		DisplayName: "New User",

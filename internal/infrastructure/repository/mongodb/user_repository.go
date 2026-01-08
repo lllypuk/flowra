@@ -31,7 +31,7 @@ func WithUserRepoLogger(logger *slog.Logger) UserRepoOption {
 	}
 }
 
-// NewMongoUserRepository создает новый MongoDB User Repository
+// NewMongoUserRepository creates New MongoDB User Repository
 func NewMongoUserRepository(collection *mongo.Collection, opts ...UserRepoOption) *MongoUserRepository {
 	r := &MongoUserRepository{
 		collection: collection,
@@ -45,7 +45,7 @@ func NewMongoUserRepository(collection *mongo.Collection, opts ...UserRepoOption
 	return r
 }
 
-// FindByID находит пользователя по ID
+// FindByID finds user по ID
 func (r *MongoUserRepository) FindByID(ctx context.Context, id uuid.UUID) (*userdomain.User, error) {
 	if id.IsZero() {
 		return nil, errs.ErrInvalidInput
@@ -67,7 +67,7 @@ func (r *MongoUserRepository) FindByID(ctx context.Context, id uuid.UUID) (*user
 	return r.documentToUser(&doc)
 }
 
-// FindByExternalID находит пользователя по ID из внешней системы аутентификации
+// FindByExternalID finds user по ID from внешней системы аутентификации
 func (r *MongoUserRepository) FindByExternalID(ctx context.Context, externalID string) (*userdomain.User, error) {
 	if externalID == "" {
 		return nil, errs.ErrInvalidInput
@@ -89,7 +89,7 @@ func (r *MongoUserRepository) FindByExternalID(ctx context.Context, externalID s
 	return r.documentToUser(&doc)
 }
 
-// FindByEmail находит пользователя по email
+// FindByEmail finds user по email
 func (r *MongoUserRepository) FindByEmail(ctx context.Context, email string) (*userdomain.User, error) {
 	if email == "" {
 		return nil, errs.ErrInvalidInput
@@ -105,7 +105,7 @@ func (r *MongoUserRepository) FindByEmail(ctx context.Context, email string) (*u
 	return r.documentToUser(&doc)
 }
 
-// FindByUsername находит пользователя по username
+// FindByUsername finds user по username
 func (r *MongoUserRepository) FindByUsername(ctx context.Context, username string) (*userdomain.User, error) {
 	if username == "" {
 		return nil, errs.ErrInvalidInput
@@ -121,7 +121,7 @@ func (r *MongoUserRepository) FindByUsername(ctx context.Context, username strin
 	return r.documentToUser(&doc)
 }
 
-// Exists проверяет, существует ли пользователь с заданным ID
+// Exists checks, существует ли userель с заданным ID
 func (r *MongoUserRepository) Exists(ctx context.Context, userID uuid.UUID) (bool, error) {
 	if userID.IsZero() {
 		return false, errs.ErrInvalidInput
@@ -136,7 +136,7 @@ func (r *MongoUserRepository) Exists(ctx context.Context, userID uuid.UUID) (boo
 	return count > 0, nil
 }
 
-// ExistsByUsername проверяет, существует ли пользователь с заданным username
+// ExistsByUsername checks, существует ли userель с заданным username
 func (r *MongoUserRepository) ExistsByUsername(ctx context.Context, username string) (bool, error) {
 	if username == "" {
 		return false, errs.ErrInvalidInput
@@ -151,7 +151,7 @@ func (r *MongoUserRepository) ExistsByUsername(ctx context.Context, username str
 	return count > 0, nil
 }
 
-// ExistsByEmail проверяет, существует ли пользователь с заданным email
+// ExistsByEmail checks, существует ли userель с заданным email
 func (r *MongoUserRepository) ExistsByEmail(ctx context.Context, email string) (bool, error) {
 	if email == "" {
 		return false, errs.ErrInvalidInput
@@ -166,7 +166,7 @@ func (r *MongoUserRepository) ExistsByEmail(ctx context.Context, email string) (
 	return count > 0, nil
 }
 
-// Save сохраняет пользователя
+// Save saves user
 func (r *MongoUserRepository) Save(ctx context.Context, user *userdomain.User) error {
 	if user == nil {
 		return errs.ErrInvalidInput
@@ -191,7 +191,7 @@ func (r *MongoUserRepository) Save(ctx context.Context, user *userdomain.User) e
 	return HandleMongoError(err, "user")
 }
 
-// Delete удаляет пользователя
+// Delete удаляет user
 func (r *MongoUserRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	if id.IsZero() {
 		return errs.ErrInvalidInput
@@ -214,12 +214,12 @@ func (r *MongoUserRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-// List возвращает список пользователей с пагинацией
+// List returns list users с пагинацией
 func (r *MongoUserRepository) List(ctx context.Context, offset, limit int) ([]*userdomain.User, error) {
 	return listDocuments(ctx, r.collection, offset, limit, r.documentToUser, "users")
 }
 
-// Count возвращает общее количество пользователей
+// Count returns общее count users
 func (r *MongoUserRepository) Count(ctx context.Context) (int, error) {
 	count, err := CountAll(ctx, r.collection)
 	if err != nil {
@@ -228,7 +228,7 @@ func (r *MongoUserRepository) Count(ctx context.Context) (int, error) {
 	return count, nil
 }
 
-// userDocument представляет структуру документа в MongoDB
+// userDocument represents структуру документа in MongoDB
 type userDocument struct {
 	UserID        string    `bson:"user_id"`
 	KeycloakID    *string   `bson:"keycloak_id,omitempty"`
@@ -241,7 +241,7 @@ type userDocument struct {
 	UpdatedAt     time.Time `bson:"updated_at"`
 }
 
-// userToDocument преобразует User в Document
+// userToDocument преобразует User in Document
 func (r *MongoUserRepository) userToDocument(user *userdomain.User) userDocument {
 	doc := userDocument{
 		UserID:        user.ID().String(),
@@ -259,7 +259,7 @@ func (r *MongoUserRepository) userToDocument(user *userdomain.User) userDocument
 	return doc
 }
 
-// documentToUser преобразует Document в User
+// documentToUser преобразует Document in User
 func (r *MongoUserRepository) documentToUser(doc *userDocument) (*userdomain.User, error) {
 	if doc == nil {
 		return nil, errs.ErrInvalidInput
@@ -285,7 +285,7 @@ func (r *MongoUserRepository) documentToUser(doc *userDocument) (*userdomain.Use
 	), nil
 }
 
-// ListExternalIDs возвращает список всех external ID (Keycloak ID) пользователей
+// ListExternalIDs returns list all external ID (Keycloak ID) users
 func (r *MongoUserRepository) ListExternalIDs(ctx context.Context) ([]string, error) {
 	filter := bson.M{
 		"keycloak_id": bson.M{"$exists": true, "$ne": nil},

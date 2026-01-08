@@ -55,7 +55,7 @@ func TestParse(t *testing.T) {
 			wantText: "Finished work",
 		},
 		{
-			name:  "tags at start then text on new line",
+			name:  "tags at start then text on New line",
 			input: "#status Done #assignee @alex\nFinished work",
 			wantTags: []tag.ParsedTag{
 				{Key: "status", Value: "Done"},

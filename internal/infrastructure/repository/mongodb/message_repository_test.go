@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// setupTestMessageRepository создает тестовый репозиторий сообщений
+// setupTestMessageRepository creates test репозиторий сообщений
 func setupTestMessageRepository(t *testing.T) *mongodb.MongoMessageRepository {
 	t.Helper()
 
@@ -25,7 +25,7 @@ func setupTestMessageRepository(t *testing.T) *mongodb.MongoMessageRepository {
 	return mongodb.NewMongoMessageRepository(coll)
 }
 
-// createTestMessage создает тестовое сообщение
+// createTestMessage creates тестовое message
 func createTestMessage(t *testing.T, chatID, authorID uuid.UUID, content string) *messagedomain.Message {
 	t.Helper()
 
@@ -34,7 +34,7 @@ func createTestMessage(t *testing.T, chatID, authorID uuid.UUID, content string)
 	return msg
 }
 
-// createTestThreadReply создает ответ в треде
+// createTestThreadReply creates response in треде
 func createTestThreadReply(t *testing.T, chatID, authorID, parentID uuid.UUID, content string) *messagedomain.Message {
 	t.Helper()
 
@@ -43,7 +43,7 @@ func createTestThreadReply(t *testing.T, chatID, authorID, parentID uuid.UUID, c
 	return msg
 }
 
-// TestMongoMessageRepository_Save_And_FindByID проверяет сохранение и поиск сообщения по ID
+// TestMongoMessageRepository_Save_And_FindByID checks storage and search messages по ID
 func TestMongoMessageRepository_Save_And_FindByID(t *testing.T) {
 	repo := setupTestMessageRepository(t)
 	ctx := context.Background()
@@ -72,7 +72,7 @@ func TestMongoMessageRepository_Save_And_FindByID(t *testing.T) {
 	assert.WithinDuration(t, msg.CreatedAt(), loaded.CreatedAt(), time.Millisecond)
 }
 
-// TestMongoMessageRepository_FindByID_NotFound проверяет поиск несуществующего сообщения
+// TestMongoMessageRepository_FindByID_NotFound checks search неexistingего messages
 func TestMongoMessageRepository_FindByID_NotFound(t *testing.T) {
 	repo := setupTestMessageRepository(t)
 	ctx := context.Background()
@@ -82,7 +82,7 @@ func TestMongoMessageRepository_FindByID_NotFound(t *testing.T) {
 	assert.ErrorIs(t, err, errs.ErrNotFound)
 }
 
-// TestMongoMessageRepository_FindByChatID проверяет поиск сообщений в чате
+// TestMongoMessageRepository_FindByChatID checks search сообщений in чате
 func TestMongoMessageRepository_FindByChatID(t *testing.T) {
 	repo := setupTestMessageRepository(t)
 	ctx := context.Background()
@@ -125,7 +125,7 @@ func TestMongoMessageRepository_FindByChatID(t *testing.T) {
 	assert.Empty(t, messages)
 }
 
-// TestMongoMessageRepository_FindThread проверяет поиск треда
+// TestMongoMessageRepository_FindThread checks search треда
 func TestMongoMessageRepository_FindThread(t *testing.T) {
 	repo := setupTestMessageRepository(t)
 	ctx := context.Background()
@@ -163,7 +163,7 @@ func TestMongoMessageRepository_FindThread(t *testing.T) {
 	assert.Empty(t, replies)
 }
 
-// TestMongoMessageRepository_CountThreadReplies проверяет подсчет ответов в треде
+// TestMongoMessageRepository_CountThreadReplies checks подсчет responseов in треде
 func TestMongoMessageRepository_CountThreadReplies(t *testing.T) {
 	repo := setupTestMessageRepository(t)
 	ctx := context.Background()
@@ -195,7 +195,7 @@ func TestMongoMessageRepository_CountThreadReplies(t *testing.T) {
 	assert.Equal(t, 4, count)
 }
 
-// TestMongoMessageRepository_CountByChatID проверяет подсчет сообщений в чате
+// TestMongoMessageRepository_CountByChatID checks подсчет сообщений in чате
 func TestMongoMessageRepository_CountByChatID(t *testing.T) {
 	repo := setupTestMessageRepository(t)
 	ctx := context.Background()
@@ -221,7 +221,7 @@ func TestMongoMessageRepository_CountByChatID(t *testing.T) {
 	assert.Equal(t, 3, count)
 }
 
-// TestMongoMessageRepository_Delete проверяет удаление сообщения
+// TestMongoMessageRepository_Delete checks deletion messages
 func TestMongoMessageRepository_Delete(t *testing.T) {
 	repo := setupTestMessageRepository(t)
 	ctx := context.Background()
@@ -251,7 +251,7 @@ func TestMongoMessageRepository_Delete(t *testing.T) {
 	require.ErrorIs(t, err, errs.ErrNotFound)
 }
 
-// TestMongoMessageRepository_AddReaction проверяет добавление реакции
+// TestMongoMessageRepository_AddReaction checks adding реакции
 func TestMongoMessageRepository_AddReaction(t *testing.T) {
 	repo := setupTestMessageRepository(t)
 	ctx := context.Background()
@@ -288,7 +288,7 @@ func TestMongoMessageRepository_AddReaction(t *testing.T) {
 	assert.ErrorIs(t, err, errs.ErrNotFound)
 }
 
-// TestMongoMessageRepository_RemoveReaction проверяет удаление реакции
+// TestMongoMessageRepository_RemoveReaction checks deletion реакции
 func TestMongoMessageRepository_RemoveReaction(t *testing.T) {
 	repo := setupTestMessageRepository(t)
 	ctx := context.Background()
@@ -329,7 +329,7 @@ func TestMongoMessageRepository_RemoveReaction(t *testing.T) {
 	assert.ErrorIs(t, err, errs.ErrNotFound)
 }
 
-// TestMongoMessageRepository_GetReactionUsers проверяет получение пользователей по реакции
+// TestMongoMessageRepository_GetReactionUsers checks retrieval users по реакции
 func TestMongoMessageRepository_GetReactionUsers(t *testing.T) {
 	repo := setupTestMessageRepository(t)
 	ctx := context.Background()
@@ -373,7 +373,7 @@ func TestMongoMessageRepository_GetReactionUsers(t *testing.T) {
 	assert.ErrorIs(t, err, errs.ErrNotFound)
 }
 
-// TestMongoMessageRepository_SearchInChat проверяет поиск сообщений в чате
+// TestMongoMessageRepository_SearchInChat checks search сообщений in чате
 func TestMongoMessageRepository_SearchInChat(t *testing.T) {
 	repo := setupTestMessageRepository(t)
 	ctx := context.Background()
@@ -423,7 +423,7 @@ func TestMongoMessageRepository_SearchInChat(t *testing.T) {
 	assert.Len(t, results, 2)
 }
 
-// TestMongoMessageRepository_SearchInChat_SpecialCharacters проверяет поиск со спецсимволами
+// TestMongoMessageRepository_SearchInChat_SpecialCharacters checks search with спецсимволами
 func TestMongoMessageRepository_SearchInChat_SpecialCharacters(t *testing.T) {
 	repo := setupTestMessageRepository(t)
 	ctx := context.Background()
@@ -447,7 +447,7 @@ func TestMongoMessageRepository_SearchInChat_SpecialCharacters(t *testing.T) {
 	assert.Len(t, results, 1)
 }
 
-// TestMongoMessageRepository_FindByAuthor проверяет поиск сообщений по автору
+// TestMongoMessageRepository_FindByAuthor checks search сообщений по автору
 func TestMongoMessageRepository_FindByAuthor(t *testing.T) {
 	repo := setupTestMessageRepository(t)
 	ctx := context.Background()
@@ -502,7 +502,7 @@ func TestMongoMessageRepository_FindByAuthor(t *testing.T) {
 	assert.Len(t, results, 1)
 }
 
-// TestMongoMessageRepository_InputValidation проверяет валидацию входных данных
+// TestMongoMessageRepository_InputValidation checks validацию входных данных
 func TestMongoMessageRepository_InputValidation(t *testing.T) {
 	repo := setupTestMessageRepository(t)
 	ctx := context.Background()
@@ -603,7 +603,7 @@ func TestMongoMessageRepository_InputValidation(t *testing.T) {
 	})
 }
 
-// TestMongoMessageRepository_UpdateMessage проверяет обновление сообщения
+// TestMongoMessageRepository_UpdateMessage checks update messages
 func TestMongoMessageRepository_UpdateMessage(t *testing.T) {
 	repo := setupTestMessageRepository(t)
 	ctx := context.Background()
@@ -632,7 +632,7 @@ func TestMongoMessageRepository_UpdateMessage(t *testing.T) {
 	assert.NotNil(t, loaded.EditedAt())
 }
 
-// TestMongoMessageRepository_SoftDelete проверяет мягкое удаление через domain
+// TestMongoMessageRepository_SoftDelete checks мягкое deletion via domain
 func TestMongoMessageRepository_SoftDelete(t *testing.T) {
 	repo := setupTestMessageRepository(t)
 	ctx := context.Background()
@@ -660,7 +660,7 @@ func TestMongoMessageRepository_SoftDelete(t *testing.T) {
 	assert.NotNil(t, loaded.DeletedAt())
 }
 
-// TestMongoMessageRepository_WithAttachments проверяет сохранение сообщения с вложениями
+// TestMongoMessageRepository_WithAttachments checks storage messages с вложениями
 func TestMongoMessageRepository_WithAttachments(t *testing.T) {
 	repo := setupTestMessageRepository(t)
 	ctx := context.Background()
@@ -694,7 +694,7 @@ func TestMongoMessageRepository_WithAttachments(t *testing.T) {
 	assert.Equal(t, "application/pdf", attachments[0].MimeType())
 }
 
-// TestMongoMessageRepository_WithReactions проверяет сохранение сообщения с реакциями через domain
+// TestMongoMessageRepository_WithReactions checks storage messages с реакциями via domain
 func TestMongoMessageRepository_WithReactions(t *testing.T) {
 	repo := setupTestMessageRepository(t)
 	ctx := context.Background()

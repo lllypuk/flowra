@@ -2,19 +2,19 @@ package workspace
 
 import "github.com/lllypuk/flowra/internal/domain/uuid"
 
-// Query базовый интерфейс запросов
+// Query базовый interface запросов
 type Query interface {
 	QueryName() string
 }
 
-// GetWorkspaceQuery - получение workspace по ID
+// GetWorkspaceQuery - retrieval workspace по ID
 type GetWorkspaceQuery struct {
 	WorkspaceID uuid.UUID
 }
 
 func (q GetWorkspaceQuery) QueryName() string { return "GetWorkspace" }
 
-// ListUserWorkspacesQuery - список workspace пользователя
+// ListUserWorkspacesQuery - list workspace user
 type ListUserWorkspacesQuery struct {
 	UserID uuid.UUID
 	Offset int

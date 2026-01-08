@@ -7,64 +7,64 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/workspace"
 )
 
-// CommandRepository определяет интерфейс для команд (изменение состояния) рабочих пространств
-// Интерфейс объявлен на стороне потребителя (application layer)
+// CommandRepository defines interface for commands (change state) workspaceих пространств
+// interface declared on the consumer side (application layer)
 type CommandRepository interface {
-	// Save сохраняет рабочее пространство (создание или обновление)
+	// Save saves workspaceее пространство (creation or update)
 	Save(ctx context.Context, ws *workspace.Workspace) error
 
-	// Delete удаляет рабочее пространство
+	// Delete удаляет workspaceее пространство
 	Delete(ctx context.Context, id uuid.UUID) error
 
-	// AddMember добавляет члена в workspace
+	// AddMember добавляет члена in workspace
 	AddMember(ctx context.Context, member *workspace.Member) error
 
-	// RemoveMember удаляет члена из workspace
+	// RemoveMember удаляет члена from workspace
 	RemoveMember(ctx context.Context, workspaceID, userID uuid.UUID) error
 
-	// UpdateMember обновляет данные члена workspace
+	// UpdateMember обновляет data члена workspace
 	UpdateMember(ctx context.Context, member *workspace.Member) error
 }
 
-// QueryRepository определяет интерфейс для запросов (только чтение) рабочих пространств
-// Интерфейс объявлен на стороне потребителя (application layer)
+// QueryRepository defines interface for запросов (only reading) workspaceих пространств
+// interface declared on the consumer side (application layer)
 type QueryRepository interface {
-	// FindByID находит рабочее пространство по ID
+	// FindByID finds workspaceее пространство по ID
 	FindByID(ctx context.Context, id uuid.UUID) (*workspace.Workspace, error)
 
-	// FindByKeycloakGroup находит рабочее пространство по ID группы Keycloak
+	// FindByKeycloakGroup finds workspaceее пространство по ID groupsы Keycloak
 	FindByKeycloakGroup(ctx context.Context, keycloakGroupID string) (*workspace.Workspace, error)
 
-	// List возвращает список рабочих пространств с пагинацией
+	// List returns list workspaceих пространств с пагинацией
 	List(ctx context.Context, offset, limit int) ([]*workspace.Workspace, error)
 
-	// Count возвращает общее количество рабочих пространств
+	// Count returns общее count workspaceих пространств
 	Count(ctx context.Context) (int, error)
 
-	// FindInviteByToken находит приглашение по токену
+	// FindInviteByToken finds приглашение по токену
 	FindInviteByToken(ctx context.Context, token string) (*workspace.Invite, error)
 
-	// GetMember возвращает члена workspace по userID
+	// GetMember returns члена workspace по userID
 	GetMember(ctx context.Context, workspaceID, userID uuid.UUID) (*workspace.Member, error)
 
-	// IsMember проверяет, является ли пользователь членом workspace
+	// IsMember checks, is ли userель членом workspace
 	IsMember(ctx context.Context, workspaceID, userID uuid.UUID) (bool, error)
 
-	// ListWorkspacesByUser возвращает workspaces, в которых пользователь является членом
+	// ListWorkspacesByUser returns workspaces, in которых userель is членом
 	ListWorkspacesByUser(ctx context.Context, userID uuid.UUID, offset, limit int) ([]*workspace.Workspace, error)
 
-	// CountWorkspacesByUser возвращает количество workspaces пользователя
+	// CountWorkspacesByUser returns count workspaces user
 	CountWorkspacesByUser(ctx context.Context, userID uuid.UUID) (int, error)
 
-	// ListMembers возвращает всех членов workspace
+	// ListMembers returns all членов workspace
 	ListMembers(ctx context.Context, workspaceID uuid.UUID, offset, limit int) ([]*workspace.Member, error)
 
-	// CountMembers возвращает количество членов workspace
+	// CountMembers returns count членов workspace
 	CountMembers(ctx context.Context, workspaceID uuid.UUID) (int, error)
 }
 
-// Repository объединяет Command и Query интерфейсы для удобства
-// Используется когда use case нужны оба типа операций
+// Repository combines Command and Query interfaces for convenience
+// Used when use case need both types of операций
 type Repository interface {
 	CommandRepository
 	QueryRepository

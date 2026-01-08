@@ -8,21 +8,21 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
-// listDocuments выполняет общую логику получения списка документов с пагинацией.
-// T - тип документа для декодирования
-// R - тип результата (domain объект)
+// listDocuments performs общую логику receivения list документов с пагинацией.
+// T - type документа for декодирования
+// R - type result (domain object)
 //
-// Параметры:
-//   - ctx: контекст выполнения
+// parameters:
+//   - ctx: конtext выполнения
 //   - collection: MongoDB коллекция
-//   - offset: смещение для пагинации
-//   - limit: лимит документов (если 0, используется DefaultPaginationLimit)
-//   - decoder: функция преобразования документа в domain объект
-//   - collectionName: название коллекции для сообщений об ошибках
+//   - offset: смещение for пагинации
+//   - limit: лимит документов (if 0, used DefaultPaginationLimit)
+//   - decoder: function conversion документа in domain object
+//   - collectionName: название коллекции for сообщений об errorх
 //
-// Возвращает:
-//   - срез domain объектов (никогда не nil)
-//   - ошибку при проблемах с запросом
+// returns:
+//   - срез domain объектов (never not nil)
+//   - error at проблемах с запросом
 func listDocuments[T any, R any](
 	ctx context.Context,
 	collection *mongo.Collection,
@@ -49,7 +49,7 @@ func listDocuments[T any, R any](
 
 		item, docErr := decoder(&doc)
 		if docErr != nil {
-			continue // пропускаем документы, которые не удалось преобразовать
+			continue // пропускаем документы, которые not удалось convert
 		}
 
 		results = append(results, item)

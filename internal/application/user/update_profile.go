@@ -9,33 +9,33 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/user"
 )
 
-// UpdateProfileUseCase обрабатывает обновление профиля пользователя
+// UpdateProfileUseCase handles update профиля user
 type UpdateProfileUseCase struct {
 	userRepo Repository
 }
 
-// NewUpdateProfileUseCase создает новый UpdateProfileUseCase
+// NewUpdateProfileUseCase creates New UpdateProfileUseCase
 func NewUpdateProfileUseCase(userRepo Repository) *UpdateProfileUseCase {
 	return &UpdateProfileUseCase{userRepo: userRepo}
 }
 
-// Execute выполняет обновление профиля
+// Execute performs update профиля
 func (uc *UpdateProfileUseCase) Execute(
 	ctx context.Context,
 	cmd UpdateProfileCommand,
 ) (Result, error) {
-	// Валидация
+	// validation
 	if err := uc.validate(cmd); err != nil {
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Загрузка пользователя
+	// Loading user
 	usr, err := uc.userRepo.FindByID(ctx, cmd.UserID)
 	if err != nil {
 		return Result{}, ErrUserNotFound
 	}
 
-	// Проверка уникальности email если он меняется
+	// check uniqueости email if он меняется
 	if cmd.Email != nil {
 		existingByEmail, emailErr := uc.userRepo.FindByEmail(ctx, *cmd.Email)
 		if emailErr == nil && existingByEmail != nil && existingByEmail.ID() != usr.ID() {
@@ -43,12 +43,12 @@ func (uc *UpdateProfileUseCase) Execute(
 		}
 	}
 
-	// Обновление профиля
+	// update профиля
 	if updateErr := usr.UpdateProfile(cmd.DisplayName, cmd.Email); updateErr != nil {
 		return Result{}, fmt.Errorf("failed to update profile: %w", updateErr)
 	}
 
-	// Сохранение
+	// storage
 	if saveErr := uc.userRepo.Save(ctx, usr); saveErr != nil {
 		return Result{}, fmt.Errorf("failed to save user: %w", saveErr)
 	}
@@ -65,19 +65,19 @@ func (uc *UpdateProfileUseCase) validate(cmd UpdateProfileCommand) error {
 		return err
 	}
 
-	// Проверяем, что хотя бы одно поле для обновления указано
+	// Checking, that хотя бы одно field for updating указано
 	if cmd.DisplayName == nil && cmd.Email == nil {
 		return errors.New("at least one field (displayName or email) must be provided")
 	}
 
-	// Валидация email если он предоставлен
+	// validation email if он предоставлен
 	if cmd.Email != nil {
 		if err := appcore.ValidateEmail("email", *cmd.Email); err != nil {
 			return err
 		}
 	}
 
-	// Валидация displayName если он предоставлен
+	// validation displayName if он предоставлен
 	if cmd.DisplayName != nil && *cmd.DisplayName == "" {
 		return appcore.NewValidationError("displayName", "cannot be empty")
 	}

@@ -6,12 +6,12 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// Command базовый интерфейс команд
+// Command базовый interface commands
 type Command interface {
 	CommandName() string
 }
 
-// CreateWorkspaceCommand - создание workspace
+// CreateWorkspaceCommand - creation workspace
 type CreateWorkspaceCommand struct {
 	Name        string
 	Description string
@@ -20,7 +20,7 @@ type CreateWorkspaceCommand struct {
 
 func (c CreateWorkspaceCommand) CommandName() string { return "CreateWorkspace" }
 
-// UpdateWorkspaceCommand - обновление workspace
+// UpdateWorkspaceCommand - update workspace
 type UpdateWorkspaceCommand struct {
 	WorkspaceID uuid.UUID
 	Name        string
@@ -29,7 +29,7 @@ type UpdateWorkspaceCommand struct {
 
 func (c UpdateWorkspaceCommand) CommandName() string { return "UpdateWorkspace" }
 
-// CreateInviteCommand - создание инвайта
+// CreateInviteCommand - creation инвайта
 type CreateInviteCommand struct {
 	WorkspaceID uuid.UUID
 	ExpiresAt   *time.Time // опционально, default: 7 дней

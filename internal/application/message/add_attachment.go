@@ -9,13 +9,13 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/message"
 )
 
-// AddAttachmentUseCase обрабатывает добавление вложения к сообщению
+// AddAttachmentUseCase handles adding вложения to сообщению
 type AddAttachmentUseCase struct {
 	messageRepo Repository
 	eventBus    event.Bus
 }
 
-// NewAddAttachmentUseCase создает новый AddAttachmentUseCase
+// NewAddAttachmentUseCase creates New AddAttachmentUseCase
 func NewAddAttachmentUseCase(
 	messageRepo Repository,
 	eventBus event.Bus,
@@ -26,43 +26,43 @@ func NewAddAttachmentUseCase(
 	}
 }
 
-// Execute выполняет добавление вложения
+// Execute performs adding вложения
 func (uc *AddAttachmentUseCase) Execute(
 	ctx context.Context,
 	cmd AddAttachmentCommand,
 ) (Result, error) {
-	// Валидация
+	// validation
 	if err := uc.validate(cmd); err != nil {
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Загрузка сообщения
+	// Loading message
 	msg, err := uc.messageRepo.FindByID(ctx, cmd.MessageID)
 	if err != nil {
 		return Result{}, ErrMessageNotFound
 	}
 
-	// Проверка, что сообщение не удалено
+	// check, that message not удалено
 	if msg.IsDeleted() {
 		return Result{}, ErrMessageDeleted
 	}
 
-	// Авторизация: только автор может добавлять вложения
+	// authorization: only автор может добавлять вложения
 	if !msg.CanBeEditedBy(cmd.UserID) {
 		return Result{}, ErrNotAuthor
 	}
 
-	// Добавление вложения
+	// Adding вложения
 	if addErr := msg.AddAttachment(cmd.FileID, cmd.FileName, cmd.FileSize, cmd.MimeType); addErr != nil {
 		return Result{}, addErr
 	}
 
-	// Сохранение
+	// storage
 	if saveErr := uc.messageRepo.Save(ctx, msg); saveErr != nil {
 		return Result{}, fmt.Errorf("failed to save message: %w", saveErr)
 	}
 
-	// Публикация события
+	// Publishing event
 	evt := message.NewAttachmentAdded(
 		msg.ID(),
 		cmd.FileID,

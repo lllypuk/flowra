@@ -7,14 +7,14 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// Reaction представляет эмоджи реакцию на сообщение
+// Reaction represents эмоджи реакцию on message
 type Reaction struct {
 	userID    uuid.UUID
 	emojiCode string
 	addedAt   time.Time
 }
 
-// NewReaction создает новую реакцию
+// NewReaction creates New реакцию
 func NewReaction(userID uuid.UUID, emojiCode string) (Reaction, error) {
 	if userID.IsZero() {
 		return Reaction{}, errs.ErrInvalidInput
@@ -30,23 +30,23 @@ func NewReaction(userID uuid.UUID, emojiCode string) (Reaction, error) {
 	}, nil
 }
 
-// UserID возвращает ID пользователя
+// UserID returns ID user
 func (r Reaction) UserID() uuid.UUID {
 	return r.userID
 }
 
-// EmojiCode возвращает код эмоджи
+// EmojiCode returns код эмоджи
 func (r Reaction) EmojiCode() string {
 	return r.emojiCode
 }
 
-// AddedAt возвращает время добавления реакции
+// AddedAt returns time adding реакции
 func (r Reaction) AddedAt() time.Time {
 	return r.addedAt
 }
 
-// ReconstructReaction восстанавливает реакцию из хранилища.
-// Используется репозиториями для гидрации объекта без валидации бизнес-правил.
+// ReconstructReaction восстанавливает реакцию from storage.
+// Used by repositories for hydration объекта without validation business rules.
 func ReconstructReaction(userID uuid.UUID, emojiCode string, addedAt time.Time) Reaction {
 	return Reaction{
 		userID:    userID,

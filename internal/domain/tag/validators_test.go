@@ -1,4 +1,4 @@
-package tag //nolint:testpackage // Чтобы тестировать unexported функции
+package tag //nolint:testpackage // Чтобы test unexported functions
 
 import (
 	"testing"
@@ -14,7 +14,7 @@ func TestValidateUsername(t *testing.T) {
 		wantErr   bool
 		errSubstr string
 	}{
-		// Валидные значения
+		// Валидные values
 		{
 			name:    "valid username",
 			value:   "@alex",
@@ -51,7 +51,7 @@ func TestValidateUsername(t *testing.T) {
 			wantErr: false,
 		},
 
-		// Невалидные значения
+		// Invalid values
 		{
 			name:      "missing @",
 			value:     "alex",
@@ -143,7 +143,7 @@ func TestValidateISODate(t *testing.T) {
 			wantErr: false,
 		},
 
-		// Невалидные форматы
+		// Invalid форматы
 		{
 			name:      "DD-MM-YYYY",
 			value:     "20-10-2025",
@@ -198,7 +198,7 @@ func TestValidatePriority(t *testing.T) {
 		wantErr   bool
 		errSubstr string
 	}{
-		// Валидные значения (CASE-SENSITIVE)
+		// Валидные values (CASE-SENSITIVE)
 		{
 			name:    "High",
 			value:   "High",
@@ -215,7 +215,7 @@ func TestValidatePriority(t *testing.T) {
 			wantErr: false,
 		},
 
-		// Невалидные значения
+		// Invalid values
 		{
 			name:      "lowercase high",
 			value:     "high",
@@ -264,7 +264,7 @@ func TestValidateSeverity(t *testing.T) {
 		wantErr   bool
 		errSubstr string
 	}{
-		// Валидные значения (CASE-SENSITIVE)
+		// Валидные values (CASE-SENSITIVE)
 		{
 			name:    "Critical",
 			value:   "Critical",
@@ -286,7 +286,7 @@ func TestValidateSeverity(t *testing.T) {
 			wantErr: false,
 		},
 
-		// Невалидные значения
+		// Invalid values
 		{
 			name:      "lowercase critical",
 			value:     "critical",
@@ -323,7 +323,7 @@ func TestValidateSeverity(t *testing.T) {
 }
 
 func TestNoValidation(t *testing.T) {
-	// noValidation всегда возвращает nil
+	// noValidation always returns nil
 	assert.NoError(t, noValidation(""))
 	assert.NoError(t, noValidation("any value"))
 	assert.NoError(t, noValidation("🎉 emoji"))
@@ -428,7 +428,7 @@ func TestValidateStatus(t *testing.T) {
 			wantErr:    false,
 		},
 
-		// Неизвестный тип сущности
+		// Неизвестный type сущности
 		{
 			name:       "unknown entity type",
 			entityType: "Story",
@@ -505,7 +505,7 @@ func TestValidateDueDate(t *testing.T) {
 			wantErr: false,
 		},
 
-		// Невалидные форматы
+		// Invalid форматы
 		{
 			name:      "DD-MM-YYYY",
 			input:     "20-10-2025",
@@ -549,7 +549,7 @@ func TestValidateDueDate(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				if tt.wantNil {
-					assert.Nil(t, result)
+					assert.nil(t, result)
 				} else {
 					assert.NotNil(t, result)
 				}
@@ -640,17 +640,17 @@ func TestValidateEntityCreation(t *testing.T) {
 		{
 			name:    "title with unicode",
 			tagKey:  "task",
-			title:   "Исправить баг 🐛",
+			title:   "Исправить bug 🐛",
 			wantErr: false,
 		},
 		{
 			name:    "title with leading/trailing spaces",
 			tagKey:  "task",
-			title:   "  Много пробелов  ",
+			title:   "  many пробелов  ",
 			wantErr: false,
 		},
 
-		// Невалидные title
+		// Invalid title
 		{
 			name:      "empty task title",
 			tagKey:    "task",

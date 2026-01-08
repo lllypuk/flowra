@@ -10,7 +10,7 @@ import (
 	domainworkspace "github.com/lllypuk/flowra/internal/domain/workspace"
 )
 
-// mockWorkspaceRepository - мок репозитория для тестирования
+// mockWorkspaceRepository - мок репозитория for testing
 type mockWorkspaceRepository struct {
 	workspaces           map[uuid.UUID]*domainworkspace.Workspace
 	workspacesByKeycloak map[string]*domainworkspace.Workspace
@@ -59,7 +59,7 @@ func (m *mockWorkspaceRepository) Save(_ context.Context, ws *domainworkspace.Wo
 	m.workspaces[ws.ID()] = ws
 	m.workspacesByKeycloak[ws.KeycloakGroupID()] = ws
 
-	// Сохраняем инвайты
+	// Saving инвайты
 	for _, invite := range ws.Invites() {
 		m.invitesByToken[invite.Token()] = invite
 	}
@@ -224,7 +224,7 @@ func (m *mockWorkspaceRepository) UpdateMember(
 	return nil
 }
 
-// mockKeycloakClient - мок клиента Keycloak для тестирования
+// mockKeycloakClient - мок клиента Keycloak for testing
 type mockKeycloakClient struct {
 	groups           map[string]string   // groupID -> name
 	groupUsers       map[string][]string // groupID -> []userID
@@ -320,17 +320,17 @@ func TestCreateWorkspaceUseCase_Execute_Success(t *testing.T) {
 		t.Errorf("expected createdBy %s, got %s", creatorID, result.Value.CreatedBy())
 	}
 
-	// Проверка, что workspace сохранен
+	// check, that workspace savен
 	if len(repo.workspaces) != 1 {
 		t.Errorf("expected 1 workspace in repository, got %d", len(repo.workspaces))
 	}
 
-	// Проверка, что группа создана в Keycloak
+	// check, that groupsа создана in Keycloak
 	if len(keycloakClient.groups) != 1 {
 		t.Errorf("expected 1 Keycloak group, got %d", len(keycloakClient.groups))
 	}
 
-	// Проверка, что создатель добавлен в группу
+	// check, that создатель добавлен in groupsу
 	groupID := result.Value.KeycloakGroupID()
 	if users, ok := keycloakClient.groupUsers[groupID]; ok {
 		if len(users) != 1 || users[0] != creatorID.String() {
@@ -430,7 +430,7 @@ func TestCreateWorkspaceUseCase_Execute_KeycloakCreateGroupError(t *testing.T) {
 		t.Errorf("expected ErrKeycloakGroupCreationFailed, got: %v", err)
 	}
 
-	// Проверка, что workspace не сохранен
+	// check, that workspace not savен
 	if len(repo.workspaces) != 0 {
 		t.Error("workspace should not be saved when Keycloak group creation fails")
 	}
@@ -456,7 +456,7 @@ func TestCreateWorkspaceUseCase_Execute_SaveError(t *testing.T) {
 		t.Fatal("expected error from save operation")
 	}
 
-	// Проверка, что группа Keycloak была удалена (rollback)
+	// check, that groupsа Keycloak была удалена (rollback)
 	if len(keycloakClient.groups) != 0 {
 		t.Error("Keycloak group should be deleted when workspace save fails")
 	}

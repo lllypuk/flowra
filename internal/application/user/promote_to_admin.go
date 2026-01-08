@@ -8,27 +8,27 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/user"
 )
 
-// PromoteToAdminUseCase обрабатывает повышение пользователя до администратора
+// PromoteToAdminUseCase handles повышение user before administratorа
 type PromoteToAdminUseCase struct {
 	userRepo Repository
 }
 
-// NewPromoteToAdminUseCase создает новый PromoteToAdminUseCase
+// NewPromoteToAdminUseCase creates New PromoteToAdminUseCase
 func NewPromoteToAdminUseCase(userRepo Repository) *PromoteToAdminUseCase {
 	return &PromoteToAdminUseCase{userRepo: userRepo}
 }
 
-// Execute выполняет повышение до администратора
+// Execute performs повышение before administratorа
 func (uc *PromoteToAdminUseCase) Execute(
 	ctx context.Context,
 	cmd PromoteToAdminCommand,
 ) (Result, error) {
-	// Валидация
+	// validation
 	if err := uc.validate(cmd); err != nil {
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Проверка прав выполняющего операцию
+	// check прав выполняющего операцию
 	promoter, err := uc.userRepo.FindByID(ctx, cmd.PromotedBy)
 	if err != nil {
 		return Result{}, ErrUserNotFound
@@ -38,16 +38,16 @@ func (uc *PromoteToAdminUseCase) Execute(
 		return Result{}, ErrNotSystemAdmin
 	}
 
-	// Загрузка целевого пользователя
+	// Loading целевого user
 	targetUser, targetErr := uc.userRepo.FindByID(ctx, cmd.UserID)
 	if targetErr != nil {
 		return Result{}, ErrUserNotFound
 	}
 
-	// Установка прав администратора
+	// setting прав administratorа
 	targetUser.SetAdmin(true)
 
-	// Сохранение
+	// storage
 	if saveErr := uc.userRepo.Save(ctx, targetUser); saveErr != nil {
 		return Result{}, fmt.Errorf("failed to save user: %w", saveErr)
 	}

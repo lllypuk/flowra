@@ -9,13 +9,13 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/task"
 )
 
-// AssignTaskUseCase обрабатывает назначение исполнителя задачи
+// AssignTaskUseCase handles assignment исполнителя tasks
 type AssignTaskUseCase struct {
 	eventStore     appcore.EventStore
 	userRepository appcore.UserRepository
 }
 
-// NewAssignTaskUseCase создает новый use case для назначения исполнителя
+// NewAssignTaskUseCase creates New use case for наvalueения исполнителя
 func NewAssignTaskUseCase(
 	eventStore appcore.EventStore,
 	userRepository appcore.UserRepository,
@@ -26,14 +26,14 @@ func NewAssignTaskUseCase(
 	}
 }
 
-// Execute назначает исполнителя задаче
+// Execute наvalueает исполнителя задаче
 func (uc *AssignTaskUseCase) Execute(ctx context.Context, cmd AssignTaskCommand) (TaskResult, error) {
-	// 1. Валидация команды
+	// 1. validation commands
 	if err := uc.validate(ctx, cmd); err != nil {
 		return TaskResult{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// 2. Загрузка событий из Event Store
+	// 2. Loading events from Event Store
 	events, err := uc.eventStore.LoadEvents(ctx, cmd.TaskID.String())
 	if err != nil {
 		if errors.Is(err, appcore.ErrAggregateNotFound) {
@@ -46,20 +46,20 @@ func (uc *AssignTaskUseCase) Execute(ctx context.Context, cmd AssignTaskCommand)
 		return TaskResult{}, ErrTaskNotFound
 	}
 
-	// 3. Восстановление агрегата из событий
+	// 3. Restoration aggregate from events
 	aggregate := task.NewTaskAggregate(cmd.TaskID)
 	aggregate.ReplayEvents(events)
 
-	// 4. Выполнение бизнес-операции
+	// 4. performing бизнес-операции
 	err = aggregate.Assign(cmd.AssigneeID, cmd.AssignedBy)
 	if err != nil {
 		return TaskResult{}, fmt.Errorf("failed to assign task: %w", err)
 	}
 
-	// 5. Получение новых событий
+	// 5. retrieval New events
 	newEvents := aggregate.UncommittedEvents()
 
-	// Если новых событий нет (идемпотентность), возвращаем успех
+	// if New events no (идемпотентность), возвращаем success
 	if len(newEvents) == 0 {
 		return TaskResult{
 			TaskID:  cmd.TaskID,
@@ -70,7 +70,7 @@ func (uc *AssignTaskUseCase) Execute(ctx context.Context, cmd AssignTaskCommand)
 		}, nil
 	}
 
-	// 6. Сохранение новых событий
+	// 6. storage New events
 	expectedVersion := len(events)
 	if saveErr := uc.eventStore.SaveEvents(ctx, cmd.TaskID.String(), newEvents, expectedVersion); saveErr != nil {
 		if errors.Is(saveErr, appcore.ErrConcurrencyConflict) {
@@ -79,11 +79,11 @@ func (uc *AssignTaskUseCase) Execute(ctx context.Context, cmd AssignTaskCommand)
 		return TaskResult{}, fmt.Errorf("failed to save events: %w", saveErr)
 	}
 
-	// 7. Возврат результата
+	// 7. Возврат result
 	return NewSuccessResult(cmd.TaskID, expectedVersion+len(newEvents), newEvents), nil
 }
 
-// validate проверяет корректность команды
+// validate checks command correctness
 func (uc *AssignTaskUseCase) validate(ctx context.Context, cmd AssignTaskCommand) error {
 	if cmd.TaskID.IsZero() {
 		return ErrInvalidTaskID
@@ -93,7 +93,7 @@ func (uc *AssignTaskUseCase) validate(ctx context.Context, cmd AssignTaskCommand
 		return ErrInvalidUserID
 	}
 
-	// Если AssigneeID указан (не снятие assignee), проверяем существование пользователя
+	// if AssigneeID указан (not снятие assignee), checking существование user
 	if cmd.AssigneeID != nil && !cmd.AssigneeID.IsZero() {
 		exists, err := uc.userRepository.Exists(ctx, *cmd.AssigneeID)
 		if err != nil {

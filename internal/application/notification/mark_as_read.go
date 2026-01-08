@@ -10,12 +10,12 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/notification"
 )
 
-// MarkAsReadUseCase обрабатывает пометку notification как прочитанного
+// MarkAsReadUseCase handles пометку notification as read
 type MarkAsReadUseCase struct {
 	notificationRepo Repository
 }
 
-// NewMarkAsReadUseCase создает новый use case для пометки notification как прочитанного
+// NewMarkAsReadUseCase creates New use case for пометки notification as read
 func NewMarkAsReadUseCase(
 	notificationRepo Repository,
 ) *MarkAsReadUseCase {
@@ -24,28 +24,28 @@ func NewMarkAsReadUseCase(
 	}
 }
 
-// Execute выполняет пометку notification как прочитанного
+// Execute performs пометку notification as read
 func (uc *MarkAsReadUseCase) Execute(
 	ctx context.Context,
 	cmd MarkAsReadCommand,
 ) (Result, error) {
-	// Валидация
+	// validation
 	if err := uc.validate(cmd); err != nil {
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Получение notification
+	// retrieval notification
 	notif, err := uc.notificationRepo.FindByID(ctx, cmd.NotificationID)
 	if err != nil {
 		return Result{}, fmt.Errorf("failed to find notification: %w", ErrNotificationNotFound)
 	}
 
-	// Проверка принадлежности
+	// check принадлежности
 	if notif.UserID() != cmd.UserID {
 		return Result{}, ErrNotificationAccessDenied
 	}
 
-	// Пометка как прочитанного
+	// Пометка as read
 	if markErr := notif.MarkAsRead(); markErr != nil {
 		if errors.Is(markErr, errs.ErrInvalidState) {
 			return Result{}, ErrNotificationAlreadyRead
@@ -53,7 +53,7 @@ func (uc *MarkAsReadUseCase) Execute(
 		return Result{}, fmt.Errorf("failed to mark as read: %w", markErr)
 	}
 
-	// Сохранение
+	// storage
 	if saveErr := uc.notificationRepo.Save(ctx, notif); saveErr != nil {
 		return Result{}, fmt.Errorf("failed to save notification: %w", saveErr)
 	}
@@ -65,7 +65,7 @@ func (uc *MarkAsReadUseCase) Execute(
 	}, nil
 }
 
-// validate проверяет валидность команды
+// validate validates commands
 func (uc *MarkAsReadUseCase) validate(cmd MarkAsReadCommand) error {
 	if err := appcore.ValidateUUID("notificationID", cmd.NotificationID); err != nil {
 		return err

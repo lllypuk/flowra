@@ -2,14 +2,14 @@ package user
 
 import "github.com/lllypuk/flowra/internal/domain/uuid"
 
-// Command базовый интерфейс команд
+// Command базовый interface commands
 type Command interface {
 	CommandName() string
 }
 
-// RegisterUserCommand - регистрация пользователя
+// RegisterUserCommand - регистрация user
 type RegisterUserCommand struct {
-	ExternalID  string // ID из внешней системы аутентификации (Keycloak, Auth0, etc.)
+	ExternalID  string // ID from внешней системы аутентификации (Keycloak, Auth0, etc.)
 	Username    string
 	Email       string
 	DisplayName string
@@ -17,7 +17,7 @@ type RegisterUserCommand struct {
 
 func (c RegisterUserCommand) CommandName() string { return "RegisterUser" }
 
-// UpdateProfileCommand - обновление профиля
+// UpdateProfileCommand - update профиля
 type UpdateProfileCommand struct {
 	UserID      uuid.UUID
 	DisplayName *string // опционально
@@ -26,7 +26,7 @@ type UpdateProfileCommand struct {
 
 func (c UpdateProfileCommand) CommandName() string { return "UpdateProfile" }
 
-// PromoteToAdminCommand - повышение до admin
+// PromoteToAdminCommand - повышение before admin
 type PromoteToAdminCommand struct {
 	UserID     uuid.UUID
 	PromotedBy uuid.UUID // должен быть system admin

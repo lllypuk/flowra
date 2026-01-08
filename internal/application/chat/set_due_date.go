@@ -7,17 +7,17 @@ import (
 	"github.com/lllypuk/flowra/internal/application/appcore"
 )
 
-// SetDueDateUseCase обрабатывает установку дедлайна
+// SetDueDateUseCase handles setting a deadline
 type SetDueDateUseCase struct {
 	eventStore appcore.EventStore
 }
 
-// NewSetDueDateUseCase создает новый SetDueDateUseCase
+// NewSetDueDateUseCase creates a new SetDueDateUseCase
 func NewSetDueDateUseCase(eventStore appcore.EventStore) *SetDueDateUseCase {
 	return &SetDueDateUseCase{eventStore: eventStore}
 }
 
-// Execute выполняет установку дедлайна
+// Execute performs setting a deadline
 func (uc *SetDueDateUseCase) Execute(ctx context.Context, cmd SetDueDateCommand) (Result, error) {
 	if err := uc.validate(cmd); err != nil {
 		return Result{}, fmt.Errorf("validation failed: %w", err)

@@ -8,21 +8,21 @@ import (
 )
 
 const (
-	// EventTypeMessageCreated событие создания сообщения
+	// EventTypeMessageCreated event creating messages
 	EventTypeMessageCreated = "message.created"
-	// EventTypeMessageEdited событие редактирования сообщения
+	// EventTypeMessageEdited event редактирования messages
 	EventTypeMessageEdited = "message.edited"
-	// EventTypeMessageDeleted событие удаления сообщения
+	// EventTypeMessageDeleted event removing messages
 	EventTypeMessageDeleted = "message.deleted"
-	// EventTypeMessageReactionAdded событие добавления реакции
+	// EventTypeMessageReactionAdded event adding реакции
 	EventTypeMessageReactionAdded = "message.reaction.added"
-	// EventTypeMessageReactionRemoved событие удаления реакции
+	// EventTypeMessageReactionRemoved event removing реакции
 	EventTypeMessageReactionRemoved = "message.reaction.removed"
-	// EventTypeMessageAttachmentAdded событие добавления вложения
+	// EventTypeMessageAttachmentAdded event adding вложения
 	EventTypeMessageAttachmentAdded = "message.attachment.added"
 )
 
-// Created событие создания сообщения
+// Created event creating messages
 type Created struct {
 	event.BaseEvent
 
@@ -33,7 +33,7 @@ type Created struct {
 	CreatedAt       time.Time
 }
 
-// NewCreated создает событие Created
+// NewCreated creates event Created
 func NewCreated(
 	messageID uuid.UUID,
 	chatID uuid.UUID,
@@ -52,7 +52,7 @@ func NewCreated(
 	}
 }
 
-// Edited событие редактирования сообщения
+// Edited event редактирования messages
 type Edited struct {
 	event.BaseEvent
 
@@ -60,7 +60,7 @@ type Edited struct {
 	EditedAt   time.Time
 }
 
-// NewEdited создает событие Edited
+// NewEdited creates event Edited
 func NewEdited(messageID uuid.UUID, newContent string, version int, metadata event.Metadata) *Edited {
 	return &Edited{
 		BaseEvent:  event.NewBaseEvent(EventTypeMessageEdited, messageID.String(), "Message", version, metadata),
@@ -69,7 +69,7 @@ func NewEdited(messageID uuid.UUID, newContent string, version int, metadata eve
 	}
 }
 
-// Deleted событие удаления сообщения
+// Deleted event removing messages
 type Deleted struct {
 	event.BaseEvent
 
@@ -77,7 +77,7 @@ type Deleted struct {
 	DeletedAt time.Time
 }
 
-// NewDeleted создает событие Deleted
+// NewDeleted creates event Deleted
 func NewDeleted(messageID uuid.UUID, deletedBy uuid.UUID, version int, metadata event.Metadata) *Deleted {
 	return &Deleted{
 		BaseEvent: event.NewBaseEvent(EventTypeMessageDeleted, messageID.String(), "Message", version, metadata),
@@ -86,7 +86,7 @@ func NewDeleted(messageID uuid.UUID, deletedBy uuid.UUID, version int, metadata 
 	}
 }
 
-// ReactionAdded событие добавления реакции
+// ReactionAdded event adding реакции
 type ReactionAdded struct {
 	event.BaseEvent
 
@@ -95,7 +95,7 @@ type ReactionAdded struct {
 	AddedAt   time.Time
 }
 
-// NewReactionAdded создает событие ReactionAdded
+// NewReactionAdded creates event ReactionAdded
 func NewReactionAdded(
 	messageID uuid.UUID,
 	userID uuid.UUID,
@@ -111,7 +111,7 @@ func NewReactionAdded(
 	}
 }
 
-// ReactionRemoved событие удаления реакции
+// ReactionRemoved event removing реакции
 type ReactionRemoved struct {
 	event.BaseEvent
 
@@ -120,7 +120,7 @@ type ReactionRemoved struct {
 	RemovedAt time.Time
 }
 
-// NewReactionRemoved создает событие ReactionRemoved
+// NewReactionRemoved creates event ReactionRemoved
 func NewReactionRemoved(
 	messageID uuid.UUID,
 	userID uuid.UUID,
@@ -142,7 +142,7 @@ func NewReactionRemoved(
 	}
 }
 
-// AttachmentAdded событие добавления вложения
+// AttachmentAdded event adding вложения
 type AttachmentAdded struct {
 	event.BaseEvent
 
@@ -153,7 +153,7 @@ type AttachmentAdded struct {
 	AddedAt  time.Time
 }
 
-// NewAttachmentAdded создает событие AttachmentAdded
+// NewAttachmentAdded creates event AttachmentAdded
 func NewAttachmentAdded(
 	messageID uuid.UUID,
 	fileID uuid.UUID,

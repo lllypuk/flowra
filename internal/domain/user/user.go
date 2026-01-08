@@ -7,20 +7,20 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// User представляет пользователя системы
+// User represents user системы
 type User struct {
 	id            uuid.UUID
-	externalID    string // ID из внешней системы аутентификации (Keycloak, Auth0, etc.)
+	externalID    string // ID from внешней системы аутентификации (Keycloak, Auth0, etc.)
 	username      string
 	email         string
 	displayName   string
 	isSystemAdmin bool
-	isActive      bool // флаг активности пользователя (для soft-delete при удалении из Keycloak)
+	isActive      bool // флаг активности user (for soft-delete at удалении from Keycloak)
 	createdAt     time.Time
 	updatedAt     time.Time
 }
 
-// NewUser создает нового пользователя
+// NewUser creates нового user
 func NewUser(externalID, username, email, displayName string) (*User, error) {
 	if externalID == "" {
 		return nil, errs.ErrInvalidInput
@@ -44,7 +44,7 @@ func NewUser(externalID, username, email, displayName string) (*User, error) {
 	}, nil
 }
 
-// Reconstruct восстанавливает пользователя из хранилища
+// Reconstruct восстанавливает user from storage
 func Reconstruct(
 	id uuid.UUID,
 	externalID, username, email, displayName string,
@@ -66,52 +66,52 @@ func Reconstruct(
 
 // Getters
 
-// ID возвращает ID пользователя
+// ID returns ID user
 func (u *User) ID() uuid.UUID {
 	return u.id
 }
 
-// ExternalID возвращает ID пользователя во внешней системе аутентификации
+// ExternalID returns ID user во внешней системе аутентификации
 func (u *User) ExternalID() string {
 	return u.externalID
 }
 
-// Username возвращает имя пользователя
+// Username returns имя user
 func (u *User) Username() string {
 	return u.username
 }
 
-// Email возвращает email пользователя
+// Email returns email user
 func (u *User) Email() string {
 	return u.email
 }
 
-// DisplayName возвращает отображаемое имя
+// DisplayName returns отображаемое имя
 func (u *User) DisplayName() string {
 	return u.displayName
 }
 
-// IsSystemAdmin возвращает флаг системного администратора
+// IsSystemAdmin returns флаг системного administratorа
 func (u *User) IsSystemAdmin() bool {
 	return u.isSystemAdmin
 }
 
-// IsActive возвращает флаг активности пользователя
+// IsActive returns флаг активности user
 func (u *User) IsActive() bool {
 	return u.isActive
 }
 
-// CreatedAt возвращает время создания
+// CreatedAt returns creation time
 func (u *User) CreatedAt() time.Time {
 	return u.createdAt
 }
 
-// UpdatedAt возвращает время последнего обновления
+// UpdatedAt returns time последнего updating
 func (u *User) UpdatedAt() time.Time {
 	return u.updatedAt
 }
 
-// UpdateProfile обновляет профиль пользователя
+// UpdateProfile обновляет профиль user
 func (u *User) UpdateProfile(displayName *string, email *string) error {
 	updated := false
 
@@ -133,20 +133,20 @@ func (u *User) UpdateProfile(displayName *string, email *string) error {
 	return nil
 }
 
-// SetAdmin устанавливает права администратора
+// SetAdmin устанавливает права administratorа
 func (u *User) SetAdmin(isAdmin bool) {
 	u.isSystemAdmin = isAdmin
 	u.updatedAt = time.Now()
 }
 
-// SetActive устанавливает флаг активности пользователя
+// SetActive устанавливает флаг активности user
 func (u *User) SetActive(isActive bool) {
 	u.isActive = isActive
 	u.updatedAt = time.Now()
 }
 
-// UpdateFromSync обновляет данные пользователя из внешней системы (Keycloak)
-// Возвращает true, если данные были изменены
+// UpdateFromSync обновляет data user from внешней системы (Keycloak)
+// returns true, if data были изменены
 func (u *User) UpdateFromSync(username, email, displayName string, isActive bool) bool {
 	updated := false
 
