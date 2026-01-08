@@ -417,9 +417,6 @@ func (c *Chat) SetDueDate(dueDate *time.Time, userID uuid.UUID) error {
 
 // Rename изменяет название чата
 func (c *Chat) Rename(newTitle string, userID uuid.UUID) error {
-	if c.chatType == TypeDiscussion {
-		return errs.ErrInvalidState
-	}
 
 	if newTitle == "" {
 		return errs.ErrInvalidInput

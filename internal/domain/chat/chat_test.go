@@ -556,13 +556,14 @@ func TestChat_Rename(t *testing.T) {
 		assert.ErrorIs(t, err, errs.ErrInvalidInput)
 	})
 
-	t.Run("cannot rename discussion", func(t *testing.T) {
+	t.Run("can rename discussion", func(t *testing.T) {
 		c, _ := chat.NewChat(uuid.NewUUID(), chat.TypeDiscussion, true, uuid.NewUUID())
 		userID := uuid.NewUUID()
 
 		err := c.Rename("New Title", userID)
 
-		assert.ErrorIs(t, err, errs.ErrInvalidState)
+		require.NoError(t, err)
+		assert.Equal(t, "New Title", c.Title())
 	})
 
 	t.Run("no change if same title", func(t *testing.T) {

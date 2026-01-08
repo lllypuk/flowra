@@ -52,6 +52,11 @@ func (uc *CreateChatUseCase) Execute(ctx context.Context, cmd CreateChatCommand)
 		case chat.TypeDiscussion:
 			// Discussion type is already handled above, no conversion needed
 		}
+	} else if cmd.Title != "" {
+		// Для Discussion чатов устанавливаем title через Rename, если он передан
+		if renameErr := chatAggregate.Rename(cmd.Title, cmd.CreatedBy); renameErr != nil {
+			return Result{}, fmt.Errorf("failed to set title: %w", renameErr)
+		}
 	}
 
 	// Capture events before saving (for response)
@@ -92,6 +97,11 @@ func (uc *CreateChatUseCase) validate(cmd CreateChatCommand) error {
 		if err := appcore.ValidateRequired("title", cmd.Title); err != nil {
 			return ErrTitleRequired
 		}
+		if err := appcore.ValidateMaxLength("title", cmd.Title, appcore.MaxTitleLength); err != nil {
+			return err
+		}
+	} else if cmd.Title != "" {
+		// Для Discussion чатов title опционален, но если передан - проверяем длину
 		if err := appcore.ValidateMaxLength("title", cmd.Title, appcore.MaxTitleLength); err != nil {
 			return err
 		}

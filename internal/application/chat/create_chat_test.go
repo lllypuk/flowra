@@ -48,6 +48,47 @@ func TestCreateChatUseCase_Success_Discussion(t *testing.T) {
 	assert.True(t, isParticipantAdded, "Second event should be ParticipantAdded")
 }
 
+// TestCreateChatUseCase_Success_DiscussionWithTitle tests creating a Discussion chat with a title
+func TestCreateChatUseCase_Success_DiscussionWithTitle(t *testing.T) {
+	// Arrange
+	chatRepo := newTestChatRepo()
+	useCase := chat.NewCreateChatUseCase(chatRepo)
+
+	workspaceID := generateUUID(t)
+	creatorID := generateUUID(t)
+	title := "General Discussion"
+
+	cmd := chat.CreateChatCommand{
+		WorkspaceID: workspaceID,
+		Type:        domainChat.TypeDiscussion,
+		IsPublic:    true,
+		Title:       title,
+		CreatedBy:   creatorID,
+	}
+
+	// Act
+	result, err := useCase.Execute(testContext(), cmd)
+
+	// Assert
+	executeAndAssertSuccess(t, err)
+	require.NotNil(t, result.Value)
+	assertChatType(t, result.Value, domainChat.TypeDiscussion)
+	assertChatTitle(t, result.Value, title)
+	assert.Equal(t, workspaceID, result.Value.WorkspaceID())
+	assert.True(t, result.Value.IsPublic())
+	assert.Equal(t, creatorID, result.Value.CreatedBy())
+
+	// Check that events include Renamed event for title
+	// NewChat() generates: ChatCreated + ParticipantAdded + Renamed
+	assertEventCount(t, result, 3)
+	_, isChatCreated := result.Events[0].(*domainChat.Created)
+	assert.True(t, isChatCreated, "First event should be ChatCreated")
+	_, isParticipantAdded := result.Events[1].(*domainChat.ParticipantAdded)
+	assert.True(t, isParticipantAdded, "Second event should be ParticipantAdded")
+	_, isRenamed := result.Events[2].(*domainChat.Renamed)
+	assert.True(t, isRenamed, "Third event should be Renamed")
+}
+
 // TestCreateChatUseCase_Success_Task tests creating a Task chat with title
 func TestCreateChatUseCase_Success_Task(t *testing.T) {
 	// Arrange
