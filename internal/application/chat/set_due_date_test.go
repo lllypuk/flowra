@@ -18,7 +18,14 @@ func TestSetDueDateUseCase_Success_SetFutureDate(t *testing.T) {
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeTask, "Test Task", workspaceID, creatorID, true)
+	createdChat := createTestChatWithParams(
+		t,
+		eventStore,
+		domainChat.TypeTask,
+		"Test Task",
+		workspaceID,
+		creatorID,
+	)
 
 	futureDate := time.Now().AddDate(0, 0, 7) // 7 days in future
 	setDueDateUseCase := chat.NewSetDueDateUseCase(eventStore)
@@ -39,7 +46,14 @@ func TestSetDueDateUseCase_Success_ClearDueDate(t *testing.T) {
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeTask, "Test Task", workspaceID, creatorID, true)
+	createdChat := createTestChatWithParams(
+		t,
+		eventStore,
+		domainChat.TypeTask,
+		"Test Task",
+		workspaceID,
+		creatorID,
+	)
 
 	// First set a due date
 	futureDate := time.Now().AddDate(0, 0, 7)

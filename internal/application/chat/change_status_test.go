@@ -15,7 +15,14 @@ func TestChangeStatusUseCase_Success_TaskStatus(t *testing.T) {
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeTask, "Test Task", workspaceID, creatorID, true)
+	createdChat := createTestChatWithParams(
+		t,
+		eventStore,
+		domainChat.TypeTask,
+		"Test Task",
+		workspaceID,
+		creatorID,
+	)
 
 	changeUseCase := chat.NewChangeStatusUseCase(eventStore)
 	changeCmd := chat.ChangeStatusCommand{
@@ -35,7 +42,7 @@ func TestChangeStatusUseCase_Success_BugStatus(t *testing.T) {
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeBug, "Test Bug", workspaceID, creatorID, true)
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeBug, "Test Bug", workspaceID, creatorID)
 
 	changeUseCase := chat.NewChangeStatusUseCase(eventStore)
 	changeCmd := chat.ChangeStatusCommand{
@@ -55,7 +62,14 @@ func TestChangeStatusUseCase_Success_EpicStatus(t *testing.T) {
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeEpic, "Test Epic", workspaceID, creatorID, true)
+	createdChat := createTestChatWithParams(
+		t,
+		eventStore,
+		domainChat.TypeEpic,
+		"Test Epic",
+		workspaceID,
+		creatorID,
+	)
 
 	changeUseCase := chat.NewChangeStatusUseCase(eventStore)
 	changeCmd := chat.ChangeStatusCommand{

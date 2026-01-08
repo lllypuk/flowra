@@ -17,7 +17,14 @@ func TestAssignUserUseCase_Success_AssignUser(t *testing.T) {
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeTask, "Test Task", workspaceID, creatorID, true)
+	createdChat := createTestChatWithParams(
+		t,
+		eventStore,
+		domainChat.TypeTask,
+		"Test Task",
+		workspaceID,
+		creatorID,
+	)
 
 	assigneeID := generateUUID(t)
 	assignUseCase := chat.NewAssignUserUseCase(eventStore)
@@ -39,7 +46,14 @@ func TestAssignUserUseCase_Success_UnassignUser(t *testing.T) {
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeTask, "Test Task", workspaceID, creatorID, true)
+	createdChat := createTestChatWithParams(
+		t,
+		eventStore,
+		domainChat.TypeTask,
+		"Test Task",
+		workspaceID,
+		creatorID,
+	)
 
 	// First assign
 	assigneeID := generateUUID(t)

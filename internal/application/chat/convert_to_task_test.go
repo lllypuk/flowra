@@ -18,7 +18,7 @@ func TestConvertToTaskUseCase_Success_FromDiscussion(t *testing.T) {
 	workspaceID := generateUUID(t)
 
 	// Create Discussion chat using helper
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID, true)
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID)
 	chatID := createdChat.ID()
 
 	// Act
@@ -44,7 +44,14 @@ func TestConvertToTaskUseCase_Error_AlreadyTask(t *testing.T) {
 	workspaceID := generateUUID(t)
 
 	// Create Task chat using helper
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeTask, "Existing Task", workspaceID, creatorID, true)
+	createdChat := createTestChatWithParams(
+		t,
+		eventStore,
+		domainChat.TypeTask,
+		"Existing Task",
+		workspaceID,
+		creatorID,
+	)
 	chatID := createdChat.ID()
 
 	// Try to convert to Task again

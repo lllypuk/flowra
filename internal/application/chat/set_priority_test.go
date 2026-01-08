@@ -34,7 +34,14 @@ func testSetPrioritySuccess(t *testing.T, priority string) {
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeTask, "Test Task", workspaceID, creatorID, true)
+	createdChat := createTestChatWithParams(
+		t,
+		eventStore,
+		domainChat.TypeTask,
+		"Test Task",
+		workspaceID,
+		creatorID,
+	)
 
 	setPriorityUseCase := chat.NewSetPriorityUseCase(eventStore)
 	setPriorityCmd := chat.SetPriorityCommand{

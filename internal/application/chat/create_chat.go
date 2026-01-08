@@ -34,36 +34,16 @@ func (uc *CreateChatUseCase) Execute(ctx context.Context, cmd CreateChatCommand)
 		return Result{}, fmt.Errorf("failed to create chat: %w", err)
 	}
 
-	// Для typed чатов (Task/Bug/Epic) конвертируем и устанавливаем title
-	if cmd.Type != chat.TypeDiscussion {
-		switch cmd.Type {
-		case chat.TypeTask:
-			if convertErr := chatAggregate.ConvertToTask(cmd.Title, cmd.CreatedBy); convertErr != nil {
-				return Result{}, fmt.Errorf("failed to convert to task: %w", convertErr)
-			}
-		case chat.TypeBug:
-			if convertErr := chatAggregate.ConvertToBug(cmd.Title, cmd.CreatedBy); convertErr != nil {
-				return Result{}, fmt.Errorf("failed to convert to bug: %w", convertErr)
-			}
-		case chat.TypeEpic:
-			if convertErr := chatAggregate.ConvertToEpic(cmd.Title, cmd.CreatedBy); convertErr != nil {
-				return Result{}, fmt.Errorf("failed to convert to epic: %w", convertErr)
-			}
-		case chat.TypeDiscussion:
-			// Discussion type is already handled above, no conversion needed
-		}
-	} else if cmd.Title != "" {
-		// Для Discussion чатов устанавливаем title через Rename, если он передан
-		if renameErr := chatAggregate.Rename(cmd.Title, cmd.CreatedBy); renameErr != nil {
-			return Result{}, fmt.Errorf("failed to set title: %w", renameErr)
-		}
+	// Применяем тип и заголовок
+	if err = uc.applyChatTypeAndTitle(chatAggregate, cmd); err != nil {
+		return Result{}, err
 	}
 
 	// Capture events before saving (for response)
 	uncommittedEvents := chatAggregate.GetUncommittedEvents()
 
 	// Сохранение через репозиторий (обновляет и event store, и read model)
-	if err := uc.chatRepo.Save(ctx, chatAggregate); err != nil {
+	if err = uc.chatRepo.Save(ctx, chatAggregate); err != nil {
 		return Result{}, fmt.Errorf("failed to save chat: %w", err)
 	}
 
@@ -74,6 +54,36 @@ func (uc *CreateChatUseCase) Execute(ctx context.Context, cmd CreateChatCommand)
 		},
 		Events: convertToInterfaceSlice(uncommittedEvents),
 	}, nil
+}
+
+func (uc *CreateChatUseCase) applyChatTypeAndTitle(chatAggregate *chat.Chat, cmd CreateChatCommand) error {
+	// Для typed чатов (Task/Bug/Epic) конвертируем и устанавливаем title
+	if cmd.Type != chat.TypeDiscussion {
+		var err error
+		switch cmd.Type {
+		case chat.TypeTask:
+			err = chatAggregate.ConvertToTask(cmd.Title, cmd.CreatedBy)
+		case chat.TypeBug:
+			err = chatAggregate.ConvertToBug(cmd.Title, cmd.CreatedBy)
+		case chat.TypeEpic:
+			err = chatAggregate.ConvertToEpic(cmd.Title, cmd.CreatedBy)
+		case chat.TypeDiscussion:
+			// Unreachable because of outer if, but needed for exhaustive linter
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("failed to convert to %s: %w", cmd.Type, err)
+		}
+		return nil
+	}
+
+	if cmd.Title != "" {
+		// Для Discussion чатов устанавливаем title через Rename, если он передан
+		if err := chatAggregate.Rename(cmd.Title, cmd.CreatedBy); err != nil {
+			return fmt.Errorf("failed to set title: %w", err)
+		}
+	}
+	return nil
 }
 
 func (uc *CreateChatUseCase) validate(cmd CreateChatCommand) error {

@@ -4,12 +4,12 @@ import "time"
 
 // BaseEvent базовая реализация DomainEvent
 type BaseEvent struct {
-	EType         string    `json:"event_type" bson:"event_type"`
-	AggID         string    `json:"aggregate_id" bson:"aggregate_id"`
+	EType         string    `json:"event_type"     bson:"event_type"`
+	AggID         string    `json:"aggregate_id"   bson:"aggregate_id"`
 	AggType       string    `json:"aggregate_type" bson:"aggregate_type"`
-	OccAt         time.Time `json:"occurred_at" bson:"occurred_at"`
-	Ver           int       `json:"version" bson:"version"`
-	EventMetadata Metadata  `json:"metadata" bson:"metadata"`
+	OccAt         time.Time `json:"occurred_at"    bson:"occurred_at"`
+	Ver           int       `json:"version"        bson:"version"`
+	EventMetadata Metadata  `json:"metadata"       bson:"metadata"`
 }
 
 // NewBaseEvent создает новое базовое событие

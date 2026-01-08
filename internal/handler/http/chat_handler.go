@@ -27,9 +27,10 @@ const (
 
 // Chat type string constants for request parsing.
 const (
-	chatTypeTask = "task"
-	chatTypeBug  = "bug"
-	chatTypeEpic = "epic"
+	chatTypeDiscussion = "discussion"
+	chatTypeTask       = "task"
+	chatTypeBug        = "bug"
+	chatTypeEpic       = "epic"
 )
 
 // Chat handler errors.
@@ -50,9 +51,9 @@ var (
 
 // CreateChatRequest represents the request to create a chat.
 type CreateChatRequest struct {
-	Name           string      `json:"name" form:"name"`
-	Type           string      `json:"type" form:"type"`
-	IsPublic       bool        `json:"is_public" form:"is_public"`
+	Name           string      `json:"name"            form:"name"`
+	Type           string      `json:"type"            form:"type"`
+	IsPublic       bool        `json:"is_public"       form:"is_public"`
 	ParticipantIDs []uuid.UUID `json:"participant_ids" form:"participant_ids"`
 }
 
@@ -64,7 +65,7 @@ type UpdateChatRequest struct {
 // AddParticipantRequest represents the request to add a participant.
 type AddParticipantRequest struct {
 	UserID uuid.UUID `json:"user_id" form:"user_id"`
-	Role   string    `json:"role" form:"role"`
+	Role   string    `json:"role"    form:"role"`
 }
 
 // ChatResponse represents a chat in API responses.
@@ -463,7 +464,7 @@ func (h *ChatHandler) RemoveParticipant(c echo.Context) error {
 
 func validateCreateChatRequest(req *CreateChatRequest) error {
 	// Name validation for non-discussion types
-	if req.Type != "" && req.Type != "discussion" {
+	if req.Type != "" && req.Type != chatTypeDiscussion {
 		if req.Name == "" {
 			return ErrChatNameRequired
 		}
@@ -476,7 +477,15 @@ func validateCreateChatRequest(req *CreateChatRequest) error {
 	}
 	// Validate type if provided
 	if req.Type != "" {
-		validTypes := []string{"discussion", chatTypeTask, chatTypeBug, chatTypeEpic, "direct", "group", "channel"}
+		validTypes := []string{
+			chatTypeDiscussion,
+			chatTypeTask,
+			chatTypeBug,
+			chatTypeEpic,
+			"direct",
+			"group",
+			"channel",
+		}
 		valid := slices.Contains(validTypes, req.Type)
 		if !valid {
 			return ErrInvalidChatType
@@ -487,7 +496,7 @@ func validateCreateChatRequest(req *CreateChatRequest) error {
 
 func parseChatType(typeStr string) chat.Type {
 	switch typeStr {
-	case "discussion":
+	case chatTypeDiscussion:
 		return chat.TypeDiscussion
 	case chatTypeTask:
 		return chat.TypeTask
@@ -505,9 +514,9 @@ func parseChatType(typeStr string) chat.Type {
 
 func parseParticipantRole(roleStr string) chat.Role {
 	switch roleStr {
-	case "admin":
+	case roleAdmin:
 		return chat.RoleAdmin
-	case "member":
+	case roleMember:
 		return chat.RoleMember
 	default:
 		return ""

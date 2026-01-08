@@ -517,13 +517,13 @@ func (h *BoardTemplateHandler) renderNotFound(c echo.Context) error {
 
 func parseEntityTypeFromString(s string) *task.EntityType {
 	switch strings.ToLower(s) {
-	case "task":
+	case chatTypeTask:
 		t := task.TypeTask
 		return &t
-	case "bug":
+	case chatTypeBug:
 		t := task.TypeBug
 		return &t
-	case "epic":
+	case chatTypeEpic:
 		t := task.TypeEpic
 		return &t
 	default:

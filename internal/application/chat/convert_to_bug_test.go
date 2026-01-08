@@ -15,7 +15,7 @@ func TestConvertToBugUseCase_Success(t *testing.T) {
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID, true)
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID)
 
 	convertUseCase := chat.NewConvertToBugUseCase(eventStore)
 	convertCmd := chat.ConvertToBugCommand{
@@ -36,7 +36,14 @@ func TestConvertToBugUseCase_Error_AlreadyBug(t *testing.T) {
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeBug, "Existing Bug", workspaceID, creatorID, true)
+	createdChat := createTestChatWithParams(
+		t,
+		eventStore,
+		domainChat.TypeBug,
+		"Existing Bug",
+		workspaceID,
+		creatorID,
+	)
 
 	convertUseCase := chat.NewConvertToBugUseCase(eventStore)
 	convertCmd := chat.ConvertToBugCommand{

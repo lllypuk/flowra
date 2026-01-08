@@ -34,7 +34,7 @@ func testSetSeveritySuccess(t *testing.T, severity string) {
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeBug, "Test Bug", workspaceID, creatorID, true)
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeBug, "Test Bug", workspaceID, creatorID)
 
 	setSeverityUseCase := chat.NewSetSeverityUseCase(eventStore)
 	setSeverityCmd := chat.SetSeverityCommand{
@@ -54,7 +54,14 @@ func TestSetSeverityUseCase_Error_OnlyForBugs(t *testing.T) {
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeTask, "Test Task", workspaceID, creatorID, true)
+	createdChat := createTestChatWithParams(
+		t,
+		eventStore,
+		domainChat.TypeTask,
+		"Test Task",
+		workspaceID,
+		creatorID,
+	)
 
 	setSeverityUseCase := chat.NewSetSeverityUseCase(eventStore)
 	setSeverityCmd := chat.SetSeverityCommand{

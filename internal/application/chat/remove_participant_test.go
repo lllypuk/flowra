@@ -19,7 +19,7 @@ func TestRemoveParticipantUseCase_Success(t *testing.T) {
 	workspaceID := generateUUID(t)
 
 	// Create chat using helper
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID, true)
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID)
 	chatID := createdChat.ID()
 
 	// Add participant
@@ -90,7 +90,7 @@ func TestRemoveParticipantUseCase_Error_NotParticipant(t *testing.T) {
 	workspaceID := generateUUID(t)
 
 	// Create chat using helper
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID, true)
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID)
 	chatID := createdChat.ID()
 
 	removeUseCase := chat.NewRemoveParticipantUseCase(eventStore)
@@ -114,7 +114,7 @@ func TestRemoveParticipantUseCase_Success_SelfRemove(t *testing.T) {
 	workspaceID := generateUUID(t)
 
 	// Create chat using helper
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID, true)
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID)
 	chatID := createdChat.ID()
 
 	// Add participant
@@ -152,7 +152,7 @@ func TestRemoveParticipantUseCase_Error_CannotRemoveCreator(t *testing.T) {
 	workspaceID := generateUUID(t)
 
 	// Create chat using helper
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID, true)
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID)
 	chatID := createdChat.ID()
 
 	// Add another participant

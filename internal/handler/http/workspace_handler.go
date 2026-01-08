@@ -793,9 +793,9 @@ func ParseRole(roleStr string) (workspace.Role, error) {
 	switch roleStr {
 	case "owner":
 		return workspace.RoleOwner, nil
-	case "admin":
+	case roleAdmin:
 		return workspace.RoleAdmin, nil
-	case "member":
+	case roleMember:
 		return workspace.RoleMember, nil
 	default:
 		return "", ErrInvalidRole

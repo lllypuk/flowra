@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -21,6 +22,7 @@ const (
 	defaultChatTemplateListLimit = 50
 	roleOwner                    = "owner"
 	roleAdmin                    = "admin"
+	roleMember                   = "member"
 	roleCreator                  = "creator"
 )
 
@@ -618,7 +620,7 @@ func (h *ChatTemplateHandler) ChatCreate(c echo.Context) error {
 		chatType = "discussion"
 	}
 
-	isPublic := c.FormValue("is_public") == "true"
+	isPublic, _ := strconv.ParseBool(c.FormValue("is_public"))
 
 	// Parse chat type to domain type
 	var domainType chatdomain.Type

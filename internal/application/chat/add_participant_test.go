@@ -21,7 +21,7 @@ func TestAddParticipantUseCase_Success_AddAdmin(t *testing.T) {
 	creatorID := generateUUID(t)
 
 	// Create and save a chat first using helper
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID, true)
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID)
 	chatID := createdChat.ID()
 
 	userID := generateUUID(t)
@@ -50,7 +50,7 @@ func TestAddParticipantUseCase_Error_AlreadyParticipant(t *testing.T) {
 	creatorID := generateUUID(t)
 
 	// Create and save a chat first using helper
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID, true)
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID)
 	chatID := createdChat.ID()
 
 	userID := generateUUID(t)
@@ -158,7 +158,7 @@ func TestAddParticipantUseCase_Success_AddMember(t *testing.T) {
 	creatorID := generateUUID(t)
 
 	// Create and save a chat first using helper
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID, true)
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID)
 	chatID := createdChat.ID()
 
 	userID := generateUUID(t)
@@ -188,7 +188,7 @@ func TestAddParticipantUseCase_Success_MultipleParticipants(t *testing.T) {
 	creatorID := generateUUID(t)
 
 	// Create chat using helper
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID, true)
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID)
 	chatID := createdChat.ID()
 
 	addUseCase := chat.NewAddParticipantUseCase(eventStore)

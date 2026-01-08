@@ -27,13 +27,6 @@ func newTestChatRepo() *mocks.MockChatRepository {
 	return mocks.NewMockChatRepository()
 }
 
-// createTestChat creates a chat using chatRepo and syncs events to eventStore for other use cases.
-// This is needed because CreateChatUseCase uses chatRepo, but other use cases use eventStore.
-func createTestChat(t *testing.T, eventStore *mocks.MockEventStore, chatType domainChat.Type, title string) *domainChat.Chat {
-	t.Helper()
-	return createTestChatWithParams(t, eventStore, chatType, title, generateUUID(t), generateUUID(t), true)
-}
-
 // createTestChatWithParams creates a chat with specific parameters and syncs events to eventStore.
 func createTestChatWithParams(
 	t *testing.T,
@@ -42,7 +35,6 @@ func createTestChatWithParams(
 	title string,
 	workspaceID uuid.UUID,
 	creatorID uuid.UUID,
-	isPublic bool,
 ) *domainChat.Chat {
 	t.Helper()
 
@@ -53,7 +45,7 @@ func createTestChatWithParams(
 		WorkspaceID: workspaceID,
 		Type:        chatType,
 		Title:       title,
-		IsPublic:    isPublic,
+		IsPublic:    true,
 		CreatedBy:   creatorID,
 	}
 
@@ -109,22 +101,6 @@ func assertChatStatus(t *testing.T, chat *domainChat.Chat, expectedStatus string
 	require.Equal(t, expectedStatus, chat.Status(), "Expected status %q, got %q", expectedStatus, chat.Status())
 }
 
-// AssertEventStoreCallCount asserts EventStore method call count
-func assertEventStoreCallCount(t *testing.T, es *mocks.MockEventStore, method string, expected int) {
-	actual := es.GetCallCount(method)
-	require.Equal(t, expected, actual, "Expected %d calls to %s, got %d", expected, method, actual)
-}
-
-// GenerateUUID generates a new UUID for tests
-func generateUUID(_ *testing.T) uuid.UUID {
-	return uuid.NewUUID()
-}
-
-// SetEventStoreError sets error for next call
-func setEventStoreError(es *mocks.MockEventStore, err error) {
-	es.SetFailureNext(err)
-}
-
 // AssertChatRepoCallCount asserts ChatRepository method call count
 func assertChatRepoCallCount(t *testing.T, repo *mocks.MockChatRepository, method string, expected int) {
 	var actual int
@@ -137,4 +113,9 @@ func assertChatRepoCallCount(t *testing.T, repo *mocks.MockChatRepository, metho
 		require.Fail(t, "Unknown method: "+method)
 	}
 	require.Equal(t, expected, actual, "Expected %d calls to %s, got %d", expected, method, actual)
+}
+
+// GenerateUUID generates a new UUID for tests
+func generateUUID(_ *testing.T) uuid.UUID {
+	return uuid.NewUUID()
 }

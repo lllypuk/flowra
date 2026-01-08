@@ -29,10 +29,10 @@ type Created struct {
 	event.BaseEvent `bson:",inline"`
 
 	WorkspaceID uuid.UUID `json:"workspace_id" bson:"workspace_id"`
-	Type        Type      `json:"type" bson:"type"`
-	IsPublic    bool      `json:"is_public" bson:"is_public"`
-	CreatedBy   uuid.UUID `json:"created_by" bson:"created_by"`
-	CreatedAt   time.Time `json:"created_at" bson:"created_at"`
+	Type        Type      `json:"type"         bson:"type"`
+	IsPublic    bool      `json:"is_public"    bson:"is_public"`
+	CreatedBy   uuid.UUID `json:"created_by"   bson:"created_by"`
+	CreatedAt   time.Time `json:"created_at"   bson:"created_at"`
 }
 
 // NewChatCreated создает новое событие ChatCreated
@@ -58,8 +58,8 @@ func NewChatCreated(
 type ParticipantAdded struct {
 	event.BaseEvent `bson:",inline"`
 
-	UserID   uuid.UUID `json:"user_id" bson:"user_id"`
-	Role     Role      `json:"role" bson:"role"`
+	UserID   uuid.UUID `json:"user_id"   bson:"user_id"`
+	Role     Role      `json:"role"      bson:"role"`
 	JoinedAt time.Time `json:"joined_at" bson:"joined_at"`
 }
 
@@ -104,7 +104,7 @@ type TypeChanged struct {
 
 	OldType Type   `json:"old_type" bson:"old_type"`
 	NewType Type   `json:"new_type" bson:"new_type"`
-	Title   string `json:"title" bson:"title"`
+	Title   string `json:"title"    bson:"title"`
 }
 
 // NewChatTypeChanged создает новое событие ChatTypeChanged
@@ -188,7 +188,7 @@ type AssigneeRemoved struct {
 	event.BaseEvent `bson:",inline"`
 
 	PreviousAssigneeID uuid.UUID `json:"previous_assignee_id" bson:"previous_assignee_id"`
-	RemovedBy          uuid.UUID `json:"removed_by" bson:"removed_by"`
+	RemovedBy          uuid.UUID `json:"removed_by"           bson:"removed_by"`
 }
 
 // NewAssigneeRemoved создает событие AssigneeRemoved
@@ -216,7 +216,7 @@ type PrioritySet struct {
 
 	OldPriority string    `json:"old_priority" bson:"old_priority"`
 	NewPriority string    `json:"new_priority" bson:"new_priority"`
-	ChangedBy   uuid.UUID `json:"changed_by" bson:"changed_by"`
+	ChangedBy   uuid.UUID `json:"changed_by"   bson:"changed_by"`
 }
 
 // NewPrioritySet создает событие PrioritySet
@@ -246,8 +246,8 @@ type DueDateSet struct {
 	event.BaseEvent `bson:",inline"`
 
 	OldDueDate *time.Time `json:"old_due_date,omitempty" bson:"old_due_date,omitempty"`
-	NewDueDate time.Time  `json:"new_due_date" bson:"new_due_date"`
-	ChangedBy  uuid.UUID  `json:"changed_by" bson:"changed_by"`
+	NewDueDate time.Time  `json:"new_due_date"           bson:"new_due_date"`
+	ChangedBy  uuid.UUID  `json:"changed_by"             bson:"changed_by"`
 }
 
 // NewDueDateSet создает событие DueDateSet
@@ -278,7 +278,7 @@ type DueDateRemoved struct {
 	event.BaseEvent `bson:",inline"`
 
 	PreviousDueDate time.Time `json:"previous_due_date" bson:"previous_due_date"`
-	RemovedBy       uuid.UUID `json:"removed_by" bson:"removed_by"`
+	RemovedBy       uuid.UUID `json:"removed_by"        bson:"removed_by"`
 }
 
 // NewDueDateRemoved создает событие DueDateRemoved
@@ -306,8 +306,8 @@ func NewDueDateRemoved(
 type Renamed struct {
 	event.BaseEvent `bson:",inline"`
 
-	OldTitle  string    `json:"old_title" bson:"old_title"`
-	NewTitle  string    `json:"new_title" bson:"new_title"`
+	OldTitle  string    `json:"old_title"  bson:"old_title"`
+	NewTitle  string    `json:"new_title"  bson:"new_title"`
 	RenamedBy uuid.UUID `json:"renamed_by" bson:"renamed_by"`
 }
 
@@ -339,7 +339,7 @@ type SeveritySet struct {
 
 	OldSeverity string    `json:"old_severity" bson:"old_severity"`
 	NewSeverity string    `json:"new_severity" bson:"new_severity"`
-	ChangedBy   uuid.UUID `json:"changed_by" bson:"changed_by"`
+	ChangedBy   uuid.UUID `json:"changed_by"   bson:"changed_by"`
 }
 
 // NewSeveritySet создает событие SeveritySet

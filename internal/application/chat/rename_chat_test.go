@@ -15,7 +15,14 @@ func TestRenameChatUseCase_Success(t *testing.T) {
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeTask, "Old Title", workspaceID, creatorID, true)
+	createdChat := createTestChatWithParams(
+		t,
+		eventStore,
+		domainChat.TypeTask,
+		"Old Title",
+		workspaceID,
+		creatorID,
+	)
 
 	renameUseCase := chat.NewRenameChatUseCase(eventStore)
 	renameCmd := chat.RenameChatCommand{

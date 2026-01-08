@@ -15,7 +15,7 @@ func TestConvertToEpicUseCase_Success(t *testing.T) {
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID, true)
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID)
 
 	convertUseCase := chat.NewConvertToEpicUseCase(eventStore)
 	convertCmd := chat.ConvertToEpicCommand{
@@ -36,7 +36,14 @@ func TestConvertToEpicUseCase_Error_AlreadyEpic(t *testing.T) {
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeEpic, "Existing Epic", workspaceID, creatorID, true)
+	createdChat := createTestChatWithParams(
+		t,
+		eventStore,
+		domainChat.TypeEpic,
+		"Existing Epic",
+		workspaceID,
+		creatorID,
+	)
 
 	convertUseCase := chat.NewConvertToEpicUseCase(eventStore)
 	convertCmd := chat.ConvertToEpicCommand{
