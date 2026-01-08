@@ -20,17 +20,9 @@ func TestAddParticipantUseCase_Success_AddAdmin(t *testing.T) {
 	workspaceID := generateUUID(t)
 	creatorID := generateUUID(t)
 
-	// Create and save a chat first
-	createUseCase := chat.NewCreateChatUseCase(eventStore)
-	createCmd := chat.CreateChatCommand{
-		WorkspaceID: workspaceID,
-		Type:        domainChat.TypeDiscussion,
-		IsPublic:    true,
-		CreatedBy:   creatorID,
-	}
-	createResult, err := createUseCase.Execute(testContext(), createCmd)
-	require.NoError(t, err)
-	chatID := createResult.Value.ID()
+	// Create and save a chat first using helper
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID, true)
+	chatID := createdChat.ID()
 
 	userID := generateUUID(t)
 
@@ -57,17 +49,9 @@ func TestAddParticipantUseCase_Error_AlreadyParticipant(t *testing.T) {
 	workspaceID := generateUUID(t)
 	creatorID := generateUUID(t)
 
-	// Create and save a chat first
-	createUseCase := chat.NewCreateChatUseCase(eventStore)
-	createCmd := chat.CreateChatCommand{
-		WorkspaceID: workspaceID,
-		Type:        domainChat.TypeDiscussion,
-		IsPublic:    true,
-		CreatedBy:   creatorID,
-	}
-	createResult, err := createUseCase.Execute(testContext(), createCmd)
-	require.NoError(t, err)
-	chatID := createResult.Value.ID()
+	// Create and save a chat first using helper
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID, true)
+	chatID := createdChat.ID()
 
 	userID := generateUUID(t)
 
@@ -173,17 +157,9 @@ func TestAddParticipantUseCase_Success_AddMember(t *testing.T) {
 	workspaceID := generateUUID(t)
 	creatorID := generateUUID(t)
 
-	// Create and save a chat first
-	createUseCase := chat.NewCreateChatUseCase(eventStore)
-	createCmd := chat.CreateChatCommand{
-		WorkspaceID: workspaceID,
-		Type:        domainChat.TypeDiscussion,
-		IsPublic:    true,
-		CreatedBy:   creatorID,
-	}
-	createResult, err := createUseCase.Execute(testContext(), createCmd)
-	require.NoError(t, err)
-	chatID := createResult.Value.ID()
+	// Create and save a chat first using helper
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID, true)
+	chatID := createdChat.ID()
 
 	userID := generateUUID(t)
 
@@ -211,17 +187,9 @@ func TestAddParticipantUseCase_Success_MultipleParticipants(t *testing.T) {
 	workspaceID := generateUUID(t)
 	creatorID := generateUUID(t)
 
-	// Create chat
-	createUseCase := chat.NewCreateChatUseCase(eventStore)
-	createCmd := chat.CreateChatCommand{
-		WorkspaceID: workspaceID,
-		Type:        domainChat.TypeDiscussion,
-		IsPublic:    true,
-		CreatedBy:   creatorID,
-	}
-	createResult, err := createUseCase.Execute(testContext(), createCmd)
-	require.NoError(t, err)
-	chatID := createResult.Value.ID()
+	// Create chat using helper
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID, true)
+	chatID := createdChat.ID()
 
 	addUseCase := chat.NewAddParticipantUseCase(eventStore)
 

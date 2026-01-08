@@ -3,11 +3,9 @@ package chat_test
 import (
 	"testing"
 
-	"github.com/lllypuk/flowra/internal/application/chat"
-
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
+	"github.com/lllypuk/flowra/internal/application/chat"
 	domainChat "github.com/lllypuk/flowra/internal/domain/chat"
 )
 
@@ -34,21 +32,13 @@ func TestSetPriorityUseCase_Success_Critical(t *testing.T) {
 func testSetPrioritySuccess(t *testing.T, priority string) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
+	workspaceID := generateUUID(t)
 
-	createUseCase := chat.NewCreateChatUseCase(eventStore)
-	createCmd := chat.CreateChatCommand{
-		WorkspaceID: generateUUID(t),
-		Type:        domainChat.TypeTask,
-		Title:       "Test Task",
-		IsPublic:    true,
-		CreatedBy:   creatorID,
-	}
-	createResult, err := createUseCase.Execute(testContext(), createCmd)
-	require.NoError(t, err)
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeTask, "Test Task", workspaceID, creatorID, true)
 
 	setPriorityUseCase := chat.NewSetPriorityUseCase(eventStore)
 	setPriorityCmd := chat.SetPriorityCommand{
-		ChatID:   createResult.Value.ID(),
+		ChatID:   createdChat.ID(),
 		Priority: priority,
 		SetBy:    creatorID,
 	}

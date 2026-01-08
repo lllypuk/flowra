@@ -287,13 +287,19 @@ func (h *ChatTemplateHandler) ChatViewPartial(c echo.Context) error {
 		return c.String(http.StatusNotFound, "Chat not found")
 	}
 
-	data := map[string]any{
+	// Build inner data map
+	innerData := map[string]any{
 		"Chat": chatData,
 	}
 
 	if chatData.IsTaskChat {
-		data["Task"] = h.loadTaskViewData(chatData)
-		data["Participants"] = h.loadParticipants(c.Request().Context(), chatID)
+		innerData["Task"] = h.loadTaskViewData(chatData)
+		innerData["Participants"] = h.loadParticipants(c.Request().Context(), chatID)
+	}
+
+	// Wrap in "Data" to match template expectations (template uses .Data.Chat.ID)
+	data := map[string]any{
+		"Data": innerData,
 	}
 
 	return h.renderPartial(c, "chat/view", data)
@@ -308,6 +314,7 @@ func (h *ChatTemplateHandler) ChatListPartial(c echo.Context) error {
 
 	workspaceID, err := uuid.ParseUUID(c.Param("workspace_id"))
 	if err != nil {
+		h.logger.Error("invalid workspace_id param", slog.String("param", c.Param("workspace_id")))
 		return c.String(http.StatusBadRequest, "Invalid workspace ID")
 	}
 
@@ -317,6 +324,7 @@ func (h *ChatTemplateHandler) ChatListPartial(c echo.Context) error {
 	}
 
 	if h.chatService == nil {
+		h.logger.Warn("chatService is nil, returning empty list")
 		return h.renderPartial(c, "chat/list", map[string]any{
 			"Chats":        []ChatViewData{},
 			"ActiveChatID": "",
@@ -331,15 +339,32 @@ func (h *ChatTemplateHandler) ChatListPartial(c echo.Context) error {
 		Offset:      0,
 	}
 
+	h.logger.Info("listing chats",
+		slog.String("workspace_id", workspaceID.String()),
+		slog.String("user_id", userID.String()))
+
 	result, err := h.chatService.ListChats(c.Request().Context(), query)
 	if err != nil {
-		h.logger.Error("failed to list chats", slog.String("error", err.Error()))
+		h.logger.Error("failed to list chats",
+			slog.String("error", err.Error()),
+			slog.String("workspace_id", workspaceID.String()))
 		return h.renderPartial(c, "chat/list", map[string]any{
 			"Chats":        []ChatViewData{},
 			"ActiveChatID": "",
 			"WorkspaceID":  workspaceID.String(),
 		})
 	}
+
+	if result == nil {
+		h.logger.Error("ListChats returned nil result")
+		return h.renderPartial(c, "chat/list", map[string]any{
+			"Chats":        []ChatViewData{},
+			"ActiveChatID": "",
+			"WorkspaceID":  workspaceID.String(),
+		})
+	}
+
+	h.logger.Info("found chats", slog.Int("count", len(result.Chats)))
 
 	// Convert to view data
 	chatViews := make([]ChatViewData, 0, len(result.Chats))
@@ -365,6 +390,10 @@ func (h *ChatTemplateHandler) ChatListPartial(c echo.Context) error {
 		"ActiveChatID": activeChatID,
 		"WorkspaceID":  workspaceID.String(),
 	}
+
+	h.logger.Info("rendering chat/list template",
+		slog.Int("chat_count", len(chatViews)),
+		slog.String("workspace_id", workspaceID.String()))
 
 	return h.renderPartial(c, "chat/list", data)
 }
@@ -739,7 +768,13 @@ func (h *ChatTemplateHandler) render(c echo.Context, template, title string, dat
 }
 
 func (h *ChatTemplateHandler) renderPartial(c echo.Context, template string, data any) error {
-	return c.Render(http.StatusOK, template, data)
+	err := c.Render(http.StatusOK, template, data)
+	if err != nil {
+		h.logger.Error("template render failed",
+			slog.String("template", template),
+			slog.String("error", err.Error()))
+	}
+	return err
 }
 
 func (h *ChatTemplateHandler) renderNotFound(c echo.Context) error {

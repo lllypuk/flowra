@@ -31,16 +31,30 @@ func newTestChatRepo() *mocks.MockChatRepository {
 // This is needed because CreateChatUseCase uses chatRepo, but other use cases use eventStore.
 func createTestChat(t *testing.T, eventStore *mocks.MockEventStore, chatType domainChat.Type, title string) *domainChat.Chat {
 	t.Helper()
+	return createTestChatWithParams(t, eventStore, chatType, title, generateUUID(t), generateUUID(t), true)
+}
+
+// createTestChatWithParams creates a chat with specific parameters and syncs events to eventStore.
+func createTestChatWithParams(
+	t *testing.T,
+	eventStore *mocks.MockEventStore,
+	chatType domainChat.Type,
+	title string,
+	workspaceID uuid.UUID,
+	creatorID uuid.UUID,
+	isPublic bool,
+) *domainChat.Chat {
+	t.Helper()
 
 	chatRepo := newTestChatRepo()
 	createUC := chat.NewCreateChatUseCase(chatRepo)
 
 	cmd := chat.CreateChatCommand{
-		WorkspaceID: generateUUID(t),
+		WorkspaceID: workspaceID,
 		Type:        chatType,
 		Title:       title,
-		IsPublic:    true,
-		CreatedBy:   generateUUID(t),
+		IsPublic:    isPublic,
+		CreatedBy:   creatorID,
 	}
 
 	result, err := createUC.Execute(testContext(), cmd)

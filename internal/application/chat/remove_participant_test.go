@@ -15,19 +15,12 @@ import (
 func TestRemoveParticipantUseCase_Success(t *testing.T) {
 	// Arrange
 	eventStore := newTestEventStore()
+	creatorID := generateUUID(t)
+	workspaceID := generateUUID(t)
 
-	// Create chat and add participant
-	createUseCase := chat.NewCreateChatUseCase(eventStore)
-	createCmd := chat.CreateChatCommand{
-		WorkspaceID: generateUUID(t),
-		Type:        domainChat.TypeDiscussion,
-		IsPublic:    true,
-		CreatedBy:   generateUUID(t),
-	}
-	createResult, err := createUseCase.Execute(testContext(), createCmd)
-	require.NoError(t, err)
-	chatID := createResult.Value.ID()
-	creatorID := createResult.Value.CreatedBy()
+	// Create chat using helper
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID, true)
+	chatID := createdChat.ID()
 
 	// Add participant
 	userID := generateUUID(t)
@@ -38,7 +31,7 @@ func TestRemoveParticipantUseCase_Success(t *testing.T) {
 		Role:    domainChat.RoleMember,
 		AddedBy: creatorID,
 	}
-	_, err = addUseCase.Execute(testContext(), addCmd)
+	_, err := addUseCase.Execute(testContext(), addCmd)
 	require.NoError(t, err)
 
 	// Act
@@ -93,24 +86,18 @@ func TestRemoveParticipantUseCase_ValidationError_InvalidUserID(t *testing.T) {
 // TestRemoveParticipantUseCase_Error_NotParticipant tests error for non-existent participant
 func TestRemoveParticipantUseCase_Error_NotParticipant(t *testing.T) {
 	eventStore := newTestEventStore()
+	creatorID := generateUUID(t)
+	workspaceID := generateUUID(t)
 
-	// Create chat
-	createUseCase := chat.NewCreateChatUseCase(eventStore)
-	createCmd := chat.CreateChatCommand{
-		WorkspaceID: generateUUID(t),
-		Type:        domainChat.TypeDiscussion,
-		IsPublic:    true,
-		CreatedBy:   generateUUID(t),
-	}
-	createResult, err := createUseCase.Execute(testContext(), createCmd)
-	require.NoError(t, err)
-	chatID := createResult.Value.ID()
+	// Create chat using helper
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID, true)
+	chatID := createdChat.ID()
 
 	removeUseCase := chat.NewRemoveParticipantUseCase(eventStore)
 	cmd := chat.RemoveParticipantCommand{
 		ChatID:    chatID,
 		UserID:    generateUUID(t),
-		RemovedBy: createResult.Value.CreatedBy(),
+		RemovedBy: creatorID,
 	}
 
 	result, err := removeUseCase.Execute(testContext(), cmd)
@@ -123,19 +110,12 @@ func TestRemoveParticipantUseCase_Error_NotParticipant(t *testing.T) {
 func TestRemoveParticipantUseCase_Success_SelfRemove(t *testing.T) {
 	// Arrange
 	eventStore := newTestEventStore()
+	creatorID := generateUUID(t)
+	workspaceID := generateUUID(t)
 
-	// Create chat and add participant
-	createUseCase := chat.NewCreateChatUseCase(eventStore)
-	createCmd := chat.CreateChatCommand{
-		WorkspaceID: generateUUID(t),
-		Type:        domainChat.TypeDiscussion,
-		IsPublic:    true,
-		CreatedBy:   generateUUID(t),
-	}
-	createResult, err := createUseCase.Execute(testContext(), createCmd)
-	require.NoError(t, err)
-	chatID := createResult.Value.ID()
-	creatorID := createResult.Value.CreatedBy()
+	// Create chat using helper
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID, true)
+	chatID := createdChat.ID()
 
 	// Add participant
 	userID := generateUUID(t)
@@ -146,7 +126,7 @@ func TestRemoveParticipantUseCase_Success_SelfRemove(t *testing.T) {
 		Role:    domainChat.RoleMember,
 		AddedBy: creatorID,
 	}
-	_, err = addUseCase.Execute(testContext(), addCmd)
+	_, err := addUseCase.Execute(testContext(), addCmd)
 	require.NoError(t, err)
 
 	// Act
@@ -168,19 +148,12 @@ func TestRemoveParticipantUseCase_Success_SelfRemove(t *testing.T) {
 func TestRemoveParticipantUseCase_Error_CannotRemoveCreator(t *testing.T) {
 	// Arrange
 	eventStore := newTestEventStore()
+	creatorID := generateUUID(t)
+	workspaceID := generateUUID(t)
 
-	// Create chat
-	createUseCase := chat.NewCreateChatUseCase(eventStore)
-	createCmd := chat.CreateChatCommand{
-		WorkspaceID: generateUUID(t),
-		Type:        domainChat.TypeDiscussion,
-		IsPublic:    true,
-		CreatedBy:   generateUUID(t),
-	}
-	createResult, err := createUseCase.Execute(testContext(), createCmd)
-	require.NoError(t, err)
-	chatID := createResult.Value.ID()
-	creatorID := createResult.Value.CreatedBy()
+	// Create chat using helper
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID, true)
+	chatID := createdChat.ID()
 
 	// Add another participant
 	userID := generateUUID(t)
@@ -191,7 +164,7 @@ func TestRemoveParticipantUseCase_Error_CannotRemoveCreator(t *testing.T) {
 		Role:    domainChat.RoleAdmin,
 		AddedBy: creatorID,
 	}
-	_, err = addUseCase.Execute(testContext(), addCmd)
+	_, err := addUseCase.Execute(testContext(), addCmd)
 	require.NoError(t, err)
 
 	// Act: Try to remove creator as admin

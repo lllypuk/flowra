@@ -138,7 +138,9 @@ func timeAgo(t time.Time) string {
 
 // String helpers
 
-func truncate(s string, n int) string {
+// truncate truncates a string to n characters, adding "..." if truncated.
+// Arguments are (n int, s string) to work with template pipes: {{.Title | truncate 30}}
+func truncate(n int, s string) string {
 	if len(s) <= n {
 		return s
 	}

@@ -15,22 +15,14 @@ import (
 func TestAssignUserUseCase_Success_AssignUser(t *testing.T) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
+	workspaceID := generateUUID(t)
 
-	createUseCase := chat.NewCreateChatUseCase(eventStore)
-	createCmd := chat.CreateChatCommand{
-		WorkspaceID: generateUUID(t),
-		Type:        domainChat.TypeTask,
-		Title:       "Test Task",
-		IsPublic:    true,
-		CreatedBy:   creatorID,
-	}
-	createResult, err := createUseCase.Execute(testContext(), createCmd)
-	require.NoError(t, err)
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeTask, "Test Task", workspaceID, creatorID, true)
 
 	assigneeID := generateUUID(t)
 	assignUseCase := chat.NewAssignUserUseCase(eventStore)
 	assignCmd := chat.AssignUserCommand{
-		ChatID:     createResult.Value.ID(),
+		ChatID:     createdChat.ID(),
 		AssigneeID: &assigneeID,
 		AssignedBy: creatorID,
 	}
@@ -45,32 +37,24 @@ func TestAssignUserUseCase_Success_AssignUser(t *testing.T) {
 func TestAssignUserUseCase_Success_UnassignUser(t *testing.T) {
 	eventStore := newTestEventStore()
 	creatorID := generateUUID(t)
+	workspaceID := generateUUID(t)
 
-	createUseCase := chat.NewCreateChatUseCase(eventStore)
-	createCmd := chat.CreateChatCommand{
-		WorkspaceID: generateUUID(t),
-		Type:        domainChat.TypeTask,
-		Title:       "Test Task",
-		IsPublic:    true,
-		CreatedBy:   creatorID,
-	}
-	createResult, err := createUseCase.Execute(testContext(), createCmd)
-	require.NoError(t, err)
+	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeTask, "Test Task", workspaceID, creatorID, true)
 
 	// First assign
 	assigneeID := generateUUID(t)
 	assignUseCase := chat.NewAssignUserUseCase(eventStore)
 	assignCmd := chat.AssignUserCommand{
-		ChatID:     createResult.Value.ID(),
+		ChatID:     createdChat.ID(),
 		AssigneeID: &assigneeID,
 		AssignedBy: creatorID,
 	}
-	_, err = assignUseCase.Execute(testContext(), assignCmd)
+	_, err := assignUseCase.Execute(testContext(), assignCmd)
 	require.NoError(t, err)
 
 	// Then unassign
 	unassignCmd := chat.AssignUserCommand{
-		ChatID:     createResult.Value.ID(),
+		ChatID:     createdChat.ID(),
 		AssigneeID: nil,
 		AssignedBy: creatorID,
 	}
