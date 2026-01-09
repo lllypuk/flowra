@@ -7,7 +7,7 @@
         <img src="{{.Author.AvatarURL}}" alt="{{.Author.Username}}">
         {{else}}
         <div class="avatar-placeholder">
-            {{slice .Author.Username 0 1 | upper}}
+            {{if .Author.Username}}{{initials .Author.Username}}{{else}}?{{end}}
         </div>
         {{end}}
     </div>
@@ -39,7 +39,7 @@
         </div>
         {{end}}
 
-        {{if and .Tags (not .IsDeleted)}}
+        {{if and (not (empty .Tags)) (not .IsDeleted)}}
         <div class="message-tags">
             {{range .Tags}}
             <span class="tag tag-{{.Key}}">
@@ -49,7 +49,7 @@
         </div>
         {{end}}
 
-        {{if and .Reactions (not .IsDeleted)}}
+        {{if and (not (empty .Reactions)) (not .IsDeleted)}}
         <div class="message-reactions">
             {{range .Reactions}}
             <button class="reaction-btn {{if .HasReacted}}active{{end}}"
@@ -63,7 +63,7 @@
         </div>
         {{end}}
 
-        {{if and (not .IsSystemMessage) (not .IsDeleted) .CanEdit}}
+        {{if and (and (not .IsSystemMessage) (not .IsDeleted)) .CanEdit}}
         <footer class="message-actions">
             <button hx-get="/partials/messages/{{.ID}}/edit"
                     hx-target="#message-{{.ID}}"

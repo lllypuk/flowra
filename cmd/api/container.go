@@ -14,6 +14,7 @@ import (
 	taskapp "github.com/lllypuk/flowra/internal/application/task"
 	wsapp "github.com/lllypuk/flowra/internal/application/workspace"
 	"github.com/lllypuk/flowra/internal/config"
+	"github.com/lllypuk/flowra/internal/domain/message"
 	notificationdomain "github.com/lllypuk/flowra/internal/domain/notification"
 	taskdomain "github.com/lllypuk/flowra/internal/domain/task"
 	httphandler "github.com/lllypuk/flowra/internal/handler/http"
@@ -794,15 +795,49 @@ func (c *Container) setupChatTemplateHandler() {
 	// Create chat template service adapter
 	chatService := c.createChatTemplateService()
 
-	// For now, message service is nil - will be implemented with message use cases
+	// Create message template service adapter
+	messageService := c.createMessageTemplateService()
+
 	c.ChatTemplateHandler = httphandler.NewChatTemplateHandler(
 		c.TemplateRenderer,
 		c.Logger,
 		chatService,
-		nil, // MessageTemplateService - TODO: implement when message use cases are ready
+		messageService,
 	)
 
 	c.Logger.Debug("chat template handler initialized")
+}
+
+// createMessageTemplateService creates a service implementing MessageTemplateService.
+func (c *Container) createMessageTemplateService() httphandler.MessageTemplateService {
+	return &messageTemplateServiceAdapter{
+		listMessagesUC: c.ListMessagesUC,
+		getMessageUC:   c.GetMessageUC,
+	}
+}
+
+// messageTemplateServiceAdapter adapts message use cases to MessageTemplateService interface.
+type messageTemplateServiceAdapter struct {
+	listMessagesUC *messageapp.ListMessagesUseCase
+	getMessageUC   *messageapp.GetMessageUseCase
+}
+
+func (a *messageTemplateServiceAdapter) ListMessages(
+	ctx context.Context,
+	query messageapp.ListMessagesQuery,
+) (messageapp.ListResult, error) {
+	return a.listMessagesUC.Execute(ctx, query)
+}
+
+func (a *messageTemplateServiceAdapter) GetMessage(ctx context.Context, messageID uuid.UUID) (*message.Message, error) {
+	query := messageapp.GetMessageQuery{
+		MessageID: messageID,
+	}
+	result, err := a.getMessageUC.Execute(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	return result.Value, nil
 }
 
 // createChatTemplateService creates a service implementing ChatTemplateService.

@@ -429,13 +429,26 @@ func (h *ChatTemplateHandler) MessagesPartial(c echo.Context) error {
 		Offset: 0,
 	}
 
+	h.logger.Debug("listing messages for chat",
+		slog.String("chat_id", chatID.String()),
+		slog.Int("limit", query.Limit),
+	)
+
 	result, err := h.messageService.ListMessages(c.Request().Context(), query)
 	if err != nil {
-		h.logger.Error("failed to list messages", slog.String("error", err.Error()))
+		h.logger.Error("failed to list messages",
+			slog.String("chat_id", chatID.String()),
+			slog.String("error", err.Error()),
+		)
 		return h.renderPartial(c, "messages-list", map[string]any{
 			"Messages": []MessageViewData{},
 		})
 	}
+
+	h.logger.Debug("messages loaded",
+		slog.String("chat_id", chatID.String()),
+		slog.Int("count", len(result.Value)),
+	)
 
 	// Convert to view data
 	messageViews := make([]MessageViewData, 0, len(result.Value))
@@ -445,6 +458,11 @@ func (h *ChatTemplateHandler) MessagesPartial(c echo.Context) error {
 		}
 		messageViews = append(messageViews, h.convertMessageToView(msg, userID))
 	}
+
+	h.logger.Debug("messages converted to views",
+		slog.String("chat_id", chatID.String()),
+		slog.Int("view_count", len(messageViews)),
+	)
 
 	data := map[string]any{
 		"Messages": messageViews,
@@ -873,6 +891,11 @@ func (h *ChatTemplateHandler) convertMessageToView(msg *message.Message, current
 		reactions = append(reactions, *r)
 	}
 
+	// Use author ID as fallback for username/display name until user service is integrated
+	authorID := msg.AuthorID().String()
+	username := authorID[:8] // Use first 8 chars of ID as temporary username
+	displayName := "User " + username
+
 	return MessageViewData{
 		ID:              msg.ID().String(),
 		ChatID:          msg.ChatID().String(),
@@ -883,9 +906,9 @@ func (h *ChatTemplateHandler) convertMessageToView(msg *message.Message, current
 		IsSystemMessage: false, // TODO: detect system messages
 		CanEdit:         canEdit,
 		Author: MessageAuthorData{
-			ID:          msg.AuthorID().String(),
-			Username:    "", // TODO: load from user service
-			DisplayName: "", // TODO: load from user service
+			ID:          authorID,
+			Username:    username,
+			DisplayName: displayName,
 			AvatarURL:   "",
 		},
 		Tags:      []MessageTagData{}, // TODO: parse tags from content

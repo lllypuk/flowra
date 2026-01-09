@@ -83,7 +83,7 @@ func (r *MongoMessageRepository) FindByChatID(
 	pagination.Limit = DefaultLimit(pagination.Limit, DefaultPaginationLimit)
 
 	filter := bson.M{"chat_id": chatID.String()}
-	opts := FindWithPaginationDesc(pagination.Offset, pagination.Limit)
+	opts := FindWithPagination(pagination.Offset, pagination.Limit, "created_at", 1)
 
 	cursor, err := r.collection.Find(ctx, filter, opts)
 	if err != nil {
