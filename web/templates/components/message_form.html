@@ -1,12 +1,10 @@
 {{define "message_form"}}
 <form
     class="message-form"
-    ws-send
-    hx-on::ws-after-send="this.reset(); autoResize(this.querySelector('textarea')); scrollToBottom('messages-{{.Data.Chat.ID}}')"
+    hx-post="/api/v1/workspaces/{{.Data.Chat.WorkspaceID}}/chats/{{.Data.Chat.ID}}/messages"
+    hx-swap="none"
+    hx-on::after-request="this.reset(); autoResize(this.querySelector('textarea')); scrollToBottom('messages-{{.Data.Chat.ID}}')"
 >
-    <input type="hidden" name="type" value="chat.send" />
-    <input type="hidden" name="chat_id" value="{{.Data.Chat.ID}}" />
-
     <div class="message-input-wrapper">
         <textarea
             name="content"

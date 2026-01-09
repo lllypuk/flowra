@@ -1,6 +1,7 @@
 package message
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/lllypuk/flowra/internal/domain/event"
@@ -50,6 +51,22 @@ func NewCreated(
 		ParentMessageID: parentMessageID,
 		CreatedAt:       time.Now(),
 	}
+}
+
+// Payload returns the event payload as JSON for WebSocket broadcasting
+func (e *Created) Payload() json.RawMessage {
+	payload := map[string]any{
+		"message_id": e.AggregateID(),
+		"chat_id":    e.ChatID.String(),
+		"author_id":  e.AuthorID.String(),
+		"content":    e.Content,
+		"created_at": e.CreatedAt,
+	}
+	if !e.ParentMessageID.IsZero() {
+		payload["parent_message_id"] = e.ParentMessageID.String()
+	}
+	data, _ := json.Marshal(payload)
+	return data
 }
 
 // Edited event redaktirovaniya messages

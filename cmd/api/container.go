@@ -9,6 +9,7 @@ import (
 	"time"
 
 	chatapp "github.com/lllypuk/flowra/internal/application/chat"
+	messageapp "github.com/lllypuk/flowra/internal/application/message"
 	"github.com/lllypuk/flowra/internal/application/notification"
 	taskapp "github.com/lllypuk/flowra/internal/application/task"
 	wsapp "github.com/lllypuk/flowra/internal/application/workspace"
@@ -58,6 +59,7 @@ type Container struct {
 	EventStore   *eventstore.MongoEventStore
 	EventBus     *eventbus.RedisEventBus
 	Hub          *websocket.Hub
+	Broadcaster  *websocket.Broadcaster
 	NotifHandler *eventbus.NotificationHandler
 	LogHandler   *eventbus.LoggingHandler
 
@@ -73,10 +75,21 @@ type Container struct {
 	// Use Cases
 	CreateNotificationUC *notification.CreateNotificationUseCase
 
+	// Message Use Cases
+	SendMessageUC    *messageapp.SendMessageUseCase
+	ListMessagesUC   *messageapp.ListMessagesUseCase
+	EditMessageUC    *messageapp.EditMessageUseCase
+	DeleteMessageUC  *messageapp.DeleteMessageUseCase
+	GetMessageUC     *messageapp.GetMessageUseCase
+	AddReactionUC    *messageapp.AddReactionUseCase
+	RemoveReactionUC *messageapp.RemoveReactionUseCase
+	AddAttachmentUC  *messageapp.AddAttachmentUseCase
+
 	// Services (for external access if needed)
 	WorkspaceService *service.WorkspaceService
 	MemberService    *service.MemberService
 	ChatService      *service.ChatService
+	MessageService   *service.MessageService
 
 	// HTTP Handlers
 	AuthHandler         *httphandler.AuthHandler
@@ -287,6 +300,11 @@ func (c *Container) setupInfrastructure() error {
 	// Setup WebSocket Hub
 	c.setupHub()
 
+	// Setup WebSocket Broadcaster
+	if err := c.setupBroadcaster(ctx); err != nil {
+		return fmt.Errorf("broadcaster: %w", err)
+	}
+
 	return nil
 }
 
@@ -376,6 +394,23 @@ func (c *Container) setupHub() {
 	c.Logger.Debug("websocket hub initialized")
 }
 
+// setupBroadcaster initializes and starts the WebSocket broadcaster.
+func (c *Container) setupBroadcaster(ctx context.Context) error {
+	c.Broadcaster = websocket.NewBroadcaster(
+		c.Hub,
+		c.EventBus,
+		websocket.WithBroadcasterLogger(c.Logger),
+		websocket.WithEventTypes(websocket.DefaultEventTypes()),
+	)
+
+	if err := c.Broadcaster.Start(ctx); err != nil {
+		return fmt.Errorf("failed to start broadcaster: %w", err)
+	}
+
+	c.Logger.InfoContext(ctx, "websocket broadcaster started")
+	return nil
+}
+
 // setupRepositories initializes all repository implementations.
 func (c *Container) setupRepositories() {
 	db := c.MongoDB.Database(c.MongoDBName)
@@ -436,7 +471,64 @@ func (c *Container) setupUseCases() {
 		c.NotificationRepo,
 	)
 
+	// Message use cases
+	c.setupMessageUseCases()
+
 	c.Logger.Debug("use cases initialized")
+}
+
+// setupMessageUseCases initializes message-related use cases.
+func (c *Container) setupMessageUseCases() {
+	// SendMessage use case
+	c.SendMessageUC = messageapp.NewSendMessageUseCase(
+		c.MessageRepo,
+		c.ChatQueryRepo,
+		c.EventBus,
+		nil, // tag processor - TODO: add when available
+		nil, // tag executor - TODO: add when available
+	)
+
+	// ListMessages use case
+	c.ListMessagesUC = messageapp.NewListMessagesUseCase(
+		c.MessageRepo,
+	)
+
+	// EditMessage use case
+	c.EditMessageUC = messageapp.NewEditMessageUseCase(
+		c.MessageRepo,
+		c.EventBus,
+	)
+
+	// DeleteMessage use case
+	c.DeleteMessageUC = messageapp.NewDeleteMessageUseCase(
+		c.MessageRepo,
+		c.EventBus,
+	)
+
+	// GetMessage use case
+	c.GetMessageUC = messageapp.NewGetMessageUseCase(
+		c.MessageRepo,
+	)
+
+	// AddReaction use case
+	c.AddReactionUC = messageapp.NewAddReactionUseCase(
+		c.MessageRepo,
+		c.EventBus,
+	)
+
+	// RemoveReaction use case
+	c.RemoveReactionUC = messageapp.NewRemoveReactionUseCase(
+		c.MessageRepo,
+		c.EventBus,
+	)
+
+	// AddAttachment use case
+	c.AddAttachmentUC = messageapp.NewAddAttachmentUseCase(
+		c.MessageRepo,
+		c.EventBus,
+	)
+
+	c.Logger.Debug("message use cases initialized")
 }
 
 // setupEventHandlers initializes and registers event handlers with the event bus.
@@ -560,7 +652,21 @@ func (c *Container) setupHTTPHandlers() {
 	// === 12. Task Detail Template Handler ===
 	c.setupTaskDetailTemplateHandler()
 
-	// Note: MessageHandler, TaskHandler, NotificationHandler, UserHandler
+	// === 13. Message Service and Handler ===
+	c.MessageService = service.NewMessageService(
+		service.WithSendMessageUseCase(c.SendMessageUC),
+		service.WithListMessagesUseCase(c.ListMessagesUC),
+		service.WithEditMessageUseCase(c.EditMessageUC),
+		service.WithDeleteMessageUseCase(c.DeleteMessageUC),
+		service.WithGetMessageUseCase(c.GetMessageUC),
+		service.WithAddReactionUseCase(c.AddReactionUC),
+		service.WithRemoveReactionUseCase(c.RemoveReactionUC),
+		service.WithAddAttachmentUseCase(c.AddAttachmentUC),
+	)
+	c.MessageHandler = httphandler.NewMessageHandler(c.MessageService)
+	c.Logger.Debug("message service and handler initialized (real)")
+
+	// Note: TaskHandler, NotificationHandler, UserHandler
 	// are left nil - routes.go will create placeholder endpoints for them.
 	// This is intentional until their use cases are fully implemented.
 

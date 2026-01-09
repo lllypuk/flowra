@@ -9,6 +9,7 @@ import (
 
 	"github.com/lllypuk/flowra/internal/domain/event"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/infrastructure/eventbus"
 	ws "github.com/lllypuk/flowra/internal/infrastructure/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,19 +17,19 @@ import (
 
 // mockEventBus is a mock implementation of EventBus for testing.
 type mockEventBus struct {
-	handlers map[string][]func(ctx context.Context, event event.DomainEvent) error
+	handlers map[string][]eventbus.EventHandler
 	mu       sync.RWMutex
 }
 
 func newMockEventBus() *mockEventBus {
 	return &mockEventBus{
-		handlers: make(map[string][]func(ctx context.Context, event event.DomainEvent) error),
+		handlers: make(map[string][]eventbus.EventHandler),
 	}
 }
 
 func (m *mockEventBus) Subscribe(
 	eventType string,
-	handler func(ctx context.Context, event event.DomainEvent) error,
+	handler eventbus.EventHandler,
 ) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

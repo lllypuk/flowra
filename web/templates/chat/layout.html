@@ -24,7 +24,7 @@
         <!-- HTMX WebSocket Extension -->
         <script src="https://unpkg.com/htmx-ext-ws@2.0.0/ws.js"></script>
     </head>
-    <body hx-boost="true">
+    <body hx-boost="true" hx-ext="ws" ws-connect="/api/v1/ws">
         {{template "navbar" .}}
 
         <div
