@@ -63,8 +63,7 @@ The system is designed around multiple services:
 ```
 cmd/                           # Application entry points
 ├── api/                      # HTTP API server (main.go, container.go, routes.go)
-├── worker/                   # Background workers (user sync)
-└── migrator/                 # Database migrations
+└── worker/                   # Background workers (user sync)
 
 internal/                     # Internal application code (295 files)
 ├── application/             # Use cases (139 files, CQRS)
@@ -126,7 +125,6 @@ tests/                        # Test suites (35 files)
 ├── fixtures/                # Test data fixtures
 └── mocks/                   # Mock implementations
 
-migrations/                   # MongoDB migrations
 configs/                      # Configuration files (YAML)
 docs/                         # Documentation (9+ files)
 ```
@@ -140,12 +138,31 @@ docs/                         # Documentation (9+ files)
 - Docker services configured in `docker-compose.yml`
 - Comprehensive settings for database, Redis, JWT, OAuth, email, etc.
 
+## Index Management
+
+**MongoDB indexes are managed in Go code, not external migration files.**
+
+- **Index definitions**: `internal/infrastructure/mongodb/indexes.go`
+- **Automatic creation**: Indexes are created automatically when the API server starts
+- **Test setup**: Indexes are also created in test utilities for integration tests
+
+### Index Creation Functions:
+- `CreateAllIndexes(ctx, db)` - Creates all indexes for all collections
+- `EnsureIndexes(ctx, db)` - Alias for CreateAllIndexes
+- Individual getters: `GetEventIndexes()`, `GetUserIndexes()`, `GetChatReadModelIndexes()`, etc.
+
+### When Indexes Are Created:
+1. **API Startup** - In `cmd/api/container.go` during MongoDB initialization
+2. **Test Setup** - In `tests/testutil/db.go` and `tests/testutil/mongodb_shared.go`
+
+**No separate migration runner is needed** - the application manages its own schema.
+
 ## Database
 
 - **Primary**: MongoDB 6+ (document store with replica set)
 - **Cache**: Redis for sessions, pub/sub, caching
-- Main collections: Users, Chats, Messages, Tasks, Chat_members, Audit_log
-- Schema versioning handled through application code
+- Main collections: Users, Chats, Messages, Tasks, Chat_members, Notifications, Events
+- Schema and indexes managed through application code (see Index Management section above)
 
 ## Development Notes
 
@@ -227,6 +244,8 @@ make test-e2e           # Run E2E tests
 make test-coverage      # Generate coverage report
 make test-coverage-check # Check 80% threshold
 ```
+
+**Note**: All tests automatically create MongoDB indexes during test database setup.
 
 ## Interface Design Guidelines
 

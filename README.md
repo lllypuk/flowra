@@ -70,19 +70,13 @@ docker-compose up -d
 docker-compose ps
 ```
 
-### 3. Run Migrations
-
-```bash
-make migrate-up
-```
-
-### 4. Start the Application
+### 3. Start the Application
 
 ```bash
 make dev
 ```
 
-### 5. Verify
+### 4. Verify
 
 ```bash
 # Health check
@@ -93,7 +87,7 @@ curl http://localhost:8080/health
 open http://localhost:8080/docs
 ```
 
-### 6. Test Authentication
+### 5. Test Authentication
 
 Access Keycloak at http://localhost:8090 (admin/admin123) to configure OAuth.
 
@@ -203,8 +197,7 @@ make test-coverage # Generate coverage report
 .
 ├── cmd/                        # Application entry points
 │   ├── api/                   # HTTP API server (main, container, routes)
-│   ├── worker/                # Background worker (user sync)
-│   └── migrator/              # Database migrations
+│   └── worker/                # Background worker (user sync)
 │
 ├── internal/                  # Private application code (295 files)
 │   ├── application/           # Use cases (139 files, 40+ use cases)
@@ -250,7 +243,6 @@ make test-coverage # Generate coverage report
 │   ├── deployment/           # Deployment guides
 │   └── development/          # Development guides
 │
-├── migrations/                # MongoDB migrations
 ├── configs/                   # Configuration files
 └── docker-compose.yml         # Local development services
 ```

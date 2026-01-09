@@ -1,4 +1,4 @@
-.PHONY: help dev build test lint docker-up docker-down docker-logs migrate-up migrate-down clean deps test-e2e test-e2e-docker test-e2e-short test-all test-repository test-integration test-integration-keycloak test-e2e-frontend test-e2e-frontend-headed playwright-install
+.PHONY: help dev build test lint docker-up docker-down docker-logs clean deps test-e2e test-e2e-docker test-e2e-short test-all test-repository test-integration test-integration-keycloak test-e2e-frontend test-e2e-frontend-headed playwright-install
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -7,9 +7,8 @@ dev: ## Run in development mode
 	go run ./cmd/api
 
 build: ## Build binaries
-	go build -o bin/api cmd/api/main.go
-	go build -o bin/worker cmd/worker/main.go
-	go build -o bin/migrator cmd/migrator/main.go
+	go build -o bin/api ./cmd/api
+	go build -o bin/worker ./cmd/worker
 
 test: ## Run all tests
 	go test -v -race -coverprofile=coverage.out ./...
@@ -99,12 +98,6 @@ docker-down: ## Stop Docker services
 
 docker-logs: ## Show Docker logs
 	docker-compose logs -f
-
-migrate-up: ## Run migrations up
-	go run cmd/migrator/main.go up
-
-migrate-down: ## Run migrations down
-	go run cmd/migrator/main.go down
 
 clean: ## Clean build artifacts
 	rm -rf bin/

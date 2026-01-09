@@ -94,13 +94,7 @@ docker-compose ps
 export FLOWRA_LOG_LEVEL=debug
 ```
 
-### 5. Run Database Migrations
-
-```bash
-make migrate-up
-```
-
-### 6. Start the Application
+### 5. Start the Application
 
 ```bash
 # Development mode
@@ -110,7 +104,7 @@ make dev
 go run cmd/api/main.go
 ```
 
-### 7. Verify Setup
+### 6. Verify Setup
 
 ```bash
 # Health check
@@ -142,8 +136,6 @@ make lint          # Run linter and format code
 make docker-up     # Start Docker services
 make docker-down   # Stop Docker services
 make docker-logs   # View Docker logs
-make migrate-up    # Run migrations up
-make migrate-down  # Run migrations down
 make clean         # Clean build artifacts
 ```
 
@@ -214,13 +206,12 @@ git push origin feature/my-feature
 
 ```
 .
-├── cmd/                    # Application entry points
+├── cmd/                   # Application entry points
 │   ├── api/               # HTTP API server
 │   │   ├── main.go        # Entry point
 │   │   ├── container.go   # Dependency injection
 │   │   └── routes.go      # Route registration
-│   ├── worker/            # Background worker
-│   └── migrator/          # Database migrations
+│   └── worker/            # Background worker
 │
 ├── internal/              # Private application code
 │   ├── application/       # Application services (use cases)
@@ -258,7 +249,6 @@ git push origin feature/my-feature
 │   ├── integration/     # Integration tests
 │   └── testutil/        # Test utilities
 │
-├── migrations/           # Database migrations
 ├── configs/             # Configuration files
 ├── docs/                # Documentation
 └── docker-compose.yml   # Local development services
@@ -513,18 +503,56 @@ GET session:user:123
 PUBLISH events.chat.message '{"type":"message_posted"}'
 ```
 
-### Migrations
+### Database Schema & Indexes
 
-```bash
-# Run migrations up
-make migrate-up
+**MongoDB indexes are automatically managed in Go code.**
 
-# Roll back migrations
-make migrate-down
+#### Index Management
 
-# Create new migration
-# Add file to migrations/ with incremental number
+Indexes are defined in `internal/infrastructure/mongodb/indexes.go` and created automatically:
+
+- **On API startup**: Indexes are created when the API server starts (in `cmd/api/container.go`)
+- **In tests**: Indexes are created during test database setup
+
+#### Index Functions
+
+```go
+// Create all indexes for all collections
+mongodb.CreateAllIndexes(ctx, db)
+
+// Alias for semantic clarity
+mongodb.EnsureIndexes(ctx, db)
+
+// Get indexes for specific collections
+mongodb.GetEventIndexes()
+mongodb.GetUserIndexes()
+mongodb.GetChatReadModelIndexes()
+mongodb.GetTaskReadModelIndexes()
+mongodb.GetMessageIndexes()
+mongodb.GetNotificationIndexes()
+mongodb.GetWorkspaceIndexes()
+mongodb.GetMemberIndexes()
 ```
+
+#### Adding New Indexes
+
+To add a new index:
+
+1. Add the index definition to the appropriate function in `indexes.go`
+2. Restart the API server - indexes are created idempotently
+3. No migration files needed
+
+#### Collections
+
+Main MongoDB collections:
+- `events` - Event Store (event sourcing)
+- `users` - User read model
+- `workspaces` - Workspace read model
+- `workspace_members` - Workspace membership
+- `chat_read_model` - Chat read model
+- `task_read_model` - Task read model
+- `messages` - Message read model
+- `notifications` - Notification read model
 
 ---
 
