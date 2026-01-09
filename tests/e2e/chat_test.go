@@ -31,36 +31,7 @@ func TestChat_Create_Success(t *testing.T) {
 
 	AssertStatus(t, resp, http.StatusCreated)
 
-	var result struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID           string `json:"id"`
-			WorkspaceID  string `json:"workspace_id"`
-			Name         string `json:"name"`
-			Type         string `json:"type"`
-			IsPublic     bool   `json:"is_public"`
-			CreatedBy    string `json:"created_by"`
-			Participants []struct {
-				UserID string `json:"user_id"`
-				Role   string `json:"role"`
-			} `json:"participants"`
-		} `json:"data"`
-	}
-	result = ParseResponse[struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID           string `json:"id"`
-			WorkspaceID  string `json:"workspace_id"`
-			Name         string `json:"name"`
-			Type         string `json:"type"`
-			IsPublic     bool   `json:"is_public"`
-			CreatedBy    string `json:"created_by"`
-			Participants []struct {
-				UserID string `json:"user_id"`
-				Role   string `json:"role"`
-			} `json:"participants"`
-		} `json:"data"`
-	}](t, resp)
+	result := ParseResponse[ChatResponse](t, resp)
 
 	assert.True(t, result.Success)
 	assert.NotEmpty(t, result.Data.ID)
@@ -87,20 +58,7 @@ func TestChat_Create_TaskChat(t *testing.T) {
 
 	AssertStatus(t, resp, http.StatusCreated)
 
-	var result struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID   string `json:"id"`
-			Type string `json:"type"`
-		} `json:"data"`
-	}
-	result = ParseResponse[struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID   string `json:"id"`
-			Type string `json:"type"`
-		} `json:"data"`
-	}](t, resp)
+	result := ParseResponse[ChatResponse](t, resp)
 
 	assert.True(t, result.Success)
 	assert.Equal(t, "task", result.Data.Type)
@@ -160,20 +118,7 @@ func TestChat_Get_Success(t *testing.T) {
 
 	AssertStatus(t, resp, http.StatusOK)
 
-	var result struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID   string `json:"id"`
-			Type string `json:"type"`
-		} `json:"data"`
-	}
-	result = ParseResponse[struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID   string `json:"id"`
-			Type string `json:"type"`
-		} `json:"data"`
-	}](t, resp)
+	result := ParseResponse[ChatResponse](t, resp)
 
 	assert.True(t, result.Success)
 	assert.Equal(t, c.ID().String(), result.Data.ID)
@@ -216,28 +161,7 @@ func TestChat_List_Success(t *testing.T) {
 
 	AssertStatus(t, resp, http.StatusOK)
 
-	var result struct {
-		Success bool `json:"success"`
-		Data    struct {
-			Chats []struct {
-				ID   string `json:"id"`
-				Type string `json:"type"`
-			} `json:"chats"`
-			Total   int  `json:"total"`
-			HasMore bool `json:"has_more"`
-		} `json:"data"`
-	}
-	result = ParseResponse[struct {
-		Success bool `json:"success"`
-		Data    struct {
-			Chats []struct {
-				ID   string `json:"id"`
-				Type string `json:"type"`
-			} `json:"chats"`
-			Total   int  `json:"total"`
-			HasMore bool `json:"has_more"`
-		} `json:"data"`
-	}](t, resp)
+	result := ParseResponse[ChatListResponse](t, resp)
 
 	assert.True(t, result.Success)
 	assert.GreaterOrEqual(t, len(result.Data.Chats), 3)
@@ -264,20 +188,7 @@ func TestChat_Update_Success(t *testing.T) {
 
 	AssertStatus(t, resp, http.StatusOK)
 
-	var result struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID   string `json:"id"`
-			Name string `json:"name"`
-		} `json:"data"`
-	}
-	result = ParseResponse[struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID   string `json:"id"`
-			Name string `json:"name"`
-		} `json:"data"`
-	}](t, resp)
+	result := ParseResponse[ChatResponse](t, resp)
 
 	assert.True(t, result.Success)
 	assert.Equal(t, "Updated Name", result.Data.Name)
@@ -325,26 +236,7 @@ func TestChat_AddParticipant_Success(t *testing.T) {
 
 	AssertStatus(t, resp, http.StatusCreated)
 
-	var result struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID           string `json:"id"`
-			Participants []struct {
-				UserID string `json:"user_id"`
-				Role   string `json:"role"`
-			} `json:"participants"`
-		} `json:"data"`
-	}
-	result = ParseResponse[struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID           string `json:"id"`
-			Participants []struct {
-				UserID string `json:"user_id"`
-				Role   string `json:"role"`
-			} `json:"participants"`
-		} `json:"data"`
-	}](t, resp)
+	result := ParseResponse[ChatResponse](t, resp)
 
 	assert.True(t, result.Success)
 	assert.Equal(t, c.ID().String(), result.Data.ID)
@@ -407,18 +299,7 @@ func TestChat_CompleteFlow(t *testing.T) {
 	})
 	AssertStatus(t, createResp, http.StatusCreated)
 
-	var createResult struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID string `json:"id"`
-		} `json:"data"`
-	}
-	createResult = ParseResponse[struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID string `json:"id"`
-		} `json:"data"`
-	}](t, createResp)
+	createResult := ParseResponse[ChatResponse](t, createResp)
 
 	chatID := createResult.Data.ID
 	require.NotEmpty(t, chatID)
@@ -445,18 +326,7 @@ func TestChat_CompleteFlow(t *testing.T) {
 	getResp := ownerClient.Get("/workspaces/" + ws.ID().String() + "/chats/" + chatID)
 	AssertStatus(t, getResp, http.StatusOK)
 
-	var getResult struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID string `json:"id"`
-		} `json:"data"`
-	}
-	getResult = ParseResponse[struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID string `json:"id"`
-		} `json:"data"`
-	}](t, getResp)
+	getResult := ParseResponse[ChatResponse](t, getResp)
 
 	assert.Equal(t, chatID, getResult.Data.ID)
 

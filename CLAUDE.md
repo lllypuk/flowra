@@ -65,7 +65,7 @@ cmd/                           # Application entry points
 ├── api/                      # HTTP API server (main.go, container.go, routes.go)
 └── worker/                   # Background workers (user sync)
 
-internal/                     # Internal application code (295 files)
+internal/                     # Internal application code (296 files)
 ├── application/             # Use cases (139 files, CQRS)
 │   ├── appcore/            # Shared interfaces and utilities
 │   ├── auth/               # Authentication use cases
@@ -100,11 +100,11 @@ internal/                     # Internal application code (295 files)
 │   ├── http/               # REST API handlers
 │   └── websocket/          # WebSocket handler
 ├── middleware/              # HTTP middleware (14 files)
-├── service/                 # Business services (12 files)
+├── service/                 # Business services (13 files)
 ├── worker/                  # Background workers
 └── config/                  # Configuration loading
 
-web/                          # Frontend resources (54 files)
+web/                          # Frontend resources (53 files)
 ├── templates/               # HTML templates
 │   ├── layout/             # Base layout (base, navbar, footer)
 │   ├── components/         # Reusable HTMX components
@@ -118,7 +118,7 @@ web/                          # Frontend resources (54 files)
 ├── static/                  # CSS, JS assets
 └── embed.go                 # Go embed for static files
 
-tests/                        # Test suites (35 files)
+tests/                        # Test suites (33 files)
 ├── e2e/                     # End-to-end tests
 ├── integration/             # Integration tests
 ├── testutil/                # Test utilities
@@ -178,7 +178,7 @@ docs/                         # Documentation (9+ files)
 | Infrastructure | Complete | 50 | 85%+ |
 | Handlers | Complete | 28 | 80%+ |
 | Middleware | Complete | 14 | 80%+ |
-| Services | Complete | 12 | 80%+ |
+| Services | Complete | 13 | 80%+ |
 | Frontend | In Progress | ~54 | - |
 
 ### Key Implementation Details
