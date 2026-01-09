@@ -35,13 +35,13 @@ var (
 
 // SendMessageRequest represents the request to send a message.
 type SendMessageRequest struct {
-	Content   string     `json:"content"`
-	ReplyToID *uuid.UUID `json:"reply_to_id"`
+	Content   string     `json:"content"     form:"content"`
+	ReplyToID *uuid.UUID `json:"reply_to_id" form:"reply_to_id"`
 }
 
 // EditMessageRequest represents the request to edit a message.
 type EditMessageRequest struct {
-	Content string `json:"content"`
+	Content string `json:"content" form:"content"`
 }
 
 // MessageResponse represents a message in API responses.

@@ -409,3 +409,31 @@ This includes:
 - Follow standard Go documentation conventions
 - Prefer "is returned when..." over "returns when..." for error comments
 - Prefer "represents..." or "is a..." for type comments
+
+## Output Guidelines
+
+**DO NOT create summary or documentation markdown files after completing work unless explicitly requested.**
+
+This includes:
+- ❌ Creating `docs/fixes/*.md` files after bug fixes
+- ❌ Creating `docs/changes/*.md` files after feature implementation
+- ❌ Creating summary documents in any location
+- ❌ Any unsolicited documentation files
+
+**Why:**
+- Clutters the repository with redundant documentation
+- Documentation should be intentional and requested
+- Code changes and commit messages are sufficient record
+- User may have specific documentation standards
+
+**Exceptions:**
+- ✅ User explicitly requests documentation: "document this fix in a markdown file"
+- ✅ Updating existing documentation files (README, ARCHITECTURE.md, etc.)
+- ✅ Adding inline code comments and docstrings
+- ✅ Updating CHANGELOG if one exists and is actively maintained
+
+**Instead:**
+- Provide summary in chat response
+- Update existing documentation if relevant
+- Add/improve code comments
+- Let the user decide if permanent documentation is needed

@@ -9,10 +9,12 @@ import (
 	"time"
 
 	chatapp "github.com/lllypuk/flowra/internal/application/chat"
+	messageapp "github.com/lllypuk/flowra/internal/application/message"
 	"github.com/lllypuk/flowra/internal/application/notification"
 	taskapp "github.com/lllypuk/flowra/internal/application/task"
 	wsapp "github.com/lllypuk/flowra/internal/application/workspace"
 	"github.com/lllypuk/flowra/internal/config"
+	"github.com/lllypuk/flowra/internal/domain/message"
 	notificationdomain "github.com/lllypuk/flowra/internal/domain/notification"
 	taskdomain "github.com/lllypuk/flowra/internal/domain/task"
 	httphandler "github.com/lllypuk/flowra/internal/handler/http"
@@ -44,6 +46,12 @@ const (
 	keycloakTokenBuffer    = 30 * time.Second
 )
 
+// WebSocket client configuration constants.
+const (
+	defaultWSWriteWait      = 10 * time.Second
+	defaultWSMaxMessageSize = 65536
+)
+
 // Container holds all application dependencies and manages their lifecycle.
 // It implements httpserver.HealthChecker for unified health endpoint support.
 type Container struct {
@@ -58,6 +66,7 @@ type Container struct {
 	EventStore   *eventstore.MongoEventStore
 	EventBus     *eventbus.RedisEventBus
 	Hub          *websocket.Hub
+	Broadcaster  *websocket.Broadcaster
 	NotifHandler *eventbus.NotificationHandler
 	LogHandler   *eventbus.LoggingHandler
 
@@ -73,10 +82,21 @@ type Container struct {
 	// Use Cases
 	CreateNotificationUC *notification.CreateNotificationUseCase
 
+	// Message Use Cases
+	SendMessageUC    *messageapp.SendMessageUseCase
+	ListMessagesUC   *messageapp.ListMessagesUseCase
+	EditMessageUC    *messageapp.EditMessageUseCase
+	DeleteMessageUC  *messageapp.DeleteMessageUseCase
+	GetMessageUC     *messageapp.GetMessageUseCase
+	AddReactionUC    *messageapp.AddReactionUseCase
+	RemoveReactionUC *messageapp.RemoveReactionUseCase
+	AddAttachmentUC  *messageapp.AddAttachmentUseCase
+
 	// Services (for external access if needed)
 	WorkspaceService *service.WorkspaceService
 	MemberService    *service.MemberService
 	ChatService      *service.ChatService
+	MessageService   *service.MessageService
 
 	// HTTP Handlers
 	AuthHandler         *httphandler.AuthHandler
@@ -287,6 +307,11 @@ func (c *Container) setupInfrastructure() error {
 	// Setup WebSocket Hub
 	c.setupHub()
 
+	// Setup WebSocket Broadcaster
+	if err := c.setupBroadcaster(ctx); err != nil {
+		return fmt.Errorf("broadcaster: %w", err)
+	}
+
 	return nil
 }
 
@@ -376,6 +401,23 @@ func (c *Container) setupHub() {
 	c.Logger.Debug("websocket hub initialized")
 }
 
+// setupBroadcaster initializes and starts the WebSocket broadcaster.
+func (c *Container) setupBroadcaster(ctx context.Context) error {
+	c.Broadcaster = websocket.NewBroadcaster(
+		c.Hub,
+		c.EventBus,
+		websocket.WithBroadcasterLogger(c.Logger),
+		websocket.WithEventTypes(websocket.DefaultEventTypes()),
+	)
+
+	if err := c.Broadcaster.Start(ctx); err != nil {
+		return fmt.Errorf("failed to start broadcaster: %w", err)
+	}
+
+	c.Logger.InfoContext(ctx, "websocket broadcaster started")
+	return nil
+}
+
 // setupRepositories initializes all repository implementations.
 func (c *Container) setupRepositories() {
 	db := c.MongoDB.Database(c.MongoDBName)
@@ -436,7 +478,64 @@ func (c *Container) setupUseCases() {
 		c.NotificationRepo,
 	)
 
+	// Message use cases
+	c.setupMessageUseCases()
+
 	c.Logger.Debug("use cases initialized")
+}
+
+// setupMessageUseCases initializes message-related use cases.
+func (c *Container) setupMessageUseCases() {
+	// SendMessage use case
+	c.SendMessageUC = messageapp.NewSendMessageUseCase(
+		c.MessageRepo,
+		c.ChatQueryRepo,
+		c.EventBus,
+		nil, // tag processor - TODO: add when available
+		nil, // tag executor - TODO: add when available
+	)
+
+	// ListMessages use case
+	c.ListMessagesUC = messageapp.NewListMessagesUseCase(
+		c.MessageRepo,
+	)
+
+	// EditMessage use case
+	c.EditMessageUC = messageapp.NewEditMessageUseCase(
+		c.MessageRepo,
+		c.EventBus,
+	)
+
+	// DeleteMessage use case
+	c.DeleteMessageUC = messageapp.NewDeleteMessageUseCase(
+		c.MessageRepo,
+		c.EventBus,
+	)
+
+	// GetMessage use case
+	c.GetMessageUC = messageapp.NewGetMessageUseCase(
+		c.MessageRepo,
+	)
+
+	// AddReaction use case
+	c.AddReactionUC = messageapp.NewAddReactionUseCase(
+		c.MessageRepo,
+		c.EventBus,
+	)
+
+	// RemoveReaction use case
+	c.RemoveReactionUC = messageapp.NewRemoveReactionUseCase(
+		c.MessageRepo,
+		c.EventBus,
+	)
+
+	// AddAttachment use case
+	c.AddAttachmentUC = messageapp.NewAddAttachmentUseCase(
+		c.MessageRepo,
+		c.EventBus,
+	)
+
+	c.Logger.Debug("message use cases initialized")
 }
 
 // setupEventHandlers initializes and registers event handlers with the event bus.
@@ -526,20 +625,30 @@ func (c *Container) setupHTTPHandlers() {
 		c.Logger.Debug("OAuth client injected into template handler")
 	}
 
-	// === 7. WebSocket Handler (unchanged) ===
+	// === 7. Token Validator and User Resolver ===
+	// Must be initialized before WebSocket handler
+	c.setupTokenValidator()
+	c.setupUserResolver()
+
+	// === 8. WebSocket Handler ===
 	c.WSHandler = wshandler.NewHandler(
 		c.Hub,
 		wshandler.WithHandlerLogger(c.Logger),
+		wshandler.WithTokenValidator(c.TokenValidator),
 		wshandler.WithHandlerConfig(wshandler.HandlerConfig{
 			ReadBufferSize:  c.Config.WebSocket.ReadBufferSize,
 			WriteBufferSize: c.Config.WebSocket.WriteBufferSize,
 			Logger:          c.Logger,
+			ClientConfig: websocket.ClientConfig{
+				ReadBufferSize:  c.Config.WebSocket.ReadBufferSize,
+				WriteBufferSize: c.Config.WebSocket.WriteBufferSize,
+				PingInterval:    c.Config.WebSocket.PingInterval,
+				PongWait:        c.Config.WebSocket.PongTimeout,
+				WriteWait:       defaultWSWriteWait,
+				MaxMessageSize:  defaultWSMaxMessageSize,
+			},
 		}),
 	)
-
-	// === 8. Token Validator and User Resolver ===
-	c.setupTokenValidator()
-	c.setupUserResolver()
 
 	// Configure page auth middleware with token validator and user resolver
 	httphandler.SetPageAuthConfig(&httphandler.PageAuthConfig{
@@ -560,7 +669,21 @@ func (c *Container) setupHTTPHandlers() {
 	// === 12. Task Detail Template Handler ===
 	c.setupTaskDetailTemplateHandler()
 
-	// Note: MessageHandler, TaskHandler, NotificationHandler, UserHandler
+	// === 13. Message Service and Handler ===
+	c.MessageService = service.NewMessageService(
+		service.WithSendMessageUseCase(c.SendMessageUC),
+		service.WithListMessagesUseCase(c.ListMessagesUC),
+		service.WithEditMessageUseCase(c.EditMessageUC),
+		service.WithDeleteMessageUseCase(c.DeleteMessageUC),
+		service.WithGetMessageUseCase(c.GetMessageUC),
+		service.WithAddReactionUseCase(c.AddReactionUC),
+		service.WithRemoveReactionUseCase(c.RemoveReactionUC),
+		service.WithAddAttachmentUseCase(c.AddAttachmentUC),
+	)
+	c.MessageHandler = httphandler.NewMessageHandler(c.MessageService)
+	c.Logger.Debug("message service and handler initialized (real)")
+
+	// Note: TaskHandler, NotificationHandler, UserHandler
 	// are left nil - routes.go will create placeholder endpoints for them.
 	// This is intentional until their use cases are fully implemented.
 
@@ -688,15 +811,49 @@ func (c *Container) setupChatTemplateHandler() {
 	// Create chat template service adapter
 	chatService := c.createChatTemplateService()
 
-	// For now, message service is nil - will be implemented with message use cases
+	// Create message template service adapter
+	messageService := c.createMessageTemplateService()
+
 	c.ChatTemplateHandler = httphandler.NewChatTemplateHandler(
 		c.TemplateRenderer,
 		c.Logger,
 		chatService,
-		nil, // MessageTemplateService - TODO: implement when message use cases are ready
+		messageService,
 	)
 
 	c.Logger.Debug("chat template handler initialized")
+}
+
+// createMessageTemplateService creates a service implementing MessageTemplateService.
+func (c *Container) createMessageTemplateService() httphandler.MessageTemplateService {
+	return &messageTemplateServiceAdapter{
+		listMessagesUC: c.ListMessagesUC,
+		getMessageUC:   c.GetMessageUC,
+	}
+}
+
+// messageTemplateServiceAdapter adapts message use cases to MessageTemplateService interface.
+type messageTemplateServiceAdapter struct {
+	listMessagesUC *messageapp.ListMessagesUseCase
+	getMessageUC   *messageapp.GetMessageUseCase
+}
+
+func (a *messageTemplateServiceAdapter) ListMessages(
+	ctx context.Context,
+	query messageapp.ListMessagesQuery,
+) (messageapp.ListResult, error) {
+	return a.listMessagesUC.Execute(ctx, query)
+}
+
+func (a *messageTemplateServiceAdapter) GetMessage(ctx context.Context, messageID uuid.UUID) (*message.Message, error) {
+	query := messageapp.GetMessageQuery{
+		MessageID: messageID,
+	}
+	result, err := a.getMessageUC.Execute(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	return result.Value, nil
 }
 
 // createChatTemplateService creates a service implementing ChatTemplateService.

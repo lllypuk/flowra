@@ -4,7 +4,7 @@ help: ## Show this help
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 dev: ## Run in development mode
-	go run cmd/api/main.go
+	go run ./cmd/api
 
 build: ## Build binaries
 	go build -o bin/api cmd/api/main.go

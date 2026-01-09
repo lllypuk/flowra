@@ -8,14 +8,16 @@ import (
 	"sync"
 
 	"github.com/lllypuk/flowra/internal/domain/event"
+	messagedomain "github.com/lllypuk/flowra/internal/domain/message"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/infrastructure/eventbus"
 )
 
 // EventBus defines the interface for subscribing to domain events.
 // Declared on the consumer side per project guidelines.
 type EventBus interface {
 	// Subscribe registers an event handler for a specific event type.
-	Subscribe(eventType string, handler func(ctx context.Context, event event.DomainEvent) error) error
+	Subscribe(eventType string, handler eventbus.EventHandler) error
 }
 
 // OutboundMessage represents a message to be sent over WebSocket.
@@ -61,8 +63,8 @@ func WithEventTypes(eventTypes []string) BroadcasterOption {
 // DefaultEventTypes returns the default event types to broadcast.
 func DefaultEventTypes() []string {
 	return []string{
-		"message.sent",
-		"message.updated",
+		"message.created",
+		"message.edited",
 		"message.deleted",
 		"chat.created",
 		"chat.updated",
@@ -106,9 +108,10 @@ func (b *Broadcaster) Start(ctx context.Context) error {
 
 	for _, eventType := range b.eventTypes {
 		et := eventType // capture for closure
-		if err := b.eventBus.Subscribe(et, func(handlerCtx context.Context, evt event.DomainEvent) error {
+		handler := eventbus.EventHandler(func(handlerCtx context.Context, evt event.DomainEvent) error {
 			return b.handleEvent(handlerCtx, evt)
-		}); err != nil {
+		})
+		if err := b.eventBus.Subscribe(et, handler); err != nil {
 			b.logger.ErrorContext(ctx, "failed to subscribe to event",
 				slog.String("event_type", et),
 				slog.String("error", err.Error()),
@@ -236,9 +239,9 @@ type PayloadProvider interface {
 // mapEventTypeToWSType maps domain event types to WebSocket message types.
 func (b *Broadcaster) mapEventTypeToWSType(eventType string) string {
 	mapping := map[string]string{
-		"message.sent":         "message.new",
-		"message.updated":      "message.updated",
-		"message.deleted":      "message.deleted",
+		"message.created":      "chat.message.posted",
+		"message.edited":       "chat.message.edited",
+		"message.deleted":      "chat.message.deleted",
 		"chat.created":         "chat.created",
 		"chat.updated":         "chat.updated",
 		"chat.deleted":         "chat.deleted",
@@ -268,8 +271,8 @@ func (b *Broadcaster) isUserSpecificEvent(eventType string) bool {
 // isChatEvent returns true if the event should be broadcast to a chat room.
 func (b *Broadcaster) isChatEvent(eventType string) bool {
 	chatEvents := map[string]bool{
-		"message.sent":        true,
-		"message.updated":     true,
+		"message.created":     true,
+		"message.edited":      true,
 		"message.deleted":     true,
 		"chat.created":        true,
 		"chat.updated":        true,
@@ -286,8 +289,15 @@ func (b *Broadcaster) isChatEvent(eventType string) bool {
 
 // extractChatID extracts the chat ID from an event.
 func (b *Broadcaster) extractChatID(evt event.DomainEvent) uuid.UUID {
-	// For chat and message events, the aggregate ID is typically the chat ID
-	if evt.AggregateType() == "chat" || evt.AggregateType() == "message" {
+	// For message events, extract chat_id from the Created event
+	if evt.AggregateType() == "Message" && evt.EventType() == "message.created" {
+		if createdEvt, ok := evt.(*messagedomain.Created); ok {
+			return createdEvt.ChatID
+		}
+	}
+
+	// For chat events, the aggregate ID is the chat ID
+	if evt.AggregateType() == "chat" {
 		id, err := uuid.ParseUUID(evt.AggregateID())
 		if err == nil {
 			return id

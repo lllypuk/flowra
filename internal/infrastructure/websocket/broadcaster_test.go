@@ -9,6 +9,7 @@ import (
 
 	"github.com/lllypuk/flowra/internal/domain/event"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/infrastructure/eventbus"
 	ws "github.com/lllypuk/flowra/internal/infrastructure/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,19 +17,19 @@ import (
 
 // mockEventBus is a mock implementation of EventBus for testing.
 type mockEventBus struct {
-	handlers map[string][]func(ctx context.Context, event event.DomainEvent) error
+	handlers map[string][]eventbus.EventHandler
 	mu       sync.RWMutex
 }
 
 func newMockEventBus() *mockEventBus {
 	return &mockEventBus{
-		handlers: make(map[string][]func(ctx context.Context, event event.DomainEvent) error),
+		handlers: make(map[string][]eventbus.EventHandler),
 	}
 }
 
 func (m *mockEventBus) Subscribe(
 	eventType string,
-	handler func(ctx context.Context, event event.DomainEvent) error,
+	handler eventbus.EventHandler,
 ) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -131,8 +132,8 @@ func TestDefaultEventTypes(t *testing.T) {
 	eventTypes := ws.DefaultEventTypes()
 
 	expectedTypes := []string{
-		"message.sent",
-		"message.updated",
+		"message.created",
+		"message.edited",
 		"message.deleted",
 		"chat.created",
 		"chat.updated",
@@ -206,7 +207,7 @@ func TestBroadcaster_Start(t *testing.T) {
 }
 
 func TestBroadcaster_HandleEvent(t *testing.T) {
-	t.Run("broadcasts message.sent event to chat", func(t *testing.T) {
+	t.Run("broadcasts message.created event to chat", func(t *testing.T) {
 		hub := ws.NewHub()
 		ctx := t.Context()
 
@@ -228,7 +229,7 @@ func TestBroadcaster_HandleEvent(t *testing.T) {
 		time.Sleep(20 * time.Millisecond) // Wait for join to complete
 
 		// Publish event
-		evt := newTestDomainEvent("message.sent", chatID.String(), "chat")
+		evt := newTestDomainEvent("message.created", chatID.String(), "chat")
 		err = eventBus.Publish(ctx, evt)
 		require.NoError(t, err)
 
@@ -240,7 +241,7 @@ func TestBroadcaster_HandleEvent(t *testing.T) {
 		case msg := <-receiveChan:
 			var wsMsg map[string]any
 			require.NoError(t, json.Unmarshal(msg, &wsMsg))
-			assert.Equal(t, "message.new", wsMsg["type"])
+			assert.Equal(t, "chat.message.posted", wsMsg["type"])
 		case <-time.After(100 * time.Millisecond):
 			t.Fatal("expected message but did not receive")
 		}
@@ -304,7 +305,7 @@ func TestBroadcaster_HandleEvent(t *testing.T) {
 
 		eventBus := newMockEventBus()
 		broadcaster := ws.NewBroadcaster(hub, eventBus,
-			ws.WithEventTypes([]string{"message.sent"}), // Only subscribe to message.sent
+			ws.WithEventTypes([]string{"message.created"}), // Only subscribe to message.created
 		)
 
 		err := broadcaster.Start(ctx)
@@ -319,7 +320,7 @@ func TestBroadcaster_HandleEvent(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 
 		// Publish event that we're not subscribed to
-		evt := newTestDomainEvent("chat.updated", chatID.String(), "chat")
+		evt := newTestDomainEvent("task.updated", chatID.String(), "chat")
 		err = eventBus.Publish(ctx, evt)
 		require.NoError(t, err)
 
