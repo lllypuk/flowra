@@ -30,11 +30,10 @@ type MongoContainer struct {
 	URI       string
 }
 
-// SetupMongoContainer running MongoDB 6 in testcontainer.
-// This function creates a New container for each call which is slow.
-//
-// Deprecated: Use GetSharedMongoContainer for better performance.
-func SetupMongoContainer(ctx context.Context, t *testing.T) *MongoContainer {
+// setupMongoContainer starts MongoDB 6 in testcontainer.
+// This is an internal function - use GetSharedMongoContainer for most tests,
+// or SetupTestMongoDBIsolated when full container isolation is needed.
+func setupMongoContainer(ctx context.Context, t *testing.T) *MongoContainer {
 	t.Helper()
 
 	req := testcontainers.ContainerRequest{
@@ -111,7 +110,7 @@ func SetupTestMongoDBIsolated(t *testing.T) *mongo.Database {
 	defer cancel()
 
 	// Running MongoDB in container
-	mongoContainer := SetupMongoContainer(ctx, t)
+	mongoContainer := setupMongoContainer(ctx, t)
 
 	// Connect to MongoDB
 	client, err := mongo.Connect(options.Client().ApplyURI(mongoContainer.URI))
@@ -160,7 +159,7 @@ func SetupTestMongoDBWithClientIsolated(t *testing.T) (*mongo.Client, *mongo.Dat
 	defer cancel()
 
 	// Running MongoDB in container
-	mongoContainer := SetupMongoContainer(ctx, t)
+	mongoContainer := setupMongoContainer(ctx, t)
 
 	// Connect to MongoDB
 	client, err := mongo.Connect(options.Client().ApplyURI(mongoContainer.URI))

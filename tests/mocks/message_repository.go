@@ -11,20 +11,22 @@ import (
 
 var ErrMessageNotFound = errors.New("message not found")
 
-type MessageRepository struct {
+// MockMessageRepository is a mock implementation of message repository for testing.
+type MockMessageRepository struct {
 	mu       sync.RWMutex
 	messages map[string]*message.Message
 	calls    map[string]int
 }
 
-func NewMessageRepository() *MessageRepository {
-	return &MessageRepository{
+// NewMockMessageRepository creates a new MockMessageRepository.
+func NewMockMessageRepository() *MockMessageRepository {
+	return &MockMessageRepository{
 		messages: make(map[string]*message.Message),
 		calls:    make(map[string]int),
 	}
 }
 
-func (r *MessageRepository) Load(ctx context.Context, id domainUUID.UUID) (*message.Message, error) {
+func (r *MockMessageRepository) Load(ctx context.Context, id domainUUID.UUID) (*message.Message, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -38,7 +40,7 @@ func (r *MessageRepository) Load(ctx context.Context, id domainUUID.UUID) (*mess
 	return m, nil
 }
 
-func (r *MessageRepository) Save(ctx context.Context, m *message.Message) error {
+func (r *MockMessageRepository) Save(ctx context.Context, m *message.Message) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -48,19 +50,19 @@ func (r *MessageRepository) Save(ctx context.Context, m *message.Message) error 
 	return nil
 }
 
-func (r *MessageRepository) SaveCallCount() int {
+func (r *MockMessageRepository) SaveCallCount() int {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.calls["Save"]
 }
 
-func (r *MessageRepository) LoadCallCount() int {
+func (r *MockMessageRepository) LoadCallCount() int {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.calls["Load"]
 }
 
-func (r *MessageRepository) GetAll() []*message.Message {
+func (r *MockMessageRepository) GetAll() []*message.Message {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -71,7 +73,7 @@ func (r *MessageRepository) GetAll() []*message.Message {
 	return messages
 }
 
-func (r *MessageRepository) Reset() {
+func (r *MockMessageRepository) Reset() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 

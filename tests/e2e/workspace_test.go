@@ -26,26 +26,7 @@ func TestWorkspace_Create_Success(t *testing.T) {
 
 	AssertStatus(t, resp, http.StatusCreated)
 
-	var result struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID          string `json:"id"`
-			Name        string `json:"name"`
-			Description string `json:"description"`
-			OwnerID     string `json:"owner_id"`
-			CreatedAt   string `json:"created_at"`
-		} `json:"data"`
-	}
-	result = ParseResponse[struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID          string `json:"id"`
-			Name        string `json:"name"`
-			Description string `json:"description"`
-			OwnerID     string `json:"owner_id"`
-			CreatedAt   string `json:"created_at"`
-		} `json:"data"`
-	}](t, resp)
+	result := ParseResponse[WorkspaceResponse](t, resp)
 
 	assert.True(t, result.Success)
 	assert.NotEmpty(t, result.Data.ID)
@@ -69,20 +50,7 @@ func TestWorkspace_Create_ValidationError(t *testing.T) {
 
 		AssertStatus(t, resp, http.StatusBadRequest)
 
-		var result struct {
-			Success bool `json:"success"`
-			Error   struct {
-				Code    string `json:"code"`
-				Message string `json:"message"`
-			} `json:"error"`
-		}
-		result = ParseResponse[struct {
-			Success bool `json:"success"`
-			Error   struct {
-				Code    string `json:"code"`
-				Message string `json:"message"`
-			} `json:"error"`
-		}](t, resp)
+		result := ParseResponse[ErrorResponse](t, resp)
 
 		assert.False(t, result.Success)
 		assert.Equal(t, "VALIDATION_ERROR", result.Error.Code)
@@ -130,24 +98,7 @@ func TestWorkspace_Get_Success(t *testing.T) {
 
 	AssertStatus(t, resp, http.StatusOK)
 
-	var result struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID          string `json:"id"`
-			Name        string `json:"name"`
-			Description string `json:"description"`
-			OwnerID     string `json:"owner_id"`
-		} `json:"data"`
-	}
-	result = ParseResponse[struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID          string `json:"id"`
-			Name        string `json:"name"`
-			Description string `json:"description"`
-			OwnerID     string `json:"owner_id"`
-		} `json:"data"`
-	}](t, resp)
+	result := ParseResponse[WorkspaceResponse](t, resp)
 
 	assert.True(t, result.Success)
 	assert.Equal(t, ws.ID().String(), result.Data.ID)
@@ -189,32 +140,7 @@ func TestWorkspace_List_Success(t *testing.T) {
 
 	AssertStatus(t, resp, http.StatusOK)
 
-	var result struct {
-		Success bool `json:"success"`
-		Data    struct {
-			Workspaces []struct {
-				ID          string `json:"id"`
-				Name        string `json:"name"`
-				Description string `json:"description"`
-			} `json:"workspaces"`
-			Total  int `json:"total"`
-			Offset int `json:"offset"`
-			Limit  int `json:"limit"`
-		} `json:"data"`
-	}
-	result = ParseResponse[struct {
-		Success bool `json:"success"`
-		Data    struct {
-			Workspaces []struct {
-				ID          string `json:"id"`
-				Name        string `json:"name"`
-				Description string `json:"description"`
-			} `json:"workspaces"`
-			Total  int `json:"total"`
-			Offset int `json:"offset"`
-			Limit  int `json:"limit"`
-		} `json:"data"`
-	}](t, resp)
+	result := ParseResponse[WorkspaceListResponse](t, resp)
 
 	assert.True(t, result.Success)
 	assert.GreaterOrEqual(t, len(result.Data.Workspaces), 3)
@@ -236,22 +162,7 @@ func TestWorkspace_Update_Success(t *testing.T) {
 
 	AssertStatus(t, resp, http.StatusOK)
 
-	var result struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID          string `json:"id"`
-			Name        string `json:"name"`
-			Description string `json:"description"`
-		} `json:"data"`
-	}
-	result = ParseResponse[struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID          string `json:"id"`
-			Name        string `json:"name"`
-			Description string `json:"description"`
-		} `json:"data"`
-	}](t, resp)
+	result := ParseResponse[WorkspaceResponse](t, resp)
 
 	assert.True(t, result.Success)
 	assert.Equal(t, "Updated Name", result.Data.Name)
@@ -290,22 +201,7 @@ func TestWorkspace_AddMember_Success(t *testing.T) {
 
 	AssertStatus(t, resp, http.StatusCreated)
 
-	var result struct {
-		Success bool `json:"success"`
-		Data    struct {
-			UserID   string `json:"user_id"`
-			Role     string `json:"role"`
-			JoinedAt string `json:"joined_at"`
-		} `json:"data"`
-	}
-	result = ParseResponse[struct {
-		Success bool `json:"success"`
-		Data    struct {
-			UserID   string `json:"user_id"`
-			Role     string `json:"role"`
-			JoinedAt string `json:"joined_at"`
-		} `json:"data"`
-	}](t, resp)
+	result := ParseResponse[APIResponse[MemberData]](t, resp)
 
 	assert.True(t, result.Success)
 	assert.Equal(t, member.ID.String(), result.Data.UserID)
@@ -370,20 +266,7 @@ func TestWorkspace_UpdateMemberRole_Success(t *testing.T) {
 
 	AssertStatus(t, resp, http.StatusOK)
 
-	var result struct {
-		Success bool `json:"success"`
-		Data    struct {
-			UserID string `json:"user_id"`
-			Role   string `json:"role"`
-		} `json:"data"`
-	}
-	result = ParseResponse[struct {
-		Success bool `json:"success"`
-		Data    struct {
-			UserID string `json:"user_id"`
-			Role   string `json:"role"`
-		} `json:"data"`
-	}](t, resp)
+	result := ParseResponse[APIResponse[MemberData]](t, resp)
 
 	assert.True(t, result.Success)
 	assert.Equal(t, "admin", result.Data.Role)
@@ -438,18 +321,7 @@ func TestWorkspace_CompleteFlow(t *testing.T) {
 	getResp := ownerClient.Get("/workspaces/" + workspaceID)
 	AssertStatus(t, getResp, http.StatusOK)
 
-	var getResult struct {
-		Success bool `json:"success"`
-		Data    struct {
-			Name string `json:"name"`
-		} `json:"data"`
-	}
-	getResult = ParseResponse[struct {
-		Success bool `json:"success"`
-		Data    struct {
-			Name string `json:"name"`
-		} `json:"data"`
-	}](t, getResp)
+	getResult := ParseResponse[WorkspaceResponse](t, getResp)
 
 	assert.Equal(t, "Updated Flow Workspace", getResult.Data.Name)
 }

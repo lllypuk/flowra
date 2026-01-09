@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// ==================== Event Assertions ====================
+
 // AssertEventPublished checks that event of specific type was published
 func AssertEventPublished(t *testing.T, events []event.DomainEvent, eventType string) event.DomainEvent {
 	t.Helper()
@@ -24,7 +26,7 @@ func AssertEventPublished(t *testing.T, events []event.DomainEvent, eventType st
 	return nil
 }
 
-// AssertEventCount checks count published events
+// AssertEventCount checks count of published events
 func AssertEventCount(t *testing.T, events []event.DomainEvent, expected int) {
 	t.Helper()
 
@@ -33,7 +35,7 @@ func AssertEventCount(t *testing.T, events []event.DomainEvent, expected int) {
 	}
 }
 
-// AssertEventType checks type event
+// AssertEventType checks event type
 func AssertEventType(t *testing.T, evt event.DomainEvent, expectedType string) {
 	t.Helper()
 
@@ -52,76 +54,6 @@ func AssertVersion(t *testing.T, evt event.DomainEvent, expectedVersion int) {
 	t.Helper()
 
 	assert.Equal(t, expectedVersion, evt.Version())
-}
-
-// AssertError checks presence error
-func AssertError(t *testing.T, err error, msgAndArgs ...any) {
-	t.Helper()
-
-	require.Error(t, err, msgAndArgs...)
-}
-
-// AssertErrorIs checks that error is of specific type
-func AssertErrorIs(t *testing.T, err, target error, msgAndArgs ...any) {
-	t.Helper()
-
-	require.ErrorIs(t, err, target, msgAndArgs...)
-}
-
-// AssertEqual checks equality
-func AssertEqual(t *testing.T, expected, actual any, msgAndArgs ...any) {
-	t.Helper()
-
-	require.Equal(t, expected, actual, msgAndArgs...)
-}
-
-// AssertNotNil checks, that value not nil
-func AssertNotNil(t *testing.T, value any, msgAndArgs ...any) {
-	t.Helper()
-
-	require.NotNil(t, value, msgAndArgs...)
-}
-
-// AssertNil checks, that value is nil
-func AssertNil(t *testing.T, value any, msgAndArgs ...any) {
-	t.Helper()
-
-	require.Nil(t, value, msgAndArgs...)
-}
-
-// AssertLen checks length slice/array
-func AssertLen(t *testing.T, collection any, length int, msgAndArgs ...any) {
-	t.Helper()
-
-	require.Len(t, collection, length, msgAndArgs...)
-}
-
-// AssertGreater checks, that value greater
-func AssertGreater(t *testing.T, value1, value2 any, msgAndArgs ...any) {
-	t.Helper()
-
-	require.Greater(t, value1, value2, msgAndArgs...)
-}
-
-// AssertGreaterOrEqual checks, that value greater or equal
-func AssertGreaterOrEqual(t *testing.T, value1, value2 any, msgAndArgs ...any) {
-	t.Helper()
-
-	require.GreaterOrEqual(t, value1, value2, msgAndArgs...)
-}
-
-// AssertTrue checks, that value true
-func AssertTrue(t *testing.T, value bool, msgAndArgs ...any) {
-	t.Helper()
-
-	require.True(t, value, msgAndArgs...)
-}
-
-// AssertFalse checks, that value false
-func AssertFalse(t *testing.T, value bool, msgAndArgs ...any) {
-	t.Helper()
-
-	require.False(t, value, msgAndArgs...)
 }
 
 // ==================== UUID Assertions ====================

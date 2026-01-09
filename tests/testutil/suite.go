@@ -13,7 +13,7 @@ type TestSuite struct {
 
 	// Mocks
 	ChatRepo         *mocks.MockChatRepository
-	MessageRepo      *mocks.MessageRepository
+	MessageRepo      *mocks.MockMessageRepository
 	UserRepo         *mocks.MockUserRepository
 	WorkspaceRepo    *mocks.MockWorkspaceRepository
 	NotificationRepo *mocks.MockNotificationRepository
@@ -33,7 +33,7 @@ func NewTestSuite(t *testing.T) *TestSuite {
 	suite := &TestSuite{
 		t:                t,
 		ChatRepo:         mocks.NewMockChatRepository(),
-		MessageRepo:      mocks.NewMessageRepository(),
+		MessageRepo:      mocks.NewMockMessageRepository(),
 		UserRepo:         mocks.NewMockUserRepository(),
 		WorkspaceRepo:    mocks.NewMockWorkspaceRepository(),
 		NotificationRepo: mocks.NewMockNotificationRepository(),

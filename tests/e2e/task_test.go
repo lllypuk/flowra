@@ -41,40 +41,7 @@ func TestTask_Create_Success(t *testing.T) {
 
 	AssertStatus(t, resp, http.StatusCreated)
 
-	var result struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID          string  `json:"id"`
-			ChatID      string  `json:"chat_id"`
-			Title       string  `json:"title"`
-			Description string  `json:"description"`
-			Status      string  `json:"status"`
-			Priority    string  `json:"priority"`
-			EntityType  string  `json:"entity_type"`
-			ReporterID  string  `json:"reporter_id"`
-			CreatedAt   string  `json:"created_at"`
-			Version     int     `json:"version"`
-			AssigneeID  *string `json:"assignee_id"`
-			DueDate     *string `json:"due_date"`
-		} `json:"data"`
-	}
-	result = ParseResponse[struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID          string  `json:"id"`
-			ChatID      string  `json:"chat_id"`
-			Title       string  `json:"title"`
-			Description string  `json:"description"`
-			Status      string  `json:"status"`
-			Priority    string  `json:"priority"`
-			EntityType  string  `json:"entity_type"`
-			ReporterID  string  `json:"reporter_id"`
-			CreatedAt   string  `json:"created_at"`
-			Version     int     `json:"version"`
-			AssigneeID  *string `json:"assignee_id"`
-			DueDate     *string `json:"due_date"`
-		} `json:"data"`
-	}](t, resp)
+	result := ParseResponse[TaskResponse](t, resp)
 
 	assert.True(t, result.Success)
 	assert.NotEmpty(t, result.Data.ID)
@@ -107,20 +74,7 @@ func TestTask_Create_WithAssignee(t *testing.T) {
 
 	AssertStatus(t, resp, http.StatusCreated)
 
-	var result struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID         string  `json:"id"`
-			AssigneeID *string `json:"assignee_id"`
-		} `json:"data"`
-	}
-	result = ParseResponse[struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID         string  `json:"id"`
-			AssigneeID *string `json:"assignee_id"`
-		} `json:"data"`
-	}](t, resp)
+	result := ParseResponse[TaskResponse](t, resp)
 
 	assert.True(t, result.Success)
 	assert.NotNil(t, result.Data.AssigneeID)
@@ -150,20 +104,7 @@ func TestTask_Create_WithDueDate(t *testing.T) {
 
 	AssertStatus(t, resp, http.StatusCreated)
 
-	var result struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID      string  `json:"id"`
-			DueDate *string `json:"due_date"`
-		} `json:"data"`
-	}
-	result = ParseResponse[struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID      string  `json:"id"`
-			DueDate *string `json:"due_date"`
-		} `json:"data"`
-	}](t, resp)
+	result := ParseResponse[TaskResponse](t, resp)
 
 	assert.True(t, result.Success)
 	assert.NotNil(t, result.Data.DueDate)
@@ -191,18 +132,7 @@ func TestTask_Create_ValidationError(t *testing.T) {
 
 		AssertStatus(t, resp, http.StatusBadRequest)
 
-		var result struct {
-			Success bool `json:"success"`
-			Error   struct {
-				Code string `json:"code"`
-			} `json:"error"`
-		}
-		result = ParseResponse[struct {
-			Success bool `json:"success"`
-			Error   struct {
-				Code string `json:"code"`
-			} `json:"error"`
-		}](t, resp)
+		result := ParseResponse[ErrorResponse](t, resp)
 
 		assert.False(t, result.Success)
 		assert.Equal(t, "VALIDATION_ERROR", result.Error.Code)
@@ -274,24 +204,7 @@ func TestTask_Get_Success(t *testing.T) {
 
 	AssertStatus(t, resp, http.StatusOK)
 
-	var result struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID       string `json:"id"`
-			Title    string `json:"title"`
-			Status   string `json:"status"`
-			Priority string `json:"priority"`
-		} `json:"data"`
-	}
-	result = ParseResponse[struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID       string `json:"id"`
-			Title    string `json:"title"`
-			Status   string `json:"status"`
-			Priority string `json:"priority"`
-		} `json:"data"`
-	}](t, resp)
+	result := ParseResponse[TaskResponse](t, resp)
 
 	assert.True(t, result.Success)
 	assert.Equal(t, taskID.String(), result.Data.ID)
@@ -347,28 +260,7 @@ func TestTask_List_Success(t *testing.T) {
 
 	AssertStatus(t, resp, http.StatusOK)
 
-	var result struct {
-		Success bool `json:"success"`
-		Data    struct {
-			Tasks []struct {
-				ID    string `json:"id"`
-				Title string `json:"title"`
-			} `json:"tasks"`
-			Total   int  `json:"total"`
-			HasMore bool `json:"has_more"`
-		} `json:"data"`
-	}
-	result = ParseResponse[struct {
-		Success bool `json:"success"`
-		Data    struct {
-			Tasks []struct {
-				ID    string `json:"id"`
-				Title string `json:"title"`
-			} `json:"tasks"`
-			Total   int  `json:"total"`
-			HasMore bool `json:"has_more"`
-		} `json:"data"`
-	}](t, resp)
+	result := ParseResponse[TaskListResponse](t, resp)
 
 	assert.True(t, result.Success)
 	assert.GreaterOrEqual(t, len(result.Data.Tasks), 5)
@@ -408,22 +300,7 @@ func TestTask_List_WithFilters(t *testing.T) {
 
 	AssertStatus(t, resp, http.StatusOK)
 
-	var result struct {
-		Success bool `json:"success"`
-		Data    struct {
-			Tasks []struct {
-				Priority string `json:"priority"`
-			} `json:"tasks"`
-		} `json:"data"`
-	}
-	result = ParseResponse[struct {
-		Success bool `json:"success"`
-		Data    struct {
-			Tasks []struct {
-				Priority string `json:"priority"`
-			} `json:"tasks"`
-		} `json:"data"`
-	}](t, resp)
+	result := ParseResponse[TaskListResponse](t, resp)
 
 	assert.True(t, result.Success)
 	for _, tk := range result.Data.Tasks {
@@ -465,20 +342,7 @@ func TestTask_ChangeStatus_Success(t *testing.T) {
 
 	AssertStatus(t, resp, http.StatusOK)
 
-	var result struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID     string `json:"id"`
-			Status string `json:"status"`
-		} `json:"data"`
-	}
-	result = ParseResponse[struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID     string `json:"id"`
-			Status string `json:"status"`
-		} `json:"data"`
-	}](t, resp)
+	result := ParseResponse[TaskResponse](t, resp)
 
 	assert.True(t, result.Success)
 	// Status is returned with title case by mock service
@@ -552,20 +416,7 @@ func TestTask_Assign_Success(t *testing.T) {
 
 	AssertStatus(t, resp, http.StatusOK)
 
-	var result struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID         string  `json:"id"`
-			AssigneeID *string `json:"assignee_id"`
-		} `json:"data"`
-	}
-	result = ParseResponse[struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID         string  `json:"id"`
-			AssigneeID *string `json:"assignee_id"`
-		} `json:"data"`
-	}](t, resp)
+	result := ParseResponse[TaskResponse](t, resp)
 
 	assert.True(t, result.Success)
 	assert.NotNil(t, result.Data.AssigneeID)
@@ -605,20 +456,7 @@ func TestTask_ChangePriority_Success(t *testing.T) {
 
 	AssertStatus(t, resp, http.StatusOK)
 
-	var result struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID       string `json:"id"`
-			Priority string `json:"priority"`
-		} `json:"data"`
-	}
-	result = ParseResponse[struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID       string `json:"id"`
-			Priority string `json:"priority"`
-		} `json:"data"`
-	}](t, resp)
+	result := ParseResponse[TaskResponse](t, resp)
 
 	assert.True(t, result.Success)
 	// Priority is returned with title case by mock service
@@ -660,20 +498,7 @@ func TestTask_SetDueDate_Success(t *testing.T) {
 
 	AssertStatus(t, resp, http.StatusOK)
 
-	var result struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID      string  `json:"id"`
-			DueDate *string `json:"due_date"`
-		} `json:"data"`
-	}
-	result = ParseResponse[struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID      string  `json:"id"`
-			DueDate *string `json:"due_date"`
-		} `json:"data"`
-	}](t, resp)
+	result := ParseResponse[TaskResponse](t, resp)
 
 	assert.True(t, result.Success)
 	assert.NotNil(t, result.Data.DueDate)
@@ -740,18 +565,7 @@ func TestTask_CompleteFlow(t *testing.T) {
 	})
 	AssertStatus(t, createResp, http.StatusCreated)
 
-	var createResult struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID string `json:"id"`
-		} `json:"data"`
-	}
-	createResult = ParseResponse[struct {
-		Success bool `json:"success"`
-		Data    struct {
-			ID string `json:"id"`
-		} `json:"data"`
-	}](t, createResp)
+	createResult := ParseResponse[TaskResponse](t, createResp)
 
 	taskID := createResult.Data.ID
 	require.NotEmpty(t, taskID)
@@ -784,24 +598,7 @@ func TestTask_CompleteFlow(t *testing.T) {
 	getResp := managerClient.Get("/workspaces/" + ws.ID().String() + "/tasks/" + taskID)
 	AssertStatus(t, getResp, http.StatusOK)
 
-	var getResult struct {
-		Success bool `json:"success"`
-		Data    struct {
-			Title      string  `json:"title"`
-			Status     string  `json:"status"`
-			Priority   string  `json:"priority"`
-			AssigneeID *string `json:"assignee_id"`
-		} `json:"data"`
-	}
-	getResult = ParseResponse[struct {
-		Success bool `json:"success"`
-		Data    struct {
-			Title      string  `json:"title"`
-			Status     string  `json:"status"`
-			Priority   string  `json:"priority"`
-			AssigneeID *string `json:"assignee_id"`
-		} `json:"data"`
-	}](t, getResp)
+	getResult := ParseResponse[TaskResponse](t, getResp)
 
 	assert.True(t, getResult.Success)
 	assert.Equal(t, "Implement feature", getResult.Data.Title)

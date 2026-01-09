@@ -7,15 +7,24 @@ This directory contains all test utilities, mocks, and integration tests for the
 ```
 tests/
 ├── README.md              # This file
+├── fixtures/              # Test data builders (fluent API)
+│   ├── chat_fixtures.go
+│   ├── message_fixtures.go
+│   ├── notification_fixtures.go
+│   └── task_fixtures.go
 ├── mocks/                 # Mock implementations for testing
 │   ├── user_repository.go
 │   └── ...
 ├── testutil/              # Testing utilities
-│   ├── db.go             # Helpers for database operations
-│   └── fixtures.go       # Test data (builders)
-└── integration/           # Integration tests
-    └── usecase/
-        └── ...
+│   ├── assertions.go     # Custom assertion helpers
+│   ├── helpers.go        # Context helpers
+│   ├── mongodb.go        # MongoDB testcontainer
+│   ├── redis.go          # Redis testcontainer
+│   └── keycloak.go       # Keycloak testcontainer
+├── integration/           # Integration tests
+│   └── ...
+└── e2e/                   # End-to-end tests
+    └── ...
 ```
 
 ## Test Types
@@ -45,18 +54,17 @@ go test ./internal/usecase/task/
 
 **Characteristics**:
 - Slower (1-5 seconds per test)
-- Use real PostgreSQL
+- Use real MongoDB via testcontainers
 - Require build tag `integration`
-- Each test creates its own isolated schema
+- Each test creates its own isolated database
 
 **Run**:
 ```bash
 # All integration tests
 make test-integration
 
-# Manually
-TEST_DATABASE_URL="postgresql://postgres:postgres123@localhost:5432/test_db?sslmode=disable" \
-  go test -tags=integration ./tests/integration/...
+# Manually (testcontainers handle MongoDB automatically)
+go test -tags=integration ./tests/integration/...
 ```
 
 ### 3. Coverage
@@ -101,29 +109,37 @@ exists, _ := repo.Exists(ctx, userID) // true
 
 ### Test Fixtures (Builders)
 
-Builders for creating test commands with fluent API.
+Builders for creating test commands with fluent API. All fixtures are in `tests/fixtures/` package.
 
 ```go
-import "github.com/lllypuk/flowra/tests/testutil"
+import "github.com/lllypuk/flowra/tests/fixtures"
 
-// Basic command with default values
-cmd := testutil.CreateTaskCommandFixture()
+// Task command with builder pattern
+cmd := fixtures.NewCreateTaskCommandBuilder().
+    WithTitle("Custom Task").
+    WithHighPriority().
+    WithAssignee(assigneeID).
+    WithDueDate(tomorrow).
+    Build()
 
-// Command with custom values
-cmd := testutil.BuildCreateTaskCommand(
-    testutil.WithTitle("Custom Task"),
-    testutil.WithPriority(task.PriorityHigh),
-    testutil.WithAssignee(assigneeID),
-    testutil.WithDueDate(tomorrow),
-)
+// Chat command
+cmd := fixtures.NewCreateChatCommandBuilder().
+    WithWorkspace(workspaceID).
+    WithTitle("Test Chat").
+    AsTask().
+    Build()
+
+// Message command
+cmd := fixtures.NewSendMessageCommandBuilder(chatID, authorID).
+    WithContent("Hello!").
+    Build()
 ```
 
 Available builders:
-- `CreateTaskCommandFixture()` / `BuildCreateTaskCommand(...)`
-- `ChangeStatusCommandFixture(taskID)` / `BuildChangeStatusCommand(taskID, ...)`
-- `AssignTaskCommandFixture(taskID, assigneeID)` / `BuildAssignTaskCommand(...)`
-- `ChangePriorityCommandFixture(taskID)` / `BuildChangePriorityCommand(taskID, ...)`
-- `SetDueDateCommandFixture(taskID)` / `BuildSetDueDateCommand(taskID, ...)`
+- Task: `NewCreateTaskCommandBuilder()`, `NewChangeStatusCommandBuilder(taskID)`, `NewAssignTaskCommandBuilder(taskID)`, `NewChangePriorityCommandBuilder(taskID)`, `NewSetDueDateCommandBuilder(taskID)`
+- Chat: `NewCreateChatCommandBuilder()`, `NewAddParticipantCommandBuilder(chatID, userID)`, `NewConvertToTaskCommandBuilder(chatID)`, `NewChangeStatusCommandBuilder(chatID)`, `NewAssignUserCommandBuilder(chatID)`
+- Message: `NewSendMessageCommandBuilder(chatID, authorID)`, `NewEditMessageCommandBuilder(messageID, userID)`, `NewDeleteMessageCommandBuilder(messageID, userID)`
+- Notification: `NewCreateNotificationCommandBuilder(userID)`, `NewMarkAsReadCommandBuilder(notificationID, userID)`, `NewDeleteNotificationCommandBuilder(notificationID, userID)`
 
 ### Database Helpers (Integration Tests)
 
