@@ -289,6 +289,12 @@ func (h *ChatTemplateHandler) ChatViewPartial(c echo.Context) error {
 		return c.String(http.StatusNotFound, "Chat not found")
 	}
 
+	// If this is not an HTMX request (direct page load), redirect to full page
+	if c.Request().Header.Get("Hx-Request") == "" {
+		fullURL := "/workspaces/" + chatData.WorkspaceID + "/chats/" + chatData.ID
+		return c.Redirect(http.StatusFound, fullURL)
+	}
+
 	// Build inner data map
 	innerData := map[string]any{
 		"Chat": chatData,

@@ -46,6 +46,12 @@ const (
 	keycloakTokenBuffer    = 30 * time.Second
 )
 
+// WebSocket client configuration constants.
+const (
+	defaultWSWriteWait      = 10 * time.Second
+	defaultWSMaxMessageSize = 65536
+)
+
 // Container holds all application dependencies and manages their lifecycle.
 // It implements httpserver.HealthChecker for unified health endpoint support.
 type Container struct {
@@ -619,20 +625,30 @@ func (c *Container) setupHTTPHandlers() {
 		c.Logger.Debug("OAuth client injected into template handler")
 	}
 
-	// === 7. WebSocket Handler (unchanged) ===
+	// === 7. Token Validator and User Resolver ===
+	// Must be initialized before WebSocket handler
+	c.setupTokenValidator()
+	c.setupUserResolver()
+
+	// === 8. WebSocket Handler ===
 	c.WSHandler = wshandler.NewHandler(
 		c.Hub,
 		wshandler.WithHandlerLogger(c.Logger),
+		wshandler.WithTokenValidator(c.TokenValidator),
 		wshandler.WithHandlerConfig(wshandler.HandlerConfig{
 			ReadBufferSize:  c.Config.WebSocket.ReadBufferSize,
 			WriteBufferSize: c.Config.WebSocket.WriteBufferSize,
 			Logger:          c.Logger,
+			ClientConfig: websocket.ClientConfig{
+				ReadBufferSize:  c.Config.WebSocket.ReadBufferSize,
+				WriteBufferSize: c.Config.WebSocket.WriteBufferSize,
+				PingInterval:    c.Config.WebSocket.PingInterval,
+				PongWait:        c.Config.WebSocket.PongTimeout,
+				WriteWait:       defaultWSWriteWait,
+				MaxMessageSize:  defaultWSMaxMessageSize,
+			},
 		}),
 	)
-
-	// === 8. Token Validator and User Resolver ===
-	c.setupTokenValidator()
-	c.setupUserResolver()
 
 	// Configure page auth middleware with token validator and user resolver
 	httphandler.SetPageAuthConfig(&httphandler.PageAuthConfig{

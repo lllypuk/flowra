@@ -24,7 +24,12 @@
         <!-- HTMX WebSocket Extension -->
         <script src="https://unpkg.com/htmx-ext-ws@2.0.0/ws.js"></script>
     </head>
-    <body hx-boost="true" hx-ext="ws" ws-connect="/api/v1/ws">
+    <body
+        hx-boost="true"
+        hx-ext="ws"
+        ws-connect="/api/v1/ws"
+        style="overflow: hidden"
+    >
         {{template "navbar" .}}
 
         <div
@@ -93,10 +98,17 @@
         <script src="/static/js/chat.js"></script>
 
         <style>
+            body {
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+            }
+
             .chat-layout {
                 display: grid;
                 grid-template-columns: 250px 1fr;
                 height: calc(100vh - 60px);
+                overflow: hidden;
             }
 
             .chat-layout.with-task-sidebar {

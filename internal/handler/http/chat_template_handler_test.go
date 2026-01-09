@@ -249,7 +249,7 @@ func TestChatTemplateHandler_ChatListPartial(t *testing.T) {
 }
 
 func TestChatTemplateHandler_ChatViewPartial(t *testing.T) {
-	t.Run("successful get chat", func(t *testing.T) {
+	t.Run("redirects to full page without HX-Request header", func(t *testing.T) {
 		e := echo.New()
 		userID := uuid.NewUUID()
 		workspaceID := uuid.NewUUID()
@@ -263,6 +263,36 @@ func TestChatTemplateHandler_ChatViewPartial(t *testing.T) {
 		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/chats/"+testChat.ID.String(), nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("chat_id")
+		c.SetParamValues(testChat.ID.String())
+		setUserContextForTemplate(c, userID)
+
+		err := handler.ChatViewPartial(c)
+
+		// Should redirect to full page when not an HTMX request
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusFound, rec.Code)
+		expectedLocation := "/workspaces/" + workspaceID.String() + "/chats/" + testChat.ID.String()
+		assert.Equal(t, expectedLocation, rec.Header().Get("Location"))
+	})
+
+	t.Run("successful get chat with HTMX request", func(t *testing.T) {
+		e := echo.New()
+		userID := uuid.NewUUID()
+		workspaceID := uuid.NewUUID()
+
+		mockChatService := NewMockChatTemplateService()
+		mockMessageService := NewMockMessageTemplateService()
+
+		testChat := makeChatDTO(workspaceID, userID, "Test Chat", chat.TypeDiscussion)
+		mockChatService.AddChat(testChat)
+
+		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService)
+
+		req := httptest.NewRequest(http.MethodGet, "/partials/chats/"+testChat.ID.String(), nil)
+		req.Header.Set("Hx-Request", "true")
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		c.SetParamNames("chat_id")
