@@ -9,7 +9,6 @@
 # Built binaries (Go build output)
 /api
 /worker
-/migrator
 /websocket
 
 # Test binary, built with `go test -c`

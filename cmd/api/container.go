@@ -24,6 +24,7 @@ import (
 	"github.com/lllypuk/flowra/internal/infrastructure/eventstore"
 	"github.com/lllypuk/flowra/internal/infrastructure/httpserver"
 	"github.com/lllypuk/flowra/internal/infrastructure/keycloak"
+	mongodbinfra "github.com/lllypuk/flowra/internal/infrastructure/mongodb"
 	"github.com/lllypuk/flowra/internal/infrastructure/repository/mongodb"
 	"github.com/lllypuk/flowra/internal/infrastructure/websocket"
 	"github.com/lllypuk/flowra/internal/middleware"
@@ -340,6 +341,17 @@ func (c *Container) setupMongoDB(ctx context.Context) error {
 	c.Logger.InfoContext(ctx, "connected to MongoDB",
 		slog.String("database", c.Config.MongoDB.Database),
 	)
+
+	// Create all necessary indexes
+	db := client.Database(c.Config.MongoDB.Database)
+	indexCtx, indexCancel := context.WithTimeout(ctx, c.Config.MongoDB.Timeout)
+	defer indexCancel()
+
+	if indexErr := mongodbinfra.CreateAllIndexes(indexCtx, db); indexErr != nil {
+		return fmt.Errorf("failed to create indexes: %w", indexErr)
+	}
+
+	c.Logger.InfoContext(ctx, "MongoDB indexes created successfully")
 
 	return nil
 }

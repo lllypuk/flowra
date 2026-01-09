@@ -73,17 +73,7 @@ docker-compose up -d
 docker-compose ps
 ```
 
-### 3. Initialize Database
-
-```bash
-# Run database migrations
-make migrate-up
-
-# Or manually
-go run cmd/migrator/main.go up
-```
-
-### 4. Start Application
+### 3. Start Application
 
 ```bash
 # Development mode
@@ -94,7 +84,7 @@ make build
 ./bin/api
 ```
 
-### 5. Verify Deployment
+### 4. Verify Deployment
 
 ```bash
 # Check health endpoint
@@ -307,19 +297,15 @@ make build
 # This creates:
 # - bin/api        (API server)
 # - bin/worker     (Background worker)
-# - bin/migrator   (Database migrations)
 ```
 
 ### Run Components
 
 ```bash
-# 1. Run migrations first
-./bin/migrator up
-
-# 2. Start API server
+# 1. Start API server
 ./bin/api
 
-# 3. Start worker (separate terminal/process)
+# 2. Start worker (separate terminal/process)
 ./bin/worker
 ```
 
