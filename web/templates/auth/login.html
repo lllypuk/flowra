@@ -1,90 +1,97 @@
 {{define "auth/login.html"}}
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" data-theme="light">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{if .Title}}{{.Title}} - {{end}}Flowra</title>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>{{if .Title}}{{.Title}} - {{end}}Flowra</title>
 
-    <!-- Pico CSS -->
-    <link rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+        <!-- Pico CSS -->
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"
+        />
 
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="/static/css/custom.css">
+        <!-- Custom CSS -->
+        <link rel="stylesheet" href="/static/css/custom.css" />
 
-    <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@2.0.0"
-            crossorigin="anonymous"></script>
+        <!-- Board CSS - always loaded to support hx-boost navigation -->
+        <link rel="stylesheet" href="/static/css/board.css" />
 
-    <!-- HTMX WebSocket Extension -->
-    <script src="https://unpkg.com/htmx-ext-ws@2.0.0/ws.js"></script>
-</head>
-<body hx-boost="true">
-    {{template "navbar" .}}
+        <!-- HTMX -->
+        <script
+            src="https://unpkg.com/htmx.org@2.0.0"
+            crossorigin="anonymous"
+        ></script>
 
-    <main class="container">
-        {{template "flash" .}}
+        <!-- HTMX WebSocket Extension -->
+        <script src="https://unpkg.com/htmx-ext-ws@2.0.0/ws.js"></script>
+    </head>
+    <body hx-boost="true">
+        {{template "navbar" .}}
 
-        <article class="login-container">
-            <header>
-                <hgroup>
-                    <h1>Welcome to Flowra</h1>
-                    <p>Chat-first task management for teams</p>
-                </hgroup>
-            </header>
+        <main class="container">
+            {{template "flash" .}}
 
-            <div class="login-content">
-                {{if .Error}}
-                <article class="flash flash-error">
-                    {{.Error}}
-                </article>
-                {{end}}
+            <article class="login-container">
+                <header>
+                    <hgroup>
+                        <h1>Welcome to Flowra</h1>
+                        <p>Chat-first task management for teams</p>
+                    </hgroup>
+                </header>
 
-                <p class="text-center text-muted">
-                    Sign in with your organization account
-                </p>
+                <div class="login-content">
+                    {{if .Error}}
+                    <article class="flash flash-error">{{.Error}}</article>
+                    {{end}}
 
-                <a href="{{.AuthURL}}"
-                   role="button"
-                   class="login-button"
-                   hx-boost="false">
-                    Sign in with SSO
-                </a>
+                    <p class="text-center text-muted">
+                        Sign in with your organization account
+                    </p>
 
-                <hr>
+                    <a
+                        href="{{.AuthURL}}"
+                        role="button"
+                        class="login-button"
+                        hx-boost="false"
+                    >
+                        Sign in with SSO
+                    </a>
 
-                <footer class="text-center text-muted">
-                    <small>
-                        By signing in, you agree to our
-                        <a href="/terms">Terms of Service</a> and
-                        <a href="/privacy">Privacy Policy</a>
-                    </small>
-                </footer>
-            </div>
-        </article>
-    </main>
+                    <hr />
 
-    {{template "footer" .}}
+                    <footer class="text-center text-muted">
+                        <small>
+                            By signing in, you agree to our
+                            <a href="/terms">Terms of Service</a> and
+                            <a href="/privacy">Privacy Policy</a>
+                        </small>
+                    </footer>
+                </div>
+            </article>
+        </main>
 
-    <script src="/static/js/app.js"></script>
+        {{template "footer" .}}
 
-    <style>
-    .login-container {
-        max-width: 400px;
-        margin: 4rem auto;
-    }
+        <script src="/static/js/app.js"></script>
 
-    .login-content {
-        padding: 2rem;
-    }
+        <style>
+            .login-container {
+                max-width: 400px;
+                margin: 4rem auto;
+            }
 
-    .login-button {
-        width: 100%;
-        display: block;
-        text-align: center;
-    }
-    </style>
-</body>
+            .login-content {
+                padding: 2rem;
+            }
+
+            .login-button {
+                width: 100%;
+                display: block;
+                text-align: center;
+            }
+        </style>
+    </body>
 </html>
 {{end}}

@@ -87,12 +87,10 @@
                 {{template "chat/task-sidebar" $}}
             </aside>
             {{end}}{{end}}
-
-            <!-- Modal container -->
-            <div id="modal-container"></div>
         </div>
 
-        {{template "footer" .}}
+        <!-- Modal container (outside grid to not affect layout) -->
+        <div id="modal-container"></div>
 
         <script src="/static/js/app.js"></script>
         <script src="/static/js/chat.js"></script>
@@ -107,6 +105,7 @@
             .chat-layout {
                 display: grid;
                 grid-template-columns: 250px 1fr;
+                grid-template-rows: minmax(0, 1fr); /* Constrain row to container height */
                 height: calc(100vh - 60px);
                 overflow: hidden;
             }
@@ -150,6 +149,8 @@
                 display: flex;
                 flex-direction: column;
                 overflow: hidden;
+                min-height: 0; /* Required for flex children in grid to respect parent height */
+                height: 100%; /* Constrain to grid cell height */
             }
 
             .task-sidebar {

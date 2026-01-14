@@ -1,7 +1,6 @@
 package task
 
 import (
-	"slices"
 	"time"
 
 	"github.com/lllypuk/flowra/internal/domain/errs"
@@ -286,25 +285,9 @@ func (a *Aggregate) isValidStatusTransition(newStatus Status) bool {
 		return newStatus == StatusBacklog
 	}
 
-	// from Done mozhno vernutsya in InReview (reopening)
-	if a.status == StatusDone {
-		return newStatus == StatusInReview || newStatus == StatusCancelled
-	}
-
-	// standartnye perehody before
-	transitions := map[Status][]Status{ //nolint:exhaustive // StatusDone and StatusCancelled obrabatyvayutsya above
-		StatusBacklog:    {StatusToDo, StatusCancelled},
-		StatusToDo:       {StatusInProgress, StatusBacklog, StatusCancelled},
-		StatusInProgress: {StatusInReview, StatusToDo, StatusCancelled},
-		StatusInReview:   {StatusDone, StatusInProgress, StatusCancelled},
-	}
-
-	allowedStatuses, exists := transitions[a.status]
-	if !exists {
-		return false
-	}
-
-	return slices.Contains(allowedStatuses, newStatus)
+	// Kanban-style: allow any transition between active statuses
+	// This enables drag-and-drop on the board to any column
+	return isValidStatus(newStatus)
 }
 
 // Getters

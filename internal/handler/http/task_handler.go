@@ -50,7 +50,7 @@ type CreateTaskRequest struct {
 
 // ChangeStatusRequest represents the request to change task status.
 type ChangeStatusRequest struct {
-	Status string `json:"status"`
+	Status string `json:"status" form:"status"`
 }
 
 // AssignTaskRequest represents the request to assign a task.
@@ -240,7 +240,7 @@ func (h *TaskHandler) Get(c echo.Context) error {
 		return httpserver.RespondErrorWithCode(c, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
 	}
 
-	taskIDStr := c.Param("id")
+	taskIDStr := c.Param("task_id")
 	taskID, parseErr := uuid.ParseUUID(taskIDStr)
 	if parseErr != nil {
 		return httpserver.RespondErrorWithCode(
@@ -304,7 +304,7 @@ func (h *TaskHandler) ChangeStatus(c echo.Context) error {
 		return httpserver.RespondErrorWithCode(c, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
 	}
 
-	taskIDStr := c.Param("id")
+	taskIDStr := c.Param("task_id")
 	taskID, parseErr := uuid.ParseUUID(taskIDStr)
 	if parseErr != nil {
 		return httpserver.RespondErrorWithCode(
@@ -357,7 +357,7 @@ func (h *TaskHandler) Assign(c echo.Context) error {
 		return httpserver.RespondErrorWithCode(c, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
 	}
 
-	taskIDStr := c.Param("id")
+	taskIDStr := c.Param("task_id")
 	taskID, parseErr := uuid.ParseUUID(taskIDStr)
 	if parseErr != nil {
 		return httpserver.RespondErrorWithCode(
@@ -413,7 +413,7 @@ func (h *TaskHandler) ChangePriority(c echo.Context) error {
 		return httpserver.RespondErrorWithCode(c, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
 	}
 
-	taskIDStr := c.Param("id")
+	taskIDStr := c.Param("task_id")
 	taskID, parseErr := uuid.ParseUUID(taskIDStr)
 	if parseErr != nil {
 		return httpserver.RespondErrorWithCode(
@@ -465,7 +465,7 @@ func (h *TaskHandler) SetDueDate(c echo.Context) error {
 		return httpserver.RespondErrorWithCode(c, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
 	}
 
-	taskIDStr := c.Param("id")
+	taskIDStr := c.Param("task_id")
 	taskID, parseErr := uuid.ParseUUID(taskIDStr)
 	if parseErr != nil {
 		return httpserver.RespondErrorWithCode(
@@ -521,7 +521,7 @@ func (h *TaskHandler) Delete(c echo.Context) error {
 		return httpserver.RespondErrorWithCode(c, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
 	}
 
-	taskIDStr := c.Param("id")
+	taskIDStr := c.Param("task_id")
 	taskID, parseErr := uuid.ParseUUID(taskIDStr)
 	if parseErr != nil {
 		return httpserver.RespondErrorWithCode(

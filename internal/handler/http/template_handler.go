@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"embed"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -68,7 +69,30 @@ func (r *TemplateRenderer) loadTemplates() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	tmpl := template.New("").Funcs(TemplateFuncs())
+	// Create a placeholder for the template set that will be populated after parsing
+	var tmplSet *template.Template
+
+	// Create template funcs including renderContent which needs access to the template set
+	funcs := TemplateFuncs()
+	funcs["renderContent"] = func(templateName string, data any) (template.HTML, error) {
+		if tmplSet == nil {
+			return "", errors.New("template set not initialized")
+		}
+		if templateName == "" {
+			return "", nil
+		}
+		contentTmpl := tmplSet.Lookup(templateName)
+		if contentTmpl == nil {
+			return "", fmt.Errorf("content template %q not found", templateName)
+		}
+		var buf bytes.Buffer
+		if err := contentTmpl.Execute(&buf, data); err != nil {
+			return "", fmt.Errorf("failed to execute content template %q: %w", templateName, err)
+		}
+		return template.HTML(buf.String()), nil //nolint:gosec // Content is from trusted templates
+	}
+
+	tmpl := template.New("").Funcs(funcs)
 
 	// Walk through all template files
 	err := fs.WalkDir(r.fs, "templates", func(path string, d fs.DirEntry, err error) error {
@@ -106,14 +130,22 @@ func (r *TemplateRenderer) loadTemplates() error {
 		return err
 	}
 
+	// Set the template set for renderContent function to use
+	tmplSet = tmpl
 	r.templates = tmpl
 	return nil
 }
 
 // Render implements echo.Renderer.
 func (r *TemplateRenderer) Render(w io.Writer, name string, data any, _ echo.Context) error {
+	r.logger.Debug("TemplateRenderer.Render: starting",
+		"template_name", name,
+		"data_type", fmt.Sprintf("%T", data),
+	)
+
 	// In dev mode, reload templates on each request
 	if r.devMode {
+		r.logger.Debug("TemplateRenderer.Render: dev mode, reloading templates")
 		if err := r.loadTemplates(); err != nil {
 			r.logger.Error("failed to reload templates", slog.String("error", err.Error()))
 			return fmt.Errorf("failed to reload templates: %w", err)
@@ -123,7 +155,41 @@ func (r *TemplateRenderer) Render(w io.Writer, name string, data any, _ echo.Con
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	return r.templates.ExecuteTemplate(w, name, data)
+	// Check if template exists
+	tmpl := r.templates.Lookup(name)
+	if tmpl == nil {
+		r.logger.Error("TemplateRenderer.Render: template not found",
+			"template_name", name,
+			"available_templates", r.listTemplateNames(),
+		)
+		return fmt.Errorf("template %q not found", name)
+	}
+
+	r.logger.Debug("TemplateRenderer.Render: executing template", "template_name", name)
+	err := r.templates.ExecuteTemplate(w, name, data)
+	if err != nil {
+		r.logger.Error("TemplateRenderer.Render: ExecuteTemplate failed",
+			"template_name", name,
+			"error", err.Error(),
+		)
+	} else {
+		r.logger.Debug("TemplateRenderer.Render: completed successfully", "template_name", name)
+	}
+	return err
+}
+
+// listTemplateNames returns a list of all loaded template names for debugging.
+func (r *TemplateRenderer) listTemplateNames() []string {
+	if r.templates == nil {
+		return nil
+	}
+	var names []string
+	for _, t := range r.templates.Templates() {
+		if t.Name() != "" {
+			names = append(names, t.Name())
+		}
+	}
+	return names
 }
 
 // Flash represents flash message data for templates.
@@ -136,11 +202,15 @@ type Flash struct {
 
 // PageData represents common data passed to all page templates.
 type PageData struct {
-	Title string
-	User  *UserView
-	Flash *Flash
-	Data  any
-	Meta  map[string]string
+	Title           string
+	User            *UserView
+	Flash           *Flash
+	Data            any
+	Meta            map[string]string
+	ContentTemplate string // Name of the content template to render (e.g., "board-content")
+	IncludeBoardCSS bool
+	IncludeBoardJS  bool
+	IncludeChatJS   bool
 }
 
 // UserView represents user data for templates.

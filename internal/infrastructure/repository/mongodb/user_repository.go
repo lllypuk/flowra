@@ -10,6 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/errs"
 	userdomain "github.com/lllypuk/flowra/internal/domain/user"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
@@ -119,6 +120,20 @@ func (r *MongoUserRepository) FindByUsername(ctx context.Context, username strin
 	}
 
 	return r.documentToUser(&doc)
+}
+
+// GetByUsername implements appcore.UserRepository.
+// It finds a user by username and returns minimal user info.
+func (r *MongoUserRepository) GetByUsername(ctx context.Context, username string) (*appcore.User, error) {
+	user, err := r.FindByUsername(ctx, username)
+	if err != nil {
+		return nil, err
+	}
+	return &appcore.User{
+		ID:       user.ID(),
+		Username: user.Username(),
+		FullName: user.DisplayName(),
+	}, nil
 }
 
 // Exists checks, suschestvuet li user s zadannym ID

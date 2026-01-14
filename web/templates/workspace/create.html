@@ -2,48 +2,54 @@
 <dialog open id="create-workspace-modal">
     <article>
         <header>
-            <button aria-label="Close"
-                    rel="prev"
-                    onclick="this.closest('dialog').remove()">
-            </button>
+            <button
+                aria-label="Close"
+                rel="prev"
+                onclick="document.getElementById('modal-container').innerHTML = ''"
+            ></button>
             <h3>Create Workspace</h3>
         </header>
 
-        <form hx-post="/partials/workspace/create"
-              hx-target="#workspace-list"
-              hx-swap="afterbegin"
-              hx-on::after-request="if(event.detail.successful) this.closest('dialog').remove()">
-
+        <form
+            hx-post="/partials/workspace/create"
+            hx-target="#workspace-list"
+            hx-swap="afterbegin"
+            hx-on::after-request="if(event.detail.successful) document.getElementById('modal-container').innerHTML = ''"
+        >
             <label for="name">
                 Workspace Name
-                <input type="text"
-                       id="name"
-                       name="name"
-                       placeholder="e.g., Engineering Team"
-                       required
-                       minlength="3"
-                       maxlength="100"
-                       autofocus>
+                <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    placeholder="e.g., Engineering Team"
+                    required
+                    minlength="3"
+                    maxlength="100"
+                    autofocus
+                />
             </label>
 
             <label for="description">
                 Description (optional)
-                <textarea id="description"
-                          name="description"
-                          placeholder="What is this workspace for?"
-                          maxlength="500"
-                          rows="3"></textarea>
+                <textarea
+                    id="description"
+                    name="description"
+                    placeholder="What is this workspace for?"
+                    maxlength="500"
+                    rows="3"
+                ></textarea>
             </label>
 
             <footer>
-                <button type="button"
-                        class="secondary"
-                        onclick="this.closest('dialog').remove()">
+                <button
+                    type="button"
+                    class="secondary"
+                    onclick="document.getElementById('modal-container').innerHTML = ''"
+                >
                     Cancel
                 </button>
-                <button type="submit">
-                    Create Workspace
-                </button>
+                <button type="submit">Create Workspace</button>
             </footer>
         </form>
     </article>

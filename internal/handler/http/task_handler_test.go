@@ -49,8 +49,8 @@ func workspaceTasksURL(workspaceID uuid.UUID) string {
 }
 
 // Helper function to build task URL.
-func taskURL(taskID uuid.UUID) string {
-	return "/api/v1/tasks/" + taskID.String()
+func taskURL(workspaceID, taskID uuid.UUID) string {
+	return "/api/v1/workspaces/" + workspaceID.String() + "/tasks/" + taskID.String()
 }
 
 func TestTaskHandler_Create(t *testing.T) {
@@ -212,6 +212,7 @@ func TestTaskHandler_Get(t *testing.T) {
 	t.Run("successful get task", func(t *testing.T) {
 		e := echo.New()
 		userID := uuid.NewUUID()
+		workspaceID := uuid.NewUUID()
 		chatID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
@@ -220,11 +221,11 @@ func TestTaskHandler_Get(t *testing.T) {
 
 		handler := httphandler.NewTaskHandler(mockService)
 
-		req := httptest.NewRequest(stdhttp.MethodGet, taskURL(testTask.ID), nil)
+		req := httptest.NewRequest(stdhttp.MethodGet, taskURL(workspaceID, testTask.ID), nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.SetParamNames("id")
-		c.SetParamValues(testTask.ID.String())
+		c.SetParamNames("workspace_id", "task_id")
+		c.SetParamValues(workspaceID.String(), testTask.ID.String())
 
 		setupTaskAuthContext(c, userID)
 
@@ -241,16 +242,17 @@ func TestTaskHandler_Get(t *testing.T) {
 	t.Run("task not found", func(t *testing.T) {
 		e := echo.New()
 		userID := uuid.NewUUID()
+		workspaceID := uuid.NewUUID()
 		taskID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
 		handler := httphandler.NewTaskHandler(mockService)
 
-		req := httptest.NewRequest(stdhttp.MethodGet, taskURL(taskID), nil)
+		req := httptest.NewRequest(stdhttp.MethodGet, taskURL(workspaceID, taskID), nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.SetParamNames("id")
-		c.SetParamValues(taskID.String())
+		c.SetParamNames("workspace_id", "task_id")
+		c.SetParamValues(workspaceID.String(), taskID.String())
 
 		setupTaskAuthContext(c, userID)
 
@@ -262,15 +264,20 @@ func TestTaskHandler_Get(t *testing.T) {
 	t.Run("invalid task ID", func(t *testing.T) {
 		e := echo.New()
 		userID := uuid.NewUUID()
+		workspaceID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
 		handler := httphandler.NewTaskHandler(mockService)
 
-		req := httptest.NewRequest(stdhttp.MethodGet, "/api/v1/tasks/invalid-id", nil)
+		req := httptest.NewRequest(
+			stdhttp.MethodGet,
+			"/api/v1/workspaces/"+workspaceID.String()+"/tasks/invalid-id",
+			nil,
+		)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.SetParamNames("id")
-		c.SetParamValues("invalid-id")
+		c.SetParamNames("workspace_id", "task_id")
+		c.SetParamValues(workspaceID.String(), "invalid-id")
 
 		setupTaskAuthContext(c, userID)
 
@@ -373,6 +380,7 @@ func TestTaskHandler_ChangeStatus(t *testing.T) {
 	t.Run("successful change status", func(t *testing.T) {
 		e := echo.New()
 		userID := uuid.NewUUID()
+		workspaceID := uuid.NewUUID()
 		chatID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
@@ -382,12 +390,16 @@ func TestTaskHandler_ChangeStatus(t *testing.T) {
 		handler := httphandler.NewTaskHandler(mockService)
 
 		reqBody := `{"status": "in_progress"}`
-		req := httptest.NewRequest(stdhttp.MethodPut, taskURL(testTask.ID)+"/status", strings.NewReader(reqBody))
+		req := httptest.NewRequest(
+			stdhttp.MethodPut,
+			taskURL(workspaceID, testTask.ID)+"/status",
+			strings.NewReader(reqBody),
+		)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.SetParamNames("id")
-		c.SetParamValues(testTask.ID.String())
+		c.SetParamNames("workspace_id", "task_id")
+		c.SetParamValues(workspaceID.String(), testTask.ID.String())
 
 		setupTaskAuthContext(c, userID)
 
@@ -399,6 +411,7 @@ func TestTaskHandler_ChangeStatus(t *testing.T) {
 	t.Run("invalid status value", func(t *testing.T) {
 		e := echo.New()
 		userID := uuid.NewUUID()
+		workspaceID := uuid.NewUUID()
 		chatID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
@@ -408,12 +421,16 @@ func TestTaskHandler_ChangeStatus(t *testing.T) {
 		handler := httphandler.NewTaskHandler(mockService)
 
 		reqBody := `{"status": "invalid_status"}`
-		req := httptest.NewRequest(stdhttp.MethodPut, taskURL(testTask.ID)+"/status", strings.NewReader(reqBody))
+		req := httptest.NewRequest(
+			stdhttp.MethodPut,
+			taskURL(workspaceID, testTask.ID)+"/status",
+			strings.NewReader(reqBody),
+		)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.SetParamNames("id")
-		c.SetParamValues(testTask.ID.String())
+		c.SetParamNames("workspace_id", "task_id")
+		c.SetParamValues(workspaceID.String(), testTask.ID.String())
 
 		setupTaskAuthContext(c, userID)
 
@@ -425,18 +442,23 @@ func TestTaskHandler_ChangeStatus(t *testing.T) {
 	t.Run("task not found", func(t *testing.T) {
 		e := echo.New()
 		userID := uuid.NewUUID()
+		workspaceID := uuid.NewUUID()
 		taskID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
 		handler := httphandler.NewTaskHandler(mockService)
 
 		reqBody := `{"status": "done"}`
-		req := httptest.NewRequest(stdhttp.MethodPut, taskURL(taskID)+"/status", strings.NewReader(reqBody))
+		req := httptest.NewRequest(
+			stdhttp.MethodPut,
+			taskURL(workspaceID, taskID)+"/status",
+			strings.NewReader(reqBody),
+		)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.SetParamNames("id")
-		c.SetParamValues(taskID.String())
+		c.SetParamNames("workspace_id", "task_id")
+		c.SetParamValues(workspaceID.String(), taskID.String())
 
 		setupTaskAuthContext(c, userID)
 
@@ -450,6 +472,7 @@ func TestTaskHandler_Assign(t *testing.T) {
 	t.Run("successful assign task", func(t *testing.T) {
 		e := echo.New()
 		userID := uuid.NewUUID()
+		workspaceID := uuid.NewUUID()
 		chatID := uuid.NewUUID()
 		assigneeID := uuid.NewUUID()
 
@@ -460,12 +483,16 @@ func TestTaskHandler_Assign(t *testing.T) {
 		handler := httphandler.NewTaskHandler(mockService)
 
 		reqBody := `{"assignee_id": "` + assigneeID.String() + `"}`
-		req := httptest.NewRequest(stdhttp.MethodPut, taskURL(testTask.ID)+"/assign", strings.NewReader(reqBody))
+		req := httptest.NewRequest(
+			stdhttp.MethodPut,
+			taskURL(workspaceID, testTask.ID)+"/assignee",
+			strings.NewReader(reqBody),
+		)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.SetParamNames("id")
-		c.SetParamValues(testTask.ID.String())
+		c.SetParamNames("workspace_id", "task_id")
+		c.SetParamValues(workspaceID.String(), testTask.ID.String())
 
 		setupTaskAuthContext(c, userID)
 
@@ -477,6 +504,7 @@ func TestTaskHandler_Assign(t *testing.T) {
 	t.Run("unassign task (null assignee)", func(t *testing.T) {
 		e := echo.New()
 		userID := uuid.NewUUID()
+		workspaceID := uuid.NewUUID()
 		chatID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
@@ -486,12 +514,16 @@ func TestTaskHandler_Assign(t *testing.T) {
 		handler := httphandler.NewTaskHandler(mockService)
 
 		reqBody := `{"assignee_id": null}`
-		req := httptest.NewRequest(stdhttp.MethodPut, taskURL(testTask.ID)+"/assign", strings.NewReader(reqBody))
+		req := httptest.NewRequest(
+			stdhttp.MethodPut,
+			taskURL(workspaceID, testTask.ID)+"/assignee",
+			strings.NewReader(reqBody),
+		)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.SetParamNames("id")
-		c.SetParamValues(testTask.ID.String())
+		c.SetParamNames("workspace_id", "task_id")
+		c.SetParamValues(workspaceID.String(), testTask.ID.String())
 
 		setupTaskAuthContext(c, userID)
 
@@ -503,6 +535,7 @@ func TestTaskHandler_Assign(t *testing.T) {
 	t.Run("invalid assignee ID", func(t *testing.T) {
 		e := echo.New()
 		userID := uuid.NewUUID()
+		workspaceID := uuid.NewUUID()
 		chatID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
@@ -512,12 +545,16 @@ func TestTaskHandler_Assign(t *testing.T) {
 		handler := httphandler.NewTaskHandler(mockService)
 
 		reqBody := `{"assignee_id": "invalid-uuid"}`
-		req := httptest.NewRequest(stdhttp.MethodPut, taskURL(testTask.ID)+"/assign", strings.NewReader(reqBody))
+		req := httptest.NewRequest(
+			stdhttp.MethodPut,
+			taskURL(workspaceID, testTask.ID)+"/assignee",
+			strings.NewReader(reqBody),
+		)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.SetParamNames("id")
-		c.SetParamValues(testTask.ID.String())
+		c.SetParamNames("workspace_id", "task_id")
+		c.SetParamValues(workspaceID.String(), testTask.ID.String())
 
 		setupTaskAuthContext(c, userID)
 
@@ -531,6 +568,7 @@ func TestTaskHandler_ChangePriority(t *testing.T) {
 	t.Run("successful change priority", func(t *testing.T) {
 		e := echo.New()
 		userID := uuid.NewUUID()
+		workspaceID := uuid.NewUUID()
 		chatID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
@@ -540,12 +578,16 @@ func TestTaskHandler_ChangePriority(t *testing.T) {
 		handler := httphandler.NewTaskHandler(mockService)
 
 		reqBody := `{"priority": "high"}`
-		req := httptest.NewRequest(stdhttp.MethodPut, taskURL(testTask.ID)+"/priority", strings.NewReader(reqBody))
+		req := httptest.NewRequest(
+			stdhttp.MethodPut,
+			taskURL(workspaceID, testTask.ID)+"/priority",
+			strings.NewReader(reqBody),
+		)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.SetParamNames("id")
-		c.SetParamValues(testTask.ID.String())
+		c.SetParamNames("workspace_id", "task_id")
+		c.SetParamValues(workspaceID.String(), testTask.ID.String())
 
 		setupTaskAuthContext(c, userID)
 
@@ -557,6 +599,7 @@ func TestTaskHandler_ChangePriority(t *testing.T) {
 	t.Run("invalid priority value", func(t *testing.T) {
 		e := echo.New()
 		userID := uuid.NewUUID()
+		workspaceID := uuid.NewUUID()
 		chatID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
@@ -566,12 +609,16 @@ func TestTaskHandler_ChangePriority(t *testing.T) {
 		handler := httphandler.NewTaskHandler(mockService)
 
 		reqBody := `{"priority": ""}`
-		req := httptest.NewRequest(stdhttp.MethodPut, taskURL(testTask.ID)+"/priority", strings.NewReader(reqBody))
+		req := httptest.NewRequest(
+			stdhttp.MethodPut,
+			taskURL(workspaceID, testTask.ID)+"/priority",
+			strings.NewReader(reqBody),
+		)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.SetParamNames("id")
-		c.SetParamValues(testTask.ID.String())
+		c.SetParamNames("workspace_id", "task_id")
+		c.SetParamValues(workspaceID.String(), testTask.ID.String())
 
 		setupTaskAuthContext(c, userID)
 
@@ -585,6 +632,7 @@ func TestTaskHandler_SetDueDate(t *testing.T) {
 	t.Run("successful set due date", func(t *testing.T) {
 		e := echo.New()
 		userID := uuid.NewUUID()
+		workspaceID := uuid.NewUUID()
 		chatID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
@@ -594,12 +642,16 @@ func TestTaskHandler_SetDueDate(t *testing.T) {
 		handler := httphandler.NewTaskHandler(mockService)
 
 		reqBody := `{"due_date": "2026-03-15"}`
-		req := httptest.NewRequest(stdhttp.MethodPut, taskURL(testTask.ID)+"/due-date", strings.NewReader(reqBody))
+		req := httptest.NewRequest(
+			stdhttp.MethodPut,
+			taskURL(workspaceID, testTask.ID)+"/due-date",
+			strings.NewReader(reqBody),
+		)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.SetParamNames("id")
-		c.SetParamValues(testTask.ID.String())
+		c.SetParamNames("workspace_id", "task_id")
+		c.SetParamValues(workspaceID.String(), testTask.ID.String())
 
 		setupTaskAuthContext(c, userID)
 
@@ -611,6 +663,7 @@ func TestTaskHandler_SetDueDate(t *testing.T) {
 	t.Run("clear due date (null)", func(t *testing.T) {
 		e := echo.New()
 		userID := uuid.NewUUID()
+		workspaceID := uuid.NewUUID()
 		chatID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
@@ -622,12 +675,16 @@ func TestTaskHandler_SetDueDate(t *testing.T) {
 		handler := httphandler.NewTaskHandler(mockService)
 
 		reqBody := `{"due_date": null}`
-		req := httptest.NewRequest(stdhttp.MethodPut, taskURL(testTask.ID)+"/due-date", strings.NewReader(reqBody))
+		req := httptest.NewRequest(
+			stdhttp.MethodPut,
+			taskURL(workspaceID, testTask.ID)+"/due-date",
+			strings.NewReader(reqBody),
+		)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.SetParamNames("id")
-		c.SetParamValues(testTask.ID.String())
+		c.SetParamNames("workspace_id", "task_id")
+		c.SetParamValues(workspaceID.String(), testTask.ID.String())
 
 		setupTaskAuthContext(c, userID)
 
@@ -639,6 +696,7 @@ func TestTaskHandler_SetDueDate(t *testing.T) {
 	t.Run("invalid due date format", func(t *testing.T) {
 		e := echo.New()
 		userID := uuid.NewUUID()
+		workspaceID := uuid.NewUUID()
 		chatID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
@@ -648,12 +706,16 @@ func TestTaskHandler_SetDueDate(t *testing.T) {
 		handler := httphandler.NewTaskHandler(mockService)
 
 		reqBody := `{"due_date": "not-a-date"}`
-		req := httptest.NewRequest(stdhttp.MethodPut, taskURL(testTask.ID)+"/due-date", strings.NewReader(reqBody))
+		req := httptest.NewRequest(
+			stdhttp.MethodPut,
+			taskURL(workspaceID, testTask.ID)+"/due-date",
+			strings.NewReader(reqBody),
+		)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.SetParamNames("id")
-		c.SetParamValues(testTask.ID.String())
+		c.SetParamNames("workspace_id", "task_id")
+		c.SetParamValues(workspaceID.String(), testTask.ID.String())
 
 		setupTaskAuthContext(c, userID)
 
@@ -667,6 +729,7 @@ func TestTaskHandler_Delete(t *testing.T) {
 	t.Run("successful delete task", func(t *testing.T) {
 		e := echo.New()
 		userID := uuid.NewUUID()
+		workspaceID := uuid.NewUUID()
 		chatID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
@@ -675,11 +738,11 @@ func TestTaskHandler_Delete(t *testing.T) {
 
 		handler := httphandler.NewTaskHandler(mockService)
 
-		req := httptest.NewRequest(stdhttp.MethodDelete, taskURL(testTask.ID), nil)
+		req := httptest.NewRequest(stdhttp.MethodDelete, taskURL(workspaceID, testTask.ID), nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.SetParamNames("id")
-		c.SetParamValues(testTask.ID.String())
+		c.SetParamNames("workspace_id", "task_id")
+		c.SetParamValues(workspaceID.String(), testTask.ID.String())
 
 		setupTaskAuthContext(c, userID)
 
@@ -691,16 +754,17 @@ func TestTaskHandler_Delete(t *testing.T) {
 	t.Run("delete non-existent task", func(t *testing.T) {
 		e := echo.New()
 		userID := uuid.NewUUID()
+		workspaceID := uuid.NewUUID()
 		taskID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
 		handler := httphandler.NewTaskHandler(mockService)
 
-		req := httptest.NewRequest(stdhttp.MethodDelete, taskURL(taskID), nil)
+		req := httptest.NewRequest(stdhttp.MethodDelete, taskURL(workspaceID, taskID), nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.SetParamNames("id")
-		c.SetParamValues(taskID.String())
+		c.SetParamNames("workspace_id", "task_id")
+		c.SetParamValues(workspaceID.String(), taskID.String())
 
 		setupTaskAuthContext(c, userID)
 
@@ -711,16 +775,17 @@ func TestTaskHandler_Delete(t *testing.T) {
 
 	t.Run("missing auth for delete", func(t *testing.T) {
 		e := echo.New()
+		workspaceID := uuid.NewUUID()
 		taskID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
 		handler := httphandler.NewTaskHandler(mockService)
 
-		req := httptest.NewRequest(stdhttp.MethodDelete, taskURL(taskID), nil)
+		req := httptest.NewRequest(stdhttp.MethodDelete, taskURL(workspaceID, taskID), nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.SetParamNames("id")
-		c.SetParamValues(taskID.String())
+		c.SetParamNames("workspace_id", "task_id")
+		c.SetParamValues(workspaceID.String(), taskID.String())
 
 		err := handler.Delete(c)
 		require.NoError(t, err)

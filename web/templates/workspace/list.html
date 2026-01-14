@@ -1,86 +1,89 @@
 {{define "workspace/list.html"}}
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" data-theme="light">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{if .Title}}{{.Title}} - {{end}}Flowra</title>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>{{if .Title}}{{.Title}} - {{end}}Flowra</title>
 
-    <!-- Pico CSS -->
-    <link rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+        <!-- Pico CSS -->
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"
+        />
 
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="/static/css/custom.css">
+        <!-- Custom CSS -->
+        <link rel="stylesheet" href="/static/css/custom.css" />
 
-    <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@2.0.0"
-            crossorigin="anonymous"></script>
+        <!-- Board CSS - always loaded to support hx-boost navigation -->
+        <link rel="stylesheet" href="/static/css/board.css" />
 
-    <!-- HTMX WebSocket Extension -->
-    <script src="https://unpkg.com/htmx-ext-ws@2.0.0/ws.js"></script>
-</head>
-<body hx-boost="true">
-    {{template "navbar" .}}
+        <!-- HTMX -->
+        <script
+            src="https://unpkg.com/htmx.org@2.0.0"
+            crossorigin="anonymous"
+        ></script>
 
-    <main class="container">
-        {{template "flash" .}}
+        <!-- HTMX WebSocket Extension -->
+        <script src="https://unpkg.com/htmx-ext-ws@2.0.0/ws.js"></script>
+    </head>
+    <body hx-boost="true">
+        {{template "navbar" .}}
 
-        <div class="workspace-list-page">
-            <header class="page-header">
-                <hgroup>
-                    <h1>Your Workspaces</h1>
-                    <p>Select a workspace to get started</p>
-                </hgroup>
+        <main class="container">
+            {{template "flash" .}}
 
-                <button hx-get="/partials/workspace/create-form"
+            <div class="workspace-list-page">
+                <header class="page-header">
+                    <hgroup>
+                        <h1>Your Workspaces</h1>
+                        <p>Select a workspace to get started</p>
+                    </hgroup>
+
+                    <button
+                        hx-get="/partials/workspace/create-form"
                         hx-target="#modal-container"
-                        hx-swap="innerHTML">
-                    + New Workspace
-                </button>
-            </header>
+                        hx-swap="innerHTML"
+                    >
+                        + New Workspace
+                    </button>
+                </header>
 
-            <div id="workspace-list"
-                 class="workspace-grid"
-                 hx-get="/partials/workspaces"
-                 hx-trigger="load"
-                 hx-swap="innerHTML">
-                {{template "loading" (dict "ID" "workspace-loading")}}
+                <div
+                    id="workspace-list"
+                    class="workspace-grid"
+                    hx-get="/partials/workspaces"
+                    hx-trigger="load"
+                    hx-swap="innerHTML"
+                >
+                    {{template "loading" (dict "ID" "workspace-loading")}}
+                </div>
+
+                <!-- Modal container -->
+                <div id="modal-container"></div>
             </div>
+        </main>
 
-            <!-- Modal container -->
-            <div id="modal-container"></div>
-        </div>
-    </main>
+        {{template "footer" .}}
 
-    {{template "footer" .}}
+        <script src="/static/js/app.js"></script>
 
-    <script src="/static/js/app.js"></script>
+        <style>
+            .workspace-list-page .page-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                margin-bottom: 2rem;
+            }
 
-    <style>
-    .workspace-list-page .page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 2rem;
-    }
-
-    .workspace-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 1.5rem;
-    }
-    </style>
-</body>
+            .workspace-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+                gap: 1.5rem;
+            }
+        </style>
+    </body>
 </html>
-{{end}}
-
-{{define "workspace/list-partial"}}
-{{if .Workspaces}}
-    {{range .Workspaces}}
-        {{template "workspace_card" .}}
-    {{end}}
-{{else}}
-    {{template "empty-workspaces"}}
-{{end}}
-{{end}}
+{{end}} {{define "workspace/list-partial"}} {{if .Workspaces}} {{range
+.Workspaces}} {{template "workspace_card" .}} {{end}} {{else}} {{template
+"empty-workspaces"}} {{end}} {{end}}
