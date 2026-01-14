@@ -9,6 +9,7 @@ import (
 
 	chatdomain "github.com/lllypuk/flowra/internal/domain/chat"
 	"github.com/lllypuk/flowra/internal/domain/event"
+	taskdomain "github.com/lllypuk/flowra/internal/domain/task"
 )
 
 // EventDocument represents dokument event in MongoDB
@@ -98,49 +99,70 @@ func (s *EventSerializer) SerializeMany(events []event.DomainEvent) ([]*EventDoc
 	return documents, nil
 }
 
+// createEventByType creates empty event instance by event type.
+func createEventByType(eventType string) (event.DomainEvent, error) {
+	switch eventType {
+	// Chat events
+	case chatdomain.EventTypeChatCreated:
+		return &chatdomain.Created{}, nil
+	case chatdomain.EventTypeParticipantAdded:
+		return &chatdomain.ParticipantAdded{}, nil
+	case chatdomain.EventTypeParticipantRemoved:
+		return &chatdomain.ParticipantRemoved{}, nil
+	case chatdomain.EventTypeChatTypeChanged:
+		return &chatdomain.TypeChanged{}, nil
+	case chatdomain.EventTypeStatusChanged:
+		return &chatdomain.StatusChanged{}, nil
+	case chatdomain.EventTypeUserAssigned:
+		return &chatdomain.UserAssigned{}, nil
+	case chatdomain.EventTypeAssigneeRemoved:
+		return &chatdomain.AssigneeRemoved{}, nil
+	case chatdomain.EventTypePrioritySet:
+		return &chatdomain.PrioritySet{}, nil
+	case chatdomain.EventTypeDueDateSet:
+		return &chatdomain.DueDateSet{}, nil
+	case chatdomain.EventTypeDueDateRemoved:
+		return &chatdomain.DueDateRemoved{}, nil
+	case chatdomain.EventTypeChatRenamed:
+		return &chatdomain.Renamed{}, nil
+	case chatdomain.EventTypeSeveritySet:
+		return &chatdomain.SeveritySet{}, nil
+	case chatdomain.EventTypeChatDeleted:
+		return &chatdomain.Deleted{}, nil
+	// Task events
+	case taskdomain.EventTypeTaskCreated:
+		return &taskdomain.Created{}, nil
+	case taskdomain.EventTypeTaskUpdated:
+		return &taskdomain.Updated{}, nil
+	case taskdomain.EventTypeTaskDeleted:
+		return &taskdomain.Deleted{}, nil
+	case taskdomain.EventTypeStatusChanged:
+		return &taskdomain.StatusChanged{}, nil
+	case taskdomain.EventTypeAssigneeChanged:
+		return &taskdomain.AssigneeChanged{}, nil
+	case taskdomain.EventTypePriorityChanged:
+		return &taskdomain.PriorityChanged{}, nil
+	case taskdomain.EventTypeDueDateChanged:
+		return &taskdomain.DueDateChanged{}, nil
+	case taskdomain.EventTypeCustomFieldSet:
+		return &taskdomain.CustomFieldSet{}, nil
+	default:
+		return nil, fmt.Errorf("unknown event type: %s", eventType)
+	}
+}
+
 // Deserialize preobrazuet MongoDB dokument obratno in domennoe event
 func (s *EventSerializer) Deserialize(doc *EventDocument) (event.DomainEvent, error) {
-	// konvertiruem BSON.M in bayty for deserializatsii
 	bsonBytes, err := bson.Marshal(doc.Data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal BSON data: %w", err)
 	}
 
-	// Creating konkretnyy type event on osnove EventType
-	var evt event.DomainEvent
-
-	switch doc.EventType {
-	case chatdomain.EventTypeChatCreated:
-		evt = &chatdomain.Created{}
-	case chatdomain.EventTypeParticipantAdded:
-		evt = &chatdomain.ParticipantAdded{}
-	case chatdomain.EventTypeParticipantRemoved:
-		evt = &chatdomain.ParticipantRemoved{}
-	case chatdomain.EventTypeChatTypeChanged:
-		evt = &chatdomain.TypeChanged{}
-	case chatdomain.EventTypeStatusChanged:
-		evt = &chatdomain.StatusChanged{}
-	case chatdomain.EventTypeUserAssigned:
-		evt = &chatdomain.UserAssigned{}
-	case chatdomain.EventTypeAssigneeRemoved:
-		evt = &chatdomain.AssigneeRemoved{}
-	case chatdomain.EventTypePrioritySet:
-		evt = &chatdomain.PrioritySet{}
-	case chatdomain.EventTypeDueDateSet:
-		evt = &chatdomain.DueDateSet{}
-	case chatdomain.EventTypeDueDateRemoved:
-		evt = &chatdomain.DueDateRemoved{}
-	case chatdomain.EventTypeChatRenamed:
-		evt = &chatdomain.Renamed{}
-	case chatdomain.EventTypeSeveritySet:
-		evt = &chatdomain.SeveritySet{}
-	case chatdomain.EventTypeChatDeleted:
-		evt = &chatdomain.Deleted{}
-	default:
-		return nil, fmt.Errorf("unknown event type: %s", doc.EventType)
+	evt, err := createEventByType(doc.EventType)
+	if err != nil {
+		return nil, err
 	}
 
-	// serializing BSON napryamuyu in konkretnyy type event
 	if unmarshalErr := bson.Unmarshal(bsonBytes, evt); unmarshalErr != nil {
 		return nil, fmt.Errorf("failed to unmarshal event data: %w", unmarshalErr)
 	}

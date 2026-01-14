@@ -294,10 +294,11 @@ func (h *NotificationTemplateHandler) render(c echo.Context, templateName, title
 	}
 
 	pageData := PageData{
-		Title: title,
-		User:  h.getUserView(c),
-		Flash: nil,
-		Data:  data,
+		Title:           title,
+		User:            h.getUserView(c),
+		Flash:           nil,
+		Data:            data,
+		ContentTemplate: "notification-content",
 	}
 
 	c.Response().Header().Set("Content-Type", "text/html; charset=utf-8")

@@ -2,6 +2,8 @@ package httphandler
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -49,6 +51,20 @@ type BoardMemberService interface {
 	ListWorkspaceMembers(ctx context.Context, workspaceID uuid.UUID, offset, limit int) ([]MemberViewData, error)
 }
 
+// BoardTaskCreator defines the interface for task creation operations.
+// Declared on the consumer side per project guidelines.
+type BoardTaskCreator interface {
+	// CreateTask creates a new task and returns its ID.
+	CreateTask(ctx context.Context, cmd taskapp.CreateTaskCommand) (*taskapp.TaskResult, error)
+}
+
+// BoardChatCreator defines the interface for chat creation operations.
+// Declared on the consumer side per project guidelines.
+type BoardChatCreator interface {
+	// CreateChat creates a new chat for task and returns its ID.
+	CreateChat(ctx context.Context, workspaceID, userID uuid.UUID, chatType, title string) (uuid.UUID, error)
+}
+
 // BoardViewData represents the data needed to render the board page.
 type BoardViewData struct {
 	Workspace  WorkspaceViewData
@@ -57,6 +73,12 @@ type BoardViewData struct {
 	Members    []MemberViewData
 	Token      string
 	Columns    []ColumnViewData
+}
+
+// TaskCreateFormData represents data for the task creation form.
+type TaskCreateFormData struct {
+	WorkspaceID string
+	Members     []MemberViewData
 }
 
 // BoardFilters represents the current filter state.
@@ -123,6 +145,8 @@ type BoardTemplateHandler struct {
 	logger        *slog.Logger
 	taskService   BoardTaskService
 	memberService BoardMemberService
+	taskCreator   BoardTaskCreator
+	chatCreator   BoardChatCreator
 }
 
 // NewBoardTemplateHandler creates a new board template handler.
@@ -143,6 +167,16 @@ func NewBoardTemplateHandler(
 	}
 }
 
+// SetTaskCreator sets the task creator service.
+func (h *BoardTemplateHandler) SetTaskCreator(tc BoardTaskCreator) {
+	h.taskCreator = tc
+}
+
+// SetChatCreator sets the chat creator service.
+func (h *BoardTemplateHandler) SetChatCreator(cc BoardChatCreator) {
+	h.chatCreator = cc
+}
+
 // SetupBoardRoutes registers board-related page and partial routes.
 func (h *BoardTemplateHandler) SetupBoardRoutes(e *echo.Echo) {
 	// Board pages (protected)
@@ -154,34 +188,74 @@ func (h *BoardTemplateHandler) SetupBoardRoutes(e *echo.Echo) {
 	partials.GET("/workspace/:workspace_id/board", h.BoardPartial)
 	partials.GET("/workspace/:workspace_id/board/:status/more", h.BoardColumnMore)
 	partials.GET("/tasks/:task_id/card", h.TaskCardPartial)
+
+	// Task creation (protected)
+	partials.GET("/task/create-form", h.TaskCreateForm)
+	partials.POST("/task/create", h.TaskCreate)
 }
 
 // BoardIndex renders the main board page.
 func (h *BoardTemplateHandler) BoardIndex(c echo.Context) error {
+	h.logger.Debug("BoardIndex: starting render",
+		"path", c.Request().URL.Path,
+		"workspace_id_param", c.Param("workspace_id"),
+	)
+
 	user := h.getUserView(c)
 	if user == nil {
+		h.logger.Debug("BoardIndex: user not found, redirecting to login")
 		return c.Redirect(http.StatusFound, "/login")
 	}
+	h.logger.Debug("BoardIndex: user found", "user_id", user.ID)
 
 	workspaceID, err := uuid.ParseUUID(c.Param("workspace_id"))
 	if err != nil {
+		h.logger.Error("BoardIndex: failed to parse workspace_id",
+			"workspace_id_param", c.Param("workspace_id"),
+			"error", err,
+		)
 		return h.renderNotFound(c)
 	}
+	h.logger.Debug("BoardIndex: workspace_id parsed", "workspace_id", workspaceID.String())
 
 	// Parse filters from query params
 	filters := h.parseFilters(c)
+	h.logger.Debug("BoardIndex: filters parsed", "filters", filters)
 
 	// Get workspace members for filter dropdown
 	var members []MemberViewData
 	if h.memberService != nil {
-		members, _ = h.memberService.ListWorkspaceMembers(c.Request().Context(), workspaceID, 0, maxMembersListLimit)
+		var membersErr error
+		members, membersErr = h.memberService.ListWorkspaceMembers(
+			c.Request().Context(), workspaceID, 0, maxMembersListLimit)
+		if membersErr != nil {
+			h.logger.Error("BoardIndex: failed to list workspace members",
+				"workspace_id", workspaceID.String(),
+				"error", membersErr,
+			)
+		} else {
+			h.logger.Debug("BoardIndex: members loaded", "count", len(members))
+		}
+	} else {
+		h.logger.Warn("BoardIndex: memberService is nil")
 	}
 
 	// Count total tasks
 	var totalTasks int
 	if h.taskService != nil {
 		taskFilters := h.buildTaskFilters(workspaceID, filters, user.ID)
-		totalTasks, _ = h.taskService.CountTasks(c.Request().Context(), taskFilters)
+		var countErr error
+		totalTasks, countErr = h.taskService.CountTasks(c.Request().Context(), taskFilters)
+		if countErr != nil {
+			h.logger.Error("BoardIndex: failed to count tasks",
+				"workspace_id", workspaceID.String(),
+				"error", countErr,
+			)
+		} else {
+			h.logger.Debug("BoardIndex: tasks counted", "total", totalTasks)
+		}
+	} else {
+		h.logger.Warn("BoardIndex: taskService is nil")
 	}
 
 	data := BoardViewData{
@@ -194,7 +268,21 @@ func (h *BoardTemplateHandler) BoardIndex(c echo.Context) error {
 		Token:      "", // TODO: Get JWT token for WebSocket auth
 	}
 
-	return h.render(c, "board/index", "Board", data)
+	h.logger.Debug("BoardIndex: calling render",
+		"template", "board/index",
+		"workspace_id", workspaceID.String(),
+		"total_tasks", totalTasks,
+		"members_count", len(members),
+	)
+
+	err = h.render(c, "board/index", "Board", data)
+	if err != nil {
+		h.logger.Error("BoardIndex: render failed",
+			"template", "board/index",
+			"error", err,
+		)
+	}
+	return err
 }
 
 // BoardPartial returns all columns with tasks as HTML partial for HTMX.
@@ -439,13 +527,34 @@ func (h *BoardTemplateHandler) convertTaskToCard(
 	return card
 }
 
-// parseFilters extracts filter values from query parameters.
+// parseFilters extracts filter values from query parameters or form values.
+// For POST requests (like task creation), filter values come from form fields with filter_ prefix.
 func (h *BoardTemplateHandler) parseFilters(c echo.Context) BoardFilters {
+	// Try form values first (for POST requests with filter_ prefix)
+	filterType := strings.TrimSpace(c.FormValue("filter_type"))
+	filterAssignee := strings.TrimSpace(c.FormValue("filter_assignee"))
+	filterPriority := strings.TrimSpace(c.FormValue("filter_priority"))
+	filterSearch := strings.TrimSpace(c.FormValue("filter_search"))
+
+	// Fall back to query params (for GET requests)
+	if filterType == "" {
+		filterType = strings.TrimSpace(c.QueryParam("type"))
+	}
+	if filterAssignee == "" {
+		filterAssignee = strings.TrimSpace(c.QueryParam("assignee"))
+	}
+	if filterPriority == "" {
+		filterPriority = strings.TrimSpace(c.QueryParam("priority"))
+	}
+	if filterSearch == "" {
+		filterSearch = strings.TrimSpace(c.QueryParam("search"))
+	}
+
 	return BoardFilters{
-		Type:     strings.TrimSpace(c.QueryParam("type")),
-		Assignee: strings.TrimSpace(c.QueryParam("assignee")),
-		Priority: strings.TrimSpace(c.QueryParam("priority")),
-		Search:   strings.TrimSpace(c.QueryParam("search")),
+		Type:     filterType,
+		Assignee: filterAssignee,
+		Priority: filterPriority,
+		Search:   filterSearch,
 	}
 }
 
@@ -483,18 +592,44 @@ func (h *BoardTemplateHandler) getUserView(c echo.Context) *UserView {
 
 // render renders a full page with the base layout.
 func (h *BoardTemplateHandler) render(c echo.Context, templateName string, title string, data any) error {
+	h.logger.Debug("render: starting",
+		"template", templateName,
+		"title", title,
+	)
+
 	if h.renderer == nil {
+		h.logger.Error("render: renderer is nil")
 		return echo.NewHTTPError(http.StatusInternalServerError, "template renderer not configured")
 	}
 
 	pageData := PageData{
-		Title: title,
-		User:  h.getUserView(c),
-		Data:  data,
+		Title:           title,
+		User:            h.getUserView(c),
+		Data:            data,
+		ContentTemplate: "board-content",
+		IncludeBoardCSS: true,
+		IncludeBoardJS:  true,
 	}
 
+	h.logger.Debug("render: pageData prepared",
+		"template", templateName,
+		"has_user", pageData.User != nil,
+		"data_type", fmt.Sprintf("%T", data),
+	)
+
 	c.Response().Header().Set("Content-Type", "text/html; charset=utf-8")
-	return h.renderer.Render(c.Response().Writer, templateName, pageData, c)
+
+	err := h.renderer.Render(c.Response().Writer, templateName, pageData, c)
+	if err != nil {
+		h.logger.Error("render: Render() failed",
+			"template", templateName,
+			"error", err,
+			"error_type", fmt.Sprintf("%T", err),
+		)
+	} else {
+		h.logger.Debug("render: completed successfully", "template", templateName)
+	}
+	return err
 }
 
 // renderPartial renders a template without the base layout.
@@ -510,6 +645,171 @@ func (h *BoardTemplateHandler) renderPartial(c echo.Context, templateName string
 // renderNotFound renders a 404 error page.
 func (h *BoardTemplateHandler) renderNotFound(c echo.Context) error {
 	return c.String(http.StatusNotFound, "Page not found")
+}
+
+// TaskCreateForm returns the task creation form partial.
+func (h *BoardTemplateHandler) TaskCreateForm(c echo.Context) error {
+	user := h.getUserView(c)
+	if user == nil {
+		return c.String(http.StatusUnauthorized, "Unauthorized")
+	}
+
+	workspaceID := c.QueryParam("workspace_id")
+	if workspaceID == "" {
+		return c.String(http.StatusBadRequest, "workspace_id is required")
+	}
+
+	// Parse workspace ID to validate it
+	wsID, err := uuid.ParseUUID(workspaceID)
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid workspace ID")
+	}
+
+	// Load workspace members for assignee dropdown
+	var members []MemberViewData
+	if h.memberService != nil {
+		members, _ = h.memberService.ListWorkspaceMembers(c.Request().Context(), wsID, 0, maxMembersListLimit)
+	}
+
+	data := TaskCreateFormData{
+		WorkspaceID: workspaceID,
+		Members:     members,
+	}
+
+	return h.renderPartial(c, "task/create-form", data)
+}
+
+// taskCreateFormInput holds parsed form input for task creation.
+type taskCreateFormInput struct {
+	workspaceID uuid.UUID
+	title       string
+	taskType    string
+	priority    string
+	assigneeID  string
+	dueDate     string
+}
+
+// TaskCreate handles task creation from the form.
+func (h *BoardTemplateHandler) TaskCreate(c echo.Context) error {
+	user := h.getUserView(c)
+	if user == nil {
+		return c.String(http.StatusUnauthorized, "Unauthorized")
+	}
+
+	userID, err := uuid.ParseUUID(user.ID)
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid user ID")
+	}
+
+	if h.chatCreator == nil || h.taskCreator == nil {
+		h.logger.Error("TaskCreate: services not configured")
+		return c.String(http.StatusServiceUnavailable, "Task creation not available")
+	}
+
+	input, err := h.parseTaskCreateForm(c)
+	if err != nil {
+		return c.String(http.StatusBadRequest, err.Error())
+	}
+
+	// Create chat for the task
+	chatID, err := h.chatCreator.CreateChat(
+		c.Request().Context(), input.workspaceID, userID, input.taskType, input.title)
+	if err != nil {
+		h.logger.Error("TaskCreate: failed to create chat", "error", err)
+		return c.String(http.StatusInternalServerError, "Failed to create task chat")
+	}
+
+	// Create the task
+	cmd := h.buildCreateTaskCommand(chatID, userID, input)
+	if _, err = h.taskCreator.CreateTask(c.Request().Context(), cmd); err != nil {
+		h.logger.Error("TaskCreate: failed to create task", "error", err)
+		return c.String(http.StatusInternalServerError, "Failed to create task")
+	}
+
+	h.logger.Info("TaskCreate: task created", "chat_id", chatID.String(), "title", input.title)
+
+	// Return refreshed board columns.
+	// Preserve current board filters by accepting them from the request (query string or hidden inputs).
+	filters := h.parseFilters(c)
+	columns := h.buildColumns(c.Request().Context(), input.workspaceID, filters, user.ID)
+
+	return h.renderPartial(c, "board/columns", map[string]any{"Columns": columns})
+}
+
+// parseTaskCreateForm parses and validates task creation form input.
+func (h *BoardTemplateHandler) parseTaskCreateForm(c echo.Context) (*taskCreateFormInput, error) {
+	workspaceIDStr := c.FormValue("workspace_id")
+	if workspaceIDStr == "" {
+		return nil, errors.New("workspace_id is required")
+	}
+
+	workspaceID, err := uuid.ParseUUID(workspaceIDStr)
+	if err != nil {
+		return nil, errors.New("invalid workspace ID")
+	}
+
+	title := strings.TrimSpace(c.FormValue("title"))
+	if title == "" {
+		return nil, errors.New("title is required")
+	}
+
+	taskType := strings.ToLower(strings.TrimSpace(c.FormValue("type")))
+	if taskType == "" {
+		taskType = chatTypeTask
+	}
+	switch taskType {
+	case chatTypeTask, chatTypeBug, chatTypeEpic:
+		// ok
+	default:
+		return nil, errors.New("invalid task type")
+	}
+
+	return &taskCreateFormInput{
+		workspaceID: workspaceID,
+		title:       title,
+		taskType:    taskType,
+		priority:    strings.ToLower(c.FormValue("priority")),
+		assigneeID:  c.FormValue("assignee_id"),
+		dueDate:     c.FormValue("due_date"),
+	}, nil
+}
+
+// buildCreateTaskCommand builds the task creation command from parsed input.
+func (h *BoardTemplateHandler) buildCreateTaskCommand(
+	chatID, userID uuid.UUID,
+	input *taskCreateFormInput,
+) taskapp.CreateTaskCommand {
+	cmd := taskapp.CreateTaskCommand{
+		ChatID:    chatID,
+		Title:     input.title,
+		CreatedBy: userID,
+	}
+
+	if et := parseEntityTypeFromString(input.taskType); et != nil {
+		cmd.EntityType = *et
+	} else {
+		cmd.EntityType = task.TypeTask
+	}
+
+	if p := parsePriorityFromString(input.priority); p != nil {
+		cmd.Priority = *p
+	} else {
+		cmd.Priority = task.PriorityMedium
+	}
+
+	if input.assigneeID != "" {
+		if assigneeID, err := uuid.ParseUUID(input.assigneeID); err == nil {
+			cmd.AssigneeID = &assigneeID
+		}
+	}
+
+	if input.dueDate != "" {
+		if dueDate, err := time.Parse("2006-01-02", input.dueDate); err == nil {
+			cmd.DueDate = &dueDate
+		}
+	}
+
+	return cmd
 }
 
 // parseEntityTypeFromString converts a string to task.EntityType.

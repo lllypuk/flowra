@@ -1,0 +1,101 @@
+{{define "task/create-form"}}
+<dialog open id="create-task-modal">
+    <article>
+        <header>
+            <button
+                aria-label="Close"
+                rel="prev"
+                hx-on:click="this.closest('dialog').remove()"
+            ></button>
+            <h3>Create Task</h3>
+        </header>
+
+        <form
+            hx-post="/partials/task/create"
+            hx-target="#board-columns"
+            hx-swap="innerHTML"
+            hx-on::after-request="if(event.detail.successful){ this.closest('dialog').remove(); }"
+        >
+            <input type="hidden" name="workspace_id" value="{{.WorkspaceID}}" />
+
+            <!-- Preserve current board filters so the refreshed columns respect them -->
+            <input type="hidden" name="filter_type" value="" />
+            <input type="hidden" name="filter_assignee" value="" />
+            <input type="hidden" name="filter_priority" value="" />
+            <input type="hidden" name="filter_search" value="" />
+
+            <label for="title">
+                Title
+                <input
+                    type="text"
+                    id="title"
+                    name="title"
+                    placeholder="e.g., Implement user authentication"
+                    required
+                    minlength="3"
+                    maxlength="200"
+                />
+            </label>
+
+            <script>
+            // Focus title input when dialog opens
+            (function() {
+                var input = document.getElementById('title');
+                if (input) {
+                    setTimeout(function() { input.focus(); }, 0);
+                }
+            })();
+            </script>
+
+            <div class="grid">
+                <label for="type">
+                    Type
+                    <select id="type" name="type">
+                        <option value="task" selected>Task</option>
+                        <option value="bug">Bug</option>
+                        <option value="epic">Epic</option>
+                    </select>
+                </label>
+
+                <label for="priority">
+                    Priority
+                    <select id="priority" name="priority">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                        <option value="critical">Critical</option>
+                    </select>
+                </label>
+            </div>
+
+            <div class="grid">
+                <label for="assignee">
+                    Assignee (optional)
+                    <select id="assignee" name="assignee_id">
+                        <option value="">Unassigned</option>
+                        {{range .Members}}
+                        <option value="{{.UserID}}">{{.DisplayName}}</option>
+                        {{end}}
+                    </select>
+                </label>
+
+                <label for="due_date">
+                    Due Date (optional)
+                    <input type="date" id="due_date" name="due_date" />
+                </label>
+            </div>
+
+            <footer>
+                <button
+                    type="button"
+                    class="secondary"
+                    hx-on:click="this.closest('dialog').remove()"
+                >
+                    Cancel
+                </button>
+                <button type="submit">Create Task</button>
+            </footer>
+        </form>
+    </article>
+</dialog>
+{{end}}

@@ -8,12 +8,14 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	chatapp "github.com/lllypuk/flowra/internal/application/chat"
 	messageapp "github.com/lllypuk/flowra/internal/application/message"
 	"github.com/lllypuk/flowra/internal/application/notification"
 	taskapp "github.com/lllypuk/flowra/internal/application/task"
 	wsapp "github.com/lllypuk/flowra/internal/application/workspace"
 	"github.com/lllypuk/flowra/internal/config"
+	"github.com/lllypuk/flowra/internal/domain/chat"
 	"github.com/lllypuk/flowra/internal/domain/message"
 	notificationdomain "github.com/lllypuk/flowra/internal/domain/notification"
 	taskdomain "github.com/lllypuk/flowra/internal/domain/task"
@@ -695,7 +697,11 @@ func (c *Container) setupHTTPHandlers() {
 	c.MessageHandler = httphandler.NewMessageHandler(c.MessageService)
 	c.Logger.Debug("message service and handler initialized (real)")
 
-	// Note: TaskHandler, NotificationHandler, UserHandler
+	// Initialize TaskHandler with full service
+	c.TaskHandler = httphandler.NewTaskHandler(c.createFullTaskService())
+	c.Logger.Debug("task handler initialized (real)")
+
+	// Note: NotificationHandler, UserHandler
 	// are left nil - routes.go will create placeholder endpoints for them.
 	// This is intentional until their use cases are fully implemented.
 
@@ -928,7 +934,131 @@ func (c *Container) setupBoardTemplateHandler() {
 		memberService,
 	)
 
+	// Set task creator for creating new tasks
+	c.BoardTemplateHandler.SetTaskCreator(c.createBoardTaskCreator())
+
+	// Set chat creator for creating task chats
+	c.BoardTemplateHandler.SetChatCreator(c.createBoardChatCreator())
+
 	c.Logger.Debug("board template handler initialized")
+}
+
+// createBoardTaskCreator creates a service implementing BoardTaskCreator.
+func (c *Container) createBoardTaskCreator() httphandler.BoardTaskCreator {
+	return &boardTaskCreatorAdapter{
+		eventStore:    c.EventStore,
+		readModelColl: c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model"),
+		logger:        c.Logger,
+	}
+}
+
+// boardTaskCreatorAdapter creates tasks and updates the read model.
+type boardTaskCreatorAdapter struct {
+	eventStore    appcore.EventStore
+	readModelColl *mongo.Collection
+	logger        *slog.Logger
+}
+
+// CreateTask implements BoardTaskCreator.
+// It creates a task and updates the read model for immediate visibility.
+func (a *boardTaskCreatorAdapter) CreateTask(
+	ctx context.Context,
+	cmd taskapp.CreateTaskCommand,
+) (*taskapp.TaskResult, error) {
+	// 1. Create task via use case
+	createUC := taskapp.NewCreateTaskUseCase(a.eventStore)
+	result, err := createUC.Execute(ctx, cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. Update read model directly so the task appears immediately
+	if updateErr := a.updateTaskReadModel(ctx, result, cmd); updateErr != nil {
+		a.logger.WarnContext(ctx, "failed to update task read model",
+			slog.String("task_id", result.TaskID.String()),
+			slog.String("error", updateErr.Error()),
+		)
+		// Don't fail - the event was saved, read model can be rebuilt
+	}
+
+	return &result, nil
+}
+
+// updateTaskReadModel updates the tasks_read_model collection.
+func (a *boardTaskCreatorAdapter) updateTaskReadModel(
+	ctx context.Context,
+	result taskapp.TaskResult,
+	cmd taskapp.CreateTaskCommand,
+) error {
+	doc := map[string]any{
+		"_id":         result.TaskID.String(),
+		"task_id":     result.TaskID.String(),
+		"chat_id":     cmd.ChatID.String(),
+		"title":       cmd.Title,
+		"entity_type": string(cmd.EntityType),
+		"status":      string(taskdomain.StatusToDo),
+		"priority":    string(cmd.Priority),
+		"created_by":  cmd.CreatedBy.String(),
+		"created_at":  time.Now(),
+		"version":     result.Version,
+	}
+
+	if cmd.AssigneeID != nil {
+		doc["assigned_to"] = cmd.AssigneeID.String()
+	}
+
+	if cmd.DueDate != nil {
+		doc["due_date"] = *cmd.DueDate
+	}
+
+	_, err := a.readModelColl.InsertOne(ctx, doc)
+	return err
+}
+
+// createBoardChatCreator creates a service implementing BoardChatCreator.
+func (c *Container) createBoardChatCreator() httphandler.BoardChatCreator {
+	createUC := chatapp.NewCreateChatUseCase(c.ChatRepo)
+	return &boardChatCreatorAdapter{createUC: createUC}
+}
+
+// boardChatCreatorAdapter adapts CreateChatUseCase to BoardChatCreator.
+type boardChatCreatorAdapter struct {
+	createUC *chatapp.CreateChatUseCase
+}
+
+// CreateChat implements BoardChatCreator.
+func (a *boardChatCreatorAdapter) CreateChat(
+	ctx context.Context,
+	workspaceID, userID uuid.UUID,
+	chatType, title string,
+) (uuid.UUID, error) {
+	// Map string chat type to domain type
+	var domainType chat.Type
+	switch chatType {
+	case "task":
+		domainType = chat.TypeTask
+	case "bug":
+		domainType = chat.TypeBug
+	case "epic":
+		domainType = chat.TypeEpic
+	default:
+		domainType = chat.TypeTask
+	}
+
+	cmd := chatapp.CreateChatCommand{
+		WorkspaceID: workspaceID,
+		Title:       title,
+		Type:        domainType,
+		IsPublic:    true,
+		CreatedBy:   userID,
+	}
+
+	result, err := a.createUC.Execute(ctx, cmd)
+	if err != nil {
+		return "", err
+	}
+
+	return result.Value.ID(), nil
 }
 
 // createBoardTaskService creates a service implementing BoardTaskService.
@@ -1080,6 +1210,77 @@ func (d *taskReadModelDoc) toReadModel() *taskapp.ReadModel {
 	}
 
 	return model
+}
+
+// createFullTaskService creates a service implementing httphandler.TaskService.
+func (c *Container) createFullTaskService() httphandler.TaskService {
+	return &fullTaskServiceAdapter{
+		boardTaskServiceAdapter: boardTaskServiceAdapter{
+			collection: c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model"),
+		},
+		eventStore: c.EventStore,
+		userRepo:   c.UserRepo,
+	}
+}
+
+// fullTaskServiceAdapter implements httphandler.TaskService by embedding
+// boardTaskServiceAdapter for queries and adding command support.
+type fullTaskServiceAdapter struct {
+	boardTaskServiceAdapter
+
+	eventStore appcore.EventStore
+	userRepo   appcore.UserRepository
+}
+
+// CreateTask implements httphandler.TaskService.
+func (a *fullTaskServiceAdapter) CreateTask(
+	ctx context.Context,
+	cmd taskapp.CreateTaskCommand,
+) (taskapp.TaskResult, error) {
+	createUC := taskapp.NewCreateTaskUseCase(a.eventStore)
+	return createUC.Execute(ctx, cmd)
+}
+
+// ChangeStatus implements httphandler.TaskService.
+func (a *fullTaskServiceAdapter) ChangeStatus(
+	ctx context.Context,
+	cmd taskapp.ChangeStatusCommand,
+) (taskapp.TaskResult, error) {
+	changeStatusUC := taskapp.NewChangeStatusUseCase(a.eventStore)
+	return changeStatusUC.Execute(ctx, cmd)
+}
+
+// AssignTask implements httphandler.TaskService.
+func (a *fullTaskServiceAdapter) AssignTask(
+	ctx context.Context,
+	cmd taskapp.AssignTaskCommand,
+) (taskapp.TaskResult, error) {
+	assignUC := taskapp.NewAssignTaskUseCase(a.eventStore, a.userRepo)
+	return assignUC.Execute(ctx, cmd)
+}
+
+// ChangePriority implements httphandler.TaskService.
+func (a *fullTaskServiceAdapter) ChangePriority(
+	ctx context.Context,
+	cmd taskapp.ChangePriorityCommand,
+) (taskapp.TaskResult, error) {
+	changePriorityUC := taskapp.NewChangePriorityUseCase(a.eventStore)
+	return changePriorityUC.Execute(ctx, cmd)
+}
+
+// SetDueDate implements httphandler.TaskService.
+func (a *fullTaskServiceAdapter) SetDueDate(
+	ctx context.Context,
+	cmd taskapp.SetDueDateCommand,
+) (taskapp.TaskResult, error) {
+	setDueDateUC := taskapp.NewSetDueDateUseCase(a.eventStore)
+	return setDueDateUC.Execute(ctx, cmd)
+}
+
+// DeleteTask implements httphandler.TaskService.
+func (a *fullTaskServiceAdapter) DeleteTask(_ context.Context, _ uuid.UUID, _ uuid.UUID) error {
+	// TODO: Implement delete task use case
+	return nil
 }
 
 // createBoardMemberService creates a service implementing BoardMemberService.

@@ -107,7 +107,12 @@ func (s *MongoEventStore) SaveEvents(
 			return nil, errSerialize
 		}
 
-		// 3. preobrazuem in interface{} for InsertMany
+		// 3. Assign correct versions to documents (expectedVersion + 1, +2, ...)
+		for i, doc := range documents {
+			doc.Version = expectedVersion + i + 1
+		}
+
+		// 4. preobrazuem in interface{} for InsertMany
 		docs := make([]any, len(documents))
 		for i, doc := range documents {
 			docs[i] = doc
