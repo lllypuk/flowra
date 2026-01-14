@@ -26,7 +26,9 @@
 
     // Save original status before the card moves
     var originalColumn = event.target.closest(".column-cards");
-    draggedTaskOriginalStatus = originalColumn ? originalColumn.dataset.status : null;
+    draggedTaskOriginalStatus = originalColumn
+      ? originalColumn.dataset.status
+      : null;
 
     // Set data for the drag operation
     event.dataTransfer.effectAllowed = "move";
@@ -57,9 +59,11 @@
     draggedTaskOriginalStatus = null;
 
     // Remove all drag-over states
-    document.querySelectorAll(".column-cards.drag-over").forEach(function (col) {
-      col.classList.remove("drag-over");
-    });
+    document
+      .querySelectorAll(".column-cards.drag-over")
+      .forEach(function (col) {
+        col.classList.remove("drag-over");
+      });
   }
 
   /**
@@ -129,7 +133,7 @@
 
     // If status changed, update via API
     if (oldStatus && oldStatus !== newStatus) {
-      updateTaskStatus(taskId, newStatus, taskCard);
+      updateTaskStatus(taskId, newStatus, taskCard, oldStatus);
     }
   }
 
@@ -141,7 +145,7 @@
    */
   function getDragAfterElement(container, y) {
     var draggableElements = Array.prototype.slice.call(
-      container.querySelectorAll(".task-card:not(.dragging)")
+      container.querySelectorAll(".task-card:not(.dragging)"),
     );
 
     var result = draggableElements.reduce(
@@ -155,7 +159,7 @@
           return closest;
         }
       },
-      { offset: Number.NEGATIVE_INFINITY }
+      { offset: Number.NEGATIVE_INFINITY },
     );
 
     return result.element;
@@ -167,7 +171,7 @@
    * @param {string} newStatus - New status value
    * @param {HTMLElement} taskCard - Task card element
    */
-  function updateTaskStatus(taskId, newStatus, taskCard) {
+  function updateTaskStatus(taskId, newStatus, taskCard, oldStatus) {
     // Show loading state
     taskCard.style.opacity = "0.5";
     taskCard.style.pointerEvents = "none";
@@ -184,16 +188,24 @@
     }
 
     // Update via fetch (no swap needed - card already moved by drag)
-    fetch("/api/v1/workspaces/" + workspaceId + "/tasks/" + taskId + "/status", {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
+    fetch(
+      "/api/v1/workspaces/" + workspaceId + "/tasks/" + taskId + "/status",
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: "status=" + encodeURIComponent(newStatus),
       },
-      body: "status=" + encodeURIComponent(newStatus),
-    })
+    )
       .then(function (response) {
         if (!response.ok) {
-          throw new Error("Status update failed");
+          throw new Error(
+            "Status update failed: " +
+              response.status +
+              " " +
+              response.statusText,
+          );
         }
         // Restore card visibility and update counts
         taskCard.style.opacity = "1";
@@ -205,6 +217,17 @@
         // Revert visual state on error
         taskCard.style.opacity = "1";
         taskCard.style.pointerEvents = "";
+
+        // Revert card to original column if we know the old status
+        if (oldStatus) {
+          var originalColumn = document.querySelector(
+            '.column-cards[data-status="' + oldStatus + '"]',
+          );
+          if (originalColumn && taskCard.parentElement !== originalColumn) {
+            originalColumn.appendChild(taskCard);
+            updateColumnCounts();
+          }
+        }
 
         // Show error notification if toast system exists
         if (typeof showToast === "function") {
@@ -270,7 +293,7 @@
       var taskCard = document.getElementById("task-" + data.task_id);
       if (taskCard) {
         var newColumn = document.querySelector(
-          '.column-cards[data-status="' + data.changes.status.new + '"]'
+          '.column-cards[data-status="' + data.changes.status.new + '"]',
         );
         if (newColumn) {
           // Move card to new column

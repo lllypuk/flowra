@@ -1298,7 +1298,7 @@ func (a *fullTaskServiceAdapter) SetDueDate(
 // DeleteTask implements httphandler.TaskService.
 func (a *fullTaskServiceAdapter) DeleteTask(_ context.Context, _ uuid.UUID, _ uuid.UUID) error {
 	// TODO: Implement delete task use case
-	return nil
+	return errors.New("delete task not yet implemented")
 }
 
 // createBoardMemberService creates a service implementing BoardMemberService.

@@ -703,7 +703,10 @@ func (h *BoardTemplateHandler) TaskCreate(c echo.Context) error {
 
 	if h.chatCreator == nil || h.taskCreator == nil {
 		h.logger.Error("TaskCreate: services not configured")
-		return c.String(http.StatusServiceUnavailable, "Task creation not available")
+		return c.String(
+			http.StatusServiceUnavailable,
+			"Task creation is temporarily unavailable: required services are not configured",
+		)
 	}
 
 	input, err := h.parseTaskCreateForm(c)
