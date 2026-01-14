@@ -269,7 +269,11 @@ func TestTaskHandler_Get(t *testing.T) {
 		mockService := httphandler.NewMockTaskService()
 		handler := httphandler.NewTaskHandler(mockService)
 
-		req := httptest.NewRequest(stdhttp.MethodGet, "/api/v1/workspaces/"+workspaceID.String()+"/tasks/invalid-id", nil)
+		req := httptest.NewRequest(
+			stdhttp.MethodGet,
+			"/api/v1/workspaces/"+workspaceID.String()+"/tasks/invalid-id",
+			nil,
+		)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		c.SetParamNames("workspace_id", "task_id")
@@ -386,7 +390,11 @@ func TestTaskHandler_ChangeStatus(t *testing.T) {
 		handler := httphandler.NewTaskHandler(mockService)
 
 		reqBody := `{"status": "in_progress"}`
-		req := httptest.NewRequest(stdhttp.MethodPut, taskURL(workspaceID, testTask.ID)+"/status", strings.NewReader(reqBody))
+		req := httptest.NewRequest(
+			stdhttp.MethodPut,
+			taskURL(workspaceID, testTask.ID)+"/status",
+			strings.NewReader(reqBody),
+		)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
@@ -413,7 +421,11 @@ func TestTaskHandler_ChangeStatus(t *testing.T) {
 		handler := httphandler.NewTaskHandler(mockService)
 
 		reqBody := `{"status": "invalid_status"}`
-		req := httptest.NewRequest(stdhttp.MethodPut, taskURL(workspaceID, testTask.ID)+"/status", strings.NewReader(reqBody))
+		req := httptest.NewRequest(
+			stdhttp.MethodPut,
+			taskURL(workspaceID, testTask.ID)+"/status",
+			strings.NewReader(reqBody),
+		)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
@@ -437,7 +449,11 @@ func TestTaskHandler_ChangeStatus(t *testing.T) {
 		handler := httphandler.NewTaskHandler(mockService)
 
 		reqBody := `{"status": "done"}`
-		req := httptest.NewRequest(stdhttp.MethodPut, taskURL(workspaceID, taskID)+"/status", strings.NewReader(reqBody))
+		req := httptest.NewRequest(
+			stdhttp.MethodPut,
+			taskURL(workspaceID, taskID)+"/status",
+			strings.NewReader(reqBody),
+		)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
@@ -467,7 +483,11 @@ func TestTaskHandler_Assign(t *testing.T) {
 		handler := httphandler.NewTaskHandler(mockService)
 
 		reqBody := `{"assignee_id": "` + assigneeID.String() + `"}`
-		req := httptest.NewRequest(stdhttp.MethodPut, taskURL(workspaceID, testTask.ID)+"/assignee", strings.NewReader(reqBody))
+		req := httptest.NewRequest(
+			stdhttp.MethodPut,
+			taskURL(workspaceID, testTask.ID)+"/assignee",
+			strings.NewReader(reqBody),
+		)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
@@ -494,7 +514,11 @@ func TestTaskHandler_Assign(t *testing.T) {
 		handler := httphandler.NewTaskHandler(mockService)
 
 		reqBody := `{"assignee_id": null}`
-		req := httptest.NewRequest(stdhttp.MethodPut, taskURL(workspaceID, testTask.ID)+"/assignee", strings.NewReader(reqBody))
+		req := httptest.NewRequest(
+			stdhttp.MethodPut,
+			taskURL(workspaceID, testTask.ID)+"/assignee",
+			strings.NewReader(reqBody),
+		)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
@@ -521,7 +545,11 @@ func TestTaskHandler_Assign(t *testing.T) {
 		handler := httphandler.NewTaskHandler(mockService)
 
 		reqBody := `{"assignee_id": "invalid-uuid"}`
-		req := httptest.NewRequest(stdhttp.MethodPut, taskURL(workspaceID, testTask.ID)+"/assignee", strings.NewReader(reqBody))
+		req := httptest.NewRequest(
+			stdhttp.MethodPut,
+			taskURL(workspaceID, testTask.ID)+"/assignee",
+			strings.NewReader(reqBody),
+		)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
@@ -550,7 +578,11 @@ func TestTaskHandler_ChangePriority(t *testing.T) {
 		handler := httphandler.NewTaskHandler(mockService)
 
 		reqBody := `{"priority": "high"}`
-		req := httptest.NewRequest(stdhttp.MethodPut, taskURL(workspaceID, testTask.ID)+"/priority", strings.NewReader(reqBody))
+		req := httptest.NewRequest(
+			stdhttp.MethodPut,
+			taskURL(workspaceID, testTask.ID)+"/priority",
+			strings.NewReader(reqBody),
+		)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
@@ -577,7 +609,11 @@ func TestTaskHandler_ChangePriority(t *testing.T) {
 		handler := httphandler.NewTaskHandler(mockService)
 
 		reqBody := `{"priority": ""}`
-		req := httptest.NewRequest(stdhttp.MethodPut, taskURL(workspaceID, testTask.ID)+"/priority", strings.NewReader(reqBody))
+		req := httptest.NewRequest(
+			stdhttp.MethodPut,
+			taskURL(workspaceID, testTask.ID)+"/priority",
+			strings.NewReader(reqBody),
+		)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
@@ -606,7 +642,11 @@ func TestTaskHandler_SetDueDate(t *testing.T) {
 		handler := httphandler.NewTaskHandler(mockService)
 
 		reqBody := `{"due_date": "2026-03-15"}`
-		req := httptest.NewRequest(stdhttp.MethodPut, taskURL(workspaceID, testTask.ID)+"/due-date", strings.NewReader(reqBody))
+		req := httptest.NewRequest(
+			stdhttp.MethodPut,
+			taskURL(workspaceID, testTask.ID)+"/due-date",
+			strings.NewReader(reqBody),
+		)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
@@ -635,7 +675,11 @@ func TestTaskHandler_SetDueDate(t *testing.T) {
 		handler := httphandler.NewTaskHandler(mockService)
 
 		reqBody := `{"due_date": null}`
-		req := httptest.NewRequest(stdhttp.MethodPut, taskURL(workspaceID, testTask.ID)+"/due-date", strings.NewReader(reqBody))
+		req := httptest.NewRequest(
+			stdhttp.MethodPut,
+			taskURL(workspaceID, testTask.ID)+"/due-date",
+			strings.NewReader(reqBody),
+		)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
@@ -662,7 +706,11 @@ func TestTaskHandler_SetDueDate(t *testing.T) {
 		handler := httphandler.NewTaskHandler(mockService)
 
 		reqBody := `{"due_date": "not-a-date"}`
-		req := httptest.NewRequest(stdhttp.MethodPut, taskURL(workspaceID, testTask.ID)+"/due-date", strings.NewReader(reqBody))
+		req := httptest.NewRequest(
+			stdhttp.MethodPut,
+			taskURL(workspaceID, testTask.ID)+"/due-date",
+			strings.NewReader(reqBody),
+		)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
