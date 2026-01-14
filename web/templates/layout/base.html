@@ -24,10 +24,8 @@
         <!-- Custom CSS -->
         <link rel="stylesheet" href="/static/css/custom.css" />
 
-        <!-- Board CSS (only on board pages) -->
-        {{if .IncludeBoardCSS}}
+        <!-- Board CSS - always loaded to support hx-boost navigation -->
         <link rel="stylesheet" href="/static/css/board.css" />
-        {{end}}
 
         <!-- HTMX -->
         <script

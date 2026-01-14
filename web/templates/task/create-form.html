@@ -5,7 +5,7 @@
             <button
                 aria-label="Close"
                 rel="prev"
-                hx-on:click="this.closest('dialog').remove()"
+                hx-on:click="document.getElementById('modal-container').innerHTML = ''"
             ></button>
             <h3>Create Task</h3>
         </header>
@@ -14,7 +14,7 @@
             hx-post="/partials/task/create"
             hx-target="#board-columns"
             hx-swap="innerHTML"
-            hx-on::after-request="if(event.detail.successful){ this.closest('dialog').remove(); }"
+            hx-on::after-request="if(event.detail.successful){ document.getElementById('modal-container').innerHTML = ''; }"
         >
             <input type="hidden" name="workspace_id" value="{{.WorkspaceID}}" />
 
@@ -38,13 +38,15 @@
             </label>
 
             <script>
-            // Focus title input when dialog opens
-            (function() {
-                var input = document.getElementById('title');
-                if (input) {
-                    setTimeout(function() { input.focus(); }, 0);
-                }
-            })();
+                // Focus title input when dialog opens
+                (function () {
+                    var input = document.getElementById("title");
+                    if (input) {
+                        setTimeout(function () {
+                            input.focus();
+                        }, 0);
+                    }
+                })();
             </script>
 
             <div class="grid">
@@ -89,7 +91,7 @@
                 <button
                     type="button"
                     class="secondary"
-                    hx-on:click="this.closest('dialog').remove()"
+                    hx-on:click="document.getElementById('modal-container').innerHTML = ''"
                 >
                     Cancel
                 </button>

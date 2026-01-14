@@ -1,230 +1,260 @@
 {{define "workspace/members.html"}}
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" data-theme="light">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{if .Title}}{{.Title}} - {{end}}Flowra</title>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>{{if .Title}}{{.Title}} - {{end}}Flowra</title>
 
-    <!-- Pico CSS -->
-    <link rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+        <!-- Pico CSS -->
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"
+        />
 
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="/static/css/custom.css">
+        <!-- Custom CSS -->
+        <link rel="stylesheet" href="/static/css/custom.css" />
 
-    <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@2.0.0"
-            crossorigin="anonymous"></script>
+        <!-- Board CSS - always loaded to support hx-boost navigation -->
+        <link rel="stylesheet" href="/static/css/board.css" />
 
-    <!-- HTMX WebSocket Extension -->
-    <script src="https://unpkg.com/htmx-ext-ws@2.0.0/ws.js"></script>
-</head>
-<body hx-boost="true">
-    {{template "navbar" .}}
+        <!-- HTMX -->
+        <script
+            src="https://unpkg.com/htmx.org@2.0.0"
+            crossorigin="anonymous"
+        ></script>
 
-    <div class="workspace-layout">
-        <!-- Sidebar -->
-        <aside class="workspace-sidebar">
-            <header>
-                <h2>{{.Data.Workspace.Name}}</h2>
-                {{if eq .Data.UserRole "owner"}}
-                <a href="/workspaces/{{.Data.Workspace.ID}}/settings"
-                   title="Settings">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="3"></circle>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                    </svg>
-                </a>
-                {{end}}
-            </header>
+        <!-- HTMX WebSocket Extension -->
+        <script src="https://unpkg.com/htmx-ext-ws@2.0.0/ws.js"></script>
+    </head>
+    <body hx-boost="true">
+        {{template "navbar" .}}
 
-            <nav>
-                <ul>
-                    <li>
-                        <a href="/workspaces/{{.Data.Workspace.ID}}/chats">
-                            Chats
-                        </a>
-                    </li>
-                    <li>
-                        <a href="/workspaces/{{.Data.Workspace.ID}}/board">
-                            Board
-                        </a>
-                    </li>
-                    <li>
-                        <a href="/workspaces/{{.Data.Workspace.ID}}/members"
-                           aria-current="page">
-                            Members
-                            <small class="text-muted">({{.Data.Workspace.MemberCount}})</small>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-
-            <!-- Quick actions -->
-            <div class="sidebar-actions">
-                <button hx-get="/partials/chat/create-form?workspace_id={{.Data.Workspace.ID}}"
-                        hx-target="#modal-container"
-                        hx-swap="innerHTML"
-                        class="outline">
-                    + New Chat
-                </button>
-            </div>
-        </aside>
-
-        <!-- Main content -->
-        <main class="workspace-main">
-            <div class="members-page">
-                <header class="page-header">
-                    <h2>Members</h2>
-                    {{if or (eq .Data.UserRole "owner") (eq .Data.UserRole "admin")}}
-                    <button hx-get="/partials/workspace/{{.Data.Workspace.ID}}/invite-form"
-                            hx-target="#modal-container"
-                            hx-swap="innerHTML">
-                        + Invite Member
-                    </button>
+        <div class="workspace-layout">
+            <!-- Sidebar -->
+            <aside class="workspace-sidebar">
+                <header>
+                    <h2>{{.Data.Workspace.Name}}</h2>
+                    {{if eq .Data.UserRole "owner"}}
+                    <a
+                        href="/workspaces/{{.Data.Workspace.ID}}/settings"
+                        title="Settings"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path
+                                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+                            ></path>
+                        </svg>
+                    </a>
                     {{end}}
                 </header>
 
-                <div id="members-list"
-                     hx-get="/partials/workspace/{{.Data.Workspace.ID}}/members"
-                     hx-trigger="load"
-                     hx-swap="innerHTML">
-                    {{template "loading" (dict "ID" "members-loading")}}
+                <nav>
+                    <ul>
+                        <li>
+                            <a href="/workspaces/{{.Data.Workspace.ID}}/chats">
+                                Chats
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/workspaces/{{.Data.Workspace.ID}}/board">
+                                Board
+                            </a>
+                        </li>
+                        <li>
+                            <a
+                                href="/workspaces/{{.Data.Workspace.ID}}/members"
+                                aria-current="page"
+                            >
+                                Members
+                                <small class="text-muted"
+                                    >({{.Data.Workspace.MemberCount}})</small
+                                >
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+
+                <!-- Quick actions -->
+                <div class="sidebar-actions">
+                    <button
+                        hx-get="/partials/chat/create-form?workspace_id={{.Data.Workspace.ID}}"
+                        hx-target="#modal-container"
+                        hx-swap="innerHTML"
+                        class="outline"
+                    >
+                        + New Chat
+                    </button>
                 </div>
-            </div>
-        </main>
+            </aside>
 
-        <!-- Modal container -->
-        <div id="modal-container"></div>
-    </div>
+            <!-- Main content -->
+            <main class="workspace-main">
+                <div class="members-page">
+                    <header class="page-header">
+                        <h2>Members</h2>
+                        {{if or (eq .Data.UserRole "owner") (eq .Data.UserRole
+                        "admin")}}
+                        <button
+                            hx-get="/partials/workspace/{{.Data.Workspace.ID}}/invite-form"
+                            hx-target="#modal-container"
+                            hx-swap="innerHTML"
+                        >
+                            + Invite Member
+                        </button>
+                        {{end}}
+                    </header>
 
-    {{template "footer" .}}
+                    <div
+                        id="members-list"
+                        hx-get="/partials/workspace/{{.Data.Workspace.ID}}/members"
+                        hx-trigger="load"
+                        hx-swap="innerHTML"
+                    >
+                        {{template "loading" (dict "ID" "members-loading")}}
+                    </div>
+                </div>
+            </main>
 
-    <script src="/static/js/app.js"></script>
+            <!-- Modal container -->
+            <div id="modal-container"></div>
+        </div>
 
-    <style>
-    .workspace-layout {
-        display: grid;
-        grid-template-columns: 250px 1fr;
-        min-height: calc(100vh - 60px);
-    }
+        {{template "footer" .}}
 
-    .workspace-sidebar {
-        background: var(--card-background-color);
-        border-right: 1px solid var(--muted-border-color);
-        padding: 1rem;
-    }
+        <script src="/static/js/app.js"></script>
 
-    .workspace-sidebar header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1rem;
-    }
+        <style>
+            .workspace-layout {
+                display: grid;
+                grid-template-columns: 250px 1fr;
+                min-height: calc(100vh - 60px);
+            }
 
-    .workspace-sidebar header h2 {
-        margin: 0;
-        font-size: 1.25rem;
-    }
+            .workspace-sidebar {
+                background: var(--card-background-color);
+                border-right: 1px solid var(--muted-border-color);
+                padding: 1rem;
+            }
 
-    .workspace-sidebar nav ul {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
+            .workspace-sidebar header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 1rem;
+            }
 
-    .workspace-sidebar nav a {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.5rem 0.75rem;
-        border-radius: 4px;
-        text-decoration: none;
-    }
+            .workspace-sidebar header h2 {
+                margin: 0;
+                font-size: 1.25rem;
+            }
 
-    .workspace-sidebar nav a[aria-current="page"] {
-        background: var(--primary-focus);
-    }
+            .workspace-sidebar nav ul {
+                list-style: none;
+                padding: 0;
+                margin: 0;
+            }
 
-    .sidebar-actions {
-        margin-top: 2rem;
-    }
+            .workspace-sidebar nav a {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 0.5rem 0.75rem;
+                border-radius: 4px;
+                text-decoration: none;
+            }
 
-    .workspace-main {
-        padding: 1.5rem;
-        overflow-y: auto;
-    }
+            .workspace-sidebar nav a[aria-current="page"] {
+                background: var(--primary-focus);
+            }
 
-    .members-page .page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1.5rem;
-    }
+            .sidebar-actions {
+                margin-top: 2rem;
+            }
 
-    .members-page .page-header h2 {
-        margin: 0;
-    }
+            .workspace-main {
+                padding: 1.5rem;
+                overflow-y: auto;
+            }
 
-    .member-info {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-    }
+            .members-page .page-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 1.5rem;
+            }
 
-    .avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        object-fit: cover;
-    }
+            .members-page .page-header h2 {
+                margin: 0;
+            }
 
-    .avatar-placeholder {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: var(--primary);
-        color: var(--primary-inverse);
-        font-weight: bold;
-    }
+            .member-info {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+            }
 
-    .role-badge {
-        display: inline-block;
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        font-size: 0.875rem;
-    }
+            .avatar {
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                object-fit: cover;
+            }
 
-    .role-owner {
-        background: var(--primary);
-        color: var(--primary-inverse);
-    }
+            .avatar-placeholder {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: var(--primary);
+                color: var(--primary-inverse);
+                font-weight: bold;
+            }
 
-    .role-admin {
-        background: var(--secondary);
-        color: var(--secondary-inverse);
-    }
+            .role-badge {
+                display: inline-block;
+                padding: 0.25rem 0.5rem;
+                border-radius: 4px;
+                font-size: 0.875rem;
+            }
 
-    .role-member {
-        background: var(--muted-border-color);
-    }
+            .role-owner {
+                background: var(--primary);
+                color: var(--primary-inverse);
+            }
 
-    @media (max-width: 768px) {
-        .workspace-layout {
-            grid-template-columns: 1fr;
-        }
+            .role-admin {
+                background: var(--secondary);
+                color: var(--secondary-inverse);
+            }
 
-        .workspace-sidebar {
-            display: none;
-        }
-    }
-    </style>
-</body>
+            .role-member {
+                background: var(--muted-border-color);
+            }
+
+            @media (max-width: 768px) {
+                .workspace-layout {
+                    grid-template-columns: 1fr;
+                }
+
+                .workspace-sidebar {
+                    display: none;
+                }
+            }
+        </style>
+    </body>
 </html>
-{{end}}
-
-{{define "workspace/members-partial"}}
+{{end}} {{define "workspace/members-partial"}}
 <table role="grid">
     <thead>
         <tr>
@@ -237,9 +267,9 @@
         </tr>
     </thead>
     <tbody>
-        {{range .Members}}
-        {{template "member_row" (dict "Member" . "WorkspaceID" $.Workspace.ID "UserRole" $.UserRole "CurrentUserID" $.CurrentUserID)}}
-        {{end}}
+        {{range .Members}} {{template "member_row" (dict "Member" .
+        "WorkspaceID" $.Workspace.ID "UserRole" $.UserRole "CurrentUserID"
+        $.CurrentUserID)}} {{end}}
     </tbody>
 </table>
 {{end}}

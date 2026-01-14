@@ -5,7 +5,7 @@
             <button
                 aria-label="Close"
                 rel="prev"
-                onclick="this.closest('dialog').remove()"
+                onclick="document.getElementById('modal-container').innerHTML = ''"
             ></button>
             <h3>New Chat</h3>
         </header>
@@ -85,7 +85,7 @@
                 <button
                     type="button"
                     class="secondary"
-                    onclick="this.closest('dialog').remove()"
+                    onclick="document.getElementById('modal-container').innerHTML = ''"
                 >
                     Cancel
                 </button>
@@ -98,8 +98,8 @@
 <script>
     (function () {
         // Ensure HTMX processes the dynamically loaded form
-        if (typeof htmx !== 'undefined') {
-            htmx.process(document.getElementById('create-chat-modal'));
+        if (typeof htmx !== "undefined") {
+            htmx.process(document.getElementById("create-chat-modal"));
         }
 
         var visibilityRadios = document.querySelectorAll(

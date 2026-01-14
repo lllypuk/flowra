@@ -5,7 +5,7 @@
             <button
                 aria-label="Close"
                 rel="prev"
-                onclick="this.closest('dialog').remove()"
+                onclick="document.getElementById('modal-container').innerHTML = ''"
             ></button>
             <h3>Participants</h3>
         </header>
@@ -87,7 +87,10 @@
         {{end}}
 
         <footer>
-            <button class="secondary" onclick="this.closest('dialog').remove()">
+            <button
+                class="secondary"
+                onclick="document.getElementById('modal-container').innerHTML = ''"
+            >
                 Close
             </button>
         </footer>
