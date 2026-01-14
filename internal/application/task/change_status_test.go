@@ -232,7 +232,7 @@ func TestChangeStatusUseCase_InvalidStatusTransition(t *testing.T) {
 	createUseCase := taskapp.NewCreateTaskUseCase(store)
 	changeStatusUseCase := taskapp.NewChangeStatusUseCase(store)
 
-	// Creating task in statuse To Do
+	// Creating task in status To Do
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
@@ -241,11 +241,21 @@ func TestChangeStatusUseCase_InvalidStatusTransition(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// Act: pytaemsya pereyti from To Do srazu in Done (valid perehod)
+	userID := uuid.NewUUID()
+
+	// First cancel the task
+	_, err = changeStatusUseCase.Execute(context.Background(), taskapp.ChangeStatusCommand{
+		TaskID:    createResult.TaskID,
+		NewStatus: task.StatusCancelled,
+		ChangedBy: userID,
+	})
+	require.NoError(t, err)
+
+	// Act: try to transition from Cancelled to ToDo (only Backlog is allowed from Cancelled)
 	changeCmd := taskapp.ChangeStatusCommand{
 		TaskID:    createResult.TaskID,
-		NewStatus: task.StatusDone,
-		ChangedBy: uuid.NewUUID(),
+		NewStatus: task.StatusToDo,
+		ChangedBy: userID,
 	}
 	result, err := changeStatusUseCase.Execute(context.Background(), changeCmd)
 
@@ -262,23 +272,46 @@ func TestChangeStatusUseCase_AllValidTransitions(t *testing.T) {
 		to         task.Status
 		shouldPass bool
 	}{
+		// Kanban-style: any transition is allowed between active statuses
 		// from To Do
 		{"To Do → In Progress", task.StatusToDo, task.StatusInProgress, true},
 		{"To Do → Backlog", task.StatusToDo, task.StatusBacklog, true},
 		{"To Do → Cancelled", task.StatusToDo, task.StatusCancelled, true},
-		{"To Do → Done (invalid)", task.StatusToDo, task.StatusDone, false},
+		{"To Do → Done", task.StatusToDo, task.StatusDone, true},
+		{"To Do → In Review", task.StatusToDo, task.StatusInReview, true},
 
 		// from In Progress
 		{"In Progress → In Review", task.StatusInProgress, task.StatusInReview, true},
 		{"In Progress → To Do", task.StatusInProgress, task.StatusToDo, true},
 		{"In Progress → Cancelled", task.StatusInProgress, task.StatusCancelled, true},
-		{"In Progress → Done (invalid)", task.StatusInProgress, task.StatusDone, false},
+		{"In Progress → Done", task.StatusInProgress, task.StatusDone, true},
+		{"In Progress → Backlog", task.StatusInProgress, task.StatusBacklog, true},
 
 		// from In Review
 		{"In Review → Done", task.StatusInReview, task.StatusDone, true},
 		{"In Review → In Progress", task.StatusInReview, task.StatusInProgress, true},
 		{"In Review → Cancelled", task.StatusInReview, task.StatusCancelled, true},
-		{"In Review → To Do (invalid)", task.StatusInReview, task.StatusToDo, false},
+		{"In Review → To Do", task.StatusInReview, task.StatusToDo, true},
+		{"In Review → Backlog", task.StatusInReview, task.StatusBacklog, true},
+
+		// from Done
+		{"Done → In Review", task.StatusDone, task.StatusInReview, true},
+		{"Done → Cancelled", task.StatusDone, task.StatusCancelled, true},
+		{"Done → To Do", task.StatusDone, task.StatusToDo, true},
+		{"Done → In Progress", task.StatusDone, task.StatusInProgress, true},
+		{"Done → Backlog", task.StatusDone, task.StatusBacklog, true},
+
+		// from Backlog
+		{"Backlog → To Do", task.StatusBacklog, task.StatusToDo, true},
+		{"Backlog → In Progress", task.StatusBacklog, task.StatusInProgress, true},
+		{"Backlog → Done", task.StatusBacklog, task.StatusDone, true},
+		{"Backlog → Cancelled", task.StatusBacklog, task.StatusCancelled, true},
+
+		// from Cancelled - only Backlog is allowed
+		{"Cancelled → Backlog", task.StatusCancelled, task.StatusBacklog, true},
+		{"Cancelled → To Do (invalid)", task.StatusCancelled, task.StatusToDo, false},
+		{"Cancelled → In Progress (invalid)", task.StatusCancelled, task.StatusInProgress, false},
+		{"Cancelled → Done (invalid)", task.StatusCancelled, task.StatusDone, false},
 	}
 
 	for _, tt := range tests {
@@ -297,31 +330,14 @@ func TestChangeStatusUseCase_AllValidTransitions(t *testing.T) {
 			createResult, err := createUseCase.Execute(context.Background(), createCmd)
 			require.NoError(t, err)
 
-			// perevodim zadachu in nuzhnyy nachalnyy status
+			// Move task to required starting status (Kanban-style allows direct transitions)
 			if tt.from != task.StatusToDo {
-				// snachala perevodim in valid promezhutochnyy status
-				switch tt.from { //nolint:exhaustive // Only testing specific transitions from In Progress and In Review
-				case task.StatusInProgress:
-					_, err = changeStatusUseCase.Execute(context.Background(), taskapp.ChangeStatusCommand{
-						TaskID:    createResult.TaskID,
-						NewStatus: task.StatusInProgress,
-						ChangedBy: uuid.NewUUID(),
-					})
-					require.NoError(t, err)
-				case task.StatusInReview:
-					_, err = changeStatusUseCase.Execute(context.Background(), taskapp.ChangeStatusCommand{
-						TaskID:    createResult.TaskID,
-						NewStatus: task.StatusInProgress,
-						ChangedBy: uuid.NewUUID(),
-					})
-					require.NoError(t, err)
-					_, err = changeStatusUseCase.Execute(context.Background(), taskapp.ChangeStatusCommand{
-						TaskID:    createResult.TaskID,
-						NewStatus: task.StatusInReview,
-						ChangedBy: uuid.NewUUID(),
-					})
-					require.NoError(t, err)
-				}
+				_, err = changeStatusUseCase.Execute(context.Background(), taskapp.ChangeStatusCommand{
+					TaskID:    createResult.TaskID,
+					NewStatus: tt.from,
+					ChangedBy: uuid.NewUUID(),
+				})
+				require.NoError(t, err)
 			}
 
 			// Act: pytaemsya perform checking perehod
@@ -409,7 +425,7 @@ func TestChangeStatusUseCase_CancelledTransition(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, result1.Events, 1)
 
-	// Assert: Cancelled → Backlog (edinstvennyy valid perehod from Cancelled)
+	// Assert: Cancelled → Backlog (only valid transition from Cancelled)
 	result2, err := changeStatusUseCase.Execute(context.Background(), taskapp.ChangeStatusCommand{
 		TaskID:    createResult.TaskID,
 		NewStatus: task.StatusBacklog,
@@ -418,7 +434,7 @@ func TestChangeStatusUseCase_CancelledTransition(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, result2.Events, 1)
 
-	// Cancelled → To Do dolzhno byt valid
+	// Cancel task again
 	_, err = changeStatusUseCase.Execute(context.Background(), taskapp.ChangeStatusCommand{
 		TaskID:    createResult.TaskID,
 		NewStatus: task.StatusCancelled,
@@ -426,9 +442,28 @@ func TestChangeStatusUseCase_CancelledTransition(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	// Cancelled → To Do should fail (only Backlog is allowed from Cancelled)
 	_, err = changeStatusUseCase.Execute(context.Background(), taskapp.ChangeStatusCommand{
 		TaskID:    createResult.TaskID,
 		NewStatus: task.StatusToDo,
+		ChangedBy: userID,
+	})
+	require.Error(t, err)
+	require.ErrorIs(t, err, taskapp.ErrInvalidStatusTransition)
+
+	// Cancelled → In Progress should also fail
+	_, err = changeStatusUseCase.Execute(context.Background(), taskapp.ChangeStatusCommand{
+		TaskID:    createResult.TaskID,
+		NewStatus: task.StatusInProgress,
+		ChangedBy: userID,
+	})
+	require.Error(t, err)
+	require.ErrorIs(t, err, taskapp.ErrInvalidStatusTransition)
+
+	// Cancelled → Done should also fail
+	_, err = changeStatusUseCase.Execute(context.Background(), taskapp.ChangeStatusCommand{
+		TaskID:    createResult.TaskID,
+		NewStatus: task.StatusDone,
 		ChangedBy: userID,
 	})
 	require.Error(t, err)
@@ -441,7 +476,7 @@ func TestChangeStatusUseCase_DoneReopening(t *testing.T) {
 	createUseCase := taskapp.NewCreateTaskUseCase(store)
 	changeStatusUseCase := taskapp.NewChangeStatusUseCase(store)
 
-	// Creating task and dovodim before Done
+	// Creating task
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
@@ -452,21 +487,7 @@ func TestChangeStatusUseCase_DoneReopening(t *testing.T) {
 
 	userID := uuid.NewUUID()
 
-	// To Do → In Progress → In Review → Done
-	_, err = changeStatusUseCase.Execute(context.Background(), taskapp.ChangeStatusCommand{
-		TaskID:    createResult.TaskID,
-		NewStatus: task.StatusInProgress,
-		ChangedBy: userID,
-	})
-	require.NoError(t, err)
-
-	_, err = changeStatusUseCase.Execute(context.Background(), taskapp.ChangeStatusCommand{
-		TaskID:    createResult.TaskID,
-		NewStatus: task.StatusInReview,
-		ChangedBy: userID,
-	})
-	require.NoError(t, err)
-
+	// Kanban-style: direct transition To Do → Done
 	_, err = changeStatusUseCase.Execute(context.Background(), taskapp.ChangeStatusCommand{
 		TaskID:    createResult.TaskID,
 		NewStatus: task.StatusDone,
@@ -489,4 +510,25 @@ func TestChangeStatusUseCase_DoneReopening(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, task.StatusDone, event.OldStatus)
 	assert.Equal(t, task.StatusInReview, event.NewStatus)
+
+	// Also test Done → To Do (should work in Kanban-style)
+	_, err = changeStatusUseCase.Execute(context.Background(), taskapp.ChangeStatusCommand{
+		TaskID:    createResult.TaskID,
+		NewStatus: task.StatusDone,
+		ChangedBy: userID,
+	})
+	require.NoError(t, err)
+
+	result2, err := changeStatusUseCase.Execute(context.Background(), taskapp.ChangeStatusCommand{
+		TaskID:    createResult.TaskID,
+		NewStatus: task.StatusToDo,
+		ChangedBy: userID,
+	})
+	require.NoError(t, err)
+	assert.Len(t, result2.Events, 1)
+
+	event2, ok := result2.Events[0].(*task.StatusChanged)
+	require.True(t, ok)
+	assert.Equal(t, task.StatusDone, event2.OldStatus)
+	assert.Equal(t, task.StatusToDo, event2.NewStatus)
 }

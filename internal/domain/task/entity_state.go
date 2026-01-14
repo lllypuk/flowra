@@ -1,8 +1,6 @@
 package task
 
 import (
-	"slices"
-
 	"github.com/lllypuk/flowra/internal/domain/errs"
 )
 
@@ -108,25 +106,8 @@ func (s *EntityState) isValidTransition(newStatus Status) bool {
 		return newStatus == StatusBacklog
 	}
 
-	// from Done mozhno vernutsya in InReview (reopening)
-	if s.status == StatusDone {
-		return newStatus == StatusInReview || newStatus == StatusCancelled
-	}
-
-	// standartnye perehody before
-	transitions := map[Status][]Status{ //nolint:exhaustive // task.StatusDone, task.StatusCancelled not imeyut perehodov before
-		StatusBacklog:    {StatusToDo, StatusCancelled},
-		StatusToDo:       {StatusInProgress, StatusBacklog, StatusCancelled},
-		StatusInProgress: {StatusInReview, StatusToDo, StatusCancelled},
-		StatusInReview:   {StatusDone, StatusInProgress, StatusCancelled},
-	}
-
-	allowedStatuses, exists := transitions[s.status]
-	if !exists {
-		return false
-	}
-
-	return slices.Contains(allowedStatuses, newStatus)
+	// any other transition is allowed (Kanban-style board)
+	return true
 }
 
 // Getters
