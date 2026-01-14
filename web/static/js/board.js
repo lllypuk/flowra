@@ -14,6 +14,7 @@
 
   // State - stored on window to survive re-initialization
   var draggedTask = null;
+  var draggedTaskOriginalStatus = null;
 
   /**
    * Handle drag start event
@@ -22,6 +23,10 @@
   function handleDragStart(event) {
     draggedTask = event.target;
     event.target.classList.add("dragging");
+
+    // Save original status before the card moves
+    var originalColumn = event.target.closest(".column-cards");
+    draggedTaskOriginalStatus = originalColumn ? originalColumn.dataset.status : null;
 
     // Set data for the drag operation
     event.dataTransfer.effectAllowed = "move";
@@ -49,6 +54,7 @@
   function handleDragEnd(event) {
     event.target.classList.remove("dragging");
     draggedTask = null;
+    draggedTaskOriginalStatus = null;
 
     // Remove all drag-over states
     document.querySelectorAll(".column-cards.drag-over").forEach(function (col) {
@@ -118,12 +124,8 @@
 
     if (!taskCard) return;
 
-    // Get old status from the previous column
-    var oldColumnCard = document.querySelector(
-      ".column-cards .task-card#task-" + taskId
-    );
-    var oldColumn = oldColumnCard ? oldColumnCard.closest(".column-cards") : null;
-    var oldStatus = oldColumn ? oldColumn.dataset.status : null;
+    // Use the saved original status (card already moved during dragover)
+    var oldStatus = draggedTaskOriginalStatus;
 
     // If status changed, update via API
     if (oldStatus && oldStatus !== newStatus) {
@@ -181,15 +183,21 @@
       return;
     }
 
-    // Update via HTMX
-    htmx
-      .ajax("PUT", "/api/v1/workspaces/" + workspaceId + "/tasks/" + taskId + "/status", {
-        values: { status: newStatus },
-        target: "#task-" + taskId,
-        swap: "outerHTML",
-      })
-      .then(function () {
-        // Update column counts after successful update
+    // Update via fetch (no swap needed - card already moved by drag)
+    fetch("/api/v1/workspaces/" + workspaceId + "/tasks/" + taskId + "/status", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: "status=" + encodeURIComponent(newStatus),
+    })
+      .then(function (response) {
+        if (!response.ok) {
+          throw new Error("Status update failed");
+        }
+        // Restore card visibility and update counts
+        taskCard.style.opacity = "1";
+        taskCard.style.pointerEvents = "";
         updateColumnCounts();
       })
       .catch(function (err) {

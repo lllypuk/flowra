@@ -37,6 +37,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/user"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 	"github.com/redis/go-redis/v9"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
@@ -1247,7 +1248,24 @@ func (a *fullTaskServiceAdapter) ChangeStatus(
 	cmd taskapp.ChangeStatusCommand,
 ) (taskapp.TaskResult, error) {
 	changeStatusUC := taskapp.NewChangeStatusUseCase(a.eventStore)
-	return changeStatusUC.Execute(ctx, cmd)
+	result, err := changeStatusUC.Execute(ctx, cmd)
+	if err != nil {
+		return result, err
+	}
+
+	// Update read model with new status
+	if a.collection != nil {
+		filter := bson.M{"task_id": cmd.TaskID.String()}
+		update := bson.M{
+			"$set": bson.M{
+				"status":  string(cmd.NewStatus),
+				"version": result.Version,
+			},
+		}
+		_, _ = a.collection.UpdateOne(ctx, filter, update)
+	}
+
+	return result, nil
 }
 
 // AssignTask implements httphandler.TaskService.
