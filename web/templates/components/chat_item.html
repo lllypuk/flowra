@@ -3,10 +3,9 @@
     <a
         href="/workspaces/{{.WorkspaceID}}/chats/{{.Chat.ID}}"
         class="chat-item {{if eq .Chat.ID .ActiveChatID}}active{{end}}"
-        hx-get="/partials/chats/{{.Chat.ID}}"
-        hx-target=".chat-main"
+        hx-get="/workspaces/{{.WorkspaceID}}/chats/{{.Chat.ID}}"
+        hx-target="body"
         hx-push-url="true"
-        hx-swap="innerHTML"
     >
         <div class="chat-item-icon">
             {{if eq .Chat.Type "task"}}

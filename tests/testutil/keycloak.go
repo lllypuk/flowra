@@ -28,7 +28,7 @@ const (
 	keycloakContainerTerminateTimeout = 10 * time.Second
 	keycloakHealthTimeout             = 5 * time.Second
 	keycloakHealthRetryDelay          = 2 * time.Second
-	keycloakContainerMemoryLimit      = 512 * 1024 * 1024 // 512MB
+	keycloakContainerMemoryLimit      = 1024 * 1024 * 1024 // 1GB
 
 	// Default Keycloak configuration
 	keycloakAdminUser     = "admin"

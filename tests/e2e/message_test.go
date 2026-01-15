@@ -8,6 +8,7 @@ import (
 
 	"github.com/lllypuk/flowra/internal/domain/message"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/domain/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,11 +20,16 @@ func TestMessage_Send_Success(t *testing.T) {
 	testUser := suite.CreateTestUser("msgsendowner")
 	client := suite.NewHTTPClient(testUser.Token)
 
+	// Create workspace
+	ws, err := workspace.NewWorkspace("Message Test Workspace", "", "keycloak-group-test", testUser.ID)
+	require.NoError(t, err)
+	suite.MockWorkspaceService.AddWorkspace(ws, 1)
+
 	// Use a random chat ID (mock service doesn't validate chat existence)
 	chatID := uuid.NewUUID()
 
 	// Send message
-	resp := client.Post("/chats/"+chatID.String()+"/messages", map[string]string{
+	resp := client.Post("/workspaces/" + ws.ID().String() + "/chats/"+chatID.String()+"/messages", map[string]string{
 		"content": "Hello, world!",
 	})
 
@@ -67,6 +73,11 @@ func TestMessage_Send_WithReply(t *testing.T) {
 	testUser := suite.CreateTestUser("msgreplyowner")
 	client := suite.NewHTTPClient(testUser.Token)
 
+	// Create workspace
+	ws, err := workspace.NewWorkspace("Message Test Workspace", "", "keycloak-group-test", testUser.ID)
+	require.NoError(t, err)
+	suite.MockWorkspaceService.AddWorkspace(ws, 1)
+
 	chatID := uuid.NewUUID()
 
 	// Create original message
@@ -75,7 +86,7 @@ func TestMessage_Send_WithReply(t *testing.T) {
 	suite.MockMessageService.AddMessage(originalMsg)
 
 	// Send reply
-	resp := client.Post("/chats/"+chatID.String()+"/messages", map[string]interface{}{
+	resp := client.Post("/workspaces/" + ws.ID().String() + "/chats/"+chatID.String()+"/messages", map[string]interface{}{
 		"content":     "This is a reply",
 		"reply_to_id": originalMsg.ID().String(),
 	})
@@ -111,10 +122,15 @@ func TestMessage_Send_EmptyContent(t *testing.T) {
 	testUser := suite.CreateTestUser("msgemptyowner")
 	client := suite.NewHTTPClient(testUser.Token)
 
+	// Create workspace
+	ws, err := workspace.NewWorkspace("Message Test Workspace", "", "keycloak-group-test", testUser.ID)
+	require.NoError(t, err)
+	suite.MockWorkspaceService.AddWorkspace(ws, 1)
+
 	chatID := uuid.NewUUID()
 
 	// Send empty message
-	resp := client.Post("/chats/"+chatID.String()+"/messages", map[string]string{
+	resp := client.Post("/workspaces/" + ws.ID().String() + "/chats/"+chatID.String()+"/messages", map[string]string{
 		"content": "",
 	})
 
@@ -145,6 +161,11 @@ func TestMessage_Send_ContentTooLong(t *testing.T) {
 	testUser := suite.CreateTestUser("msglongowner")
 	client := suite.NewHTTPClient(testUser.Token)
 
+	// Create workspace
+	ws, err := workspace.NewWorkspace("Message Test Workspace", "", "keycloak-group-test", testUser.ID)
+	require.NoError(t, err)
+	suite.MockWorkspaceService.AddWorkspace(ws, 1)
+
 	chatID := uuid.NewUUID()
 
 	// Create very long content (>10000 chars)
@@ -153,7 +174,7 @@ func TestMessage_Send_ContentTooLong(t *testing.T) {
 		longContent += "a"
 	}
 
-	resp := client.Post("/chats/"+chatID.String()+"/messages", map[string]string{
+	resp := client.Post("/workspaces/" + ws.ID().String() + "/chats/"+chatID.String()+"/messages", map[string]string{
 		"content": longContent,
 	})
 
@@ -179,7 +200,12 @@ func TestMessage_Send_InvalidChatID(t *testing.T) {
 	testUser := suite.CreateTestUser("msginvalidchat")
 	client := suite.NewHTTPClient(testUser.Token)
 
-	resp := client.Post("/chats/invalid-uuid/messages", map[string]string{
+	// Create workspace
+	ws, err := workspace.NewWorkspace("Message Test Workspace", "", "keycloak-group-test", testUser.ID)
+	require.NoError(t, err)
+	suite.MockWorkspaceService.AddWorkspace(ws, 1)
+
+	resp := client.Post("/workspaces/" + ws.ID().String() + "/chats/invalid-uuid/messages", map[string]string{
 		"content": "Test message",
 	})
 
@@ -192,6 +218,11 @@ func TestMessage_List_Success(t *testing.T) {
 	testUser := suite.CreateTestUser("msglistowner")
 	client := suite.NewHTTPClient(testUser.Token)
 
+	// Create workspace
+	ws, err := workspace.NewWorkspace("Message Test Workspace", "", "keycloak-group-test", testUser.ID)
+	require.NoError(t, err)
+	suite.MockWorkspaceService.AddWorkspace(ws, 1)
+
 	chatID := uuid.NewUUID()
 
 	// Create multiple messages
@@ -202,7 +233,7 @@ func TestMessage_List_Success(t *testing.T) {
 	}
 
 	// List messages
-	resp := client.Get("/chats/" + chatID.String() + "/messages")
+	resp := client.Get("/workspaces/" + ws.ID().String() + "/chats/" + chatID.String() + "/messages")
 
 	AssertStatus(t, resp, http.StatusOK)
 
@@ -239,6 +270,11 @@ func TestMessage_List_WithPagination(t *testing.T) {
 	testUser := suite.CreateTestUser("msgpaginationowner")
 	client := suite.NewHTTPClient(testUser.Token)
 
+	// Create workspace
+	ws, err := workspace.NewWorkspace("Message Test Workspace", "", "keycloak-group-test", testUser.ID)
+	require.NoError(t, err)
+	suite.MockWorkspaceService.AddWorkspace(ws, 1)
+
 	chatID := uuid.NewUUID()
 
 	// Create messages
@@ -249,7 +285,7 @@ func TestMessage_List_WithPagination(t *testing.T) {
 	}
 
 	// List with limit
-	resp := client.Get("/chats/" + chatID.String() + "/messages?limit=3&offset=0")
+	resp := client.Get("/workspaces/" + ws.ID().String() + "/chats/" + chatID.String() + "/messages?limit=3&offset=0")
 
 	AssertStatus(t, resp, http.StatusOK)
 
@@ -283,6 +319,11 @@ func TestMessage_Edit_Success(t *testing.T) {
 	testUser := suite.CreateTestUser("msgeditowner")
 	client := suite.NewHTTPClient(testUser.Token)
 
+	// Create workspace
+	ws, err := workspace.NewWorkspace("Message Test Workspace", "", "keycloak-group-test", testUser.ID)
+	require.NoError(t, err)
+	suite.MockWorkspaceService.AddWorkspace(ws, 1)
+
 	chatID := uuid.NewUUID()
 
 	// Create message
@@ -291,7 +332,7 @@ func TestMessage_Edit_Success(t *testing.T) {
 	suite.MockMessageService.AddMessage(msg)
 
 	// Edit message
-	resp := client.Put("/messages/"+msg.ID().String(), map[string]string{
+	resp := client.Put("/workspaces/" + ws.ID().String() + "/chats/" + chatID.String() + "/messages/"+msg.ID().String(), map[string]string{
 		"content": "Edited content",
 	})
 
@@ -325,6 +366,11 @@ func TestMessage_Edit_EmptyContent(t *testing.T) {
 	testUser := suite.CreateTestUser("msgeditemptyowner")
 	client := suite.NewHTTPClient(testUser.Token)
 
+	// Create workspace
+	ws, err := workspace.NewWorkspace("Message Test Workspace", "", "keycloak-group-test", testUser.ID)
+	require.NoError(t, err)
+	suite.MockWorkspaceService.AddWorkspace(ws, 1)
+
 	chatID := uuid.NewUUID()
 
 	msg, err := message.NewMessage(chatID, testUser.ID, "Original", uuid.UUID(""))
@@ -332,7 +378,7 @@ func TestMessage_Edit_EmptyContent(t *testing.T) {
 	suite.MockMessageService.AddMessage(msg)
 
 	// Edit with empty content
-	resp := client.Put("/messages/"+msg.ID().String(), map[string]string{
+	resp := client.Put("/workspaces/" + ws.ID().String() + "/chats/" + chatID.String() + "/messages/"+msg.ID().String(), map[string]string{
 		"content": "",
 	})
 
@@ -345,8 +391,13 @@ func TestMessage_Edit_NotFound(t *testing.T) {
 	testUser := suite.CreateTestUser("msgeditnotfound")
 	client := suite.NewHTTPClient(testUser.Token)
 
+	// Create workspace
+	ws, err := workspace.NewWorkspace("Message Test Workspace", "", "keycloak-group-test", testUser.ID)
+	require.NoError(t, err)
+	suite.MockWorkspaceService.AddWorkspace(ws, 1)
+
 	nonExistentID := uuid.NewUUID()
-	resp := client.Put("/messages/"+nonExistentID.String(), map[string]string{
+	resp := client.Put("/workspaces/" + ws.ID().String() + "/chats/" + uuid.NewUUID().String() + "/messages/"+nonExistentID.String(), map[string]string{
 		"content": "Edited content",
 	})
 
@@ -359,6 +410,11 @@ func TestMessage_Delete_Success(t *testing.T) {
 	testUser := suite.CreateTestUser("msgdeleteowner")
 	client := suite.NewHTTPClient(testUser.Token)
 
+	// Create workspace
+	ws, err := workspace.NewWorkspace("Message Test Workspace", "", "keycloak-group-test", testUser.ID)
+	require.NoError(t, err)
+	suite.MockWorkspaceService.AddWorkspace(ws, 1)
+
 	chatID := uuid.NewUUID()
 
 	msg, err := message.NewMessage(chatID, testUser.ID, "To be deleted", uuid.UUID(""))
@@ -366,7 +422,7 @@ func TestMessage_Delete_Success(t *testing.T) {
 	suite.MockMessageService.AddMessage(msg)
 
 	// Delete message
-	resp := client.Delete("/messages/" + msg.ID().String())
+	resp := client.Delete("/workspaces/" + ws.ID().String() + "/chats/" + chatID.String() + "/messages/" + msg.ID().String())
 
 	AssertStatus(t, resp, http.StatusNoContent)
 }
@@ -377,8 +433,13 @@ func TestMessage_Delete_NotFound(t *testing.T) {
 	testUser := suite.CreateTestUser("msgdeletenotfound")
 	client := suite.NewHTTPClient(testUser.Token)
 
+	// Create workspace
+	ws, err := workspace.NewWorkspace("Message Test Workspace", "", "keycloak-group-test", testUser.ID)
+	require.NoError(t, err)
+	suite.MockWorkspaceService.AddWorkspace(ws, 1)
+
 	nonExistentID := uuid.NewUUID()
-	resp := client.Delete("/messages/" + nonExistentID.String())
+	resp := client.Delete("/workspaces/" + ws.ID().String() + "/chats/" + uuid.NewUUID().String() + "/messages/" + nonExistentID.String())
 
 	AssertStatus(t, resp, http.StatusNotFound)
 }
@@ -393,11 +454,16 @@ func TestMessage_CompleteFlow(t *testing.T) {
 	user1Client := suite.NewHTTPClient(user1.Token)
 	user2Client := suite.NewHTTPClient(user2.Token)
 
+	// Create workspace
+	ws, err := workspace.NewWorkspace("Message Test Workspace", "", "keycloak-group-test", user1.ID)
+	require.NoError(t, err)
+	suite.MockWorkspaceService.AddWorkspace(ws, 1)
+
 	// Use a random chat ID
 	chatID := uuid.NewUUID()
 
 	// 1. User1 sends a message
-	sendResp1 := user1Client.Post("/chats/"+chatID.String()+"/messages", map[string]string{
+	sendResp1 := user1Client.Post("/workspaces/"+ws.ID().String()+"/chats/"+chatID.String()+"/messages", map[string]string{
 		"content": "Hello from user1!",
 	})
 	AssertStatus(t, sendResp1, http.StatusCreated)
@@ -417,14 +483,14 @@ func TestMessage_CompleteFlow(t *testing.T) {
 	msg1ID := msg1Result.Data.ID
 
 	// 2. User2 sends a reply
-	sendResp2 := user2Client.Post("/chats/"+chatID.String()+"/messages", map[string]interface{}{
+	sendResp2 := user2Client.Post("/workspaces/"+ws.ID().String()+"/chats/"+chatID.String()+"/messages", map[string]interface{}{
 		"content":     "Hello from user2!",
 		"reply_to_id": msg1ID,
 	})
 	AssertStatus(t, sendResp2, http.StatusCreated)
 
 	// 3. User1 lists messages
-	listResp := user1Client.Get("/chats/" + chatID.String() + "/messages")
+	listResp := user1Client.Get("/workspaces/" + ws.ID().String() + "/chats/" + chatID.String() + "/messages")
 	AssertStatus(t, listResp, http.StatusOK)
 
 	var listResult struct {
@@ -447,12 +513,12 @@ func TestMessage_CompleteFlow(t *testing.T) {
 	assert.GreaterOrEqual(t, len(listResult.Data.Messages), 2)
 
 	// 4. User1 edits their message
-	editResp := user1Client.Put("/messages/"+msg1ID, map[string]string{
+	editResp := user1Client.Put("/workspaces/"+ws.ID().String()+"/chats/"+chatID.String()+"/messages/"+msg1ID, map[string]string{
 		"content": "Edited: Hello from user1!",
 	})
 	AssertStatus(t, editResp, http.StatusOK)
 
 	// 5. User1 deletes their message
-	deleteResp := user1Client.Delete("/messages/" + msg1ID)
+	deleteResp := user1Client.Delete("/workspaces/" + ws.ID().String() + "/chats/" + chatID.String() + "/messages/" + msg1ID)
 	AssertStatus(t, deleteResp, http.StatusNoContent)
 }

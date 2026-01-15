@@ -13,6 +13,7 @@ import (
 
 	chatapp "github.com/lllypuk/flowra/internal/application/chat"
 	messageapp "github.com/lllypuk/flowra/internal/application/message"
+	taskapp "github.com/lllypuk/flowra/internal/application/task"
 	"github.com/lllypuk/flowra/internal/domain/chat"
 	"github.com/lllypuk/flowra/internal/domain/message"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
@@ -146,6 +147,30 @@ func (m *MockMessageTemplateService) GetMessage(
 	return msg, nil
 }
 
+// MockTaskQueryForChatService is a mock implementation of TaskQueryForChatService for testing.
+type MockTaskQueryForChatService struct {
+	tasks map[uuid.UUID]*taskapp.ReadModel
+}
+
+// NewMockTaskQueryForChatService creates a new mock task query service.
+func NewMockTaskQueryForChatService() *MockTaskQueryForChatService {
+	return &MockTaskQueryForChatService{
+		tasks: make(map[uuid.UUID]*taskapp.ReadModel),
+	}
+}
+
+// GetTaskByChatID implements TaskQueryForChatService.
+func (m *MockTaskQueryForChatService) GetTaskByChatID(
+	_ context.Context,
+	chatID uuid.UUID,
+) (*taskapp.ReadModel, error) {
+	task, ok := m.tasks[chatID]
+	if !ok {
+		return nil, taskapp.ErrTaskNotFound
+	}
+	return task, nil
+}
+
 // setUserContextForTemplate sets user authentication context on the echo context.
 func setUserContextForTemplate(c echo.Context, userID uuid.UUID) {
 	c.Set(string(middleware.ContextKeyUserID), userID)
@@ -187,7 +212,7 @@ func TestChatTemplateHandler_ChatListPartial(t *testing.T) {
 		mockChatService.AddChat(chat1)
 		mockChatService.AddChat(chat2)
 
-		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService)
+		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/workspace/"+workspaceID.String()+"/chats", nil)
 		rec := httptest.NewRecorder()
@@ -210,7 +235,7 @@ func TestChatTemplateHandler_ChatListPartial(t *testing.T) {
 		mockChatService := NewMockChatTemplateService()
 		mockMessageService := NewMockMessageTemplateService()
 
-		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService)
+		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/workspace/"+workspaceID.String()+"/chats", nil)
 		rec := httptest.NewRecorder()
@@ -232,7 +257,7 @@ func TestChatTemplateHandler_ChatListPartial(t *testing.T) {
 		mockChatService := NewMockChatTemplateService()
 		mockMessageService := NewMockMessageTemplateService()
 
-		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService)
+		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/workspace/invalid/chats", nil)
 		rec := httptest.NewRecorder()
@@ -260,7 +285,7 @@ func TestChatTemplateHandler_ChatViewPartial(t *testing.T) {
 		testChat := makeChatDTO(workspaceID, userID, "Test Chat", chat.TypeDiscussion)
 		mockChatService.AddChat(testChat)
 
-		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService)
+		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/chats/"+testChat.ID.String(), nil)
 		rec := httptest.NewRecorder()
@@ -289,7 +314,7 @@ func TestChatTemplateHandler_ChatViewPartial(t *testing.T) {
 		testChat := makeChatDTO(workspaceID, userID, "Test Chat", chat.TypeDiscussion)
 		mockChatService.AddChat(testChat)
 
-		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService)
+		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/chats/"+testChat.ID.String(), nil)
 		req.Header.Set("Hx-Request", "true")
@@ -312,7 +337,7 @@ func TestChatTemplateHandler_ChatViewPartial(t *testing.T) {
 		mockChatService := NewMockChatTemplateService()
 		mockMessageService := NewMockMessageTemplateService()
 
-		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService)
+		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/chats/"+chatID.String(), nil)
 		rec := httptest.NewRecorder()
@@ -335,7 +360,7 @@ func TestChatTemplateHandler_ChatViewPartial(t *testing.T) {
 		mockChatService := NewMockChatTemplateService()
 		mockMessageService := NewMockMessageTemplateService()
 
-		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService)
+		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/chats/"+chatID.String(), nil)
 		rec := httptest.NewRecorder()
@@ -366,7 +391,7 @@ func TestChatTemplateHandler_MessagesPartial(t *testing.T) {
 		mockMessageService.AddMessage(msg1)
 		mockMessageService.AddMessage(msg2)
 
-		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService)
+		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/chats/"+chatID.String()+"/messages", nil)
 		rec := httptest.NewRecorder()
@@ -388,7 +413,7 @@ func TestChatTemplateHandler_MessagesPartial(t *testing.T) {
 		mockChatService := NewMockChatTemplateService()
 		mockMessageService := NewMockMessageTemplateService()
 
-		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService)
+		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/chats/"+chatID.String()+"/messages", nil)
 		rec := httptest.NewRecorder()
@@ -416,7 +441,7 @@ func TestChatTemplateHandler_SingleMessagePartial(t *testing.T) {
 		msg := makeTestMessage(chatID, userID, "Test message")
 		mockMessageService.AddMessage(msg)
 
-		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService)
+		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/messages/"+msg.ID().String(), nil)
 		rec := httptest.NewRecorder()
@@ -439,7 +464,7 @@ func TestChatTemplateHandler_SingleMessagePartial(t *testing.T) {
 		mockChatService := NewMockChatTemplateService()
 		mockMessageService := NewMockMessageTemplateService()
 
-		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService)
+		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/messages/"+messageID.String(), nil)
 		rec := httptest.NewRecorder()
@@ -467,7 +492,7 @@ func TestChatTemplateHandler_MessageEditForm(t *testing.T) {
 		msg := makeTestMessage(chatID, userID, "Test message")
 		mockMessageService.AddMessage(msg)
 
-		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService)
+		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/messages/"+msg.ID().String()+"/edit", nil)
 		rec := httptest.NewRecorder()
@@ -495,7 +520,7 @@ func TestChatTemplateHandler_MessageEditForm(t *testing.T) {
 		msg := makeTestMessage(chatID, otherUserID, "Other user's message")
 		mockMessageService.AddMessage(msg)
 
-		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService)
+		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/messages/"+msg.ID().String()+"/edit", nil)
 		rec := httptest.NewRecorder()
@@ -519,7 +544,7 @@ func TestChatTemplateHandler_ParticipantsPartial(t *testing.T) {
 		mockChatService := NewMockChatTemplateService()
 		mockMessageService := NewMockMessageTemplateService()
 
-		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService)
+		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/chats/"+chatID.String()+"/participants", nil)
 		rec := httptest.NewRecorder()
@@ -541,7 +566,7 @@ func TestChatTemplateHandler_ParticipantsPartial(t *testing.T) {
 		mockChatService := NewMockChatTemplateService()
 		mockMessageService := NewMockMessageTemplateService()
 
-		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService)
+		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/chats/invalid/participants", nil)
 		rec := httptest.NewRecorder()
@@ -564,7 +589,7 @@ func TestChatTemplateHandler_ChatCreateForm(t *testing.T) {
 		mockChatService := NewMockChatTemplateService()
 		mockMessageService := NewMockMessageTemplateService()
 
-		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService)
+		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/chat/create-form?workspace_id=abc", nil)
 		rec := httptest.NewRecorder()
@@ -584,7 +609,7 @@ func TestChatTemplateHandler_ChatCreateForm(t *testing.T) {
 		mockChatService := NewMockChatTemplateService()
 		mockMessageService := NewMockMessageTemplateService()
 
-		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService)
+		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/chat/create-form", nil)
 		rec := httptest.NewRecorder()
@@ -615,7 +640,7 @@ func TestChatTemplateHandler_ChatSearchPartial(t *testing.T) {
 		mockChatService.AddChat(chat2)
 		mockChatService.AddChat(chat3)
 
-		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService)
+		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService, nil)
 
 		searchURL := "/partials/chats/search?workspace_id=" + workspaceID.String() + "&q=bug"
 		req := httptest.NewRequest(http.MethodGet, searchURL, nil)
@@ -636,7 +661,7 @@ func TestChatTemplateHandler_ChatSearchPartial(t *testing.T) {
 		mockChatService := NewMockChatTemplateService()
 		mockMessageService := NewMockMessageTemplateService()
 
-		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService)
+		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/chats/search?workspace_id="+workspaceID.String(), nil)
 		rec := httptest.NewRecorder()
@@ -685,13 +710,13 @@ func TestNewChatTemplateHandler(t *testing.T) {
 		mockChatService := NewMockChatTemplateService()
 		mockMessageService := NewMockMessageTemplateService()
 
-		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService)
+		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService, nil)
 
 		require.NotNil(t, handler)
 	})
 
 	t.Run("creates handler with nil services", func(t *testing.T) {
-		handler := httphandler.NewChatTemplateHandler(nil, nil, nil, nil)
+		handler := httphandler.NewChatTemplateHandler(nil, nil, nil, nil, nil)
 
 		require.NotNil(t, handler)
 	})

@@ -97,15 +97,17 @@ Access Keycloak at http://localhost:8090 (admin/admin123) to configure OAuth.
 
 ```bash
 make help          # Show all available commands
-make dev           # Run in development mode
-make build         # Build binaries
-make test          # Run all tests
-make test-unit     # Run unit tests only
-make test-e2e      # Run E2E tests
-make lint          # Run linter and format code
-make docker-up     # Start Docker services
-make docker-down   # Stop Docker services
-make test-coverage # Generate coverage report
+make dev                # Run in development mode
+make build              # Build binaries
+make test               # Run all tests
+make test-unit          # Run unit tests only
+make test-e2e           # Run E2E API tests
+make test-e2e-frontend  # Run frontend browser E2E tests (requires running server)
+make lint               # Run linter and format code
+make docker-up          # Start Docker services
+make docker-down        # Stop Docker services
+make test-coverage      # Generate coverage report
+make playwright-install # Install Playwright browsers for frontend tests
 ```
 
 ---

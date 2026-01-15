@@ -282,20 +282,20 @@ func (s *E2ETestSuite) setupServer() {
 	api.DELETE("/workspaces/:workspace_id/chats/:id/participants/:user_id", chatHandler.RemoveParticipant)
 
 	// Message routes
-	api.POST("/chats/:chat_id/messages", messageHandler.Send)
-	api.GET("/chats/:chat_id/messages", messageHandler.List)
-	api.PUT("/messages/:id", messageHandler.Edit)
-	api.DELETE("/messages/:id", messageHandler.Delete)
+	api.POST("/workspaces/:workspace_id/chats/:chat_id/messages", messageHandler.Send)
+	api.GET("/workspaces/:workspace_id/chats/:chat_id/messages", messageHandler.List)
+	api.PUT("/workspaces/:workspace_id/chats/:chat_id/messages/:id", messageHandler.Edit)
+	api.DELETE("/workspaces/:workspace_id/chats/:chat_id/messages/:id", messageHandler.Delete)
 
-	// Task routes - note: task handler uses c.Param("id") for task ID
+	// Task routes - note: task handler uses c.Param("task_id") for task ID
 	api.POST("/workspaces/:workspace_id/tasks", taskHandler.Create)
 	api.GET("/workspaces/:workspace_id/tasks", taskHandler.List)
-	api.GET("/workspaces/:workspace_id/tasks/:id", taskHandler.Get)
-	api.PUT("/workspaces/:workspace_id/tasks/:id/status", taskHandler.ChangeStatus)
-	api.PUT("/workspaces/:workspace_id/tasks/:id/assignee", taskHandler.Assign)
-	api.PUT("/workspaces/:workspace_id/tasks/:id/priority", taskHandler.ChangePriority)
-	api.PUT("/workspaces/:workspace_id/tasks/:id/due-date", taskHandler.SetDueDate)
-	api.DELETE("/workspaces/:workspace_id/tasks/:id", taskHandler.Delete)
+	api.GET("/workspaces/:workspace_id/tasks/:task_id", taskHandler.Get)
+	api.PUT("/workspaces/:workspace_id/tasks/:task_id/status", taskHandler.ChangeStatus)
+	api.PUT("/workspaces/:workspace_id/tasks/:task_id/assignee", taskHandler.Assign)
+	api.PUT("/workspaces/:workspace_id/tasks/:task_id/priority", taskHandler.ChangePriority)
+	api.PUT("/workspaces/:workspace_id/tasks/:task_id/due-date", taskHandler.SetDueDate)
+	api.DELETE("/workspaces/:workspace_id/tasks/:task_id", taskHandler.Delete)
 
 	// WebSocket route (simplified for testing)
 	api.GET("/ws", func(c echo.Context) error {

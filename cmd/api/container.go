@@ -833,11 +833,15 @@ func (c *Container) setupChatTemplateHandler() {
 	// Create message template service adapter
 	messageService := c.createMessageTemplateService()
 
+	// Create task query service adapter
+	taskService := c.createTaskQueryForChatService()
+
 	c.ChatTemplateHandler = httphandler.NewChatTemplateHandler(
 		c.TemplateRenderer,
 		c.Logger,
 		chatService,
 		messageService,
+		taskService,
 	)
 
 	c.Logger.Debug("chat template handler initialized")
@@ -918,6 +922,36 @@ func (a *chatTemplateServiceAdapter) ListChats(
 		return &chatapp.ListChatsResult{}, nil
 	}
 	return a.chatService.ListChats(ctx, query)
+}
+
+// createTaskQueryForChatService creates a service implementing TaskQueryForChatService.
+func (c *Container) createTaskQueryForChatService() httphandler.TaskQueryForChatService {
+	return &taskQueryForChatServiceAdapter{
+		collection: c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model"),
+	}
+}
+
+// taskQueryForChatServiceAdapter adapts MongoDB collection to TaskQueryForChatService.
+type taskQueryForChatServiceAdapter struct {
+	collection *mongo.Collection
+}
+
+// GetTaskByChatID implements TaskQueryForChatService.
+func (a *taskQueryForChatServiceAdapter) GetTaskByChatID(
+	ctx context.Context,
+	chatID uuid.UUID,
+) (*taskapp.ReadModel, error) {
+	if a.collection == nil {
+		return nil, taskapp.ErrTaskNotFound
+	}
+
+	filter := bson.M{"chat_id": chatID.String()}
+	var doc taskReadModelDoc
+	err := a.collection.FindOne(ctx, filter).Decode(&doc)
+	if err != nil {
+		return nil, taskapp.ErrTaskNotFound
+	}
+	return doc.toReadModel(), nil
 }
 
 // setupBoardTemplateHandler creates the board template handler with all dependencies.
@@ -1274,7 +1308,28 @@ func (a *fullTaskServiceAdapter) AssignTask(
 	cmd taskapp.AssignTaskCommand,
 ) (taskapp.TaskResult, error) {
 	assignUC := taskapp.NewAssignTaskUseCase(a.eventStore, a.userRepo)
-	return assignUC.Execute(ctx, cmd)
+	result, err := assignUC.Execute(ctx, cmd)
+	if err != nil {
+		return result, err
+	}
+
+	// Update read model with new assignee
+	if a.collection != nil {
+		filter := bson.M{"task_id": cmd.TaskID.String()}
+		var assignedTo interface{}
+		if cmd.AssigneeID != nil {
+			assignedTo = cmd.AssigneeID.String()
+		}
+		update := bson.M{
+			"$set": bson.M{
+				"assigned_to": assignedTo,
+				"version":     result.Version,
+			},
+		}
+		_, _ = a.collection.UpdateOne(ctx, filter, update)
+	}
+
+	return result, nil
 }
 
 // ChangePriority implements httphandler.TaskService.
@@ -1283,7 +1338,24 @@ func (a *fullTaskServiceAdapter) ChangePriority(
 	cmd taskapp.ChangePriorityCommand,
 ) (taskapp.TaskResult, error) {
 	changePriorityUC := taskapp.NewChangePriorityUseCase(a.eventStore)
-	return changePriorityUC.Execute(ctx, cmd)
+	result, err := changePriorityUC.Execute(ctx, cmd)
+	if err != nil {
+		return result, err
+	}
+
+	// Update read model with new priority
+	if a.collection != nil {
+		filter := bson.M{"task_id": cmd.TaskID.String()}
+		update := bson.M{
+			"$set": bson.M{
+				"priority": string(cmd.Priority),
+				"version":  result.Version,
+			},
+		}
+		_, _ = a.collection.UpdateOne(ctx, filter, update)
+	}
+
+	return result, nil
 }
 
 // SetDueDate implements httphandler.TaskService.
@@ -1292,7 +1364,28 @@ func (a *fullTaskServiceAdapter) SetDueDate(
 	cmd taskapp.SetDueDateCommand,
 ) (taskapp.TaskResult, error) {
 	setDueDateUC := taskapp.NewSetDueDateUseCase(a.eventStore)
-	return setDueDateUC.Execute(ctx, cmd)
+	result, err := setDueDateUC.Execute(ctx, cmd)
+	if err != nil {
+		return result, err
+	}
+
+	// Update read model with new due date
+	if a.collection != nil {
+		filter := bson.M{"task_id": cmd.TaskID.String()}
+		var dueDate interface{}
+		if cmd.DueDate != nil {
+			dueDate = *cmd.DueDate
+		}
+		update := bson.M{
+			"$set": bson.M{
+				"due_date": dueDate,
+				"version":  result.Version,
+			},
+		}
+		_, _ = a.collection.UpdateOne(ctx, filter, update)
+	}
+
+	return result, nil
 }
 
 // DeleteTask implements httphandler.TaskService.

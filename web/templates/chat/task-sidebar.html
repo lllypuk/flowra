@@ -1,19 +1,20 @@
 {{define "chat/task-sidebar"}}
-<div class="task-details">
+{{if .Data.Task}}
+<div class="task-details" id="task-details-{{.Data.Task.ID}}">
     <h3>Task Details</h3>
 
     <!-- Status -->
     <div class="field">
         <label for="task-status">Status</label>
         <select id="task-status"
-                hx-put="/api/v1/tasks/{{.Data.Task.ID}}/status"
+                hx-put="/api/v1/workspaces/{{.Data.Chat.WorkspaceID}}/tasks/{{.Data.Task.ID}}/status"
                 hx-trigger="change"
                 hx-swap="none"
                 name="status">
-            <option value="todo" {{if eq .Data.Task.Status "todo"}}selected{{end}}>To Do</option>
-            <option value="in_progress" {{if eq .Data.Task.Status "in_progress"}}selected{{end}}>In Progress</option>
-            <option value="review" {{if eq .Data.Task.Status "review"}}selected{{end}}>Review</option>
-            <option value="done" {{if eq .Data.Task.Status "done"}}selected{{end}}>Done</option>
+            <option value="todo" {{if eq .Data.Task.Status "To Do"}}selected{{end}}>To Do</option>
+            <option value="in_progress" {{if eq .Data.Task.Status "In Progress"}}selected{{end}}>In Progress</option>
+            <option value="review" {{if eq .Data.Task.Status "In Review"}}selected{{end}}>Review</option>
+            <option value="done" {{if eq .Data.Task.Status "Done"}}selected{{end}}>Done</option>
         </select>
     </div>
 
@@ -21,7 +22,7 @@
     <div class="field">
         <label for="task-assignee">Assignee</label>
         <select id="task-assignee"
-                hx-put="/api/v1/tasks/{{.Data.Task.ID}}/assignee"
+                hx-put="/api/v1/workspaces/{{.Data.Chat.WorkspaceID}}/tasks/{{.Data.Task.ID}}/assignee"
                 hx-trigger="change"
                 hx-swap="none"
                 name="assignee_id">
@@ -39,14 +40,14 @@
     <div class="field">
         <label for="task-priority">Priority</label>
         <select id="task-priority"
-                hx-put="/api/v1/tasks/{{.Data.Task.ID}}/priority"
+                hx-put="/api/v1/workspaces/{{.Data.Chat.WorkspaceID}}/tasks/{{.Data.Task.ID}}/priority"
                 hx-trigger="change"
                 hx-swap="none"
                 name="priority">
-            <option value="low" {{if eq .Data.Task.Priority "low"}}selected{{end}}>Low</option>
-            <option value="medium" {{if eq .Data.Task.Priority "medium"}}selected{{end}}>Medium</option>
-            <option value="high" {{if eq .Data.Task.Priority "high"}}selected{{end}}>High</option>
-            <option value="critical" {{if eq .Data.Task.Priority "critical"}}selected{{end}}>Critical</option>
+            <option value="Low" {{if or (eq .Data.Task.Priority "low") (eq .Data.Task.Priority "Low")}}selected{{end}}>Low</option>
+            <option value="Medium" {{if or (eq .Data.Task.Priority "medium") (eq .Data.Task.Priority "Medium")}}selected{{end}}>Medium</option>
+            <option value="High" {{if or (eq .Data.Task.Priority "high") (eq .Data.Task.Priority "High")}}selected{{end}}>High</option>
+            <option value="Critical" {{if or (eq .Data.Task.Priority "critical") (eq .Data.Task.Priority "Critical")}}selected{{end}}>Critical</option>
         </select>
     </div>
 
@@ -55,8 +56,8 @@
         <label for="task-due-date">Due Date</label>
         <input type="date"
                id="task-due-date"
-               hx-put="/api/v1/tasks/{{.Data.Task.ID}}/due-date"
-               hx-trigger="change"
+               hx-put="/api/v1/workspaces/{{.Data.Chat.WorkspaceID}}/tasks/{{.Data.Task.ID}}/due-date"
+               hx-trigger="blur[this.validity.valid || this.value === ''] delay:500ms"
                hx-swap="none"
                name="due_date"
                value="{{if .Data.Task.DueDate}}{{.Data.Task.DueDate | formatDateInput}}{{end}}">
@@ -67,14 +68,14 @@
     <div class="field">
         <label for="task-severity">Severity</label>
         <select id="task-severity"
-                hx-put="/api/v1/tasks/{{.Data.Task.ID}}/severity"
+                hx-put="/api/v1/workspaces/{{.Data.Chat.WorkspaceID}}/tasks/{{.Data.Task.ID}}/severity"
                 hx-trigger="change"
                 hx-swap="none"
                 name="severity">
-            <option value="low" {{if eq .Data.Task.Severity "low"}}selected{{end}}>Low</option>
-            <option value="medium" {{if eq .Data.Task.Severity "medium"}}selected{{end}}>Medium</option>
-            <option value="high" {{if eq .Data.Task.Severity "high"}}selected{{end}}>High</option>
-            <option value="critical" {{if eq .Data.Task.Severity "critical"}}selected{{end}}>Critical</option>
+            <option value="Low" {{if or (eq .Data.Task.Severity "low") (eq .Data.Task.Severity "Low")}}selected{{end}}>Low</option>
+            <option value="Medium" {{if or (eq .Data.Task.Severity "medium") (eq .Data.Task.Severity "Medium")}}selected{{end}}>Medium</option>
+            <option value="High" {{if or (eq .Data.Task.Severity "high") (eq .Data.Task.Severity "High")}}selected{{end}}>High</option>
+            <option value="Critical" {{if or (eq .Data.Task.Severity "critical") (eq .Data.Task.Severity "Critical")}}selected{{end}}>Critical</option>
         </select>
     </div>
     {{end}}
@@ -92,6 +93,11 @@
         </div>
     </div>
 </div>
+{{else}}
+<div class="task-details">
+    <p>Loading task details...</p>
+</div>
+{{end}}
 
 <style>
 .task-details h3 {
@@ -162,4 +168,77 @@
     font-size: 0.75rem;
 }
 </style>
+
+<script>
+// Handle real-time task updates via WebSocket
+(function() {
+    {{if .Data.Task}}
+    var taskId = '{{.Data.Task.ID}}';
+    
+    // Map domain status values to form option values
+    var statusMap = {
+        'To Do': 'todo',
+        'In Progress': 'in_progress',
+        'In Review': 'review',
+        'Done': 'done',
+        'Backlog': 'backlog',
+        'Cancelled': 'cancelled'
+    };
+    
+    // Listen for task.updated WebSocket events
+    document.body.addEventListener('task.updated', function(evt) {
+        var data = evt.detail;
+        
+        // Check if this event is for our task
+        if (data.task_id === taskId && data.changes) {
+            var changes = data.changes;
+            
+            // Update status dropdown if status changed
+            if (changes.status) {
+                var statusSelect = document.getElementById('task-status');
+                if (statusSelect && changes.status.new) {
+                    // Map domain status to form value
+                    var mappedStatus = statusMap[changes.status.new] || changes.status.new.toLowerCase().replace(/ /g, '_');
+                    statusSelect.value = mappedStatus;
+                }
+            }
+            
+            // Update assignee dropdown if assignee changed
+            if (changes.assignee !== undefined) {
+                var assigneeSelect = document.getElementById('task-assignee');
+                if (assigneeSelect) {
+                    assigneeSelect.value = changes.assignee.new || '';
+                }
+            }
+            
+            // Update priority dropdown if priority changed
+            if (changes.priority) {
+                var prioritySelect = document.getElementById('task-priority');
+                if (prioritySelect && changes.priority.new) {
+                    // Priority values are capitalized (Low, Medium, High, Critical)
+                    prioritySelect.value = changes.priority.new.charAt(0).toUpperCase() + changes.priority.new.slice(1);
+                }
+            }
+            
+            // Update due date if changed
+            if (changes.due_date !== undefined) {
+                var dueDateInput = document.getElementById('task-due-date');
+                if (dueDateInput) {
+                    dueDateInput.value = changes.due_date.new || '';
+                }
+            }
+            
+            // Refresh activity feed
+            var activityDiv = document.getElementById('task-activity');
+            if (activityDiv) {
+                htmx.ajax('GET', '/partials/tasks/' + taskId + '/activity', {
+                    target: '#task-activity',
+                    swap: 'innerHTML'
+                });
+            }
+        }
+    });
+    {{end}}
+})();
+</script>
 {{end}}
