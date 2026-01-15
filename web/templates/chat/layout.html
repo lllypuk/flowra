@@ -106,7 +106,7 @@
                 display: grid;
                 grid-template-columns: 250px 1fr;
                 grid-template-rows: minmax(0, 1fr); /* Constrain row to container height */
-                height: calc(100vh - 60px);
+                height: calc(100vh - 90px);
                 overflow: hidden;
             }
 
@@ -133,6 +133,7 @@
             .chat-sidebar nav {
                 flex: 1;
                 overflow-y: auto;
+                overflow-x: hidden;
             }
 
             .chat-sidebar footer {

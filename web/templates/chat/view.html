@@ -5,9 +5,16 @@
         <div class="chat-title">
             <h2>{{.Data.Chat.Title}}</h2>
             {{if .Data.Chat.IsTaskChat}}
-            <span class="status-badge status-{{.Data.Chat.Status | lower}}">
-                {{.Data.Chat.Status}}
+            {{with .Data.Task}}
+            {{$status := .Status}}
+            <span class="status-badge {{if eq $status "To Do"}}status-todo{{else if eq $status "In Progress"}}status-in_progress{{else if eq $status "In Review"}}status-review{{else if eq $status "Done"}}status-done{{else if eq $status "Backlog"}}status-backlog{{else if eq $status "Cancelled"}}status-cancelled{{else}}status-{{$status | lower}}{{end}}" id="chat-header-status">
+                {{$status}}
             </span>
+            {{else}}
+            <span class="status-badge status-{{$.Data.Chat.Status | lower}}" id="chat-header-status">
+                {{$.Data.Chat.Status}}
+            </span>
+            {{end}}
             {{end}}
         </div>
 
@@ -150,6 +157,7 @@
         flex-direction: column;
         height: 100%;
         min-height: 0; /* Required for nested flex to respect parent constraints */
+        overflow: hidden; /* Prevent overflow */
     }
 
     .chat-header {
@@ -159,6 +167,7 @@
         padding: 1rem;
         border-bottom: 1px solid var(--muted-border-color);
         background: var(--card-background-color);
+        flex-shrink: 0; /* Prevent header from shrinking */
     }
 
     .chat-title {
@@ -230,6 +239,7 @@
         padding: 0.5rem 1rem;
         font-size: 0.875rem;
         color: var(--muted-color);
+        flex-shrink: 0; /* Prevent typing indicator from shrinking */
     }
 
     .typing-indicator.hidden {

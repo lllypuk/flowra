@@ -112,6 +112,7 @@
         border-top: 1px solid var(--muted-border-color);
         background: var(--background-color);
         align-items: flex-end;
+        flex-shrink: 0; /* Prevent form from shrinking */
     }
 
     .message-input-wrapper {
@@ -127,6 +128,8 @@
         margin-bottom: 0;
         padding: 0.5rem 0.75rem;
         line-height: 1.5;
+        overflow-y: hidden;
+        overflow-x: hidden;
     }
 
     .message-form button[type="submit"] {
