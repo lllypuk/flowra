@@ -4,6 +4,8 @@
 package frontend
 
 import (
+	"fmt"
+	"net/http"
 	"os"
 	"testing"
 	"time"
@@ -21,6 +23,40 @@ const (
 	defaultHeadless  = true
 	slowMo           = 0 // Set to 100 for debugging
 )
+
+var (
+	serverAvailable bool
+)
+
+// TestMain checks if the server is running before tests.
+func TestMain(m *testing.M) {
+	// Check if server is available
+	serverAvailable = checkServerAvailable()
+	
+	if !serverAvailable {
+		fmt.Println("WARNING: Server is not available at", baseURL)
+		fmt.Println("Frontend E2E tests require a running server.")
+		fmt.Println("Start the server with: make dev")
+		fmt.Println("Or with docker: docker-compose up")
+	}
+	
+	os.Exit(m.Run())
+}
+
+// checkServerAvailable checks if the server is reachable.
+func checkServerAvailable() bool {
+	client := &http.Client{
+		Timeout: 2 * time.Second,
+	}
+	
+	resp, err := client.Get(baseURL + "/health")
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+	
+	return resp.StatusCode == http.StatusOK
+}
 
 // isHeadless returns whether browser should run in headless mode.
 // Set HEADLESS=false environment variable to run with visible browser.
@@ -40,6 +76,11 @@ type TestSuite struct {
 // setupTestSuite initializes Playwright and browser.
 func setupTestSuite(t *testing.T) *TestSuite {
 	t.Helper()
+
+	// Skip if server is not available
+	if !serverAvailable {
+		t.Skip("Server is not available. Start the server with 'make dev' or 'docker-compose up'")
+	}
 
 	// Check if base URL is accessible
 	if os.Getenv("E2E_BASE_URL") != "" {

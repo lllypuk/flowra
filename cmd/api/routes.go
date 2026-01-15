@@ -122,13 +122,13 @@ func registerChatRoutes(r *httpserver.Router, c *Container) {
 	// Chat CRUD
 	chats.POST("", c.ChatHandler.Create)
 	chats.GET("", c.ChatHandler.List)
-	chats.GET("/:chat_id", c.ChatHandler.Get)
-	chats.PUT("/:chat_id", c.ChatHandler.Update)
-	chats.DELETE("/:chat_id", c.ChatHandler.Delete)
+	chats.GET("/:id", c.ChatHandler.Get)
+	chats.PUT("/:id", c.ChatHandler.Update)
+	chats.DELETE("/:id", c.ChatHandler.Delete)
 
 	// Chat participants
-	chats.POST("/:chat_id/participants", c.ChatHandler.AddParticipant)
-	chats.DELETE("/:chat_id/participants/:user_id", c.ChatHandler.RemoveParticipant)
+	chats.POST("/:id/participants", c.ChatHandler.AddParticipant)
+	chats.DELETE("/:id/participants/:user_id", c.ChatHandler.RemoveParticipant)
 }
 
 // registerMessageRoutes registers message-related routes.
@@ -139,15 +139,15 @@ func registerMessageRoutes(r *httpserver.Router, c *Container) {
 	if c.MessageHandler != nil {
 		messages.POST("", c.MessageHandler.Send)
 		messages.GET("", c.MessageHandler.List)
-		messages.PUT("/:message_id", c.MessageHandler.Edit)
-		messages.DELETE("/:message_id", c.MessageHandler.Delete)
+		messages.PUT("/:id", c.MessageHandler.Edit)
+		messages.DELETE("/:id", c.MessageHandler.Delete)
 	} else {
 		// Placeholder endpoints when handler is not initialized
 		placeholder := createPlaceholderHandler("Message")
 		messages.POST("", placeholder)
 		messages.GET("", placeholder)
-		messages.PUT("/:message_id", placeholder)
-		messages.DELETE("/:message_id", placeholder)
+		messages.PUT("/:id", placeholder)
+		messages.DELETE("/:id", placeholder)
 	}
 }
 
