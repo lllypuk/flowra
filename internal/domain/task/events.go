@@ -166,10 +166,10 @@ func (e *AssigneeChanged) Payload() json.RawMessage {
 		oldAssignee = &old
 	}
 	if e.NewAssignee != nil {
-		new := e.NewAssignee.String()
-		newAssignee = &new
+		newVal := e.NewAssignee.String()
+		newAssignee = &newVal
 	}
-	
+
 	payload := map[string]any{
 		"task_id": e.AggregateID(),
 		"changes": map[string]any{
@@ -258,10 +258,10 @@ func (e *DueDateChanged) Payload() json.RawMessage {
 		oldDate = &old
 	}
 	if e.NewDueDate != nil {
-		new := e.NewDueDate.Format("2006-01-02")
-		newDate = &new
+		newVal := e.NewDueDate.Format("2006-01-02")
+		newDate = &newVal
 	}
-	
+
 	payload := map[string]any{
 		"task_id": e.AggregateID(),
 		"changes": map[string]any{
