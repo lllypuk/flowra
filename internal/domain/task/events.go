@@ -1,6 +1,7 @@
 package task
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/lllypuk/flowra/internal/domain/event"
@@ -116,6 +117,23 @@ func NewStatusChanged(
 	}
 }
 
+// Payload returns the event payload for WebSocket broadcasting
+func (e *StatusChanged) Payload() json.RawMessage {
+	payload := map[string]any{
+		"task_id": e.AggregateID(),
+		"changes": map[string]any{
+			"status": map[string]any{
+				"old": string(e.OldStatus),
+				"new": string(e.NewStatus),
+			},
+		},
+		"changed_by": e.ChangedBy.String(),
+		"version":    e.Version(),
+	}
+	data, _ := json.Marshal(payload)
+	return data
+}
+
 // AssigneeChanged event changing ispolnitelya
 type AssigneeChanged struct {
 	event.BaseEvent
@@ -138,6 +156,33 @@ func NewAssigneeChanged(
 		NewAssignee: newAssignee,
 		ChangedBy:   changedBy,
 	}
+}
+
+// Payload returns the event payload for WebSocket broadcasting
+func (e *AssigneeChanged) Payload() json.RawMessage {
+	var oldAssignee, newAssignee *string
+	if e.OldAssignee != nil {
+		old := e.OldAssignee.String()
+		oldAssignee = &old
+	}
+	if e.NewAssignee != nil {
+		new := e.NewAssignee.String()
+		newAssignee = &new
+	}
+	
+	payload := map[string]any{
+		"task_id": e.AggregateID(),
+		"changes": map[string]any{
+			"assignee": map[string]any{
+				"old": oldAssignee,
+				"new": newAssignee,
+			},
+		},
+		"changed_by": e.ChangedBy.String(),
+		"version":    e.Version(),
+	}
+	data, _ := json.Marshal(payload)
+	return data
 }
 
 // PriorityChanged event changing priority
@@ -164,6 +209,23 @@ func NewPriorityChanged(
 	}
 }
 
+// Payload returns the event payload for WebSocket broadcasting
+func (e *PriorityChanged) Payload() json.RawMessage {
+	payload := map[string]any{
+		"task_id": e.AggregateID(),
+		"changes": map[string]any{
+			"priority": map[string]any{
+				"old": string(e.OldPriority),
+				"new": string(e.NewPriority),
+			},
+		},
+		"changed_by": e.ChangedBy.String(),
+		"version":    e.Version(),
+	}
+	data, _ := json.Marshal(payload)
+	return data
+}
+
 // DueDateChanged event changing sroka vypolneniya
 type DueDateChanged struct {
 	event.BaseEvent
@@ -186,6 +248,33 @@ func NewDueDateChanged(
 		NewDueDate: newDueDate,
 		ChangedBy:  changedBy,
 	}
+}
+
+// Payload returns the event payload for WebSocket broadcasting
+func (e *DueDateChanged) Payload() json.RawMessage {
+	var oldDate, newDate *string
+	if e.OldDueDate != nil {
+		old := e.OldDueDate.Format("2006-01-02")
+		oldDate = &old
+	}
+	if e.NewDueDate != nil {
+		new := e.NewDueDate.Format("2006-01-02")
+		newDate = &new
+	}
+	
+	payload := map[string]any{
+		"task_id": e.AggregateID(),
+		"changes": map[string]any{
+			"due_date": map[string]any{
+				"old": oldDate,
+				"new": newDate,
+			},
+		},
+		"changed_by": e.ChangedBy.String(),
+		"version":    e.Version(),
+	}
+	data, _ := json.Marshal(payload)
+	return data
 }
 
 // CustomFieldSet event setting kastomnogo fields
