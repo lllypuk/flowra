@@ -6,7 +6,7 @@
     <div class="field">
         <label for="task-status">Status</label>
         <select id="task-status"
-                hx-put="/api/v1/tasks/{{.Data.Task.ID}}/status"
+                hx-put="/api/v1/workspaces/{{.Data.Chat.WorkspaceID}}/tasks/{{.Data.Task.ID}}/status"
                 hx-trigger="change"
                 hx-swap="none"
                 name="status">
@@ -21,7 +21,7 @@
     <div class="field">
         <label for="task-assignee">Assignee</label>
         <select id="task-assignee"
-                hx-put="/api/v1/tasks/{{.Data.Task.ID}}/assignee"
+                hx-put="/api/v1/workspaces/{{.Data.Chat.WorkspaceID}}/tasks/{{.Data.Task.ID}}/assignee"
                 hx-trigger="change"
                 hx-swap="none"
                 name="assignee_id">
@@ -39,14 +39,14 @@
     <div class="field">
         <label for="task-priority">Priority</label>
         <select id="task-priority"
-                hx-put="/api/v1/tasks/{{.Data.Task.ID}}/priority"
+                hx-put="/api/v1/workspaces/{{.Data.Chat.WorkspaceID}}/tasks/{{.Data.Task.ID}}/priority"
                 hx-trigger="change"
                 hx-swap="none"
                 name="priority">
-            <option value="low" {{if eq .Data.Task.Priority "low"}}selected{{end}}>Low</option>
-            <option value="medium" {{if eq .Data.Task.Priority "medium"}}selected{{end}}>Medium</option>
-            <option value="high" {{if eq .Data.Task.Priority "high"}}selected{{end}}>High</option>
-            <option value="critical" {{if eq .Data.Task.Priority "critical"}}selected{{end}}>Critical</option>
+            <option value="Low" {{if or (eq .Data.Task.Priority "low") (eq .Data.Task.Priority "Low")}}selected{{end}}>Low</option>
+            <option value="Medium" {{if or (eq .Data.Task.Priority "medium") (eq .Data.Task.Priority "Medium")}}selected{{end}}>Medium</option>
+            <option value="High" {{if or (eq .Data.Task.Priority "high") (eq .Data.Task.Priority "High")}}selected{{end}}>High</option>
+            <option value="Critical" {{if or (eq .Data.Task.Priority "critical") (eq .Data.Task.Priority "Critical")}}selected{{end}}>Critical</option>
         </select>
     </div>
 
@@ -55,7 +55,7 @@
         <label for="task-due-date">Due Date</label>
         <input type="date"
                id="task-due-date"
-               hx-put="/api/v1/tasks/{{.Data.Task.ID}}/due-date"
+               hx-put="/api/v1/workspaces/{{.Data.Chat.WorkspaceID}}/tasks/{{.Data.Task.ID}}/due-date"
                hx-trigger="change"
                hx-swap="none"
                name="due_date"
@@ -67,14 +67,14 @@
     <div class="field">
         <label for="task-severity">Severity</label>
         <select id="task-severity"
-                hx-put="/api/v1/tasks/{{.Data.Task.ID}}/severity"
+                hx-put="/api/v1/workspaces/{{.Data.Chat.WorkspaceID}}/tasks/{{.Data.Task.ID}}/severity"
                 hx-trigger="change"
                 hx-swap="none"
                 name="severity">
-            <option value="low" {{if eq .Data.Task.Severity "low"}}selected{{end}}>Low</option>
-            <option value="medium" {{if eq .Data.Task.Severity "medium"}}selected{{end}}>Medium</option>
-            <option value="high" {{if eq .Data.Task.Severity "high"}}selected{{end}}>High</option>
-            <option value="critical" {{if eq .Data.Task.Severity "critical"}}selected{{end}}>Critical</option>
+            <option value="Low" {{if or (eq .Data.Task.Severity "low") (eq .Data.Task.Severity "Low")}}selected{{end}}>Low</option>
+            <option value="Medium" {{if or (eq .Data.Task.Severity "medium") (eq .Data.Task.Severity "Medium")}}selected{{end}}>Medium</option>
+            <option value="High" {{if or (eq .Data.Task.Severity "high") (eq .Data.Task.Severity "High")}}selected{{end}}>High</option>
+            <option value="Critical" {{if or (eq .Data.Task.Severity "critical") (eq .Data.Task.Severity "Critical")}}selected{{end}}>Critical</option>
         </select>
     </div>
     {{end}}

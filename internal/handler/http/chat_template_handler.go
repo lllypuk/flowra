@@ -11,6 +11,7 @@ import (
 	"github.com/labstack/echo/v4"
 	chatapp "github.com/lllypuk/flowra/internal/application/chat"
 	messageapp "github.com/lllypuk/flowra/internal/application/message"
+	taskapp "github.com/lllypuk/flowra/internal/application/task"
 	chatdomain "github.com/lllypuk/flowra/internal/domain/chat"
 	"github.com/lllypuk/flowra/internal/domain/message"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
@@ -47,6 +48,13 @@ type MessageTemplateService interface {
 
 	// GetMessage gets a message by ID.
 	GetMessage(ctx context.Context, messageID uuid.UUID) (*message.Message, error)
+}
+
+// TaskQueryForChatService defines the interface for querying tasks by chat ID.
+// Declared on the consumer side per project guidelines.
+type TaskQueryForChatService interface {
+	// GetTaskByChatID gets a task by its associated chat ID.
+	GetTaskByChatID(ctx context.Context, chatID uuid.UUID) (*taskapp.ReadModel, error)
 }
 
 // ChatViewData represents chat data for templates.
@@ -136,6 +144,7 @@ type ChatTemplateHandler struct {
 	logger         *slog.Logger
 	chatService    ChatTemplateService
 	messageService MessageTemplateService
+	taskService    TaskQueryForChatService
 }
 
 // NewChatTemplateHandler creates a new chat template handler.
@@ -144,6 +153,7 @@ func NewChatTemplateHandler(
 	logger *slog.Logger,
 	chatService ChatTemplateService,
 	messageService MessageTemplateService,
+	taskService TaskQueryForChatService,
 ) *ChatTemplateHandler {
 	if logger == nil {
 		logger = slog.Default()
@@ -153,6 +163,7 @@ func NewChatTemplateHandler(
 		logger:         logger,
 		chatService:    chatService,
 		messageService: messageService,
+		taskService:    taskService,
 	}
 }
 
@@ -260,7 +271,7 @@ func (h *ChatTemplateHandler) ChatView(c echo.Context) error {
 
 	// Load task data for task chats
 	if chatData.IsTaskChat {
-		data["Task"] = h.loadTaskViewData(chatData)
+		data["Task"] = h.loadTaskViewData(c.Request().Context(), chatData)
 		data["Participants"] = h.loadParticipants(c.Request().Context(), chatID)
 	}
 
@@ -301,7 +312,7 @@ func (h *ChatTemplateHandler) ChatViewPartial(c echo.Context) error {
 	}
 
 	if chatData.IsTaskChat {
-		innerData["Task"] = h.loadTaskViewData(chatData)
+		innerData["Task"] = h.loadTaskViewData(c.Request().Context(), chatData)
 		innerData["Participants"] = h.loadParticipants(c.Request().Context(), chatID)
 	}
 
@@ -846,18 +857,44 @@ func (h *ChatTemplateHandler) loadChatViewData(
 	}, nil
 }
 
-func (h *ChatTemplateHandler) loadTaskViewData(chat *ChatViewData) *TaskViewData {
+func (h *ChatTemplateHandler) loadTaskViewData(ctx context.Context, chat *ChatViewData) *TaskViewData {
 	if chat == nil || !chat.IsTaskChat {
 		return nil
 	}
 
-	// For now, return basic task data from chat
-	// In a real implementation, this would load from a TaskService
-	return &TaskViewData{
-		ID:       chat.ID,
-		Status:   chat.Status,
-		Priority: "medium", // TODO: load from chat data
+	// Load task from task service using chat ID
+	if h.taskService == nil {
+		return nil
 	}
+
+	chatID, err := uuid.ParseUUID(chat.ID)
+	if err != nil {
+		return nil
+	}
+
+	task, taskErr := h.taskService.GetTaskByChatID(ctx, chatID)
+	if taskErr != nil || task == nil {
+		return nil
+	}
+
+	var dueDate *time.Time
+	if task.DueDate != nil {
+		dueDate = task.DueDate
+	}
+	return &TaskViewData{
+		ID:         task.ID.String(),
+		Status:     string(task.Status),
+		Priority:   string(task.Priority),
+		AssigneeID: getAssigneeID(task.AssignedTo),
+		DueDate:    dueDate,
+	}
+}
+
+func getAssigneeID(assignee *uuid.UUID) string {
+	if assignee == nil {
+		return ""
+	}
+	return assignee.String()
 }
 
 func (h *ChatTemplateHandler) loadParticipants(_ context.Context, _ uuid.UUID) []ParticipantViewData {

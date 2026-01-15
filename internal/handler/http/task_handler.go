@@ -55,17 +55,17 @@ type ChangeStatusRequest struct {
 
 // AssignTaskRequest represents the request to assign a task.
 type AssignTaskRequest struct {
-	AssigneeID *string `json:"assignee_id"`
+	AssigneeID *string `json:"assignee_id" form:"assignee_id"`
 }
 
 // ChangePriorityRequest represents the request to change task priority.
 type ChangePriorityRequest struct {
-	Priority string `json:"priority"`
+	Priority string `json:"priority" form:"priority"`
 }
 
 // SetDueDateRequest represents the request to set task due date.
 type SetDueDateRequest struct {
-	DueDate *string `json:"due_date"`
+	DueDate *string `json:"due_date" form:"due_date"`
 }
 
 // TaskResponse represents a task in API responses.
