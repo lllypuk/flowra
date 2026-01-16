@@ -23,7 +23,8 @@ import (
 type MongoTaskRepository struct {
 	eventStore    appcore.EventStore
 	readModelColl *mongo.Collection
-	eventBus      event.Bus
+	outbox        appcore.Outbox
+	eventBus      event.Bus // deprecated: use outbox for reliable event delivery
 	logger        *slog.Logger
 }
 
@@ -38,9 +39,18 @@ func WithTaskRepoLogger(logger *slog.Logger) TaskRepoOption {
 }
 
 // WithTaskRepoEventBus sets the event bus for task repository.
+//
+// Deprecated: Use WithTaskRepoOutbox for reliable event delivery via outbox pattern.
 func WithTaskRepoEventBus(eventBus event.Bus) TaskRepoOption {
 	return func(r *MongoTaskRepository) {
 		r.eventBus = eventBus
+	}
+}
+
+// WithTaskRepoOutbox sets the outbox for reliable event delivery.
+func WithTaskRepoOutbox(outbox appcore.Outbox) TaskRepoOption {
+	return func(r *MongoTaskRepository) {
+		r.outbox = outbox
 	}
 }
 
@@ -136,8 +146,18 @@ func (r *MongoTaskRepository) Save(ctx context.Context, task *taskdomain.Aggrega
 		// Don't fail - read model can be recalculated
 	}
 
-	// 3. Publish events to EventBus (if configured)
-	if r.eventBus != nil {
+	// 3. Write events to outbox for reliable delivery (preferred)
+	if r.outbox != nil {
+		if outboxErr := r.outbox.AddBatch(ctx, uncommittedEvents); outboxErr != nil {
+			r.logger.ErrorContext(ctx, "failed to add events to outbox",
+				slog.String("task_id", task.ID().String()),
+				slog.Int("events_count", len(uncommittedEvents)),
+				slog.String("error", outboxErr.Error()),
+			)
+			// Don't fail - events are saved in event store
+		}
+	} else if r.eventBus != nil {
+		// Fallback: direct publish to EventBus (deprecated, less reliable)
 		for _, evt := range uncommittedEvents {
 			if pubErr := r.eventBus.Publish(ctx, evt); pubErr != nil {
 				r.logger.WarnContext(ctx, "failed to publish task event to bus",

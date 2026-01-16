@@ -20,6 +20,7 @@ const (
 	CollectionTaskReadModel = "task_read_model"
 	CollectionMessages      = "messages"
 	CollectionNotifications = "notifications"
+	CollectionOutbox        = "outbox"
 )
 
 // IndexDefinition describes a MongoDB index to be created.
@@ -73,6 +74,7 @@ func GetAllIndexDefinitions() []IndexDefinition {
 	indexes = append(indexes, GetTaskReadModelIndexes()...)
 	indexes = append(indexes, GetMessageIndexes()...)
 	indexes = append(indexes, GetNotificationIndexes()...)
+	indexes = append(indexes, GetOutboxIndexes()...)
 
 	return indexes
 }
@@ -428,6 +430,36 @@ func GetNotificationIndexes() []IndexDefinition {
 	}
 }
 
+// GetOutboxIndexes returns index definitions for the outbox collection.
+func GetOutboxIndexes() []IndexDefinition {
+	return []IndexDefinition{
+		{
+			// Primary index for polling unprocessed entries ordered by time
+			Collection: CollectionOutbox,
+			Keys:       bson.D{{Key: "processed_at", Value: 1}, {Key: "created_at", Value: 1}},
+			Options:    options.Index().SetName("idx_outbox_poll"),
+		},
+		{
+			// Index for cleanup operations (deleting old processed entries)
+			Collection: CollectionOutbox,
+			Keys:       bson.D{{Key: "processed_at", Value: 1}},
+			Options:    options.Index().SetName("idx_outbox_cleanup"),
+		},
+		{
+			// Index for monitoring by event type
+			Collection: CollectionOutbox,
+			Keys:       bson.D{{Key: "event_type", Value: 1}, {Key: "created_at", Value: -1}},
+			Options:    options.Index().SetName("idx_outbox_event_type"),
+		},
+		{
+			// Index for filtering by aggregate
+			Collection: CollectionOutbox,
+			Keys:       bson.D{{Key: "aggregate_id", Value: 1}},
+			Options:    options.Index().SetName("idx_outbox_aggregate"),
+		},
+	}
+}
+
 // EnsureIndexes is an alias for CreateAllIndexes for semantic clarity.
 // Use this when you want to ensure indexes exist without caring about creation.
 func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
@@ -456,6 +488,8 @@ func CreateCollectionIndexes(ctx context.Context, db *mongo.Database, collection
 		indexes = GetMessageIndexes()
 	case CollectionNotifications:
 		indexes = GetNotificationIndexes()
+	case CollectionOutbox:
+		indexes = GetOutboxIndexes()
 	default:
 		return fmt.Errorf("unknown collection: %s", collectionName)
 	}

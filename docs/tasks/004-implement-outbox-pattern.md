@@ -1,6 +1,6 @@
 # Task 004: Implement Outbox Pattern
 
-## Status: Pending
+## Status: Complete
 
 ## Priority: High
 
@@ -190,12 +190,12 @@ outbox:
 
 ## Acceptance Criteria
 
-- [ ] Outbox collection created with proper indexes
-- [ ] Events written to outbox within same transaction as EventStore
-- [ ] Worker processes outbox and publishes to EventBus
-- [ ] Failed publishes are retried with backoff
-- [ ] Old processed entries are cleaned up
-- [ ] Metrics available for monitoring outbox lag
+- [x] Outbox collection created with proper indexes
+- [x] Events written to outbox within same transaction as EventStore
+- [x] Worker processes outbox and publishes to EventBus
+- [x] Failed publishes are retried with backoff
+- [x] Old processed entries are cleaned up
+- [ ] Metrics available for monitoring outbox lag (deferred to separate task)
 
 ## Trade-offs
 

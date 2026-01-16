@@ -35,6 +35,12 @@ const (
 
 	DefaultJWTLeeway          = 30 * time.Second
 	DefaultJWTRefreshInterval = 1 * time.Hour
+
+	DefaultOutboxPollInterval    = 100 * time.Millisecond
+	DefaultOutboxBatchSize       = 100
+	DefaultOutboxMaxRetries      = 5
+	DefaultOutboxCleanupAge      = 7 * 24 * time.Hour // 7 days
+	DefaultOutboxCleanupInterval = 1 * time.Hour
 )
 
 // AppMode defines the application wiring mode.
@@ -62,6 +68,7 @@ type Config struct {
 	EventBus  EventBusConfig  `yaml:"eventbus"`
 	Log       LogConfig       `yaml:"log"`
 	WebSocket WebSocketConfig `yaml:"websocket"`
+	Outbox    OutboxConfig    `yaml:"outbox"`
 }
 
 // AppConfig holds application-level configuration.
@@ -178,6 +185,18 @@ type WebSocketConfig struct {
 	PongTimeout     time.Duration `yaml:"pong_timeout" env:"WS_PONG_TIMEOUT"`
 }
 
+// OutboxConfig holds transactional outbox configuration.
+//
+//nolint:golines // Struct tags require longer lines for readability
+type OutboxConfig struct {
+	Enabled         bool          `yaml:"enabled" env:"OUTBOX_ENABLED"`
+	PollInterval    time.Duration `yaml:"poll_interval" env:"OUTBOX_POLL_INTERVAL"`
+	BatchSize       int           `yaml:"batch_size" env:"OUTBOX_BATCH_SIZE"`
+	MaxRetries      int           `yaml:"max_retries" env:"OUTBOX_MAX_RETRIES"`
+	CleanupAge      time.Duration `yaml:"cleanup_age" env:"OUTBOX_CLEANUP_AGE"`
+	CleanupInterval time.Duration `yaml:"cleanup_interval" env:"OUTBOX_CLEANUP_INTERVAL"`
+}
+
 // Configuration errors.
 var (
 	ErrConfigNotFound      = errors.New("configuration file not found")
@@ -244,6 +263,14 @@ func DefaultConfig() *Config {
 			WriteBufferSize: DefaultWSBufferSize,
 			PingInterval:    DefaultWSPingInterval,
 			PongTimeout:     DefaultWSPongTimeout,
+		},
+		Outbox: OutboxConfig{
+			Enabled:         true,
+			PollInterval:    DefaultOutboxPollInterval,
+			BatchSize:       DefaultOutboxBatchSize,
+			MaxRetries:      DefaultOutboxMaxRetries,
+			CleanupAge:      DefaultOutboxCleanupAge,
+			CleanupInterval: DefaultOutboxCleanupInterval,
 		},
 	}
 }

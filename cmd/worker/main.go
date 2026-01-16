@@ -7,18 +7,27 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
 	"github.com/lllypuk/flowra/internal/config"
+	"github.com/lllypuk/flowra/internal/infrastructure/eventbus"
 	"github.com/lllypuk/flowra/internal/infrastructure/keycloak"
+	mongodbinfra "github.com/lllypuk/flowra/internal/infrastructure/mongodb"
+	"github.com/lllypuk/flowra/internal/infrastructure/outbox"
 	"github.com/lllypuk/flowra/internal/infrastructure/repository/mongodb"
 	"github.com/lllypuk/flowra/internal/worker"
 )
 
+// Timeout constants for worker service.
+const redisPingTimeout = 5 * time.Second
+
+//nolint:funlen // Main function handles startup orchestration and is readable as-is
 func main() {
 	// Load configuration
 	cfg, err := config.Load()
@@ -60,6 +69,41 @@ func main() {
 	db := mongoClient.Database(cfg.MongoDB.Database)
 	userRepo := mongodb.NewMongoUserRepository(db.Collection("users"))
 
+	// Setup Redis for EventBus
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     cfg.Redis.Addr,
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
+		PoolSize: cfg.Redis.PoolSize,
+	})
+	defer func() {
+		if closeErr := redisClient.Close(); closeErr != nil {
+			logger.Error("failed to close Redis", slog.String("error", closeErr.Error()))
+		}
+	}()
+
+	// Verify Redis connection
+	pingCtx, pingCancel := context.WithTimeout(ctx, redisPingTimeout)
+	if pingErr := redisClient.Ping(pingCtx).Err(); pingErr != nil {
+		pingCancel()
+		logger.Error("failed to connect to Redis", slog.String("error", pingErr.Error()))
+		os.Exit(1)
+	}
+	pingCancel()
+
+	logger.InfoContext(ctx, "connected to Redis", slog.String("addr", cfg.Redis.Addr))
+
+	// Setup EventBus
+	eventBus := eventbus.NewRedisEventBus(
+		redisClient,
+		eventbus.WithLogger(logger),
+		eventbus.WithChannelPrefix(cfg.EventBus.RedisChannelPrefix),
+	)
+
+	// Setup Outbox
+	outboxColl := db.Collection(mongodbinfra.CollectionOutbox)
+	mongoOutbox := outbox.NewMongoOutbox(outboxColl, outbox.WithLogger(logger))
+
 	// Setup Keycloak clients
 	if cfg.Keycloak.URL == "" || cfg.Keycloak.AdminUsername == "" {
 		logger.Error("Keycloak configuration is required for user sync worker")
@@ -79,7 +123,7 @@ func main() {
 		Realm:       cfg.Keycloak.Realm,
 	}, tokenManager)
 
-	// Create and start user sync worker
+	// Create user sync worker configuration
 	syncConfig := worker.DefaultUserSyncConfig()
 	// Override from environment if needed
 	if interval := os.Getenv("USER_SYNC_INTERVAL"); interval != "" {
@@ -98,17 +142,53 @@ func main() {
 		syncConfig,
 	)
 
-	logger.Info("starting user sync worker",
-		slog.Duration("interval", syncConfig.Interval),
-		slog.Int("batch_size", syncConfig.BatchSize),
-		slog.Bool("enabled", syncConfig.Enabled),
+	// Create outbox worker configuration
+	outboxConfig := worker.OutboxWorkerConfig{
+		PollInterval:    cfg.Outbox.PollInterval,
+		BatchSize:       cfg.Outbox.BatchSize,
+		MaxRetries:      cfg.Outbox.MaxRetries,
+		CleanupAge:      cfg.Outbox.CleanupAge,
+		CleanupInterval: cfg.Outbox.CleanupInterval,
+		Enabled:         cfg.Outbox.Enabled,
+	}
+
+	outboxWorker := worker.NewOutboxWorker(
+		mongoOutbox,
+		eventBus,
+		logger,
+		outboxConfig,
 	)
 
-	// Run the worker (blocks until context is cancelled)
-	if runErr := userSyncWorker.Run(ctx); runErr != nil && !errors.Is(runErr, context.Canceled) {
-		logger.Error("user sync worker error", slog.String("error", runErr.Error()))
-		os.Exit(1)
-	}
+	logger.Info("starting workers",
+		slog.Bool("user_sync_enabled", syncConfig.Enabled),
+		slog.Duration("user_sync_interval", syncConfig.Interval),
+		slog.Bool("outbox_enabled", outboxConfig.Enabled),
+		slog.Duration("outbox_poll_interval", outboxConfig.PollInterval),
+	)
+
+	// Use WaitGroup to run multiple workers concurrently
+	var wg sync.WaitGroup
+
+	// Start user sync worker
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if runErr := userSyncWorker.Run(ctx); runErr != nil && !errors.Is(runErr, context.Canceled) {
+			logger.Error("user sync worker error", slog.String("error", runErr.Error()))
+		}
+	}()
+
+	// Start outbox worker
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if runErr := outboxWorker.Run(ctx); runErr != nil && !errors.Is(runErr, context.Canceled) {
+			logger.Error("outbox worker error", slog.String("error", runErr.Error()))
+		}
+	}()
+
+	// Wait for all workers to complete
+	wg.Wait()
 
 	logger.Info("worker service shutdown complete")
 }

@@ -28,6 +28,7 @@ import (
 	"github.com/lllypuk/flowra/internal/infrastructure/httpserver"
 	"github.com/lllypuk/flowra/internal/infrastructure/keycloak"
 	mongodbinfra "github.com/lllypuk/flowra/internal/infrastructure/mongodb"
+	"github.com/lllypuk/flowra/internal/infrastructure/outbox"
 	"github.com/lllypuk/flowra/internal/infrastructure/repository/mongodb"
 	"github.com/lllypuk/flowra/internal/infrastructure/websocket"
 	"github.com/lllypuk/flowra/internal/middleware"
@@ -70,6 +71,7 @@ type Container struct {
 	Redis        *redis.Client
 	EventStore   *eventstore.MongoEventStore
 	EventBus     *eventbus.RedisEventBus
+	Outbox       appcore.Outbox
 	Hub          *websocket.Hub
 	Broadcaster  *websocket.Broadcaster
 	NotifHandler *eventbus.NotificationHandler
@@ -309,6 +311,9 @@ func (c *Container) setupInfrastructure() error {
 	// Setup EventBus
 	c.setupEventBus()
 
+	// Setup Outbox (for reliable event delivery)
+	c.setupOutbox()
+
 	// Setup WebSocket Hub
 	c.setupHub()
 
@@ -408,6 +413,26 @@ func (c *Container) setupEventBus() {
 	)
 }
 
+// setupOutbox initializes the transactional outbox for reliable event delivery.
+func (c *Container) setupOutbox() {
+	if !c.Config.Outbox.Enabled {
+		c.Logger.Debug("outbox disabled by configuration")
+		return
+	}
+
+	db := c.MongoDB.Database(c.MongoDBName)
+	outboxColl := db.Collection(mongodbinfra.CollectionOutbox)
+
+	c.Outbox = outbox.NewMongoOutbox(
+		outboxColl,
+		outbox.WithLogger(c.Logger),
+	)
+
+	c.Logger.Debug("outbox initialized",
+		slog.String("collection", mongodbinfra.CollectionOutbox),
+	)
+}
+
 // setupHub initializes the WebSocket hub.
 func (c *Container) setupHub() {
 	c.Hub = websocket.NewHub(
@@ -452,11 +477,19 @@ func (c *Container) setupRepositories() {
 	)
 
 	// Chat repository (event sourced - command side)
+	chatRepoOpts := []mongodb.ChatRepoOption{
+		mongodb.WithChatRepoLogger(c.Logger),
+	}
+	if c.Outbox != nil {
+		chatRepoOpts = append(chatRepoOpts, mongodb.WithChatRepoOutbox(c.Outbox))
+	} else {
+		//nolint:staticcheck // Fallback to direct EventBus when Outbox is disabled
+		chatRepoOpts = append(chatRepoOpts, mongodb.WithChatRepoEventBus(c.EventBus))
+	}
 	c.ChatRepo = mongodb.NewMongoChatRepository(
 		c.EventStore,
 		db.Collection("chats_read_model"),
-		mongodb.WithChatRepoLogger(c.Logger),
-		mongodb.WithChatRepoEventBus(c.EventBus),
+		chatRepoOpts...,
 	)
 
 	// Chat read model repository (query side)
@@ -473,11 +506,19 @@ func (c *Container) setupRepositories() {
 	)
 
 	// Task repository (event sourced)
+	taskRepoOpts := []mongodb.TaskRepoOption{
+		mongodb.WithTaskRepoLogger(c.Logger),
+	}
+	if c.Outbox != nil {
+		taskRepoOpts = append(taskRepoOpts, mongodb.WithTaskRepoOutbox(c.Outbox))
+	} else {
+		//nolint:staticcheck // Fallback to direct EventBus when Outbox is disabled
+		taskRepoOpts = append(taskRepoOpts, mongodb.WithTaskRepoEventBus(c.EventBus))
+	}
 	c.TaskRepo = mongodb.NewMongoTaskRepository(
 		c.EventStore,
 		db.Collection("tasks_read_model"),
-		mongodb.WithTaskRepoLogger(c.Logger),
-		mongodb.WithTaskRepoEventBus(c.EventBus),
+		taskRepoOpts...,
 	)
 
 	// Notification repository

@@ -24,7 +24,8 @@ import (
 type MongoChatRepository struct {
 	eventStore    appcore.EventStore
 	readModelColl *mongo.Collection
-	eventBus      event.Bus
+	outbox        appcore.Outbox
+	eventBus      event.Bus // deprecated: use outbox for reliable event delivery
 	logger        *slog.Logger
 }
 
@@ -39,9 +40,18 @@ func WithChatRepoLogger(logger *slog.Logger) ChatRepoOption {
 }
 
 // WithChatRepoEventBus sets the event bus for chat repository.
+//
+// Deprecated: Use WithChatRepoOutbox for reliable event delivery via outbox pattern.
 func WithChatRepoEventBus(eventBus event.Bus) ChatRepoOption {
 	return func(r *MongoChatRepository) {
 		r.eventBus = eventBus
+	}
+}
+
+// WithChatRepoOutbox sets the outbox for reliable event delivery.
+func WithChatRepoOutbox(outbox appcore.Outbox) ChatRepoOption {
+	return func(r *MongoChatRepository) {
+		r.outbox = outbox
 	}
 }
 
@@ -147,8 +157,18 @@ func (r *MongoChatRepository) Save(ctx context.Context, chat *chatdomain.Chat) e
 		// Don't fail - read model can be recalculated
 	}
 
-	// 3. Publish events to EventBus (if configured)
-	if r.eventBus != nil {
+	// 3. Write events to outbox for reliable delivery (preferred)
+	if r.outbox != nil {
+		if outboxErr := r.outbox.AddBatch(ctx, uncommittedEvents); outboxErr != nil {
+			r.logger.ErrorContext(ctx, "failed to add events to outbox",
+				slog.String("chat_id", chat.ID().String()),
+				slog.Int("events_count", len(uncommittedEvents)),
+				slog.String("error", outboxErr.Error()),
+			)
+			// Don't fail - events are saved in event store
+		}
+	} else if r.eventBus != nil {
+		// Fallback: direct publish to EventBus (deprecated, less reliable)
 		for _, evt := range uncommittedEvents {
 			if pubErr := r.eventBus.Publish(ctx, evt); pubErr != nil {
 				r.logger.WarnContext(ctx, "failed to publish chat event to bus",
