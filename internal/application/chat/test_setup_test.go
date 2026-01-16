@@ -56,12 +56,14 @@ func createTestChatWithRepo(
 }
 
 // createTestChatWithParams creates a chat with specific parameters and syncs events to eventStore.
-// Deprecated: Use createTestChatWithRepo for use cases that use CommandRepository.
+// Deprecated.
+//
+// Use createTestChatWithRepo for use cases that use CommandRepository.
 func createTestChatWithParams(
 	t *testing.T,
 	eventStore *mocks.MockEventStore,
-	chatType domainChat.Type,
-	title string,
+	chatType domainChat.Type, //nolint:unparam // Always TypeDiscussion in existing tests
+	title string, //nolint:unparam // Always empty string in existing tests
 	workspaceID uuid.UUID,
 	creatorID uuid.UUID,
 ) *domainChat.Chat {

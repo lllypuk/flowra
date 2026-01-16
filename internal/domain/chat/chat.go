@@ -53,6 +53,16 @@ type Chat struct {
 	uncommittedEvents []event.DomainEvent
 }
 
+// NewEmptyChat creates an empty Chat aggregate for reconstruction from events
+// Used primarily for testing and event sourcing reconstruction
+func NewEmptyChat() *Chat {
+	return &Chat{
+		participants:      make([]Participant, 0),
+		uncommittedEvents: make([]event.DomainEvent, 0),
+		version:           0,
+	}
+}
+
 // NewChat creates a New chat
 func NewChat(
 	workspaceID uuid.UUID,
