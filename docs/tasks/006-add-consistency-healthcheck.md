@@ -1,6 +1,6 @@
 # Task 006: Add Consistency Health Checks
 
-## Status: Pending
+## Status: Complete
 
 ## Priority: Medium
 
@@ -309,11 +309,11 @@ GET /health/outbox       # Outbox status only
 
 ## Acceptance Criteria
 
-- [ ] Health endpoint shows consistency check results
-- [ ] Prometheus metrics exported for all queues
-- [ ] Sample-based ReadModel sync verification works
-- [ ] Alerts can be configured based on metrics
-- [ ] Detailed health endpoint returns JSON with all check details
+- [x] Health endpoint shows consistency check results
+- [x] Prometheus metrics exported for all queues
+- [x] Sample-based ReadModel sync verification works
+- [x] Alerts can be configured based on metrics
+- [x] Detailed health endpoint returns JSON with all check details
 
 ## Testing
 

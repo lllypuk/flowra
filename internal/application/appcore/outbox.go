@@ -48,4 +48,7 @@ type Outbox interface {
 
 	// Count returns the number of unprocessed entries (for monitoring).
 	Count(ctx context.Context) (int64, error)
+
+	// Stats returns statistics about the outbox (count and oldest entry timestamp).
+	Stats(ctx context.Context) (count int64, oldest time.Time, err error)
 }

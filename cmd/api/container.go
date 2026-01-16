@@ -25,10 +25,12 @@ import (
 	"github.com/lllypuk/flowra/internal/infrastructure/auth"
 	"github.com/lllypuk/flowra/internal/infrastructure/eventbus"
 	"github.com/lllypuk/flowra/internal/infrastructure/eventstore"
+	"github.com/lllypuk/flowra/internal/infrastructure/healthcheck"
 	"github.com/lllypuk/flowra/internal/infrastructure/httpserver"
 	"github.com/lllypuk/flowra/internal/infrastructure/keycloak"
 	mongodbinfra "github.com/lllypuk/flowra/internal/infrastructure/mongodb"
 	"github.com/lllypuk/flowra/internal/infrastructure/outbox"
+	"github.com/lllypuk/flowra/internal/infrastructure/repair"
 	"github.com/lllypuk/flowra/internal/infrastructure/repository/mongodb"
 	"github.com/lllypuk/flowra/internal/infrastructure/websocket"
 	"github.com/lllypuk/flowra/internal/middleware"
@@ -50,6 +52,14 @@ const (
 	redisPingTimeout       = 5 * time.Second
 	mongoDisconnectTimeout = 10 * time.Second
 	keycloakTokenBuffer    = 30 * time.Second
+)
+
+// Health check configuration constants.
+const (
+	healthCheckOutboxWarningThreshold  = 100
+	healthCheckOutboxCriticalThreshold = 1000
+	healthCheckRepairQueueThreshold    = 10
+	healthCheckReadModelSampleSize     = 100
 )
 
 // WebSocket client configuration constants.
@@ -76,6 +86,16 @@ type Container struct {
 	Broadcaster  *websocket.Broadcaster
 	NotifHandler *eventbus.NotificationHandler
 	LogHandler   *eventbus.LoggingHandler
+
+	// Reliability components
+	DeadLetterHandler *eventbus.DeadLetterHandler
+	RepairQueue       repair.Queue
+
+	// Health Checkers
+	OutboxChecker     appcore.HealthChecker
+	RepairChecker     appcore.HealthChecker
+	DeadLetterChecker appcore.HealthChecker
+	ReadModelChecker  appcore.HealthChecker
 
 	// Repositories
 	UserRepo         *mongodb.MongoUserRepository
@@ -171,6 +191,9 @@ func NewContainer(cfg *config.Config, opts ...ContainerOption) (*Container, erro
 	c.setupRepositories()
 	c.setupUseCases()
 	c.setupEventHandlers()
+
+	// Setup health checkers (after repositories are initialized)
+	c.setupHealthCheckers()
 
 	// Setup template rendering
 	if err := c.setupTemplateRenderer(); err != nil {
@@ -314,6 +337,12 @@ func (c *Container) setupInfrastructure() error {
 	// Setup Outbox (for reliable event delivery)
 	c.setupOutbox()
 
+	// Setup Repair Queue (for failed read model updates)
+	c.setupRepairQueue()
+
+	// Setup Dead Letter Handler (for failed events)
+	c.setupDeadLetterHandler()
+
 	// Setup WebSocket Hub
 	c.setupHub()
 
@@ -431,6 +460,59 @@ func (c *Container) setupOutbox() {
 	c.Logger.Debug("outbox initialized",
 		slog.String("collection", mongodbinfra.CollectionOutbox),
 	)
+}
+
+// setupRepairQueue initializes the repair queue for failed read model updates.
+func (c *Container) setupRepairQueue() {
+	db := c.MongoDB.Database(c.MongoDBName)
+	c.RepairQueue = repair.NewMongoQueue(
+		db.Collection("repair_queue"),
+		c.Logger,
+	)
+	c.Logger.Debug("repair queue initialized")
+}
+
+// setupDeadLetterHandler initializes the dead letter handler for failed events.
+func (c *Container) setupDeadLetterHandler() {
+	c.DeadLetterHandler = eventbus.NewDeadLetterHandler(
+		c.Redis,
+		eventbus.WithDeadLetterLogger(c.Logger),
+	)
+	c.Logger.Debug("dead letter handler initialized")
+}
+
+// setupHealthCheckers initializes all health checker components.
+func (c *Container) setupHealthCheckers() {
+	db := c.MongoDB.Database(c.MongoDBName)
+
+	// Outbox backlog checker
+	c.OutboxChecker = healthcheck.NewOutboxBacklogChecker(
+		c.Outbox,
+		healthcheck.WithWarningThreshold(healthCheckOutboxWarningThreshold),
+		healthcheck.WithCriticalThreshold(healthCheckOutboxCriticalThreshold),
+	)
+
+	// Repair queue checker
+	if c.RepairQueue != nil {
+		c.RepairChecker = healthcheck.NewRepairQueueChecker(
+			c.RepairQueue,
+			healthCheckRepairQueueThreshold,
+		)
+	}
+
+	// Dead letter checker
+	if c.DeadLetterHandler != nil {
+		c.DeadLetterChecker = healthcheck.NewDeadLetterChecker(c.DeadLetterHandler)
+	}
+
+	// ReadModel sync checker
+	c.ReadModelChecker = healthcheck.NewReadModelSyncChecker(
+		db.Collection("chats_read_model"),
+		db.Collection("tasks_read_model"),
+		healthCheckReadModelSampleSize,
+	)
+
+	c.Logger.Debug("health checkers initialized")
 }
 
 // setupHub initializes the WebSocket hub.
@@ -1747,7 +1829,52 @@ func (c *Container) GetHealthStatus(ctx context.Context) []httpserver.ComponentS
 	}
 	statuses = append(statuses, eventBusStatus)
 
+	// Consistency health checks
+	if c.OutboxChecker != nil {
+		status := c.OutboxChecker.Check(ctx)
+		statuses = append(statuses, httpserver.ComponentStatus{
+			Name:    c.OutboxChecker.Name(),
+			Status:  mapHealthStatus(status.Healthy),
+			Message: status.Message,
+		})
+	}
+
+	if c.RepairChecker != nil {
+		status := c.RepairChecker.Check(ctx)
+		statuses = append(statuses, httpserver.ComponentStatus{
+			Name:    c.RepairChecker.Name(),
+			Status:  mapHealthStatus(status.Healthy),
+			Message: status.Message,
+		})
+	}
+
+	if c.DeadLetterChecker != nil {
+		status := c.DeadLetterChecker.Check(ctx)
+		statuses = append(statuses, httpserver.ComponentStatus{
+			Name:    c.DeadLetterChecker.Name(),
+			Status:  mapHealthStatus(status.Healthy),
+			Message: status.Message,
+		})
+	}
+
+	if c.ReadModelChecker != nil {
+		status := c.ReadModelChecker.Check(ctx)
+		statuses = append(statuses, httpserver.ComponentStatus{
+			Name:    c.ReadModelChecker.Name(),
+			Status:  mapHealthStatus(status.Healthy),
+			Message: status.Message,
+		})
+	}
+
 	return statuses
+}
+
+// mapHealthStatus converts appcore.HealthStatus.Healthy to httpserver status.
+func mapHealthStatus(healthy bool) string {
+	if healthy {
+		return httpserver.StatusHealthy
+	}
+	return httpserver.StatusUnhealthy
 }
 
 // oauthClientAdapter adapts keycloak.OAuthClient to httphandler.OAuthClient interface.

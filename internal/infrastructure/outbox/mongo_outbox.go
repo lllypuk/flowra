@@ -264,6 +264,35 @@ func (o *MongoOutbox) Count(ctx context.Context) (int64, error) {
 	return count, nil
 }
 
+// Stats returns statistics about the outbox (count and oldest entry timestamp).
+func (o *MongoOutbox) Stats(ctx context.Context) (int64, time.Time, error) {
+	filter := bson.M{"processed_at": nil}
+
+	// Count unprocessed entries
+	count, err := o.collection.CountDocuments(ctx, filter)
+	if err != nil {
+		return 0, time.Time{}, fmt.Errorf("failed to count unprocessed entries: %w", err)
+	}
+
+	// If no entries, return zero time
+	if count == 0 {
+		return 0, time.Time{}, nil
+	}
+
+	// Find oldest entry
+	opts := options.FindOne().SetSort(bson.D{{Key: "created_at", Value: 1}})
+	var doc outboxDocument
+	err = o.collection.FindOne(ctx, filter, opts).Decode(&doc)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return count, time.Time{}, nil
+		}
+		return count, time.Time{}, fmt.Errorf("failed to find oldest entry: %w", err)
+	}
+
+	return count, doc.CreatedAt, nil
+}
+
 // eventToDocument converts a domain event to an outbox document.
 func (o *MongoOutbox) eventToDocument(evt event.DomainEvent) (*outboxDocument, error) {
 	payload, err := json.Marshal(evt)
