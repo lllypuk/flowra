@@ -17,6 +17,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/event"
 	taskdomain "github.com/lllypuk/flowra/internal/domain/task"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/infrastructure/repair"
 )
 
 // MongoTaskRepository realizuet taskapp.CommandRepository
@@ -25,6 +26,7 @@ type MongoTaskRepository struct {
 	readModelColl *mongo.Collection
 	outbox        appcore.Outbox
 	eventBus      event.Bus // deprecated: use outbox for reliable event delivery
+	repairQueue   repair.Queue
 	logger        *slog.Logger
 }
 
@@ -51,6 +53,13 @@ func WithTaskRepoEventBus(eventBus event.Bus) TaskRepoOption {
 func WithTaskRepoOutbox(outbox appcore.Outbox) TaskRepoOption {
 	return func(r *MongoTaskRepository) {
 		r.outbox = outbox
+	}
+}
+
+// WithTaskRepoRepairQueue sets the repair queue for failed read model updates.
+func WithTaskRepoRepairQueue(repairQueue repair.Queue) TaskRepoOption {
+	return func(r *MongoTaskRepository) {
+		r.repairQueue = repairQueue
 	}
 }
 
@@ -143,7 +152,21 @@ func (r *MongoTaskRepository) Save(ctx context.Context, task *taskdomain.Aggrega
 			slog.String("task_id", task.ID().String()),
 			slog.String("error", updateErr.Error()),
 		)
-		// Don't fail - read model can be recalculated
+		// Queue for repair instead of silent failure
+		if r.repairQueue != nil {
+			repairErr := r.repairQueue.Add(ctx, repair.Task{
+				AggregateID:   task.ID().String(),
+				AggregateType: "task",
+				TaskType:      repair.TaskTypeReadModelSync,
+				Error:         updateErr.Error(),
+			})
+			if repairErr != nil {
+				r.logger.ErrorContext(ctx, "failed to queue repair task",
+					slog.String("task_id", task.ID().String()),
+					slog.String("error", repairErr.Error()),
+				)
+			}
+		}
 	}
 
 	// 3. Write events to outbox for reliable delivery (preferred)

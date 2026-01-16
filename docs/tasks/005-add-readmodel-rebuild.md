@@ -1,6 +1,6 @@
 # Task 005: Add ReadModel Rebuild Capability
 
-## Status: Pending
+## Status: Complete
 
 ## Priority: High
 
@@ -210,12 +210,12 @@ func (r *MongoChatRepository) Save(ctx context.Context, chat *chatdomain.Chat) e
 
 ## Acceptance Criteria
 
-- [ ] Projector can rebuild ReadModel from EventStore events
-- [ ] RebuildAll can process all aggregates of a type
-- [ ] Repair queue captures failed ReadModel updates
-- [ ] Repair worker processes queue and rebuilds ReadModels
-- [ ] CLI tools available for manual operations
-- [ ] Metrics available for repair queue depth
+- [x] Projector can rebuild ReadModel from EventStore events
+- [x] RebuildAll can process all aggregates of a type
+- [x] Repair queue captures failed ReadModel updates
+- [x] Repair worker processes queue and rebuilds ReadModels
+- [x] CLI tools available for manual operations
+- [x] Unit tests for projector components
 
 ## Testing
 

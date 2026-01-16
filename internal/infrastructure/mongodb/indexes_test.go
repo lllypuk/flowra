@@ -239,7 +239,8 @@ func TestGetAllIndexDefinitions(t *testing.T) {
 		len(mongodb.GetTaskReadModelIndexes()) +
 		len(mongodb.GetMessageIndexes()) +
 		len(mongodb.GetNotificationIndexes()) +
-		len(mongodb.GetOutboxIndexes())
+		len(mongodb.GetOutboxIndexes()) +
+		len(mongodb.GetRepairQueueIndexes())
 
 	assert.Len(t, indexes, expectedTotal)
 

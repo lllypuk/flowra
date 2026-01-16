@@ -17,6 +17,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/errs"
 	"github.com/lllypuk/flowra/internal/domain/event"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/infrastructure/repair"
 )
 
 // MongoChatRepository implements chatapp.CommandRepository (application layer interface)
@@ -26,6 +27,7 @@ type MongoChatRepository struct {
 	readModelColl *mongo.Collection
 	outbox        appcore.Outbox
 	eventBus      event.Bus // deprecated: use outbox for reliable event delivery
+	repairQueue   repair.Queue
 	logger        *slog.Logger
 }
 
@@ -52,6 +54,13 @@ func WithChatRepoEventBus(eventBus event.Bus) ChatRepoOption {
 func WithChatRepoOutbox(outbox appcore.Outbox) ChatRepoOption {
 	return func(r *MongoChatRepository) {
 		r.outbox = outbox
+	}
+}
+
+// WithChatRepoRepairQueue sets the repair queue for failed read model updates.
+func WithChatRepoRepairQueue(repairQueue repair.Queue) ChatRepoOption {
+	return func(r *MongoChatRepository) {
+		r.repairQueue = repairQueue
 	}
 }
 
@@ -154,7 +163,21 @@ func (r *MongoChatRepository) Save(ctx context.Context, chat *chatdomain.Chat) e
 			slog.String("chat_id", chat.ID().String()),
 			slog.String("error", err.Error()),
 		)
-		// Don't fail - read model can be recalculated
+		// Queue for repair instead of silent failure
+		if r.repairQueue != nil {
+			repairErr := r.repairQueue.Add(ctx, repair.Task{
+				AggregateID:   chat.ID().String(),
+				AggregateType: "chat",
+				TaskType:      repair.TaskTypeReadModelSync,
+				Error:         err.Error(),
+			})
+			if repairErr != nil {
+				r.logger.ErrorContext(ctx, "failed to queue repair task",
+					slog.String("chat_id", chat.ID().String()),
+					slog.String("error", repairErr.Error()),
+				)
+			}
+		}
 	}
 
 	// 3. Write events to outbox for reliable delivery (preferred)

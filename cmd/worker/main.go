@@ -17,9 +17,12 @@ import (
 
 	"github.com/lllypuk/flowra/internal/config"
 	"github.com/lllypuk/flowra/internal/infrastructure/eventbus"
+	"github.com/lllypuk/flowra/internal/infrastructure/eventstore"
 	"github.com/lllypuk/flowra/internal/infrastructure/keycloak"
 	mongodbinfra "github.com/lllypuk/flowra/internal/infrastructure/mongodb"
 	"github.com/lllypuk/flowra/internal/infrastructure/outbox"
+	"github.com/lllypuk/flowra/internal/infrastructure/projector"
+	"github.com/lllypuk/flowra/internal/infrastructure/repair"
 	"github.com/lllypuk/flowra/internal/infrastructure/repository/mongodb"
 	"github.com/lllypuk/flowra/internal/worker"
 )
@@ -104,43 +107,8 @@ func main() {
 	outboxColl := db.Collection(mongodbinfra.CollectionOutbox)
 	mongoOutbox := outbox.NewMongoOutbox(outboxColl, outbox.WithLogger(logger))
 
-	// Setup Keycloak clients
-	if cfg.Keycloak.URL == "" || cfg.Keycloak.AdminUsername == "" {
-		logger.Error("Keycloak configuration is required for user sync worker")
-		os.Exit(1)
-	}
-
-	tokenManager := keycloak.NewAdminTokenManager(keycloak.AdminTokenConfig{
-		KeycloakURL: cfg.Keycloak.URL,
-		Realm:       "master",
-		ClientID:    "admin-cli",
-		Username:    cfg.Keycloak.AdminUsername,
-		Password:    cfg.Keycloak.AdminPassword,
-	})
-
-	userClient := keycloak.NewUserClient(keycloak.UserClientConfig{
-		KeycloakURL: cfg.Keycloak.URL,
-		Realm:       cfg.Keycloak.Realm,
-	}, tokenManager)
-
-	// Create user sync worker configuration
-	syncConfig := worker.DefaultUserSyncConfig()
-	// Override from environment if needed
-	if interval := os.Getenv("USER_SYNC_INTERVAL"); interval != "" {
-		if parsed, parseErr := time.ParseDuration(interval); parseErr == nil {
-			syncConfig.Interval = parsed
-		}
-	}
-	if os.Getenv("USER_SYNC_DISABLED") == "true" {
-		syncConfig.Enabled = false
-	}
-
-	userSyncWorker := worker.NewUserSyncWorker(
-		userClient,
-		userRepo,
-		logger,
-		syncConfig,
-	)
+	// Setup workers
+	userSyncWorker, syncConfig := setupUserSyncWorker(cfg, userRepo, logger)
 
 	// Create outbox worker configuration
 	outboxConfig := worker.OutboxWorkerConfig{
@@ -159,11 +127,15 @@ func main() {
 		outboxConfig,
 	)
 
+	// Setup repair worker
+	repairWorker := setupRepairWorker(mongoClient, db, cfg, logger)
+
 	logger.Info("starting workers",
 		slog.Bool("user_sync_enabled", syncConfig.Enabled),
 		slog.Duration("user_sync_interval", syncConfig.Interval),
 		slog.Bool("outbox_enabled", outboxConfig.Enabled),
 		slog.Duration("outbox_poll_interval", outboxConfig.PollInterval),
+		slog.Bool("repair_enabled", repairWorker != nil),
 	)
 
 	// Use WaitGroup to run multiple workers concurrently
@@ -184,6 +156,15 @@ func main() {
 		defer wg.Done()
 		if runErr := outboxWorker.Run(ctx); runErr != nil && !errors.Is(runErr, context.Canceled) {
 			logger.Error("outbox worker error", slog.String("error", runErr.Error()))
+		}
+	}()
+
+	// Start repair worker
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if runErr := repairWorker.Start(ctx); runErr != nil && !errors.Is(runErr, context.Canceled) {
+			logger.Error("repair worker error", slog.String("error", runErr.Error()))
 		}
 	}()
 
@@ -277,4 +258,91 @@ func handleShutdown(cancel context.CancelFunc, logger *slog.Logger) {
 	sig := <-quit
 	logger.Info("received shutdown signal", slog.String("signal", sig.String()))
 	cancel()
+}
+
+// setupUserSyncWorker creates and configures the user sync worker.
+func setupUserSyncWorker(
+	cfg *config.Config,
+	userRepo *mongodb.MongoUserRepository,
+	logger *slog.Logger,
+) (*worker.UserSyncWorker, worker.UserSyncConfig) {
+	// Setup Keycloak clients
+	if cfg.Keycloak.URL == "" || cfg.Keycloak.AdminUsername == "" {
+		logger.Error("Keycloak configuration is required for user sync worker")
+		os.Exit(1)
+	}
+
+	tokenManager := keycloak.NewAdminTokenManager(keycloak.AdminTokenConfig{
+		KeycloakURL: cfg.Keycloak.URL,
+		Realm:       "master",
+		ClientID:    "admin-cli",
+		Username:    cfg.Keycloak.AdminUsername,
+		Password:    cfg.Keycloak.AdminPassword,
+	})
+
+	userClient := keycloak.NewUserClient(keycloak.UserClientConfig{
+		KeycloakURL: cfg.Keycloak.URL,
+		Realm:       cfg.Keycloak.Realm,
+	}, tokenManager)
+
+	// Create user sync worker configuration
+	syncConfig := worker.DefaultUserSyncConfig()
+	// Override from environment if needed
+	if interval := os.Getenv("USER_SYNC_INTERVAL"); interval != "" {
+		if parsed, parseErr := time.ParseDuration(interval); parseErr == nil {
+			syncConfig.Interval = parsed
+		}
+	}
+	if os.Getenv("USER_SYNC_DISABLED") == "true" {
+		syncConfig.Enabled = false
+	}
+
+	workerInstance := worker.NewUserSyncWorker(
+		userClient,
+		userRepo,
+		logger,
+		syncConfig,
+	)
+
+	return workerInstance, syncConfig
+}
+
+// setupRepairWorker creates and configures the repair worker.
+func setupRepairWorker(
+	mongoClient *mongo.Client,
+	db *mongo.Database,
+	cfg *config.Config,
+	logger *slog.Logger,
+) *worker.RepairWorker {
+	// Create repair worker configuration
+	repairConfig := worker.DefaultRepairWorkerConfig()
+	if os.Getenv("REPAIR_WORKER_DISABLED") == "true" {
+		repairConfig.Enabled = false
+	}
+
+	// Setup repair queue
+	repairQueueColl := db.Collection(mongodbinfra.CollectionRepairQueue)
+	repairQueue := repair.NewMongoQueue(repairQueueColl, logger)
+
+	// Setup projectors for repair worker
+	eventStore := eventstore.NewMongoEventStore(
+		mongoClient,
+		cfg.MongoDB.Database,
+		eventstore.WithLogger(logger),
+	)
+
+	chatReadModelColl := db.Collection(mongodbinfra.CollectionChatReadModel)
+	chatProjector := projector.NewChatProjector(eventStore, chatReadModelColl, logger)
+
+	taskReadModelColl := db.Collection(mongodbinfra.CollectionTaskReadModel)
+	taskProjector := projector.NewTaskProjector(eventStore, taskReadModelColl, logger)
+
+	// Create repair worker
+	return worker.NewRepairWorker(
+		repairQueue,
+		chatProjector,
+		taskProjector,
+		logger,
+		repairConfig,
+	)
 }
