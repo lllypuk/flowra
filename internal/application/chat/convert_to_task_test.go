@@ -13,16 +13,16 @@ import (
 
 // TestConvertToTaskUseCase_Success_FromDiscussion tests converting Discussion to Task
 func TestConvertToTaskUseCase_Success_FromDiscussion(t *testing.T) {
-	eventStore := newTestEventStore()
+	chatRepo := newTestChatRepo()
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
 	// Create Discussion chat using helper
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID)
+	createdChat := createTestChatWithRepo(t, chatRepo, domainChat.TypeDiscussion, "", workspaceID, creatorID)
 	chatID := createdChat.ID()
 
 	// Act
-	convertUseCase := chat.NewConvertToTaskUseCase(eventStore)
+	convertUseCase := chat.NewConvertToTaskUseCase(chatRepo)
 	convertCmd := chat.ConvertToTaskCommand{
 		ChatID:      chatID,
 		Title:       "New Task Title",
@@ -39,14 +39,14 @@ func TestConvertToTaskUseCase_Success_FromDiscussion(t *testing.T) {
 
 // TestConvertToTaskUseCase_Error_AlreadyTask tests error when chat is already Task
 func TestConvertToTaskUseCase_Error_AlreadyTask(t *testing.T) {
-	eventStore := newTestEventStore()
+	chatRepo := newTestChatRepo()
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
 	// Create Task chat using helper
-	createdChat := createTestChatWithParams(
+	createdChat := createTestChatWithRepo(
 		t,
-		eventStore,
+		chatRepo,
 		domainChat.TypeTask,
 		"Existing Task",
 		workspaceID,
@@ -55,7 +55,7 @@ func TestConvertToTaskUseCase_Error_AlreadyTask(t *testing.T) {
 	chatID := createdChat.ID()
 
 	// Try to convert to Task again
-	convertUseCase := chat.NewConvertToTaskUseCase(eventStore)
+	convertUseCase := chat.NewConvertToTaskUseCase(chatRepo)
 	convertCmd := chat.ConvertToTaskCommand{
 		ChatID:      chatID,
 		Title:       "Another Title",
@@ -69,8 +69,8 @@ func TestConvertToTaskUseCase_Error_AlreadyTask(t *testing.T) {
 
 // TestConvertToTaskUseCase_ValidationError_EmptyTitle tests validation error
 func TestConvertToTaskUseCase_ValidationError_EmptyTitle(t *testing.T) {
-	eventStore := newTestEventStore()
-	convertUseCase := chat.NewConvertToTaskUseCase(eventStore)
+	chatRepo := newTestChatRepo()
+	convertUseCase := chat.NewConvertToTaskUseCase(chatRepo)
 
 	convertCmd := chat.ConvertToTaskCommand{
 		ChatID:      generateUUID(t),
@@ -85,8 +85,8 @@ func TestConvertToTaskUseCase_ValidationError_EmptyTitle(t *testing.T) {
 
 // TestConvertToTaskUseCase_ValidationError_InvalidChatID tests validation error
 func TestConvertToTaskUseCase_ValidationError_InvalidChatID(t *testing.T) {
-	eventStore := newTestEventStore()
-	convertUseCase := chat.NewConvertToTaskUseCase(eventStore)
+	chatRepo := newTestChatRepo()
+	convertUseCase := chat.NewConvertToTaskUseCase(chatRepo)
 
 	convertCmd := chat.ConvertToTaskCommand{
 		ChatID:      "",

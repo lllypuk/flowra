@@ -30,20 +30,20 @@ func TestSetPriorityUseCase_Success_Critical(t *testing.T) {
 }
 
 func testSetPrioritySuccess(t *testing.T, priority string) {
-	eventStore := newTestEventStore()
+	chatRepo := newTestChatRepo()
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(
+	createdChat := createTestChatWithRepo(
 		t,
-		eventStore,
+		chatRepo,
 		domainChat.TypeTask,
 		"Test Task",
 		workspaceID,
 		creatorID,
 	)
 
-	setPriorityUseCase := chat.NewSetPriorityUseCase(eventStore)
+	setPriorityUseCase := chat.NewSetPriorityUseCase(chatRepo)
 	setPriorityCmd := chat.SetPriorityCommand{
 		ChatID:   createdChat.ID(),
 		Priority: priority,
@@ -57,8 +57,8 @@ func testSetPrioritySuccess(t *testing.T, priority string) {
 
 // TestSetPriorityUseCase_ValidationError_InvalidPriority tests validation error
 func TestSetPriorityUseCase_ValidationError_InvalidPriority(t *testing.T) {
-	eventStore := newTestEventStore()
-	setPriorityUseCase := chat.NewSetPriorityUseCase(eventStore)
+	chatRepo := newTestChatRepo()
+	setPriorityUseCase := chat.NewSetPriorityUseCase(chatRepo)
 
 	setPriorityCmd := chat.SetPriorityCommand{
 		ChatID:   generateUUID(t),
@@ -73,8 +73,8 @@ func TestSetPriorityUseCase_ValidationError_InvalidPriority(t *testing.T) {
 
 // TestSetPriorityUseCase_ValidationError_InvalidChatID tests validation error
 func TestSetPriorityUseCase_ValidationError_InvalidChatID(t *testing.T) {
-	eventStore := newTestEventStore()
-	setPriorityUseCase := chat.NewSetPriorityUseCase(eventStore)
+	chatRepo := newTestChatRepo()
+	setPriorityUseCase := chat.NewSetPriorityUseCase(chatRepo)
 
 	setPriorityCmd := chat.SetPriorityCommand{
 		ChatID:   "",

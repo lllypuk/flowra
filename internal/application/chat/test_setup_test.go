@@ -27,7 +27,36 @@ func newTestChatRepo() *mocks.MockChatRepository {
 	return mocks.NewMockChatRepository()
 }
 
+// createTestChatWithRepo creates a chat with specific parameters and stores it in the provided ChatRepository.
+func createTestChatWithRepo(
+	t *testing.T,
+	chatRepo *mocks.MockChatRepository,
+	chatType domainChat.Type,
+	title string,
+	workspaceID uuid.UUID,
+	creatorID uuid.UUID,
+) *domainChat.Chat {
+	t.Helper()
+
+	createUC := chat.NewCreateChatUseCase(chatRepo)
+
+	cmd := chat.CreateChatCommand{
+		WorkspaceID: workspaceID,
+		Type:        chatType,
+		Title:       title,
+		IsPublic:    true,
+		CreatedBy:   creatorID,
+	}
+
+	result, err := createUC.Execute(testContext(), cmd)
+	require.NoError(t, err)
+	require.NotNil(t, result.Value)
+
+	return result.Value
+}
+
 // createTestChatWithParams creates a chat with specific parameters and syncs events to eventStore.
+// Deprecated: Use createTestChatWithRepo for use cases that use CommandRepository.
 func createTestChatWithParams(
 	t *testing.T,
 	eventStore *mocks.MockEventStore,

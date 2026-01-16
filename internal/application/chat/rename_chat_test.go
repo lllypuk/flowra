@@ -11,20 +11,20 @@ import (
 
 // TestRenameChatUseCase_Success tests successful chat rename
 func TestRenameChatUseCase_Success(t *testing.T) {
-	eventStore := newTestEventStore()
+	chatRepo := newTestChatRepo()
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(
+	createdChat := createTestChatWithRepo(
 		t,
-		eventStore,
+		chatRepo,
 		domainChat.TypeTask,
 		"Old Title",
 		workspaceID,
 		creatorID,
 	)
 
-	renameUseCase := chat.NewRenameChatUseCase(eventStore)
+	renameUseCase := chat.NewRenameChatUseCase(chatRepo)
 	renameCmd := chat.RenameChatCommand{
 		ChatID:    createdChat.ID(),
 		NewTitle:  "New Title",
@@ -38,8 +38,8 @@ func TestRenameChatUseCase_Success(t *testing.T) {
 
 // TestRenameChatUseCase_ValidationError_EmptyTitle tests validation error
 func TestRenameChatUseCase_ValidationError_EmptyTitle(t *testing.T) {
-	eventStore := newTestEventStore()
-	renameUseCase := chat.NewRenameChatUseCase(eventStore)
+	chatRepo := newTestChatRepo()
+	renameUseCase := chat.NewRenameChatUseCase(chatRepo)
 
 	renameCmd := chat.RenameChatCommand{
 		ChatID:    generateUUID(t),
@@ -54,8 +54,8 @@ func TestRenameChatUseCase_ValidationError_EmptyTitle(t *testing.T) {
 
 // TestRenameChatUseCase_ValidationError_InvalidChatID tests validation error
 func TestRenameChatUseCase_ValidationError_InvalidChatID(t *testing.T) {
-	eventStore := newTestEventStore()
-	renameUseCase := chat.NewRenameChatUseCase(eventStore)
+	chatRepo := newTestChatRepo()
+	renameUseCase := chat.NewRenameChatUseCase(chatRepo)
 
 	renameCmd := chat.RenameChatCommand{
 		ChatID:    "",
@@ -70,8 +70,8 @@ func TestRenameChatUseCase_ValidationError_InvalidChatID(t *testing.T) {
 
 // TestRenameChatUseCase_Error_ChatNotFound tests error when chat not found
 func TestRenameChatUseCase_Error_ChatNotFound(t *testing.T) {
-	eventStore := newTestEventStore()
-	renameUseCase := chat.NewRenameChatUseCase(eventStore)
+	chatRepo := newTestChatRepo()
+	renameUseCase := chat.NewRenameChatUseCase(chatRepo)
 
 	renameCmd := chat.RenameChatCommand{
 		ChatID:    generateUUID(t),

@@ -449,6 +449,60 @@ When creating or updating task documentation in markdown files:
 - ✅ Status (Pending, In Progress, Complete)
 - ✅ Priority when relevant
 
+## Code Style Guidelines
+
+### Avoid Reflection
+
+**Prefer type assertions and generics over reflection (`reflect` package).**
+
+This includes:
+- ❌ Using `reflect.ValueOf()`, `reflect.TypeOf()`, etc.
+- ❌ Runtime type inspection when compile-time alternatives exist
+- ❌ Generic operations that can be done with type assertions
+
+**Why:**
+- Reflection is slower and less performant
+- Type assertions are compile-time safe
+- Code is more explicit and easier to understand
+- Better IDE support and tooling
+
+**When to use reflection:**
+- ✅ Only when absolutely necessary (JSON/YAML marshaling, ORM libraries, etc.)
+- ✅ When dealing with truly dynamic types from external sources
+- ✅ In library code that must handle arbitrary types
+
+**Prefer instead:**
+- ✅ Type assertions with type switches
+- ✅ Generics (Go 1.18+) for type-safe generic code
+- ✅ Interface-based polymorphism
+- ✅ Code generation tools for boilerplate
+
+**Example:**
+```go
+// ❌ BAD: Using reflection
+func length(v any) int {
+    rv := reflect.ValueOf(v)
+    if rv.Kind() == reflect.Slice {
+        return rv.Len()
+    }
+    return 0
+}
+
+// ✅ GOOD: Using type assertions
+func length(v any) int {
+    switch val := v.(type) {
+    case string:
+        return len(val)
+    case []any:
+        return len(val)
+    case []string:
+        return len(val)
+    default:
+        return 0
+    }
+}
+```
+
 ## Language Requirements
 
 **All code, comments, and documentation must be written in English.**

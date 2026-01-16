@@ -11,13 +11,13 @@ import (
 
 // TestConvertToBugUseCase_Success tests converting Discussion to Bug
 func TestConvertToBugUseCase_Success(t *testing.T) {
-	eventStore := newTestEventStore()
+	chatRepo := newTestChatRepo()
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID)
+	createdChat := createTestChatWithRepo(t, chatRepo, domainChat.TypeDiscussion, "", workspaceID, creatorID)
 
-	convertUseCase := chat.NewConvertToBugUseCase(eventStore)
+	convertUseCase := chat.NewConvertToBugUseCase(chatRepo)
 	convertCmd := chat.ConvertToBugCommand{
 		ChatID:      createdChat.ID(),
 		Title:       "Critical Bug",
@@ -32,20 +32,20 @@ func TestConvertToBugUseCase_Success(t *testing.T) {
 
 // TestConvertToBugUseCase_Error_AlreadyBug tests error when already Bug
 func TestConvertToBugUseCase_Error_AlreadyBug(t *testing.T) {
-	eventStore := newTestEventStore()
+	chatRepo := newTestChatRepo()
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(
+	createdChat := createTestChatWithRepo(
 		t,
-		eventStore,
+		chatRepo,
 		domainChat.TypeBug,
 		"Existing Bug",
 		workspaceID,
 		creatorID,
 	)
 
-	convertUseCase := chat.NewConvertToBugUseCase(eventStore)
+	convertUseCase := chat.NewConvertToBugUseCase(chatRepo)
 	convertCmd := chat.ConvertToBugCommand{
 		ChatID:      createdChat.ID(),
 		Title:       "Another Bug",
@@ -59,8 +59,8 @@ func TestConvertToBugUseCase_Error_AlreadyBug(t *testing.T) {
 
 // TestConvertToBugUseCase_ValidationError_EmptyTitle tests validation error
 func TestConvertToBugUseCase_ValidationError_EmptyTitle(t *testing.T) {
-	eventStore := newTestEventStore()
-	convertUseCase := chat.NewConvertToBugUseCase(eventStore)
+	chatRepo := newTestChatRepo()
+	convertUseCase := chat.NewConvertToBugUseCase(chatRepo)
 
 	convertCmd := chat.ConvertToBugCommand{
 		ChatID:      generateUUID(t),
@@ -75,8 +75,8 @@ func TestConvertToBugUseCase_ValidationError_EmptyTitle(t *testing.T) {
 
 // TestConvertToBugUseCase_Error_ChatNotFound tests error when chat not found
 func TestConvertToBugUseCase_Error_ChatNotFound(t *testing.T) {
-	eventStore := newTestEventStore()
-	convertUseCase := chat.NewConvertToBugUseCase(eventStore)
+	chatRepo := newTestChatRepo()
+	convertUseCase := chat.NewConvertToBugUseCase(chatRepo)
 
 	convertCmd := chat.ConvertToBugCommand{
 		ChatID:      generateUUID(t),

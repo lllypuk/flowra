@@ -279,5 +279,130 @@
             opacity: 1;
         }
     }
+
+    /* Message styles */
+    .message {
+        display: flex;
+        gap: 0.75rem;
+        padding: 0.5rem 0;
+    }
+
+    .message:hover {
+        background: var(--secondary-focus);
+        border-radius: 4px;
+        margin: 0 -0.5rem;
+        padding: 0.5rem;
+    }
+
+    .message-avatar {
+        flex-shrink: 0;
+    }
+
+    .message-avatar img,
+    .avatar-placeholder {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .avatar-placeholder {
+        background: var(--primary);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    .message-content {
+        flex-grow: 1;
+        min-width: 0;
+    }
+
+    .message-header {
+        display: flex;
+        align-items: baseline;
+        gap: 0.5rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .message-body {
+        word-wrap: break-word;
+    }
+
+    .message-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        margin-top: 0.5rem;
+    }
+
+    .tag {
+        display: inline-block;
+        padding: 0.125rem 0.5rem;
+        background: var(--secondary-focus);
+        color: var(--secondary);
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .tag.tag-task {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+
+    .tag.tag-bug {
+        background: #ffebee;
+        color: #c62828;
+    }
+
+    .tag.tag-epic {
+        background: #f3e5f5;
+        color: #7b1fa2;
+    }
+
+    .tag.tag-status {
+        background: #e8f5e9;
+        color: #388e3c;
+    }
+
+    .tag.tag-assignee {
+        background: #fff3e0;
+        color: #f57c00;
+    }
+
+    .tag.tag-priority {
+        background: #fce4ec;
+        color: #c2185b;
+    }
+
+    .tag.tag-due {
+        background: #ede7f6;
+        color: #512da8;
+    }
+
+    .tag.tag-title {
+        background: #e0f7fa;
+        color: #00838f;
+    }
+
+    .tag.tag-severity {
+        background: #ffcdd2;
+        color: #b71c1c;
+    }
+
+    .message-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+
+    .message-actions button {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+    }
 </style>
 {{end}}

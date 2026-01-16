@@ -11,13 +11,13 @@ import (
 
 // TestConvertToEpicUseCase_Success tests converting Discussion to Epic
 func TestConvertToEpicUseCase_Success(t *testing.T) {
-	eventStore := newTestEventStore()
+	chatRepo := newTestChatRepo()
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeDiscussion, "", workspaceID, creatorID)
+	createdChat := createTestChatWithRepo(t, chatRepo, domainChat.TypeDiscussion, "", workspaceID, creatorID)
 
-	convertUseCase := chat.NewConvertToEpicUseCase(eventStore)
+	convertUseCase := chat.NewConvertToEpicUseCase(chatRepo)
 	convertCmd := chat.ConvertToEpicCommand{
 		ChatID:      createdChat.ID(),
 		Title:       "Q4 Epic",
@@ -32,20 +32,20 @@ func TestConvertToEpicUseCase_Success(t *testing.T) {
 
 // TestConvertToEpicUseCase_Error_AlreadyEpic tests error when already Epic
 func TestConvertToEpicUseCase_Error_AlreadyEpic(t *testing.T) {
-	eventStore := newTestEventStore()
+	chatRepo := newTestChatRepo()
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(
+	createdChat := createTestChatWithRepo(
 		t,
-		eventStore,
+		chatRepo,
 		domainChat.TypeEpic,
 		"Existing Epic",
 		workspaceID,
 		creatorID,
 	)
 
-	convertUseCase := chat.NewConvertToEpicUseCase(eventStore)
+	convertUseCase := chat.NewConvertToEpicUseCase(chatRepo)
 	convertCmd := chat.ConvertToEpicCommand{
 		ChatID:      createdChat.ID(),
 		Title:       "Another Epic",
@@ -59,8 +59,8 @@ func TestConvertToEpicUseCase_Error_AlreadyEpic(t *testing.T) {
 
 // TestConvertToEpicUseCase_ValidationError_EmptyTitle tests validation error
 func TestConvertToEpicUseCase_ValidationError_EmptyTitle(t *testing.T) {
-	eventStore := newTestEventStore()
-	convertUseCase := chat.NewConvertToEpicUseCase(eventStore)
+	chatRepo := newTestChatRepo()
+	convertUseCase := chat.NewConvertToEpicUseCase(chatRepo)
 
 	convertCmd := chat.ConvertToEpicCommand{
 		ChatID:      generateUUID(t),
@@ -75,8 +75,8 @@ func TestConvertToEpicUseCase_ValidationError_EmptyTitle(t *testing.T) {
 
 // TestConvertToEpicUseCase_ValidationError_InvalidConvertedBy tests validation error for invalid ConvertedBy
 func TestConvertToEpicUseCase_ValidationError_InvalidConvertedBy(t *testing.T) {
-	eventStore := newTestEventStore()
-	convertUseCase := chat.NewConvertToEpicUseCase(eventStore)
+	chatRepo := newTestChatRepo()
+	convertUseCase := chat.NewConvertToEpicUseCase(chatRepo)
 
 	convertCmd := chat.ConvertToEpicCommand{
 		ChatID:      generateUUID(t),

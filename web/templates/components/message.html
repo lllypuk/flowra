@@ -42,8 +42,8 @@
         {{if and (not (empty .Tags)) (not .IsDeleted)}}
         <div class="message-tags">
             {{range .Tags}}
-            <span class="tag tag-{{.Key}}">
-                #{{.Key}}{{if .Value}} {{.Value}}{{end}}
+            <span class="tag tag-{{.Key}}" title="{{if .Value}}{{.Value}}{{end}}">
+                #{{.Key}}
             </span>
             {{end}}
         </div>
@@ -280,6 +280,26 @@
 .tag.tag-due {
     background: #ede7f6;
     color: #512da8;
+}
+
+.tag.tag-epic {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.tag.tag-title {
+    background: #e0f7fa;
+    color: #00838f;
+}
+
+.tag.tag-severity {
+    background: #ffcdd2;
+    color: #b71c1c;
+}
+
+.tag.tag-assignee {
+    background: #fff3e0;
+    color: #f57c00;
 }
 
 .message-reactions {

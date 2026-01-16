@@ -22,29 +22,43 @@
             class="autocomplete-dropdown hidden"
         >
             <ul>
-                <li data-tag="#createTask" tabindex="0">
+                <!-- Entity Creation Tags -->
+                <li data-tag="#task" tabindex="0">
                     <span class="autocomplete-icon">T</span>
                     <span class="autocomplete-label">Create Task</span>
                 </li>
-                <li data-tag="#createBug" tabindex="0">
+                <li data-tag="#bug" tabindex="0">
                     <span class="autocomplete-icon bug">B</span>
                     <span class="autocomplete-label">Create Bug</span>
                 </li>
-                <li data-tag="#setStatus" tabindex="0">
+                <li data-tag="#epic" tabindex="0">
+                    <span class="autocomplete-icon epic">E</span>
+                    <span class="autocomplete-label">Create Epic</span>
+                </li>
+                <!-- Entity Management Tags -->
+                <li data-tag="#status" tabindex="0">
                     <span class="autocomplete-icon status">S</span>
                     <span class="autocomplete-label">Set Status</span>
                 </li>
-                <li data-tag="#assign" tabindex="0">
+                <li data-tag="#assignee" tabindex="0">
                     <span class="autocomplete-icon assign">@</span>
-                    <span class="autocomplete-label">Assign to</span>
+                    <span class="autocomplete-label">Assign to User</span>
                 </li>
-                <li data-tag="#setPriority" tabindex="0">
+                <li data-tag="#priority" tabindex="0">
                     <span class="autocomplete-icon priority">!</span>
                     <span class="autocomplete-label">Set Priority</span>
                 </li>
-                <li data-tag="#setDueDate" tabindex="0">
+                <li data-tag="#due" tabindex="0">
                     <span class="autocomplete-icon due">D</span>
                     <span class="autocomplete-label">Set Due Date</span>
+                </li>
+                <li data-tag="#title" tabindex="0">
+                    <span class="autocomplete-icon title">A</span>
+                    <span class="autocomplete-label">Change Title</span>
+                </li>
+                <li data-tag="#severity" tabindex="0">
+                    <span class="autocomplete-icon severity">!</span>
+                    <span class="autocomplete-label">Set Severity</span>
                 </li>
             </ul>
         </div>
@@ -232,6 +246,18 @@
 
     .autocomplete-icon.due {
         background: #8b5cf6;
+    }
+
+    .autocomplete-icon.epic {
+        background: #7b1fa2;
+    }
+
+    .autocomplete-icon.title {
+        background: #00838f;
+    }
+
+    .autocomplete-icon.severity {
+        background: #b71c1c;
     }
 
     .autocomplete-label {

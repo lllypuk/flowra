@@ -6,16 +6,17 @@ import (
 	"fmt"
 
 	"github.com/lllypuk/flowra/internal/application/appcore"
+	"github.com/lllypuk/flowra/internal/domain/chat"
 )
 
 // SetSeverityUseCase handles setting severity (only for Bug)
 type SetSeverityUseCase struct {
-	eventStore appcore.EventStore
+	chatRepo CommandRepository
 }
 
 // NewSetSeverityUseCase creates a new SetSeverityUseCase
-func NewSetSeverityUseCase(eventStore appcore.EventStore) *SetSeverityUseCase {
-	return &SetSeverityUseCase{eventStore: eventStore}
+func NewSetSeverityUseCase(chatRepo CommandRepository) *SetSeverityUseCase {
+	return &SetSeverityUseCase{chatRepo: chatRepo}
 }
 
 // Execute performs setting severity
@@ -24,16 +25,26 @@ func (uc *SetSeverityUseCase) Execute(ctx context.Context, cmd SetSeverityComman
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	chatAggregate, err := loadAggregate(ctx, uc.eventStore, cmd.ChatID)
+	chatAggregate, err := uc.chatRepo.Load(ctx, cmd.ChatID)
 	if err != nil {
-		return Result{}, err
+		return Result{}, fmt.Errorf("failed to load chat: %w", err)
 	}
 
 	if setErr := chatAggregate.SetSeverity(cmd.Severity, cmd.SetBy); setErr != nil {
 		return Result{}, fmt.Errorf("failed to set severity: %w", setErr)
 	}
 
-	return saveAggregate(ctx, uc.eventStore, chatAggregate, cmd.ChatID.String())
+	// Save via repository (updates both event store and read model)
+	if err = uc.chatRepo.Save(ctx, chatAggregate); err != nil {
+		return Result{}, fmt.Errorf("failed to save chat: %w", err)
+	}
+
+	return Result{
+		Result: appcore.Result[*chat.Chat]{
+			Value:   chatAggregate,
+			Version: chatAggregate.Version(),
+		},
+	}, nil
 }
 
 func (uc *SetSeverityUseCase) validate(cmd SetSeverityCommand) error {

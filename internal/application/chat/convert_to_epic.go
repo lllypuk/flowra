@@ -6,17 +6,18 @@ import (
 	"fmt"
 
 	"github.com/lllypuk/flowra/internal/application/appcore"
+	"github.com/lllypuk/flowra/internal/domain/chat"
 )
 
 // ConvertToEpicUseCase handles converting a chat to Epic
 type ConvertToEpicUseCase struct {
-	eventStore appcore.EventStore
+	chatRepo CommandRepository
 }
 
 // NewConvertToEpicUseCase creates a new ConvertToEpicUseCase
-func NewConvertToEpicUseCase(eventStore appcore.EventStore) *ConvertToEpicUseCase {
+func NewConvertToEpicUseCase(chatRepo CommandRepository) *ConvertToEpicUseCase {
 	return &ConvertToEpicUseCase{
-		eventStore: eventStore,
+		chatRepo: chatRepo,
 	}
 }
 
@@ -27,16 +28,26 @@ func (uc *ConvertToEpicUseCase) Execute(ctx context.Context, cmd ConvertToEpicCo
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	chatAggregate, err := loadAggregate(ctx, uc.eventStore, cmd.ChatID)
+	chatAggregate, err := uc.chatRepo.Load(ctx, cmd.ChatID)
 	if err != nil {
-		return Result{}, err
+		return Result{}, fmt.Errorf("failed to load chat: %w", err)
 	}
 
 	if convertErr := chatAggregate.ConvertToEpic(cmd.Title, cmd.ConvertedBy); convertErr != nil {
 		return Result{}, fmt.Errorf("failed to convert to epic: %w", convertErr)
 	}
 
-	return saveAggregate(ctx, uc.eventStore, chatAggregate, cmd.ChatID.String())
+	// Save via repository (updates both event store and read model)
+	if err = uc.chatRepo.Save(ctx, chatAggregate); err != nil {
+		return Result{}, fmt.Errorf("failed to save chat: %w", err)
+	}
+
+	return Result{
+		Result: appcore.Result[*chat.Chat]{
+			Value:   chatAggregate,
+			Version: chatAggregate.Version(),
+		},
+	}, nil
 }
 
 func (uc *ConvertToEpicUseCase) validate(cmd ConvertToEpicCommand) error {

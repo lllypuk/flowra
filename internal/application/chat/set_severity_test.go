@@ -30,13 +30,13 @@ func TestSetSeverityUseCase_Success_Blocker(t *testing.T) {
 }
 
 func testSetSeveritySuccess(t *testing.T, severity string) {
-	eventStore := newTestEventStore()
+	chatRepo := newTestChatRepo()
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeBug, "Test Bug", workspaceID, creatorID)
+	createdChat := createTestChatWithRepo(t, chatRepo, domainChat.TypeBug, "Test Bug", workspaceID, creatorID)
 
-	setSeverityUseCase := chat.NewSetSeverityUseCase(eventStore)
+	setSeverityUseCase := chat.NewSetSeverityUseCase(chatRepo)
 	setSeverityCmd := chat.SetSeverityCommand{
 		ChatID:   createdChat.ID(),
 		Severity: severity,
@@ -50,20 +50,20 @@ func testSetSeveritySuccess(t *testing.T, severity string) {
 
 // TestSetSeverityUseCase_Error_OnlyForBugs tests error when used on non-Bug chat
 func TestSetSeverityUseCase_Error_OnlyForBugs(t *testing.T) {
-	eventStore := newTestEventStore()
+	chatRepo := newTestChatRepo()
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(
+	createdChat := createTestChatWithRepo(
 		t,
-		eventStore,
+		chatRepo,
 		domainChat.TypeTask,
 		"Test Task",
 		workspaceID,
 		creatorID,
 	)
 
-	setSeverityUseCase := chat.NewSetSeverityUseCase(eventStore)
+	setSeverityUseCase := chat.NewSetSeverityUseCase(chatRepo)
 	setSeverityCmd := chat.SetSeverityCommand{
 		ChatID:   createdChat.ID(),
 		Severity: "Critical",
@@ -77,8 +77,8 @@ func TestSetSeverityUseCase_Error_OnlyForBugs(t *testing.T) {
 
 // TestSetSeverityUseCase_ValidationError_InvalidSeverity tests validation error
 func TestSetSeverityUseCase_ValidationError_InvalidSeverity(t *testing.T) {
-	eventStore := newTestEventStore()
-	setSeverityUseCase := chat.NewSetSeverityUseCase(eventStore)
+	chatRepo := newTestChatRepo()
+	setSeverityUseCase := chat.NewSetSeverityUseCase(chatRepo)
 
 	setSeverityCmd := chat.SetSeverityCommand{
 		ChatID:   generateUUID(t),

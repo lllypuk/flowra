@@ -6,17 +6,18 @@ import (
 	"fmt"
 
 	"github.com/lllypuk/flowra/internal/application/appcore"
+	"github.com/lllypuk/flowra/internal/domain/chat"
 )
 
 // SetPriorityUseCase handles setting priority
 type SetPriorityUseCase struct {
-	eventStore appcore.EventStore
+	chatRepo CommandRepository
 }
 
 // NewSetPriorityUseCase creates a new SetPriorityUseCase
-func NewSetPriorityUseCase(eventStore appcore.EventStore) *SetPriorityUseCase {
+func NewSetPriorityUseCase(chatRepo CommandRepository) *SetPriorityUseCase {
 	return &SetPriorityUseCase{
-		eventStore: eventStore,
+		chatRepo: chatRepo,
 	}
 }
 
@@ -26,16 +27,26 @@ func (uc *SetPriorityUseCase) Execute(ctx context.Context, cmd SetPriorityComman
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	chatAggregate, err := loadAggregate(ctx, uc.eventStore, cmd.ChatID)
+	chatAggregate, err := uc.chatRepo.Load(ctx, cmd.ChatID)
 	if err != nil {
-		return Result{}, err
+		return Result{}, fmt.Errorf("failed to load chat: %w", err)
 	}
 
 	if setErr := chatAggregate.SetPriority(cmd.Priority, cmd.SetBy); setErr != nil {
 		return Result{}, fmt.Errorf("failed to set priority: %w", setErr)
 	}
 
-	return saveAggregate(ctx, uc.eventStore, chatAggregate, cmd.ChatID.String())
+	// Save via repository (updates both event store and read model)
+	if err = uc.chatRepo.Save(ctx, chatAggregate); err != nil {
+		return Result{}, fmt.Errorf("failed to save chat: %w", err)
+	}
+
+	return Result{
+		Result: appcore.Result[*chat.Chat]{
+			Value:   chatAggregate,
+			Version: chatAggregate.Version(),
+		},
+	}, nil
 }
 
 func (uc *SetPriorityUseCase) validate(cmd SetPriorityCommand) error {

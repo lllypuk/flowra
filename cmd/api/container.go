@@ -18,6 +18,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/chat"
 	"github.com/lllypuk/flowra/internal/domain/message"
 	notificationdomain "github.com/lllypuk/flowra/internal/domain/notification"
+	"github.com/lllypuk/flowra/internal/domain/tag"
 	taskdomain "github.com/lllypuk/flowra/internal/domain/task"
 	httphandler "github.com/lllypuk/flowra/internal/handler/http"
 	wshandler "github.com/lllypuk/flowra/internal/handler/websocket"
@@ -501,13 +502,18 @@ func (c *Container) setupUseCases() {
 
 // setupMessageUseCases initializes message-related use cases.
 func (c *Container) setupMessageUseCases() {
-	// SendMessage use case
+	// Create tag processor and executor
+	tagProcessor := tag.NewProcessor()
+	chatUseCases := c.createChatUseCasesForTags()
+	tagExecutor := tag.NewCommandExecutor(chatUseCases, c.UserRepo)
+
+	// SendMessage use case with tag support
 	c.SendMessageUC = messageapp.NewSendMessageUseCase(
 		c.MessageRepo,
 		c.ChatQueryRepo,
 		c.EventBus,
-		nil, // tag processor - TODO: add when available
-		nil, // tag executor - TODO: add when available
+		tagProcessor,
+		tagExecutor,
 	)
 
 	// ListMessages use case
@@ -551,6 +557,22 @@ func (c *Container) setupMessageUseCases() {
 	)
 
 	c.Logger.Debug("message use cases initialized")
+}
+
+// createChatUseCasesForTags creates the ChatUseCases struct needed by tag executor.
+// Uses ChatRepo which updates both event store AND read model (unlike EventStore alone).
+func (c *Container) createChatUseCasesForTags() *tag.ChatUseCases {
+	return &tag.ChatUseCases{
+		ConvertToTask: chatapp.NewConvertToTaskUseCase(c.ChatRepo),
+		ConvertToBug:  chatapp.NewConvertToBugUseCase(c.ChatRepo),
+		ConvertToEpic: chatapp.NewConvertToEpicUseCase(c.ChatRepo),
+		ChangeStatus:  chatapp.NewChangeStatusUseCase(c.ChatRepo),
+		AssignUser:    chatapp.NewAssignUserUseCase(c.ChatRepo),
+		SetPriority:   chatapp.NewSetPriorityUseCase(c.ChatRepo),
+		SetDueDate:    chatapp.NewSetDueDateUseCase(c.ChatRepo),
+		Rename:        chatapp.NewRenameChatUseCase(c.ChatRepo),
+		SetSeverity:   chatapp.NewSetSeverityUseCase(c.ChatRepo),
+	}
 }
 
 // setupEventHandlers initializes and registers event handlers with the event bus.
@@ -760,7 +782,7 @@ func (c *Container) createChatService() *service.ChatService {
 	createUC := chatapp.NewCreateChatUseCase(c.ChatRepo)
 	getUC := chatapp.NewGetChatUseCase(c.EventStore)
 	listUC := chatapp.NewListChatsUseCase(c.ChatQueryRepo, c.EventStore)
-	renameUC := chatapp.NewRenameChatUseCase(c.EventStore)
+	renameUC := chatapp.NewRenameChatUseCase(c.ChatRepo)
 	addPartUC := chatapp.NewAddParticipantUseCase(c.EventStore)
 	removePartUC := chatapp.NewRemoveParticipantUseCase(c.EventStore)
 

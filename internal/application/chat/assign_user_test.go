@@ -13,13 +13,13 @@ import (
 
 // TestAssignUserUseCase_Success_AssignUser tests assigning a user
 func TestAssignUserUseCase_Success_AssignUser(t *testing.T) {
-	eventStore := newTestEventStore()
+	chatRepo := newTestChatRepo()
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(
+	createdChat := createTestChatWithRepo(
 		t,
-		eventStore,
+		chatRepo,
 		domainChat.TypeTask,
 		"Test Task",
 		workspaceID,
@@ -27,7 +27,7 @@ func TestAssignUserUseCase_Success_AssignUser(t *testing.T) {
 	)
 
 	assigneeID := generateUUID(t)
-	assignUseCase := chat.NewAssignUserUseCase(eventStore)
+	assignUseCase := chat.NewAssignUserUseCase(chatRepo)
 	assignCmd := chat.AssignUserCommand{
 		ChatID:     createdChat.ID(),
 		AssigneeID: &assigneeID,
@@ -42,13 +42,13 @@ func TestAssignUserUseCase_Success_AssignUser(t *testing.T) {
 
 // TestAssignUserUseCase_Success_UnassignUser tests removing assignment
 func TestAssignUserUseCase_Success_UnassignUser(t *testing.T) {
-	eventStore := newTestEventStore()
+	chatRepo := newTestChatRepo()
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(
+	createdChat := createTestChatWithRepo(
 		t,
-		eventStore,
+		chatRepo,
 		domainChat.TypeTask,
 		"Test Task",
 		workspaceID,
@@ -57,7 +57,7 @@ func TestAssignUserUseCase_Success_UnassignUser(t *testing.T) {
 
 	// First assign
 	assigneeID := generateUUID(t)
-	assignUseCase := chat.NewAssignUserUseCase(eventStore)
+	assignUseCase := chat.NewAssignUserUseCase(chatRepo)
 	assignCmd := chat.AssignUserCommand{
 		ChatID:     createdChat.ID(),
 		AssigneeID: &assigneeID,
@@ -80,8 +80,8 @@ func TestAssignUserUseCase_Success_UnassignUser(t *testing.T) {
 
 // TestAssignUserUseCase_ValidationError_InvalidChatID tests validation error
 func TestAssignUserUseCase_ValidationError_InvalidChatID(t *testing.T) {
-	eventStore := newTestEventStore()
-	assignUseCase := chat.NewAssignUserUseCase(eventStore)
+	chatRepo := newTestChatRepo()
+	assignUseCase := chat.NewAssignUserUseCase(chatRepo)
 
 	assigneeID := generateUUID(t)
 	assignCmd := chat.AssignUserCommand{
@@ -97,8 +97,8 @@ func TestAssignUserUseCase_ValidationError_InvalidChatID(t *testing.T) {
 
 // TestAssignUserUseCase_Error_ChatNotFound tests error when chat not found
 func TestAssignUserUseCase_Error_ChatNotFound(t *testing.T) {
-	eventStore := newTestEventStore()
-	assignUseCase := chat.NewAssignUserUseCase(eventStore)
+	chatRepo := newTestChatRepo()
+	assignUseCase := chat.NewAssignUserUseCase(chatRepo)
 
 	assigneeID := generateUUID(t)
 	assignCmd := chat.AssignUserCommand{

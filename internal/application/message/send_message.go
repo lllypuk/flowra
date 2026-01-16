@@ -6,6 +6,7 @@ import (
 
 	"github.com/lllypuk/flowra/internal/application/appcore"
 	chatapp "github.com/lllypuk/flowra/internal/application/chat"
+	"github.com/lllypuk/flowra/internal/domain/chat"
 	"github.com/lllypuk/flowra/internal/domain/event"
 	messagedomain "github.com/lllypuk/flowra/internal/domain/message"
 	"github.com/lllypuk/flowra/internal/domain/tag"
@@ -109,8 +110,9 @@ func (uc *SendMessageUseCase) Execute(
 	_ = uc.eventBus.Publish(ctx, evt)
 
 	// 7. async tag handling (do not block response)
+	// Use background context since HTTP request context will be canceled after response
 	if uc.tagProcessor != nil && uc.tagExecutor != nil {
-		go uc.processTagsAsync(ctx, msg, cmd.AuthorID)
+		go uc.processTagsAsync(context.Background(), msg, cmd.AuthorID, chatReadModel.Type)
 	}
 
 	return Result{
@@ -149,6 +151,7 @@ func (uc *SendMessageUseCase) processTagsAsync(
 	ctx context.Context,
 	msg *messagedomain.Message,
 	authorID uuid.UUID,
+	chatType chat.Type,
 ) {
 	// Convert domain UUID to google UUID for processor
 	chatIDGoogle, err := msg.ChatID().ToGoogleUUID()
@@ -157,9 +160,12 @@ func (uc *SendMessageUseCase) processTagsAsync(
 		return
 	}
 
+	// Determine current entity type based on chat type
+	// The tag processor expects "Task", "Bug", "Epic" or empty string
+	entityType := chatTypeToEntityType(chatType)
+
 	// Parse and process tags from message content
-	// currentEntityType is empty because this is a message, not an entity
-	processingResult := uc.tagProcessor.ProcessMessage(chatIDGoogle, msg.Content(), "")
+	processingResult := uc.tagProcessor.ProcessMessage(chatIDGoogle, msg.Content(), entityType)
 	if len(processingResult.AppliedTags) == 0 {
 		// No successfully applied tags - exit
 		return
@@ -180,4 +186,21 @@ func (uc *SendMessageUseCase) processTagsAsync(
 	}
 
 	// TODO: format results via tag.Formatter and send reply
+}
+
+// chatTypeToEntityType converts chat.Type to entity type string expected by tag processor.
+// Returns "Task", "Bug", "Epic" for task-like chats, or empty string for discussions.
+func chatTypeToEntityType(chatType chat.Type) string {
+	switch chatType {
+	case chat.TypeTask:
+		return "Task"
+	case chat.TypeBug:
+		return "Bug"
+	case chat.TypeEpic:
+		return "Epic"
+	case chat.TypeDiscussion:
+		return ""
+	default:
+		return ""
+	}
 }
