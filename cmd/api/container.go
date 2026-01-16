@@ -456,6 +456,7 @@ func (c *Container) setupRepositories() {
 		c.EventStore,
 		db.Collection("chats_read_model"),
 		mongodb.WithChatRepoLogger(c.Logger),
+		mongodb.WithChatRepoEventBus(c.EventBus),
 	)
 
 	// Chat read model repository (query side)
@@ -476,6 +477,7 @@ func (c *Container) setupRepositories() {
 		c.EventStore,
 		db.Collection("tasks_read_model"),
 		mongodb.WithTaskRepoLogger(c.Logger),
+		mongodb.WithTaskRepoEventBus(c.EventBus),
 	)
 
 	// Notification repository
@@ -1003,73 +1005,27 @@ func (c *Container) setupBoardTemplateHandler() {
 // createBoardTaskCreator creates a service implementing BoardTaskCreator.
 func (c *Container) createBoardTaskCreator() httphandler.BoardTaskCreator {
 	return &boardTaskCreatorAdapter{
-		eventStore:    c.EventStore,
-		readModelColl: c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model"),
-		logger:        c.Logger,
+		taskRepo: c.TaskRepo,
 	}
 }
 
-// boardTaskCreatorAdapter creates tasks and updates the read model.
+// boardTaskCreatorAdapter creates tasks using the repository pattern.
 type boardTaskCreatorAdapter struct {
-	eventStore    appcore.EventStore
-	readModelColl *mongo.Collection
-	logger        *slog.Logger
+	taskRepo taskapp.CommandRepository
 }
 
 // CreateTask implements BoardTaskCreator.
-// It creates a task and updates the read model for immediate visibility.
+// The repository handles both event store and read model updates.
 func (a *boardTaskCreatorAdapter) CreateTask(
 	ctx context.Context,
 	cmd taskapp.CreateTaskCommand,
 ) (*taskapp.TaskResult, error) {
-	// 1. Create task via use case
-	createUC := taskapp.NewCreateTaskUseCase(a.eventStore)
+	createUC := taskapp.NewCreateTaskUseCase(a.taskRepo)
 	result, err := createUC.Execute(ctx, cmd)
 	if err != nil {
 		return nil, err
 	}
-
-	// 2. Update read model directly so the task appears immediately
-	if updateErr := a.updateTaskReadModel(ctx, result, cmd); updateErr != nil {
-		a.logger.WarnContext(ctx, "failed to update task read model",
-			slog.String("task_id", result.TaskID.String()),
-			slog.String("error", updateErr.Error()),
-		)
-		// Don't fail - the event was saved, read model can be rebuilt
-	}
-
 	return &result, nil
-}
-
-// updateTaskReadModel updates the tasks_read_model collection.
-func (a *boardTaskCreatorAdapter) updateTaskReadModel(
-	ctx context.Context,
-	result taskapp.TaskResult,
-	cmd taskapp.CreateTaskCommand,
-) error {
-	doc := map[string]any{
-		"_id":         result.TaskID.String(),
-		"task_id":     result.TaskID.String(),
-		"chat_id":     cmd.ChatID.String(),
-		"title":       cmd.Title,
-		"entity_type": string(cmd.EntityType),
-		"status":      string(taskdomain.StatusToDo),
-		"priority":    string(cmd.Priority),
-		"created_by":  cmd.CreatedBy.String(),
-		"created_at":  time.Now(),
-		"version":     result.Version,
-	}
-
-	if cmd.AssigneeID != nil {
-		doc["assigned_to"] = cmd.AssigneeID.String()
-	}
-
-	if cmd.DueDate != nil {
-		doc["due_date"] = *cmd.DueDate
-	}
-
-	_, err := a.readModelColl.InsertOne(ctx, doc)
-	return err
 }
 
 // createBoardChatCreator creates a service implementing BoardChatCreator.
@@ -1275,8 +1231,8 @@ func (c *Container) createFullTaskService() httphandler.TaskService {
 		boardTaskServiceAdapter: boardTaskServiceAdapter{
 			collection: c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model"),
 		},
-		eventStore: c.EventStore,
-		userRepo:   c.UserRepo,
+		taskRepo: c.TaskRepo,
+		userRepo: c.UserRepo,
 	}
 }
 
@@ -1285,129 +1241,58 @@ func (c *Container) createFullTaskService() httphandler.TaskService {
 type fullTaskServiceAdapter struct {
 	boardTaskServiceAdapter
 
-	eventStore appcore.EventStore
-	userRepo   appcore.UserRepository
+	taskRepo taskapp.CommandRepository
+	userRepo appcore.UserRepository
 }
 
 // CreateTask implements httphandler.TaskService.
+// Repository handles both event store and read model updates.
 func (a *fullTaskServiceAdapter) CreateTask(
 	ctx context.Context,
 	cmd taskapp.CreateTaskCommand,
 ) (taskapp.TaskResult, error) {
-	createUC := taskapp.NewCreateTaskUseCase(a.eventStore)
+	createUC := taskapp.NewCreateTaskUseCase(a.taskRepo)
 	return createUC.Execute(ctx, cmd)
 }
 
 // ChangeStatus implements httphandler.TaskService.
+// Repository handles both event store and read model updates.
 func (a *fullTaskServiceAdapter) ChangeStatus(
 	ctx context.Context,
 	cmd taskapp.ChangeStatusCommand,
 ) (taskapp.TaskResult, error) {
-	changeStatusUC := taskapp.NewChangeStatusUseCase(a.eventStore)
-	result, err := changeStatusUC.Execute(ctx, cmd)
-	if err != nil {
-		return result, err
-	}
-
-	// Update read model with new status
-	if a.collection != nil {
-		filter := bson.M{"task_id": cmd.TaskID.String()}
-		update := bson.M{
-			"$set": bson.M{
-				"status":  string(cmd.NewStatus),
-				"version": result.Version,
-			},
-		}
-		_, _ = a.collection.UpdateOne(ctx, filter, update)
-	}
-
-	return result, nil
+	changeStatusUC := taskapp.NewChangeStatusUseCase(a.taskRepo)
+	return changeStatusUC.Execute(ctx, cmd)
 }
 
 // AssignTask implements httphandler.TaskService.
+// Repository handles both event store and read model updates.
 func (a *fullTaskServiceAdapter) AssignTask(
 	ctx context.Context,
 	cmd taskapp.AssignTaskCommand,
 ) (taskapp.TaskResult, error) {
-	assignUC := taskapp.NewAssignTaskUseCase(a.eventStore, a.userRepo)
-	result, err := assignUC.Execute(ctx, cmd)
-	if err != nil {
-		return result, err
-	}
-
-	// Update read model with new assignee
-	if a.collection != nil {
-		filter := bson.M{"task_id": cmd.TaskID.String()}
-		var assignedTo interface{}
-		if cmd.AssigneeID != nil {
-			assignedTo = cmd.AssigneeID.String()
-		}
-		update := bson.M{
-			"$set": bson.M{
-				"assigned_to": assignedTo,
-				"version":     result.Version,
-			},
-		}
-		_, _ = a.collection.UpdateOne(ctx, filter, update)
-	}
-
-	return result, nil
+	assignUC := taskapp.NewAssignTaskUseCase(a.taskRepo, a.userRepo)
+	return assignUC.Execute(ctx, cmd)
 }
 
 // ChangePriority implements httphandler.TaskService.
+// Repository handles both event store and read model updates.
 func (a *fullTaskServiceAdapter) ChangePriority(
 	ctx context.Context,
 	cmd taskapp.ChangePriorityCommand,
 ) (taskapp.TaskResult, error) {
-	changePriorityUC := taskapp.NewChangePriorityUseCase(a.eventStore)
-	result, err := changePriorityUC.Execute(ctx, cmd)
-	if err != nil {
-		return result, err
-	}
-
-	// Update read model with new priority
-	if a.collection != nil {
-		filter := bson.M{"task_id": cmd.TaskID.String()}
-		update := bson.M{
-			"$set": bson.M{
-				"priority": string(cmd.Priority),
-				"version":  result.Version,
-			},
-		}
-		_, _ = a.collection.UpdateOne(ctx, filter, update)
-	}
-
-	return result, nil
+	changePriorityUC := taskapp.NewChangePriorityUseCase(a.taskRepo)
+	return changePriorityUC.Execute(ctx, cmd)
 }
 
 // SetDueDate implements httphandler.TaskService.
+// Repository handles both event store and read model updates.
 func (a *fullTaskServiceAdapter) SetDueDate(
 	ctx context.Context,
 	cmd taskapp.SetDueDateCommand,
 ) (taskapp.TaskResult, error) {
-	setDueDateUC := taskapp.NewSetDueDateUseCase(a.eventStore)
-	result, err := setDueDateUC.Execute(ctx, cmd)
-	if err != nil {
-		return result, err
-	}
-
-	// Update read model with new due date
-	if a.collection != nil {
-		filter := bson.M{"task_id": cmd.TaskID.String()}
-		var dueDate interface{}
-		if cmd.DueDate != nil {
-			dueDate = *cmd.DueDate
-		}
-		update := bson.M{
-			"$set": bson.M{
-				"due_date": dueDate,
-				"version":  result.Version,
-			},
-		}
-		_, _ = a.collection.UpdateOne(ctx, filter, update)
-	}
-
-	return result, nil
+	setDueDateUC := taskapp.NewSetDueDateUseCase(a.taskRepo)
+	return setDueDateUC.Execute(ctx, cmd)
 }
 
 // DeleteTask implements httphandler.TaskService.

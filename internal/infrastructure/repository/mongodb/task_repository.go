@@ -23,6 +23,7 @@ import (
 type MongoTaskRepository struct {
 	eventStore    appcore.EventStore
 	readModelColl *mongo.Collection
+	eventBus      event.Bus
 	logger        *slog.Logger
 }
 
@@ -33,6 +34,13 @@ type TaskRepoOption func(*MongoTaskRepository)
 func WithTaskRepoLogger(logger *slog.Logger) TaskRepoOption {
 	return func(r *MongoTaskRepository) {
 		r.logger = logger
+	}
+}
+
+// WithTaskRepoEventBus sets the event bus for task repository.
+func WithTaskRepoEventBus(eventBus event.Bus) TaskRepoOption {
+	return func(r *MongoTaskRepository) {
+		r.eventBus = eventBus
 	}
 }
 
@@ -125,10 +133,24 @@ func (r *MongoTaskRepository) Save(ctx context.Context, task *taskdomain.Aggrega
 			slog.String("task_id", task.ID().String()),
 			slog.String("error", updateErr.Error()),
 		)
-		// not padaem - read model mozhno pereschitat
+		// Don't fail - read model can be recalculated
 	}
 
-	// 3. pomechaem event as committed
+	// 3. Publish events to EventBus (if configured)
+	if r.eventBus != nil {
+		for _, evt := range uncommittedEvents {
+			if pubErr := r.eventBus.Publish(ctx, evt); pubErr != nil {
+				r.logger.WarnContext(ctx, "failed to publish task event to bus",
+					slog.String("task_id", task.ID().String()),
+					slog.String("event_type", evt.EventType()),
+					slog.String("error", pubErr.Error()),
+				)
+				// Don't fail - event is already persisted
+			}
+		}
+	}
+
+	// 4. Mark events as committed
 	task.MarkEventsAsCommitted()
 
 	return nil

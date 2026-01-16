@@ -24,6 +24,7 @@ import (
 type MongoChatRepository struct {
 	eventStore    appcore.EventStore
 	readModelColl *mongo.Collection
+	eventBus      event.Bus
 	logger        *slog.Logger
 }
 
@@ -34,6 +35,13 @@ type ChatRepoOption func(*MongoChatRepository)
 func WithChatRepoLogger(logger *slog.Logger) ChatRepoOption {
 	return func(r *MongoChatRepository) {
 		r.logger = logger
+	}
+}
+
+// WithChatRepoEventBus sets the event bus for chat repository.
+func WithChatRepoEventBus(eventBus event.Bus) ChatRepoOption {
+	return func(r *MongoChatRepository) {
+		r.eventBus = eventBus
 	}
 }
 
@@ -139,7 +147,21 @@ func (r *MongoChatRepository) Save(ctx context.Context, chat *chatdomain.Chat) e
 		// Don't fail - read model can be recalculated
 	}
 
-	// 3. Mark events as committed
+	// 3. Publish events to EventBus (if configured)
+	if r.eventBus != nil {
+		for _, evt := range uncommittedEvents {
+			if pubErr := r.eventBus.Publish(ctx, evt); pubErr != nil {
+				r.logger.WarnContext(ctx, "failed to publish chat event to bus",
+					slog.String("chat_id", chat.ID().String()),
+					slog.String("event_type", evt.EventType()),
+					slog.String("error", pubErr.Error()),
+				)
+				// Don't fail - event is already persisted
+			}
+		}
+	}
+
+	// 4. Mark events as committed
 	chat.MarkEventsAsCommitted()
 
 	return nil

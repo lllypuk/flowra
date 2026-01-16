@@ -6,81 +6,75 @@ import (
 	"fmt"
 
 	"github.com/lllypuk/flowra/internal/application/appcore"
-	"github.com/lllypuk/flowra/internal/domain/task"
+	"github.com/lllypuk/flowra/internal/domain/errs"
 )
 
-// AssignTaskUseCase handles assignment ispolnitelya tasks
+// AssignTaskUseCase handles task assignee assignment
 type AssignTaskUseCase struct {
-	eventStore     appcore.EventStore
+	taskRepo       CommandRepository
 	userRepository appcore.UserRepository
 }
 
-// NewAssignTaskUseCase creates New use case for assigning ispolnitelya
+// NewAssignTaskUseCase creates a new use case for assigning tasks
 func NewAssignTaskUseCase(
-	eventStore appcore.EventStore,
+	taskRepo CommandRepository,
 	userRepository appcore.UserRepository,
 ) *AssignTaskUseCase {
 	return &AssignTaskUseCase{
-		eventStore:     eventStore,
+		taskRepo:       taskRepo,
 		userRepository: userRepository,
 	}
 }
 
-// Execute value ispolnitelya zadache
+// Execute assigns a task to a user
 func (uc *AssignTaskUseCase) Execute(ctx context.Context, cmd AssignTaskCommand) (TaskResult, error) {
-	// 1. validation commands
+	// 1. Validate command
 	if err := uc.validate(ctx, cmd); err != nil {
 		return TaskResult{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// 2. Loading events from Event Store
-	events, err := uc.eventStore.LoadEvents(ctx, cmd.TaskID.String())
+	// 2. Load aggregate from repository
+	aggregate, err := uc.taskRepo.Load(ctx, cmd.TaskID)
 	if err != nil {
-		if errors.Is(err, appcore.ErrAggregateNotFound) {
+		if errors.Is(err, errs.ErrNotFound) {
 			return TaskResult{}, ErrTaskNotFound
 		}
-		return TaskResult{}, fmt.Errorf("failed to load events: %w", err)
+		return TaskResult{}, fmt.Errorf("failed to load task: %w", err)
 	}
 
-	if len(events) == 0 {
-		return TaskResult{}, ErrTaskNotFound
-	}
+	// Store current version before operation
+	versionBefore := aggregate.Version()
 
-	// 3. Restoration aggregate from events
-	aggregate := task.NewTaskAggregate(cmd.TaskID)
-	aggregate.ReplayEvents(events)
-
-	// 4. performing biznes-operatsii
+	// 3. Perform business operation
 	err = aggregate.Assign(cmd.AssigneeID, cmd.AssignedBy)
 	if err != nil {
 		return TaskResult{}, fmt.Errorf("failed to assign task: %w", err)
 	}
 
-	// 5. retrieval New events
+	// 4. Get new events
 	newEvents := aggregate.UncommittedEvents()
 
-	// if no new events (idempotent), return success
+	// If no new events (idempotent), return success
 	if len(newEvents) == 0 {
 		return TaskResult{
 			TaskID:  cmd.TaskID,
-			Version: len(events),
+			Version: versionBefore,
 			Events:  newEvents,
 			Success: true,
 			Message: "Assignee unchanged (idempotent operation)",
 		}, nil
 	}
 
-	// 6. storage New events
-	expectedVersion := len(events)
-	if saveErr := uc.eventStore.SaveEvents(ctx, cmd.TaskID.String(), newEvents, expectedVersion); saveErr != nil {
-		if errors.Is(saveErr, appcore.ErrConcurrencyConflict) {
+	// 5. Save via repository (handles EventStore + ReadModel)
+	if saveErr := uc.taskRepo.Save(ctx, aggregate); saveErr != nil {
+		if errors.Is(saveErr, errs.ErrConcurrentModification) {
 			return TaskResult{}, ErrConcurrentUpdate
 		}
-		return TaskResult{}, fmt.Errorf("failed to save events: %w", saveErr)
+		return TaskResult{}, fmt.Errorf("failed to save task: %w", saveErr)
 	}
 
-	// 7. vozvrat result
-	return NewSuccessResult(cmd.TaskID, expectedVersion+len(newEvents), newEvents), nil
+	// 6. Return result
+	return NewSuccessResult(cmd.TaskID, aggregate.Version(), newEvents), nil
 }
 
 // validate checks command correctness

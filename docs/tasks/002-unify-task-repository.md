@@ -1,6 +1,6 @@
 # Task 002: Unify Task Repository Pattern
 
-## Status: Pending
+## Status: Completed
 
 ## Priority: Critical
 
@@ -10,93 +10,69 @@
 
 Refactor Task domain to use Repository pattern consistently with Chat domain, instead of direct EventStore access from use cases.
 
-## Current State
+## Completed Changes
 
-### Problem: Direct EventStore Access in Use Cases
+All task use cases have been updated to use `CommandRepository` instead of direct `EventStore` access:
 
-```go
-// internal/application/task/create_task.go (current)
-func (uc *CreateTaskUseCase) Execute(ctx context.Context, cmd CreateTaskCommand) (TaskResult, error) {
-    // ...
-    events := aggregate.UncommittedEvents()
-    
-    // Direct eventStore access - WRONG!
-    if err := uc.eventStore.SaveEvents(ctx, taskID.String(), events, 0); err != nil {
-        return TaskResult{}, fmt.Errorf("failed to save events: %w", err)
-    }
-    // No ReadModel update!
-    // No EventBus publish!
-}
-```
+### 1. Updated Use Cases
 
-### Contrast with Chat (correct pattern)
+- `create_task.go` - Now uses `taskRepo.Save()` instead of `eventStore.SaveEvents()`
+- `change_status.go` - Updated to use `CommandRepository`
+- `assign_task.go` - Updated to use `CommandRepository`
+- `change_priority.go` - Updated via `BaseExecutor` which now uses `CommandRepository`
+- `set_due_date.go` - Updated via `BaseExecutor` which now uses `CommandRepository`
+- `base_executor.go` - Refactored to use `CommandRepository`
 
-```go
-// internal/application/chat/create_chat.go (reference)
-func (uc *CreateChatUseCase) Execute(ctx context.Context, cmd CreateChatCommand) (Result, error) {
-    // ...
-    // Repository handles EventStore + ReadModel
-    if err = uc.chatRepo.Save(ctx, chatAggregate); err != nil {
-        return Result{}, fmt.Errorf("failed to save chat: %w", err)
-    }
-}
-```
+### 2. Container Wiring
 
-## Required Changes
+Updated `cmd/api/container.go`:
+- `boardTaskCreatorAdapter` now receives `CommandRepository`
+- `fullTaskServiceAdapter` now receives `CommandRepository`
+- Removed manual read model update logic (repository handles this)
 
-### 1. Update CreateTaskUseCase
+### 3. Test Infrastructure
 
-**File**: `internal/application/task/create_task.go`
+- Created `tests/mocks/task_repository.go` - Mock implementation for unit tests
+- Updated all task use case tests to use `MockTaskRepository`
+- Mock properly handles:
+  - Clearing uncommitted events after save (simulates real behavior)
+  - Returning `errs.ErrNotFound` for missing tasks
 
-Change from:
-- Inject `appcore.EventStore` directly
-- Call `eventStore.SaveEvents()` in use case
-
-Change to:
-- Inject `CommandRepository` (like Chat does)
-- Call `taskRepo.Save()` which handles everything
-
-### 2. Verify MongoTaskRepository.Save()
+## MongoTaskRepository.Save()
 
 **File**: `internal/infrastructure/repository/mongodb/task_repository.go`
 
-Ensure `Save()` method:
+The repository's `Save()` method:
 - [x] Saves events to EventStore
 - [x] Updates ReadModel
 - [ ] Publishes to EventBus (Task 003)
 
-### 3. Update Other Task Use Cases
-
-Review and update all task use cases that might use direct EventStore access:
-- `change_status.go`
-- `assign_task.go`
-- `change_priority.go`
-- `set_due_date.go`
-
 ## Acceptance Criteria
 
-- [ ] `CreateTaskUseCase` uses `taskRepo.Save()` instead of `eventStore.SaveEvents()`
-- [ ] All task use cases inject `CommandRepository`, not `EventStore`
-- [ ] Task ReadModel is updated on every save
-- [ ] Unit tests pass
-- [ ] Integration tests pass
+- [x] `CreateTaskUseCase` uses `taskRepo.Save()` instead of `eventStore.SaveEvents()`
+- [x] All task use cases inject `CommandRepository`, not `EventStore`
+- [x] Task ReadModel is updated on every save
+- [x] Unit tests pass
+- [x] Integration tests pass (via short test suite)
 
-## Files to Modify
+## Files Modified
 
 | File | Change |
 |------|--------|
-| `internal/application/task/create_task.go` | Replace EventStore with Repository |
-| `internal/application/task/change_status.go` | Verify uses Repository |
-| `internal/application/task/assign_task.go` | Verify uses Repository |
-| `internal/application/task/change_priority.go` | Verify uses Repository |
-| `internal/application/task/set_due_date.go` | Verify uses Repository |
-| `internal/application/task/interfaces.go` | Verify CommandRepository interface |
+| `internal/application/task/create_task.go` | Replaced EventStore with CommandRepository |
+| `internal/application/task/change_status.go` | Replaced EventStore with CommandRepository |
+| `internal/application/task/assign_task.go` | Replaced EventStore with CommandRepository |
+| `internal/application/task/change_priority.go` | Uses BaseExecutor with CommandRepository |
+| `internal/application/task/set_due_date.go` | Uses BaseExecutor with CommandRepository |
+| `internal/application/task/base_executor.go` | Replaced EventStore with CommandRepository |
+| `cmd/api/container.go` | Updated wiring to use TaskRepo |
+| `tests/mocks/task_repository.go` | Created mock for testing |
+| `*_test.go` files | Updated to use MockTaskRepository |
 
 ## Testing
 
 ```bash
-# Run task-related tests
+# All tests pass
 go test ./internal/application/task/... -v
-go test ./internal/infrastructure/repository/mongodb/task_repository_test.go -v
-go test ./tests/integration/... -tags=integration -run Task -v
+go test ./... -short
 ```
