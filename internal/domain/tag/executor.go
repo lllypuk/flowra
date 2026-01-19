@@ -2,6 +2,7 @@ package tag
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -52,6 +53,16 @@ func (e *CommandExecutor) Execute(ctx context.Context, cmd Command, actorID uuid
 		return e.executeChangeTitle(ctx, c, actorID)
 	case SetSeverityCommand:
 		return e.executeSetSeverity(ctx, c, actorID)
+	case InviteUserCommand:
+		return e.executeInviteUser(ctx, c, actorID)
+	case RemoveUserCommand:
+		return e.executeRemoveUser(ctx, c, actorID)
+	case CloseChatCommand:
+		return e.executeCloseChat(ctx, c, actorID)
+	case ReopenChatCommand:
+		return e.executeReopenChat(ctx, c, actorID)
+	case DeleteChatCommand:
+		return e.executeDeleteChat(ctx, c, actorID)
 	default:
 		return fmt.Errorf("unknown command type: %T", cmd)
 	}
@@ -215,4 +226,87 @@ func (e *CommandExecutor) executeSetSeverity(ctx context.Context, cmd SetSeverit
 	}
 
 	return nil
+}
+
+// Task 007a: Participant Management and Chat Lifecycle Executors
+
+// executeInviteUser performs command to add a participant to the chat
+func (e *CommandExecutor) executeInviteUser(ctx context.Context, cmd InviteUserCommand, actorID uuid.UUID) error {
+	// Resolve username to userID
+	username := strings.TrimPrefix(cmd.Username, "@")
+	user, err := e.userRepo.FindByUsername(ctx, username)
+	if err != nil {
+		return fmt.Errorf("user @%s not found: %w", username, err)
+	}
+
+	// Call AddParticipant use case
+	addCmd := chatApp.AddParticipantCommand{
+		ChatID:  domainUUID.FromGoogleUUID(cmd.ChatID),
+		UserID:  user.ID(),
+		Role:    "Member", // Default role
+		AddedBy: domainUUID.FromGoogleUUID(actorID),
+	}
+	_, err = e.chatUseCases.AddParticipant.Execute(ctx, addCmd)
+	if err != nil {
+		return fmt.Errorf("failed to add participant: %w", err)
+	}
+
+	return nil
+}
+
+// executeRemoveUser performs command to remove a participant from the chat
+func (e *CommandExecutor) executeRemoveUser(ctx context.Context, cmd RemoveUserCommand, actorID uuid.UUID) error {
+	// Resolve username to userID
+	username := strings.TrimPrefix(cmd.Username, "@")
+	user, err := e.userRepo.FindByUsername(ctx, username)
+	if err != nil {
+		return fmt.Errorf("user @%s not found: %w", username, err)
+	}
+
+	// Call RemoveParticipant use case
+	removeCmd := chatApp.RemoveParticipantCommand{
+		ChatID:    domainUUID.FromGoogleUUID(cmd.ChatID),
+		UserID:    user.ID(),
+		RemovedBy: domainUUID.FromGoogleUUID(actorID),
+	}
+	_, err = e.chatUseCases.RemoveParticipant.Execute(ctx, removeCmd)
+	if err != nil {
+		return fmt.Errorf("failed to remove participant: %w", err)
+	}
+
+	return nil
+}
+
+// executeCloseChat performs command to close/archive the chat
+func (e *CommandExecutor) executeCloseChat(ctx context.Context, cmd CloseChatCommand, actorID uuid.UUID) error {
+	closeCmd := chatApp.CloseChatCommand{
+		ChatID:   domainUUID.FromGoogleUUID(cmd.ChatID),
+		ClosedBy: domainUUID.FromGoogleUUID(actorID),
+	}
+	_, err := e.chatUseCases.CloseChat.Execute(ctx, closeCmd)
+	if err != nil {
+		return fmt.Errorf("failed to close chat: %w", err)
+	}
+
+	return nil
+}
+
+// executeReopenChat performs command to reopen a closed chat
+func (e *CommandExecutor) executeReopenChat(ctx context.Context, cmd ReopenChatCommand, actorID uuid.UUID) error {
+	reopenCmd := chatApp.ReopenChatCommand{
+		ChatID:     domainUUID.FromGoogleUUID(cmd.ChatID),
+		ReopenedBy: domainUUID.FromGoogleUUID(actorID),
+	}
+	_, err := e.chatUseCases.ReopenChat.Execute(ctx, reopenCmd)
+	if err != nil {
+		return fmt.Errorf("failed to reopen chat: %w", err)
+	}
+
+	return nil
+}
+
+// executeDeleteChat performs command to delete the chat
+func (e *CommandExecutor) executeDeleteChat(_ context.Context, _ DeleteChatCommand, _ uuid.UUID) error {
+	// Use the existing Delete method on Chat domain
+	return errors.New("delete chat not yet implemented - needs DeleteChatUseCase")
 }

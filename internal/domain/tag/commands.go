@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// Command represents komandu, kotoraya dolzhna byt vypolnena
+// Command represents a command that should be executed
 type Command interface {
 	CommandType() string
 }
@@ -102,7 +102,7 @@ func (c ChangeTitleCommand) CommandType() string {
 	return "ChangeTitle"
 }
 
-// SetSeverityCommand - command setting sereznosti baga
+// SetSeverityCommand - command setting bug severity
 type SetSeverityCommand struct {
 	ChatID   uuid.UUID
 	Severity string
@@ -111,4 +111,60 @@ type SetSeverityCommand struct {
 // CommandType returns type commands
 func (c SetSeverityCommand) CommandType() string {
 	return "SetSeverity"
+}
+
+// ====== Task 007a: Participant Management and Chat Lifecycle Commands ======
+
+// InviteUserCommand - command to add a participant to the chat
+type InviteUserCommand struct {
+	ChatID   uuid.UUID
+	Username string     // @alex format
+	UserID   *uuid.UUID // resolved ID (set by executor)
+}
+
+// CommandType returns command type
+func (c InviteUserCommand) CommandType() string {
+	return "InviteUser"
+}
+
+// RemoveUserCommand - command to remove a participant from the chat
+type RemoveUserCommand struct {
+	ChatID   uuid.UUID
+	Username string
+	UserID   *uuid.UUID // resolved ID (set by executor)
+}
+
+// CommandType returns command type
+func (c RemoveUserCommand) CommandType() string {
+	return "RemoveUser"
+}
+
+// CloseChatCommand - command to close/archive a chat
+type CloseChatCommand struct {
+	ChatID uuid.UUID
+}
+
+// CommandType returns command type
+func (c CloseChatCommand) CommandType() string {
+	return "CloseChat"
+}
+
+// ReopenChatCommand - command to reopen a closed chat
+type ReopenChatCommand struct {
+	ChatID uuid.UUID
+}
+
+// CommandType returns command type
+func (c ReopenChatCommand) CommandType() string {
+	return "ReopenChat"
+}
+
+// DeleteChatCommand - command to delete a chat (soft delete)
+type DeleteChatCommand struct {
+	ChatID uuid.UUID
+}
+
+// CommandType returns command type
+func (c DeleteChatCommand) CommandType() string {
+	return "DeleteChat"
 }

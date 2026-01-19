@@ -264,6 +264,83 @@ func (p *Processor) ProcessTags(
 				Command:  cmd,
 				Success:  true,
 			})
+
+		// ====== Task 007a: Participant Management Tags ======
+		case "invite":
+			if err := validateUsername(tag.Value); err != nil {
+				result.Errors = append(result.Errors, TagError{
+					TagKey:   tag.Key,
+					TagValue: tag.Value,
+					Error:    err,
+					Severity: ErrorSeverityError,
+				})
+				continue
+			}
+			cmd := InviteUserCommand{
+				ChatID:   chatID,
+				Username: tag.Value,
+			}
+			result.AppliedTags = append(result.AppliedTags, TagApplication{
+				TagKey:   tag.Key,
+				TagValue: tag.Value,
+				Command:  cmd,
+				Success:  true,
+			})
+
+		case "remove":
+			if err := validateUsername(tag.Value); err != nil {
+				result.Errors = append(result.Errors, TagError{
+					TagKey:   tag.Key,
+					TagValue: tag.Value,
+					Error:    err,
+					Severity: ErrorSeverityError,
+				})
+				continue
+			}
+			cmd := RemoveUserCommand{
+				ChatID:   chatID,
+				Username: tag.Value,
+			}
+			result.AppliedTags = append(result.AppliedTags, TagApplication{
+				TagKey:   tag.Key,
+				TagValue: tag.Value,
+				Command:  cmd,
+				Success:  true,
+			})
+
+		// ====== Task 007a: Chat Lifecycle Tags ======
+		case "close":
+			// Cannot close a discussion
+			if entityType == "" {
+				result.Errors = append(result.Errors, TagError{
+					TagKey:   tag.Key,
+					Error:    ErrNoActiveEntity,
+					Severity: ErrorSeverityError,
+				})
+				continue
+			}
+			cmd := CloseChatCommand{ChatID: chatID}
+			result.AppliedTags = append(result.AppliedTags, TagApplication{
+				TagKey:  tag.Key,
+				Command: cmd,
+				Success: true,
+			})
+
+		case "reopen":
+			cmd := ReopenChatCommand{ChatID: chatID}
+			result.AppliedTags = append(result.AppliedTags, TagApplication{
+				TagKey:  tag.Key,
+				Command: cmd,
+				Success: true,
+			})
+
+		case "delete":
+			cmd := DeleteChatCommand{ChatID: chatID}
+			result.AppliedTags = append(result.AppliedTags, TagApplication{
+				TagKey:  tag.Key,
+				Command: cmd,
+				Success: true,
+			})
 		}
 	}
 

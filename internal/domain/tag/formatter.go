@@ -63,7 +63,22 @@ func formatSuccess(applied TagApplication) string {
 		return fmt.Sprintf("✅ Title changed to: %s", applied.TagValue)
 
 	case SetSeverityCommand:
-		return fmt.Sprintf("✅ severity set to %s", applied.TagValue)
+		return fmt.Sprintf("✅ Severity set to %s", applied.TagValue)
+
+	case InviteUserCommand:
+		return fmt.Sprintf("✅ Invited %s to the chat", applied.TagValue)
+
+	case RemoveUserCommand:
+		return fmt.Sprintf("✅ Removed %s from the chat", applied.TagValue)
+
+	case CloseChatCommand:
+		return "✅ Chat closed"
+
+	case ReopenChatCommand:
+		return "✅ Chat reopened"
+
+	case DeleteChatCommand:
+		return "✅ Chat deleted"
 
 	default:
 		return "✅ Applied"

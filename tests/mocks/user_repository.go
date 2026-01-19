@@ -35,6 +35,15 @@ func (m *MockUserRepository) Exists(_ context.Context, userID uuid.UUID) (bool, 
 	return exists, nil
 }
 
+// GetByID finds a user by ID
+func (m *MockUserRepository) GetByID(_ context.Context, userID uuid.UUID) (*appcore.User, error) {
+	user, exists := m.users[userID]
+	if !exists {
+		return nil, errs.ErrNotFound
+	}
+	return user, nil
+}
+
 // GetByUsername finds a user by username
 func (m *MockUserRepository) GetByUsername(_ context.Context, username string) (*appcore.User, error) {
 	for _, user := range m.users {

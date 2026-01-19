@@ -68,6 +68,12 @@ const (
 	defaultWSMaxMessageSize = 65536
 )
 
+// System bot user ID for automated responses
+const (
+	SystemBotUserID   = "00000000-0000-0000-0000-000000000001"
+	SystemBotUsername = "FlowraBot"
+)
+
 // Container holds all application dependencies and manages their lifecycle.
 // It implements httpserver.HealthChecker for unified health endpoint support.
 type Container struct {
@@ -124,11 +130,13 @@ type Container struct {
 	MemberService    *service.MemberService
 	ChatService      *service.ChatService
 	MessageService   *service.MessageService
+	ActionService    *service.ActionService
 
 	// HTTP Handlers
 	AuthHandler         *httphandler.AuthHandler
 	WorkspaceHandler    *httphandler.WorkspaceHandler
 	ChatHandler         *httphandler.ChatHandler
+	ChatActionHandler   *httphandler.ChatActionHandler
 	MessageHandler      *httphandler.MessageHandler
 	TaskHandler         *httphandler.TaskHandler
 	NotificationHandler *httphandler.NotificationHandler
@@ -633,12 +641,14 @@ func (c *Container) setupMessageUseCases() {
 	tagExecutor := tag.NewCommandExecutor(chatUseCases, c.UserRepo)
 
 	// SendMessage use case with tag support
+	botUserID, _ := uuid.ParseUUID(SystemBotUserID)
 	c.SendMessageUC = messageapp.NewSendMessageUseCase(
 		c.MessageRepo,
 		c.ChatQueryRepo,
 		c.EventBus,
 		tagProcessor,
 		tagExecutor,
+		botUserID,
 	)
 
 	// ListMessages use case
@@ -688,15 +698,26 @@ func (c *Container) setupMessageUseCases() {
 // Uses ChatRepo which updates both event store AND read model (unlike EventStore alone).
 func (c *Container) createChatUseCasesForTags() *tag.ChatUseCases {
 	return &tag.ChatUseCases{
+		// Entity Creation
 		ConvertToTask: chatapp.NewConvertToTaskUseCase(c.ChatRepo),
 		ConvertToBug:  chatapp.NewConvertToBugUseCase(c.ChatRepo),
 		ConvertToEpic: chatapp.NewConvertToEpicUseCase(c.ChatRepo),
-		ChangeStatus:  chatapp.NewChangeStatusUseCase(c.ChatRepo),
-		AssignUser:    chatapp.NewAssignUserUseCase(c.ChatRepo),
-		SetPriority:   chatapp.NewSetPriorityUseCase(c.ChatRepo),
-		SetDueDate:    chatapp.NewSetDueDateUseCase(c.ChatRepo),
-		Rename:        chatapp.NewRenameChatUseCase(c.ChatRepo),
-		SetSeverity:   chatapp.NewSetSeverityUseCase(c.ChatRepo),
+
+		// Entity Management
+		ChangeStatus: chatapp.NewChangeStatusUseCase(c.ChatRepo),
+		AssignUser:   chatapp.NewAssignUserUseCase(c.ChatRepo),
+		SetPriority:  chatapp.NewSetPriorityUseCase(c.ChatRepo),
+		SetDueDate:   chatapp.NewSetDueDateUseCase(c.ChatRepo),
+		Rename:       chatapp.NewRenameChatUseCase(c.ChatRepo),
+		SetSeverity:  chatapp.NewSetSeverityUseCase(c.ChatRepo),
+
+		// Participant Management (Task 007a)
+		AddParticipant:    chatapp.NewAddParticipantUseCase(c.EventStore),
+		RemoveParticipant: chatapp.NewRemoveParticipantUseCase(c.EventStore),
+
+		// Chat Lifecycle (Task 007a)
+		CloseChat:  chatapp.NewCloseChatUseCase(c.EventStore),
+		ReopenChat: chatapp.NewReopenChatUseCase(c.EventStore),
 	}
 }
 
@@ -775,7 +796,8 @@ func (c *Container) setupHTTPHandlers() {
 	// === 5. Chat Service (Real) ===
 	c.ChatService = c.createChatService()
 	c.ChatHandler = httphandler.NewChatHandler(c.ChatService)
-	c.Logger.Debug("chat service initialized (real)")
+	c.ChatActionHandler = httphandler.NewChatActionHandler(c.ActionService)
+	c.Logger.Debug("chat service and handlers initialized (real)")
 
 	// === 6. Auth Service ===
 	authService := c.createAuthService()
@@ -844,6 +866,10 @@ func (c *Container) setupHTTPHandlers() {
 	)
 	c.MessageHandler = httphandler.NewMessageHandler(c.MessageService)
 	c.Logger.Debug("message service and handler initialized (real)")
+
+	// === 14. Action Service ===
+	c.ActionService = service.NewActionService(c.SendMessageUC, c.UserRepo)
+	c.Logger.Debug("action service initialized")
 
 	// Initialize TaskHandler with full service
 	c.TaskHandler = httphandler.NewTaskHandler(c.createFullTaskService())

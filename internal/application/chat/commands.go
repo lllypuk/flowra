@@ -129,3 +129,23 @@ type SetSeverityCommand struct {
 
 // CommandName returns the command name
 func (c SetSeverityCommand) CommandName() string { return "SetSeverity" }
+
+// Task 007a: Chat Lifecycle Commands
+
+// CloseChatCommand contains data for closing/archiving a chat
+type CloseChatCommand struct {
+	ChatID   uuid.UUID
+	ClosedBy uuid.UUID
+}
+
+// CommandName returns the command name
+func (c CloseChatCommand) CommandName() string { return "CloseChat" }
+
+// ReopenChatCommand contains data for reopening a closed chat
+type ReopenChatCommand struct {
+	ChatID     uuid.UUID
+	ReopenedBy uuid.UUID
+}
+
+// CommandName returns the command name
+func (c ReopenChatCommand) CommandName() string { return "ReopenChat" }

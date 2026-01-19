@@ -22,6 +22,8 @@ const (
 	EventTypeChatRenamed        = "chat.renamed"
 	EventTypeSeveritySet        = "chat.severity_set"
 	EventTypeChatDeleted        = "chat.deleted"
+	EventTypeChatClosed         = "chat.closed"   // Task 007a
+	EventTypeChatReopened       = "chat.reopened" // Task 007a
 )
 
 // Created event creating chat
@@ -389,5 +391,69 @@ func NewChatDeleted(
 		),
 		DeletedBy: deletedBy,
 		DeletedAt: deletedAt,
+	}
+}
+
+// ====== Task 007a: Chat Lifecycle Events ======
+
+// Closed event when chat is closed/archived
+type Closed struct {
+	event.BaseEvent `bson:",inline"`
+
+	ClosedBy       uuid.UUID `json:"closed_by"       bson:"closed_by"`
+	PreviousStatus string    `json:"previous_status" bson:"previous_status"`
+	ClosedAt       time.Time `json:"closed_at"       bson:"closed_at"`
+}
+
+// NewChatClosed creates event Closed
+func NewChatClosed(
+	chatID, closedBy uuid.UUID,
+	previousStatus string,
+	closedAt time.Time,
+	version int,
+	metadata event.Metadata,
+) *Closed {
+	return &Closed{
+		BaseEvent: event.NewBaseEvent(
+			EventTypeChatClosed,
+			chatID.String(),
+			"Chat",
+			version,
+			metadata,
+		),
+		ClosedBy:       closedBy,
+		PreviousStatus: previousStatus,
+		ClosedAt:       closedAt,
+	}
+}
+
+// Reopened event when chat is reopened
+type Reopened struct {
+	event.BaseEvent `bson:",inline"`
+
+	ReopenedBy uuid.UUID `json:"reopened_by" bson:"reopened_by"`
+	NewStatus  string    `json:"new_status"  bson:"new_status"`
+	ReopenedAt time.Time `json:"reopened_at" bson:"reopened_at"`
+}
+
+// NewChatReopened creates event Reopened
+func NewChatReopened(
+	chatID, reopenedBy uuid.UUID,
+	newStatus string,
+	reopenedAt time.Time,
+	version int,
+	metadata event.Metadata,
+) *Reopened {
+	return &Reopened{
+		BaseEvent: event.NewBaseEvent(
+			EventTypeChatReopened,
+			chatID.String(),
+			"Chat",
+			version,
+			metadata,
+		),
+		ReopenedBy: reopenedBy,
+		NewStatus:  newStatus,
+		ReopenedAt: reopenedAt,
 	}
 }

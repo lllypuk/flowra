@@ -129,6 +129,17 @@ func registerChatRoutes(r *httpserver.Router, c *Container) {
 	// Chat participants
 	chats.POST("/:id/participants", c.ChatHandler.AddParticipant)
 	chats.DELETE("/:id/participants/:user_id", c.ChatHandler.RemoveParticipant)
+
+	// Chat actions (message-based modifications)
+	if c.ChatActionHandler != nil {
+		chats.POST("/:id/actions/status", c.ChatActionHandler.ChangeStatus)
+		chats.POST("/:id/actions/priority", c.ChatActionHandler.ChangePriority)
+		chats.POST("/:id/actions/assignee", c.ChatActionHandler.ChangeAssignee)
+		chats.POST("/:id/actions/due-date", c.ChatActionHandler.SetDueDate)
+		chats.POST("/:id/actions/close", c.ChatActionHandler.Close)
+		chats.POST("/:id/actions/reopen", c.ChatActionHandler.Reopen)
+		chats.POST("/:id/actions/rename", c.ChatActionHandler.Rename)
+	}
 }
 
 // registerMessageRoutes registers message-related routes.

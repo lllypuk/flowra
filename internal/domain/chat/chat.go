@@ -25,6 +25,11 @@ const (
 	TypeEpic Type = "epic"
 )
 
+// Status constants for chat status
+const (
+	StatusClosed = "Closed"
+)
+
 // Chat represents the chat aggregate root with Event Sourcing
 type Chat struct {
 	id           uuid.UUID
@@ -472,6 +477,52 @@ func (c *Chat) Delete(deletedBy uuid.UUID) error {
 	return nil
 }
 
+// Close closes/archives the chat (Task 007a)
+func (c *Chat) Close(closedBy uuid.UUID) error {
+	// Cannot close a Discussion
+	if c.chatType == TypeDiscussion {
+		return errors.New("cannot close a discussion")
+	}
+
+	// Check if already closed
+	if c.status == StatusClosed {
+		return errors.New("chat is already closed")
+	}
+
+	previousStatus := c.status
+	evt := NewChatClosed(
+		c.id,
+		closedBy,
+		previousStatus,
+		time.Now(),
+		c.version+1,
+		event.Metadata{},
+	)
+	c.applyEvent(evt)
+	return nil
+}
+
+// Reopen reopens a closed chat (Task 007a)
+func (c *Chat) Reopen(reopenedBy uuid.UUID) error {
+	// Check if closed
+	if c.status != StatusClosed {
+		return errors.New("chat is not closed")
+	}
+
+	// Determine the default status for the entity type
+	newStatus := c.getDefaultStatus()
+	evt := NewChatReopened(
+		c.id,
+		reopenedBy,
+		newStatus,
+		time.Now(),
+		c.version+1,
+		event.Metadata{},
+	)
+	c.applyEvent(evt)
+	return nil
+}
+
 // SetSeverity sets severity for Bug
 func (c *Chat) SetSeverity(severity string, setBy uuid.UUID) error {
 	if c.chatType != TypeBug {
@@ -590,6 +641,10 @@ func (c *Chat) Apply(e event.DomainEvent) error {
 		c.applySeveritySet(evt)
 	case *Deleted:
 		c.applyDeleted(evt)
+	case *Closed:
+		c.applyClosed(evt)
+	case *Reopened:
+		c.applyReopened(evt)
 	default:
 		// Ignore unknown events (forward compatibility)
 	}
@@ -677,6 +732,17 @@ func (c *Chat) applyDeleted(evt *Deleted) {
 	c.deleted = true
 	c.deletedAt = &evt.DeletedAt
 	c.deletedBy = &evt.DeletedBy
+	c.version = evt.Version()
+}
+
+// Task 007a: Apply methods for Close/Reopen events
+func (c *Chat) applyClosed(evt *Closed) {
+	c.status = StatusClosed
+	c.version = evt.Version()
+}
+
+func (c *Chat) applyReopened(evt *Reopened) {
+	c.status = evt.NewStatus
 	c.version = evt.Version()
 }
 
