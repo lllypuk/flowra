@@ -2,6 +2,7 @@ package eventstore
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"time"
@@ -204,13 +205,13 @@ func setEventFields(evt event.DomainEvent, doc *EventDocument) error {
 	// Use reflection to access the embedded BaseEvent
 	v := reflect.ValueOf(evt).Elem()
 	if !v.IsValid() {
-		return fmt.Errorf("invalid event value")
+		return errors.New("invalid event value")
 	}
 
 	// Find the BaseEvent field
 	baseField := v.FieldByName("BaseEvent")
 	if !baseField.IsValid() {
-		return fmt.Errorf("event does not have BaseEvent field")
+		return errors.New("event does not have BaseEvent field")
 	}
 
 	// Set the version from document (authoritative source)

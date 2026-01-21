@@ -137,7 +137,7 @@ func (b *Broadcaster) IsRunning() bool {
 
 // handleEvent processes a domain event and broadcasts it via WebSocket.
 func (b *Broadcaster) handleEvent(ctx context.Context, evt event.DomainEvent) error {
-	b.logger.DebugContext(ctx, "handling event",
+	b.logger.InfoContext(ctx, "BROADCASTER: handleEvent called",
 		slog.String("event_type", evt.EventType()),
 		slog.String("aggregate_id", evt.AggregateID()),
 		slog.String("aggregate_type", evt.AggregateType()),
@@ -145,9 +145,18 @@ func (b *Broadcaster) handleEvent(ctx context.Context, evt event.DomainEvent) er
 
 	wsMessage := b.transformEvent(evt)
 	if wsMessage == nil {
-		b.logger.DebugContext(ctx, "event transformed to nil message", slog.String("event_type", evt.EventType()))
+		b.logger.InfoContext(
+			ctx,
+			"BROADCASTER: event transformed to nil message",
+			slog.String("event_type", evt.EventType()),
+		)
 		return nil
 	}
+
+	b.logger.InfoContext(ctx, "BROADCASTER: event transformed successfully",
+		slog.String("event_type", evt.EventType()),
+		slog.String("ws_type", wsMessage.Type),
+	)
 
 	messageBytes, err := json.Marshal(wsMessage)
 	if err != nil {
@@ -165,30 +174,38 @@ func (b *Broadcaster) handleEvent(ctx context.Context, evt event.DomainEvent) er
 		userID := b.extractUserID(evt)
 		if !userID.IsZero() {
 			b.hub.SendToUser(userID, messageBytes)
-			b.logger.DebugContext(ctx, "sent message to user",
+			b.logger.InfoContext(ctx, "BROADCASTER: sent message to user",
 				slog.String("event_type", evt.EventType()),
 				slog.String("user_id", userID.String()),
+			)
+		} else {
+			b.logger.InfoContext(ctx, "BROADCASTER: user_id is zero, skipping user send",
+				slog.String("event_type", evt.EventType()),
 			)
 		}
 
 	case b.isChatEvent(evt.EventType()):
 		// Broadcast to chat room
 		chatID := b.extractChatID(evt)
-		b.logger.DebugContext(ctx, "extracted chat_id for broadcast",
+		b.logger.InfoContext(ctx, "BROADCASTER: extracted chat_id for broadcast",
 			slog.String("event_type", evt.EventType()),
 			slog.String("chat_id", chatID.String()),
 			slog.Bool("is_zero", chatID.IsZero()),
 		)
 		if !chatID.IsZero() {
 			b.hub.BroadcastToChat(chatID, messageBytes)
-			b.logger.DebugContext(ctx, "broadcast message to chat",
+			b.logger.InfoContext(ctx, "BROADCASTER: broadcast message to chat",
 				slog.String("event_type", evt.EventType()),
 				slog.String("chat_id", chatID.String()),
+			)
+		} else {
+			b.logger.InfoContext(ctx, "BROADCASTER: chat_id is zero, skipping broadcast",
+				slog.String("event_type", evt.EventType()),
 			)
 		}
 
 	default:
-		b.logger.DebugContext(ctx, "event not routable",
+		b.logger.InfoContext(ctx, "BROADCASTER: event not routable",
 			slog.String("event_type", evt.EventType()),
 		)
 	}
@@ -311,10 +328,16 @@ func (b *Broadcaster) extractChatID(evt event.DomainEvent) uuid.UUID {
 	if payloadEvent, ok := evt.(PayloadProvider); ok {
 		payload := payloadEvent.Payload()
 		var data struct {
-			ChatID string `json:"chat_id"`
+			ChatID string `json:"ChatID"` // Note: uppercase to match serialized event
 		}
+		b.logger.InfoContext(context.Background(), "BROADCASTER: attempting to extract chat_id from payload",
+			slog.String("payload", string(payload)),
+		)
 		if unmarshalErr := json.Unmarshal(payload, &data); unmarshalErr == nil && data.ChatID != "" {
 			if parsedID, parseErr := uuid.ParseUUID(data.ChatID); parseErr == nil {
+				b.logger.InfoContext(context.Background(), "BROADCASTER: successfully extracted chat_id from payload",
+					slog.String("chat_id", parsedID.String()),
+				)
 				return parsedID
 			}
 		}

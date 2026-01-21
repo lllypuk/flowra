@@ -183,11 +183,20 @@ func (b *RedisEventBus) Publish(ctx context.Context, evt event.DomainEvent) erro
 
 	channel := b.channelName(evt.EventType())
 
+	b.logger.InfoContext(ctx, "EVENTBUS: publishing to Redis",
+		slog.String("event_type", evt.EventType()),
+		slog.String("channel", channel),
+		slog.String("aggregate_id", evt.AggregateID()),
+	)
+
 	if publishErr := b.client.Publish(ctx, channel, data).Err(); publishErr != nil {
+		b.logger.ErrorContext(ctx, "EVENTBUS: publish failed",
+			slog.String("error", publishErr.Error()),
+		)
 		return fmt.Errorf("failed to publish event to Redis: %w", publishErr)
 	}
 
-	b.logger.DebugContext(ctx, "event published",
+	b.logger.InfoContext(ctx, "EVENTBUS: published successfully",
 		slog.String("event_id", envelope.ID),
 		slog.String("event_type", evt.EventType()),
 		slog.String("aggregate_id", evt.AggregateID()),
@@ -360,6 +369,10 @@ func (b *RedisEventBus) subscribedChannels() []string {
 
 // handleMessage processes a message received from Redis.
 func (b *RedisEventBus) handleMessage(ctx context.Context, msg *redis.Message) {
+	b.logger.InfoContext(ctx, "EVENTBUS: message received from Redis",
+		slog.String("channel", msg.Channel),
+	)
+
 	var envelope eventEnvelope
 	if err := json.Unmarshal([]byte(msg.Payload), &envelope); err != nil {
 		b.logger.ErrorContext(ctx, "failed to unmarshal event",
@@ -374,6 +387,11 @@ func (b *RedisEventBus) handleMessage(ctx context.Context, msg *redis.Message) {
 	b.handlersMu.RLock()
 	handlers := b.handlers[envelope.EventType]
 	b.handlersMu.RUnlock()
+
+	b.logger.InfoContext(ctx, "EVENTBUS: dispatching to handlers",
+		slog.String("event_type", envelope.EventType),
+		slog.Int("handler_count", len(handlers)),
+	)
 
 	for i, handler := range handlers {
 		b.wg.Add(1)
