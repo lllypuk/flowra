@@ -3,6 +3,7 @@ package message
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/lllypuk/flowra/internal/application/appcore"
 	chatapp "github.com/lllypuk/flowra/internal/application/chat"
@@ -26,6 +27,7 @@ type SendMessageUseCase struct {
 	tagProcessor *tag.Processor       // Tag processor for parsing tags from message content
 	tagExecutor  *tag.CommandExecutor // Tag executor for executing tag commands
 	botUserID    uuid.UUID            // System bot user ID for bot responses
+	logger       *slog.Logger         // Logger for debugging
 }
 
 // NewSendMessageUseCase creates New SendMessageUseCase
@@ -44,6 +46,7 @@ func NewSendMessageUseCase(
 		tagProcessor: tagProcessor,
 		tagExecutor:  tagExecutor,
 		botUserID:    botUserID,
+		logger:       slog.Default(),
 	}
 }
 
@@ -116,8 +119,13 @@ func (uc *SendMessageUseCase) Execute(
 		},
 	)
 	// not critical, message already saved
-	// TODO: log error
-	_ = uc.eventBus.Publish(ctx, evt)
+	if pubErr := uc.eventBus.Publish(ctx, evt); pubErr != nil {
+		uc.logger.WarnContext(ctx, "failed to publish message created event",
+			slog.String("message_id", msg.ID().String()),
+			slog.String("chat_id", cmd.ChatID.String()),
+			slog.String("error", pubErr.Error()),
+		)
+	}
 
 	// 7. async tag handling (do not block response)
 	// Use background context since HTTP request context will be canceled after response
@@ -225,17 +233,27 @@ func (uc *SendMessageUseCase) sendBotResponse(ctx context.Context, chatID uuid.U
 		nil, // no actor for bot messages
 	)
 	if err != nil {
-		// Failed to create bot message - log and return
-		// TODO: use structured logging
+		uc.logger.ErrorContext(ctx, "failed to create bot message",
+			slog.String("chat_id", chatID.String()),
+			slog.String("error", err.Error()),
+		)
 		return
 	}
 
 	// Save to database
 	if saveErr := uc.messageRepo.Save(ctx, botMsg); saveErr != nil {
-		// Failed to save - log and return
-		// TODO: use structured logging
+		uc.logger.ErrorContext(ctx, "failed to save bot message",
+			slog.String("message_id", botMsg.ID().String()),
+			slog.String("chat_id", chatID.String()),
+			slog.String("error", saveErr.Error()),
+		)
 		return
 	}
+
+	uc.logger.DebugContext(ctx, "bot message saved, publishing event",
+		slog.String("message_id", botMsg.ID().String()),
+		slog.String("chat_id", chatID.String()),
+	)
 
 	// Publish event for WebSocket broadcast
 	evt := messagedomain.NewCreated(
@@ -249,8 +267,20 @@ func (uc *SendMessageUseCase) sendBotResponse(ctx context.Context, chatID uuid.U
 			Timestamp: botMsg.CreatedAt(),
 		},
 	)
-	// Non-critical, just log errors
-	_ = uc.eventBus.Publish(ctx, evt)
+
+	// Publish event for WebSocket broadcast
+	if pubErr := uc.eventBus.Publish(ctx, evt); pubErr != nil {
+		uc.logger.ErrorContext(ctx, "failed to publish bot message event",
+			slog.String("message_id", botMsg.ID().String()),
+			slog.String("chat_id", chatID.String()),
+			slog.String("error", pubErr.Error()),
+		)
+	} else {
+		uc.logger.DebugContext(ctx, "bot message event published successfully",
+			slog.String("message_id", botMsg.ID().String()),
+			slog.String("chat_id", chatID.String()),
+		)
+	}
 }
 
 // chatTypeToEntityType converts chat.Type to entity type string expected by tag processor.

@@ -646,7 +646,10 @@ func (c *Chat) Apply(e event.DomainEvent) error {
 	case *Reopened:
 		c.applyReopened(evt)
 	default:
-		// Ignore unknown events (forward compatibility)
+		// Update version for unknown events to maintain correct version tracking.
+		// This is essential for event sourcing: even if we don't understand an event,
+		// we must track its version to avoid concurrency conflicts.
+		c.version = e.Version()
 	}
 	return nil
 }

@@ -224,8 +224,11 @@ func (b *Broadcaster) transformEvent(evt event.DomainEvent) *OutboundMessage {
 
 	// Add chat_id if this is a chat-related event
 	if b.isChatEvent(evt.EventType()) {
-		chatID := evt.AggregateID()
-		msg.ChatID = &chatID
+		chatID := b.extractChatID(evt) // Use existing extractChatID() helper
+		if !chatID.IsZero() {
+			chatIDStr := chatID.String()
+			msg.ChatID = &chatIDStr
+		}
 	}
 
 	return msg

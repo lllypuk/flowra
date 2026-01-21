@@ -419,13 +419,27 @@ If issues arise:
 
 ## Success Criteria
 
-1. All entity changes appear in chat history
-2. No direct modification without chat message
-3. System messages are visually distinct but clear
-4. Existing frontend functionality preserved
-5. API backward compatibility during migration
-6. All tests passing
-7. No performance degradation
+1. ✅ All entity changes appear in chat history
+2. ✅ No direct modification without chat message
+3. ✅ System messages are visually distinct but clear
+4. ✅ Existing frontend functionality preserved
+5. ✅ API backward compatibility during migration
+6. ✅ All tests passing
+7. ⚠️ No performance degradation - **See Task 008 for known issues**
+
+---
+
+## Known Issues
+
+During testing (2026-01-20), several critical issues were discovered:
+
+1. **Concurrency Bug**: Tag commands fail after first attempt with "concurrent modification detected" error. Root cause: executor needs to reload chat aggregate fresh on each retry. See **Task 008** for details and fixes in progress.
+
+2. **Bot Messages Real-Time**: Bot responses are saved to database but don't appear in real-time via WebSocket. Page refresh required to see bot messages.
+
+3. **Bot Display**: ✅ FIXED - Bot now shows as "🤖 Flowra Bot" with proper styling.
+
+For tracking and resolution of these issues, see: **docs/tasks/008-tag-system-fixes.md**
 
 ---
 

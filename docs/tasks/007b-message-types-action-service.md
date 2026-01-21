@@ -679,11 +679,11 @@ func (h *TaskHandler) ChangeStatus(c echo.Context) error {
 - [x] Message type field added to domain and stored correctly
 - [x] System messages have actor_id set
 - [x] ActionService creates messages with correct tags
-- [ ] HTTP handlers use ActionService for all modifying operations (moved to 007c)
-- [ ] System messages appear in chat history (moved to 007c)
+- [x] HTTP handlers use ActionService for all modifying operations (completed in 007c)
+- [x] System messages appear in chat history (completed in 007c)
 - [x] All existing tests pass
 - [x] New tests for ActionService pass (service tested via integration)
-- [ ] Deprecation headers added to modified endpoints (moved to 007c)
+- [x] Deprecation headers added to modified endpoints (not needed - new endpoints created in 007c)
 
 ---
 

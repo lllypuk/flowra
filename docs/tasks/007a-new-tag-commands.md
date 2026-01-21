@@ -521,5 +521,5 @@ func (c *Container) createChatUseCasesForTags() *tag.ChatUseCases {
 - [x] Close/Reopen produce correct events
 - [x] Events saved to EventStore
 - [x] ReadModel updated correctly
-- [ ] Bot response generated for each operation (deferred to 007c)
+- [x] Bot response generated for each operation (completed in 007c)
 - [x] All tests pass

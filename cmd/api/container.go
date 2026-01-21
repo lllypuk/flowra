@@ -197,6 +197,13 @@ func NewContainer(cfg *config.Config, opts ...ContainerOption) (*Container, erro
 	}
 
 	c.setupRepositories()
+
+	// Ensure system bot user exists in database
+	if err := c.ensureSystemBot(context.Background()); err != nil {
+		c.Logger.Warn("failed to create system bot user", slog.String("error", err.Error()))
+		// Non-fatal - continue initialization
+	}
+
 	c.setupUseCases()
 	c.setupEventHandlers()
 
@@ -1688,6 +1695,49 @@ func (a *userRepoAdapter) FindByID(ctx echo.Context, id uuid.UUID) (*user.User, 
 // FindByExternalID implements httphandler.UserRepository.
 func (a *userRepoAdapter) FindByExternalID(ctx echo.Context, externalID string) (*user.User, error) {
 	return a.repo.FindByExternalID(ctx.Request().Context(), externalID)
+}
+
+// ensureSystemBot ensures that the system bot user exists in the database.
+// This is called during container initialization to guarantee the bot user is available
+// for automated responses (tag processing, notifications, etc.).
+func (c *Container) ensureSystemBot(ctx context.Context) error {
+	botUserID, err := uuid.ParseUUID(SystemBotUserID)
+	if err != nil {
+		return fmt.Errorf("invalid system bot user ID: %w", err)
+	}
+
+	// Check if bot user already exists
+	existingUser, err := c.UserRepo.FindByID(ctx, botUserID)
+	if err == nil && existingUser != nil {
+		c.Logger.DebugContext(ctx, "system bot user already exists",
+			slog.String("user_id", SystemBotUserID),
+			slog.String("username", existingUser.Username()),
+		)
+		return nil
+	}
+
+	// Create the system bot user
+	botUser, err := user.NewUser(
+		SystemBotUserID,   // Use the bot UUID as external ID
+		SystemBotUsername, // Username: "FlowraBot"
+		"bot@flowra.internal",
+		"Flowra Bot", // Display name
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create system bot user: %w", err)
+	}
+
+	// Save the bot user
+	if err := c.UserRepo.Save(ctx, botUser); err != nil {
+		return fmt.Errorf("failed to save system bot user: %w", err)
+	}
+
+	c.Logger.InfoContext(ctx, "system bot user created",
+		slog.String("user_id", SystemBotUserID),
+		slog.String("username", SystemBotUsername),
+	)
+
+	return nil
 }
 
 // Close gracefully closes all container resources.

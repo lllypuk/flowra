@@ -227,3 +227,15 @@ Task 007c is **complete** from a backend perspective:
 - ✅ Build successful
 
 Frontend integration deferred to future work. The tag-based entity management feature is now fully functional at the backend level.
+
+---
+
+## Known Issues (See Task 008)
+
+Testing on 2026-01-20 revealed several issues that need to be addressed:
+
+1. **Concurrency Bug**: ❌ CRITICAL - Tag executor fails with "concurrent modification detected" due to stale aggregate version. Retry mechanism added but needs to reload chat fresh on each retry. **Status**: In Progress
+2. **Bot Messages Real-Time**: ❌ Bot responses are saved but don't appear in real-time via WebSocket (require page refresh). **Status**: Not Fixed
+3. **Bot User Display**: ✅ FIXED - Bot now shows as "🤖 Flowra Bot" with proper styling
+
+These issues are tracked in **Task 008: Tag System Critical Fixes** (docs/tasks/008-tag-system-fixes.md).

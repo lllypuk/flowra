@@ -5,14 +5,23 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	chatApp "github.com/lllypuk/flowra/internal/application/chat"
+	"github.com/lllypuk/flowra/internal/domain/errs"
 	domainUUID "github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 const (
 	noneUsername = "@none"
+
+	// Retry configuration for handling concurrency conflicts
+	// Increased to handle high-contention scenarios where chat is being modified rapidly
+	maxRetries         = 5
+	initialRetryDelay  = 100 * time.Millisecond
+	maxRetryDelay      = 2000 * time.Millisecond
+	retryDelayMultiple = 2
 )
 
 // CommandExecutor performs tag commands via Chat UseCases
@@ -32,40 +41,84 @@ func NewCommandExecutor(
 	}
 }
 
-// Execute performs komandu
+// Execute performs command with automatic retry on concurrency conflicts
 func (e *CommandExecutor) Execute(ctx context.Context, cmd Command, actorID uuid.UUID) error {
-	switch c := cmd.(type) {
-	case CreateTaskCommand:
-		return e.executeCreateTask(ctx, c, actorID)
-	case CreateBugCommand:
-		return e.executeCreateBug(ctx, c, actorID)
-	case CreateEpicCommand:
-		return e.executeCreateEpic(ctx, c, actorID)
-	case ChangeStatusCommand:
-		return e.executeChangeStatus(ctx, c, actorID)
-	case AssignUserCommand:
-		return e.executeAssignUser(ctx, c, actorID)
-	case ChangePriorityCommand:
-		return e.executeChangePriority(ctx, c, actorID)
-	case SetDueDateCommand:
-		return e.executeSetDueDate(ctx, c, actorID)
-	case ChangeTitleCommand:
-		return e.executeChangeTitle(ctx, c, actorID)
-	case SetSeverityCommand:
-		return e.executeSetSeverity(ctx, c, actorID)
-	case InviteUserCommand:
-		return e.executeInviteUser(ctx, c, actorID)
-	case RemoveUserCommand:
-		return e.executeRemoveUser(ctx, c, actorID)
-	case CloseChatCommand:
-		return e.executeCloseChat(ctx, c, actorID)
-	case ReopenChatCommand:
-		return e.executeReopenChat(ctx, c, actorID)
-	case DeleteChatCommand:
-		return e.executeDeleteChat(ctx, c, actorID)
-	default:
-		return fmt.Errorf("unknown command type: %T", cmd)
+	return e.executeWithRetry(ctx, func() error {
+		switch c := cmd.(type) {
+		case CreateTaskCommand:
+			return e.executeCreateTask(ctx, c, actorID)
+		case CreateBugCommand:
+			return e.executeCreateBug(ctx, c, actorID)
+		case CreateEpicCommand:
+			return e.executeCreateEpic(ctx, c, actorID)
+		case ChangeStatusCommand:
+			return e.executeChangeStatus(ctx, c, actorID)
+		case AssignUserCommand:
+			return e.executeAssignUser(ctx, c, actorID)
+		case ChangePriorityCommand:
+			return e.executeChangePriority(ctx, c, actorID)
+		case SetDueDateCommand:
+			return e.executeSetDueDate(ctx, c, actorID)
+		case ChangeTitleCommand:
+			return e.executeChangeTitle(ctx, c, actorID)
+		case SetSeverityCommand:
+			return e.executeSetSeverity(ctx, c, actorID)
+		case InviteUserCommand:
+			return e.executeInviteUser(ctx, c, actorID)
+		case RemoveUserCommand:
+			return e.executeRemoveUser(ctx, c, actorID)
+		case CloseChatCommand:
+			return e.executeCloseChat(ctx, c, actorID)
+		case ReopenChatCommand:
+			return e.executeReopenChat(ctx, c, actorID)
+		case DeleteChatCommand:
+			return e.executeDeleteChat(ctx, c, actorID)
+		default:
+			return fmt.Errorf("unknown command type: %T", cmd)
+		}
+	})
+}
+
+// executeWithRetry executes a command with automatic retry on concurrency conflicts.
+// It uses exponential backoff to handle transient conflicts gracefully.
+func (e *CommandExecutor) executeWithRetry(ctx context.Context, fn func() error) error {
+	var lastErr error
+	delay := initialRetryDelay
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		// Execute the command
+		err := fn()
+		if err == nil {
+			return nil // Success
+		}
+
+		// Check if this is a concurrency conflict
+		if !errors.Is(err, errs.ErrConcurrentModification) {
+			// Not a concurrency error - return immediately
+			return err
+		}
+
+		lastErr = err
+
+		// If this was the last attempt, return the error
+		if attempt == maxRetries {
+			break
+		}
+
+		// Wait before retrying with exponential backoff
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(delay):
+			// Increase delay for next attempt
+			delay *= retryDelayMultiple
+			if delay > maxRetryDelay {
+				delay = maxRetryDelay
+			}
+		}
 	}
+
+	return fmt.Errorf("failed after %d retries: %w", maxRetries, lastErr)
 }
 
 // executeCreateTask performs komandu creating Task via UseCase
