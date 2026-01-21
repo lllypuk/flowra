@@ -41,84 +41,41 @@ func NewCommandExecutor(
 	}
 }
 
-// Execute performs command with automatic retry on concurrency conflicts
+// Execute performs command by dispatching to appropriate executor method.
+// Each executor method handles its own retry logic for concurrency conflicts.
 func (e *CommandExecutor) Execute(ctx context.Context, cmd Command, actorID uuid.UUID) error {
-	return e.executeWithRetry(ctx, func() error {
-		switch c := cmd.(type) {
-		case CreateTaskCommand:
-			return e.executeCreateTask(ctx, c, actorID)
-		case CreateBugCommand:
-			return e.executeCreateBug(ctx, c, actorID)
-		case CreateEpicCommand:
-			return e.executeCreateEpic(ctx, c, actorID)
-		case ChangeStatusCommand:
-			return e.executeChangeStatus(ctx, c, actorID)
-		case AssignUserCommand:
-			return e.executeAssignUser(ctx, c, actorID)
-		case ChangePriorityCommand:
-			return e.executeChangePriority(ctx, c, actorID)
-		case SetDueDateCommand:
-			return e.executeSetDueDate(ctx, c, actorID)
-		case ChangeTitleCommand:
-			return e.executeChangeTitle(ctx, c, actorID)
-		case SetSeverityCommand:
-			return e.executeSetSeverity(ctx, c, actorID)
-		case InviteUserCommand:
-			return e.executeInviteUser(ctx, c, actorID)
-		case RemoveUserCommand:
-			return e.executeRemoveUser(ctx, c, actorID)
-		case CloseChatCommand:
-			return e.executeCloseChat(ctx, c, actorID)
-		case ReopenChatCommand:
-			return e.executeReopenChat(ctx, c, actorID)
-		case DeleteChatCommand:
-			return e.executeDeleteChat(ctx, c, actorID)
-		default:
-			return fmt.Errorf("unknown command type: %T", cmd)
-		}
-	})
-}
-
-// executeWithRetry executes a command with automatic retry on concurrency conflicts.
-// It uses exponential backoff to handle transient conflicts gracefully.
-func (e *CommandExecutor) executeWithRetry(ctx context.Context, fn func() error) error {
-	var lastErr error
-	delay := initialRetryDelay
-
-	for attempt := 0; attempt <= maxRetries; attempt++ {
-		// Execute the command
-		err := fn()
-		if err == nil {
-			return nil // Success
-		}
-
-		// Check if this is a concurrency conflict
-		if !errors.Is(err, errs.ErrConcurrentModification) {
-			// Not a concurrency error - return immediately
-			return err
-		}
-
-		lastErr = err
-
-		// If this was the last attempt, return the error
-		if attempt == maxRetries {
-			break
-		}
-
-		// Wait before retrying with exponential backoff
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(delay):
-			// Increase delay for next attempt
-			delay *= retryDelayMultiple
-			if delay > maxRetryDelay {
-				delay = maxRetryDelay
-			}
-		}
+	switch c := cmd.(type) {
+	case CreateTaskCommand:
+		return e.executeCreateTask(ctx, c, actorID)
+	case CreateBugCommand:
+		return e.executeCreateBug(ctx, c, actorID)
+	case CreateEpicCommand:
+		return e.executeCreateEpic(ctx, c, actorID)
+	case ChangeStatusCommand:
+		return e.executeChangeStatus(ctx, c, actorID)
+	case AssignUserCommand:
+		return e.executeAssignUser(ctx, c, actorID)
+	case ChangePriorityCommand:
+		return e.executeChangePriority(ctx, c, actorID)
+	case SetDueDateCommand:
+		return e.executeSetDueDate(ctx, c, actorID)
+	case ChangeTitleCommand:
+		return e.executeChangeTitle(ctx, c, actorID)
+	case SetSeverityCommand:
+		return e.executeSetSeverity(ctx, c, actorID)
+	case InviteUserCommand:
+		return e.executeInviteUser(ctx, c, actorID)
+	case RemoveUserCommand:
+		return e.executeRemoveUser(ctx, c, actorID)
+	case CloseChatCommand:
+		return e.executeCloseChat(ctx, c, actorID)
+	case ReopenChatCommand:
+		return e.executeReopenChat(ctx, c, actorID)
+	case DeleteChatCommand:
+		return e.executeDeleteChat(ctx, c, actorID)
+	default:
+		return fmt.Errorf("unknown command type: %T", cmd)
 	}
-
-	return fmt.Errorf("failed after %d retries: %w", maxRetries, lastErr)
 }
 
 // executeCreateTask performs komandu creating Task via UseCase
@@ -177,12 +134,41 @@ func (e *CommandExecutor) executeChangeStatus(ctx context.Context, cmd ChangeSta
 		ChangedBy: domainUUID.FromGoogleUUID(actorID),
 	}
 
-	_, err := e.chatUseCases.ChangeStatus.Execute(ctx, usecaseCmd)
-	if err != nil {
-		return fmt.Errorf("failed to change status: %w", err)
+	var lastErr error
+	delay := initialRetryDelay
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		// Execute use case (each call does fresh Load)
+		_, err := e.chatUseCases.ChangeStatus.Execute(ctx, usecaseCmd)
+		if err == nil {
+			return nil // Success
+		}
+
+		// Check if this is a concurrency conflict
+		if !errors.Is(err, errs.ErrConcurrentModification) {
+			return fmt.Errorf("failed to change status: %w", err)
+		}
+
+		lastErr = err
+
+		// If this was the last attempt, return the error
+		if attempt == maxRetries {
+			break
+		}
+
+		// Wait before retrying with exponential backoff
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(delay):
+			delay *= retryDelayMultiple
+			if delay > maxRetryDelay {
+				delay = maxRetryDelay
+			}
+		}
 	}
 
-	return nil
+	return fmt.Errorf("failed after %d retries: %w", maxRetries, lastErr)
 }
 
 // executeAssignUser performs komandu assigning user via UseCase
@@ -205,12 +191,41 @@ func (e *CommandExecutor) executeAssignUser(ctx context.Context, cmd AssignUserC
 		AssignedBy: domainUUID.FromGoogleUUID(actorID),
 	}
 
-	_, err := e.chatUseCases.AssignUser.Execute(ctx, usecaseCmd)
-	if err != nil {
-		return fmt.Errorf("failed to assign user: %w", err)
+	var lastErr error
+	delay := initialRetryDelay
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		// Execute use case (each call does fresh Load)
+		_, err := e.chatUseCases.AssignUser.Execute(ctx, usecaseCmd)
+		if err == nil {
+			return nil // Success
+		}
+
+		// Check if this is a concurrency conflict
+		if !errors.Is(err, errs.ErrConcurrentModification) {
+			return fmt.Errorf("failed to assign user: %w", err)
+		}
+
+		lastErr = err
+
+		// If this was the last attempt, return the error
+		if attempt == maxRetries {
+			break
+		}
+
+		// Wait before retrying with exponential backoff
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(delay):
+			delay *= retryDelayMultiple
+			if delay > maxRetryDelay {
+				delay = maxRetryDelay
+			}
+		}
 	}
 
-	return nil
+	return fmt.Errorf("failed after %d retries: %w", maxRetries, lastErr)
 }
 
 // executeChangePriority performs komandu changing priority via UseCase
@@ -225,12 +240,41 @@ func (e *CommandExecutor) executeChangePriority(
 		SetBy:    domainUUID.FromGoogleUUID(actorID),
 	}
 
-	_, err := e.chatUseCases.SetPriority.Execute(ctx, usecaseCmd)
-	if err != nil {
-		return fmt.Errorf("failed to set priority: %w", err)
+	var lastErr error
+	delay := initialRetryDelay
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		// Execute use case (each call does fresh Load)
+		_, err := e.chatUseCases.SetPriority.Execute(ctx, usecaseCmd)
+		if err == nil {
+			return nil // Success
+		}
+
+		// Check if this is a concurrency conflict
+		if !errors.Is(err, errs.ErrConcurrentModification) {
+			return fmt.Errorf("failed to set priority: %w", err)
+		}
+
+		lastErr = err
+
+		// If this was the last attempt, return the error
+		if attempt == maxRetries {
+			break
+		}
+
+		// Wait before retrying with exponential backoff
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(delay):
+			delay *= retryDelayMultiple
+			if delay > maxRetryDelay {
+				delay = maxRetryDelay
+			}
+		}
 	}
 
-	return nil
+	return fmt.Errorf("failed after %d retries: %w", maxRetries, lastErr)
 }
 
 // executeSetDueDate performs komandu setting deadline via UseCase
@@ -241,12 +285,41 @@ func (e *CommandExecutor) executeSetDueDate(ctx context.Context, cmd SetDueDateC
 		SetBy:   domainUUID.FromGoogleUUID(actorID),
 	}
 
-	_, err := e.chatUseCases.SetDueDate.Execute(ctx, usecaseCmd)
-	if err != nil {
-		return fmt.Errorf("failed to set due date: %w", err)
+	var lastErr error
+	delay := initialRetryDelay
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		// Execute use case (each call does fresh Load)
+		_, err := e.chatUseCases.SetDueDate.Execute(ctx, usecaseCmd)
+		if err == nil {
+			return nil // Success
+		}
+
+		// Check if this is a concurrency conflict
+		if !errors.Is(err, errs.ErrConcurrentModification) {
+			return fmt.Errorf("failed to set due date: %w", err)
+		}
+
+		lastErr = err
+
+		// If this was the last attempt, return the error
+		if attempt == maxRetries {
+			break
+		}
+
+		// Wait before retrying with exponential backoff
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(delay):
+			delay *= retryDelayMultiple
+			if delay > maxRetryDelay {
+				delay = maxRetryDelay
+			}
+		}
 	}
 
-	return nil
+	return fmt.Errorf("failed after %d retries: %w", maxRetries, lastErr)
 }
 
 // executeChangeTitle performs komandu changing nazvaniya via UseCase
@@ -257,12 +330,41 @@ func (e *CommandExecutor) executeChangeTitle(ctx context.Context, cmd ChangeTitl
 		RenamedBy: domainUUID.FromGoogleUUID(actorID),
 	}
 
-	_, err := e.chatUseCases.Rename.Execute(ctx, usecaseCmd)
-	if err != nil {
-		return fmt.Errorf("failed to rename: %w", err)
+	var lastErr error
+	delay := initialRetryDelay
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		// Execute use case (each call does fresh Load)
+		_, err := e.chatUseCases.Rename.Execute(ctx, usecaseCmd)
+		if err == nil {
+			return nil // Success
+		}
+
+		// Check if this is a concurrency conflict
+		if !errors.Is(err, errs.ErrConcurrentModification) {
+			return fmt.Errorf("failed to rename: %w", err)
+		}
+
+		lastErr = err
+
+		// If this was the last attempt, return the error
+		if attempt == maxRetries {
+			break
+		}
+
+		// Wait before retrying with exponential backoff
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(delay):
+			delay *= retryDelayMultiple
+			if delay > maxRetryDelay {
+				delay = maxRetryDelay
+			}
+		}
 	}
 
-	return nil
+	return fmt.Errorf("failed after %d retries: %w", maxRetries, lastErr)
 }
 
 // executeSetSeverity performs komandu setting severity via UseCase
@@ -273,12 +375,41 @@ func (e *CommandExecutor) executeSetSeverity(ctx context.Context, cmd SetSeverit
 		SetBy:    domainUUID.FromGoogleUUID(actorID),
 	}
 
-	_, err := e.chatUseCases.SetSeverity.Execute(ctx, usecaseCmd)
-	if err != nil {
-		return fmt.Errorf("failed to set severity: %w", err)
+	var lastErr error
+	delay := initialRetryDelay
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		// Execute use case (each call does fresh Load)
+		_, err := e.chatUseCases.SetSeverity.Execute(ctx, usecaseCmd)
+		if err == nil {
+			return nil // Success
+		}
+
+		// Check if this is a concurrency conflict
+		if !errors.Is(err, errs.ErrConcurrentModification) {
+			return fmt.Errorf("failed to set severity: %w", err)
+		}
+
+		lastErr = err
+
+		// If this was the last attempt, return the error
+		if attempt == maxRetries {
+			break
+		}
+
+		// Wait before retrying with exponential backoff
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(delay):
+			delay *= retryDelayMultiple
+			if delay > maxRetryDelay {
+				delay = maxRetryDelay
+			}
+		}
 	}
 
-	return nil
+	return fmt.Errorf("failed after %d retries: %w", maxRetries, lastErr)
 }
 
 // Task 007a: Participant Management and Chat Lifecycle Executors
@@ -292,19 +423,49 @@ func (e *CommandExecutor) executeInviteUser(ctx context.Context, cmd InviteUserC
 		return fmt.Errorf("user @%s not found: %w", username, err)
 	}
 
-	// Call AddParticipant use case
+	// Call AddParticipant use case with retry
 	addCmd := chatApp.AddParticipantCommand{
 		ChatID:  domainUUID.FromGoogleUUID(cmd.ChatID),
 		UserID:  user.ID(),
 		Role:    "Member", // Default role
 		AddedBy: domainUUID.FromGoogleUUID(actorID),
 	}
-	_, err = e.chatUseCases.AddParticipant.Execute(ctx, addCmd)
-	if err != nil {
-		return fmt.Errorf("failed to add participant: %w", err)
+
+	var lastErr error
+	delay := initialRetryDelay
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		// Execute use case (each call does fresh Load)
+		_, err = e.chatUseCases.AddParticipant.Execute(ctx, addCmd)
+		if err == nil {
+			return nil // Success
+		}
+
+		// Check if this is a concurrency conflict
+		if !errors.Is(err, errs.ErrConcurrentModification) {
+			return fmt.Errorf("failed to add participant: %w", err)
+		}
+
+		lastErr = err
+
+		// If this was the last attempt, return the error
+		if attempt == maxRetries {
+			break
+		}
+
+		// Wait before retrying with exponential backoff
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(delay):
+			delay *= retryDelayMultiple
+			if delay > maxRetryDelay {
+				delay = maxRetryDelay
+			}
+		}
 	}
 
-	return nil
+	return fmt.Errorf("failed after %d retries: %w", maxRetries, lastErr)
 }
 
 // executeRemoveUser performs command to remove a participant from the chat
@@ -316,18 +477,48 @@ func (e *CommandExecutor) executeRemoveUser(ctx context.Context, cmd RemoveUserC
 		return fmt.Errorf("user @%s not found: %w", username, err)
 	}
 
-	// Call RemoveParticipant use case
+	// Call RemoveParticipant use case with retry
 	removeCmd := chatApp.RemoveParticipantCommand{
 		ChatID:    domainUUID.FromGoogleUUID(cmd.ChatID),
 		UserID:    user.ID(),
 		RemovedBy: domainUUID.FromGoogleUUID(actorID),
 	}
-	_, err = e.chatUseCases.RemoveParticipant.Execute(ctx, removeCmd)
-	if err != nil {
-		return fmt.Errorf("failed to remove participant: %w", err)
+
+	var lastErr error
+	delay := initialRetryDelay
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		// Execute use case (each call does fresh Load)
+		_, err = e.chatUseCases.RemoveParticipant.Execute(ctx, removeCmd)
+		if err == nil {
+			return nil // Success
+		}
+
+		// Check if this is a concurrency conflict
+		if !errors.Is(err, errs.ErrConcurrentModification) {
+			return fmt.Errorf("failed to remove participant: %w", err)
+		}
+
+		lastErr = err
+
+		// If this was the last attempt, return the error
+		if attempt == maxRetries {
+			break
+		}
+
+		// Wait before retrying with exponential backoff
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(delay):
+			delay *= retryDelayMultiple
+			if delay > maxRetryDelay {
+				delay = maxRetryDelay
+			}
+		}
 	}
 
-	return nil
+	return fmt.Errorf("failed after %d retries: %w", maxRetries, lastErr)
 }
 
 // executeCloseChat performs command to close/archive the chat
@@ -336,12 +527,42 @@ func (e *CommandExecutor) executeCloseChat(ctx context.Context, cmd CloseChatCom
 		ChatID:   domainUUID.FromGoogleUUID(cmd.ChatID),
 		ClosedBy: domainUUID.FromGoogleUUID(actorID),
 	}
-	_, err := e.chatUseCases.CloseChat.Execute(ctx, closeCmd)
-	if err != nil {
-		return fmt.Errorf("failed to close chat: %w", err)
+
+	var lastErr error
+	delay := initialRetryDelay
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		// Execute use case (each call does fresh Load)
+		_, err := e.chatUseCases.CloseChat.Execute(ctx, closeCmd)
+		if err == nil {
+			return nil // Success
+		}
+
+		// Check if this is a concurrency conflict
+		if !errors.Is(err, errs.ErrConcurrentModification) {
+			return fmt.Errorf("failed to close chat: %w", err)
+		}
+
+		lastErr = err
+
+		// If this was the last attempt, return the error
+		if attempt == maxRetries {
+			break
+		}
+
+		// Wait before retrying with exponential backoff
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(delay):
+			delay *= retryDelayMultiple
+			if delay > maxRetryDelay {
+				delay = maxRetryDelay
+			}
+		}
 	}
 
-	return nil
+	return fmt.Errorf("failed after %d retries: %w", maxRetries, lastErr)
 }
 
 // executeReopenChat performs command to reopen a closed chat
@@ -350,12 +571,42 @@ func (e *CommandExecutor) executeReopenChat(ctx context.Context, cmd ReopenChatC
 		ChatID:     domainUUID.FromGoogleUUID(cmd.ChatID),
 		ReopenedBy: domainUUID.FromGoogleUUID(actorID),
 	}
-	_, err := e.chatUseCases.ReopenChat.Execute(ctx, reopenCmd)
-	if err != nil {
-		return fmt.Errorf("failed to reopen chat: %w", err)
+
+	var lastErr error
+	delay := initialRetryDelay
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		// Execute use case (each call does fresh Load)
+		_, err := e.chatUseCases.ReopenChat.Execute(ctx, reopenCmd)
+		if err == nil {
+			return nil // Success
+		}
+
+		// Check if this is a concurrency conflict
+		if !errors.Is(err, errs.ErrConcurrentModification) {
+			return fmt.Errorf("failed to reopen chat: %w", err)
+		}
+
+		lastErr = err
+
+		// If this was the last attempt, return the error
+		if attempt == maxRetries {
+			break
+		}
+
+		// Wait before retrying with exponential backoff
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(delay):
+			delay *= retryDelayMultiple
+			if delay > maxRetryDelay {
+				delay = maxRetryDelay
+			}
+		}
 	}
 
-	return nil
+	return fmt.Errorf("failed after %d retries: %w", maxRetries, lastErr)
 }
 
 // executeDeleteChat performs command to delete the chat
