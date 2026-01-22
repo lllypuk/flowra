@@ -1728,7 +1728,7 @@ func (c *Container) ensureSystemBot(ctx context.Context) error {
 	}
 
 	// Save the bot user
-	if err := c.UserRepo.Save(ctx, botUser); err != nil {
+	if err = c.UserRepo.Save(ctx, botUser); err != nil {
 		return fmt.Errorf("failed to save system bot user: %w", err)
 	}
 

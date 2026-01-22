@@ -10,7 +10,7 @@ import (
 )
 
 // ErrNoActiveEntity vozvraschaetsya when Entity Management Tag used bez aktivnoy entity
-var ErrNoActiveEntity = errors.New("No active entity to modify. Create an entity first with #task, #bug, or #epic")
+var ErrNoActiveEntity = errors.New("no active entity to modify. Create an entity first with #task, #bug, or #epic")
 
 // usernameRegex defines dopustimyy format username: @[a-zA-Z0-9._-]+
 var usernameRegex = regexp.MustCompile(`^@[a-zA-Z0-9._-]+$`)
@@ -146,7 +146,7 @@ func ValidateStatus(entityType, status string) error {
 		return nil
 	}
 
-	return fmt.Errorf("Invalid status '%s' for %s. Available: %s",
+	return fmt.Errorf("invalid status '%s' for %s. Available: %s",
 		status, entityType, strings.Join(allowedStatuses, ", "))
 }
 
@@ -176,14 +176,14 @@ func ValidateDueDate(dateStr string) (*time.Time, error) {
 		}
 	}
 
-	return nil, errors.New("Invalid date format. Use ISO 8601: YYYY-MM-DD")
+	return nil, errors.New("invalid date format. Use ISO 8601: YYYY-MM-DD")
 }
 
 // ValidateTitle checks that title not empty
 func ValidateTitle(title string) error {
 	trimmed := strings.TrimSpace(title)
 	if trimmed == "" {
-		return errors.New("Title cannot be empty")
+		return errors.New("title cannot be empty")
 	}
 	return nil
 }

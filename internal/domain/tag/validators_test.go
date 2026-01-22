@@ -365,14 +365,14 @@ func TestValidateStatus(t *testing.T) {
 			entityType: "Task",
 			status:     "done",
 			wantErr:    true,
-			errSubstr:  "Invalid status",
+			errSubstr:  "invalid status",
 		},
 		{
 			name:       "invalid Task status - wrong value",
 			entityType: "Task",
 			status:     "Completed",
 			wantErr:    true,
-			errSubstr:  "Invalid status",
+			errSubstr:  "invalid status",
 		},
 
 		// Bug statuses
@@ -405,7 +405,7 @@ func TestValidateStatus(t *testing.T) {
 			entityType: "Bug",
 			status:     "Done",
 			wantErr:    true,
-			errSubstr:  "Invalid status",
+			errSubstr:  "invalid status",
 		},
 
 		// Epic statuses
@@ -510,31 +510,31 @@ func TestValidateDueDate(t *testing.T) {
 			name:      "DD-MM-YYYY",
 			input:     "20-10-2025",
 			wantErr:   true,
-			errSubstr: "Invalid date format",
+			errSubstr: "invalid date format",
 		},
 		{
 			name:      "MM/DD/YYYY",
 			input:     "10/20/2025",
 			wantErr:   true,
-			errSubstr: "Invalid date format",
+			errSubstr: "invalid date format",
 		},
 		{
 			name:      "natural language",
 			input:     "tomorrow",
 			wantErr:   true,
-			errSubstr: "Invalid date format",
+			errSubstr: "invalid date format",
 		},
 		{
 			name:      "random text",
 			input:     "not a date",
 			wantErr:   true,
-			errSubstr: "Invalid date format",
+			errSubstr: "invalid date format",
 		},
 		{
 			name:      "partial date",
 			input:     "2025-10",
 			wantErr:   true,
-			errSubstr: "Invalid date format",
+			errSubstr: "invalid date format",
 		},
 	}
 
@@ -596,7 +596,7 @@ func TestValidateTitle(t *testing.T) {
 			err := ValidateTitle(tt.title)
 			if tt.wantErr {
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), "Title cannot be empty")
+				assert.Contains(t, err.Error(), "title cannot be empty")
 			} else {
 				assert.NoError(t, err)
 			}

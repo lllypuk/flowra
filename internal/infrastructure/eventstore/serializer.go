@@ -176,7 +176,7 @@ func (s *EventSerializer) Deserialize(doc *EventDocument) (event.DomainEvent, er
 	// Fix version and other fields from document (not from Data)
 	// The Data field may contain stale values because SaveEvents overwrites doc.Version
 	// but doesn't update doc.Data
-	if err := setEventFields(evt, doc); err != nil {
+	if err = setEventFields(evt, doc); err != nil {
 		return nil, fmt.Errorf("failed to set event fields: %w", err)
 	}
 
