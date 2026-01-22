@@ -40,8 +40,50 @@ go test ./tests/e2e -tags=e2e
 # Build application
 make build
 
-# Development mode
+# Development mode (starts infrastructure + API server)
 make dev
+```
+
+### Local Testing and Development
+
+**Starting the Development Server:**
+```bash
+# Quick start (recommended)
+make dev
+
+# Manual start
+docker-compose up -d  # Start infrastructure
+go run cmd/api/main.go  # Start API server
+
+# Alternative: build and run
+go build -o /tmp/flowra-api cmd/api/*.go
+/tmp/flowra-api
+```
+
+**Test User Credentials:**
+- Username: `testuser`
+- Password: `test123`
+
+**Testing with Chrome DevTools MCP:**
+When testing UI changes or debugging frontend issues, use the Chrome DevTools MCP server:
+
+1. Navigate to the application: `http://localhost:8080`
+2. Login with test credentials
+3. Use DevTools commands:
+   - `take_snapshot` - Get accessibility tree of current page
+   - `take_screenshot` - Capture visual state
+   - `click`, `fill`, `navigate_page` - Interact with UI
+   - `evaluate_script` - Run JavaScript for debugging
+
+Example workflow:
+```bash
+# 1. Start server
+make dev
+
+# 2. In Claude Code, use DevTools to test
+# Navigate to: http://localhost:8080/workspaces/{workspace_id}/chats/{chat_id}
+# Login: testuser / test123
+# Test UI elements, check layout, verify functionality
 ```
 
 ## Architecture
@@ -220,12 +262,14 @@ docs/                         # Documentation (9+ files)
 
 | Service | URL | Credentials |
 |---------|-----|-------------|
-| API Server | http://localhost:8080 | JWT Token |
+| API Server | http://localhost:8080 | testuser / test123 |
 | API Health | http://localhost:8080/health | - |
 | API Docs | http://localhost:8080/docs | - |
-| Keycloak | http://localhost:8090 | admin/admin123 |
-| MongoDB | localhost:27017 | admin/admin123 |
+| Keycloak Admin | http://localhost:8090 | admin / admin123 |
+| MongoDB | localhost:27017 | admin / admin123 |
 | Redis | localhost:6379 | - |
+
+**Test User:** Use `testuser` / `test123` to login to the application via SSO.
 
 ## Testing Strategy
 
@@ -404,6 +448,60 @@ When creating or updating task documentation in markdown files:
 - ✅ Dependencies between tasks
 - ✅ Status (Pending, In Progress, Complete)
 - ✅ Priority when relevant
+
+## Code Style Guidelines
+
+### Avoid Reflection
+
+**Prefer type assertions and generics over reflection (`reflect` package).**
+
+This includes:
+- ❌ Using `reflect.ValueOf()`, `reflect.TypeOf()`, etc.
+- ❌ Runtime type inspection when compile-time alternatives exist
+- ❌ Generic operations that can be done with type assertions
+
+**Why:**
+- Reflection is slower and less performant
+- Type assertions are compile-time safe
+- Code is more explicit and easier to understand
+- Better IDE support and tooling
+
+**When to use reflection:**
+- ✅ Only when absolutely necessary (JSON/YAML marshaling, ORM libraries, etc.)
+- ✅ When dealing with truly dynamic types from external sources
+- ✅ In library code that must handle arbitrary types
+
+**Prefer instead:**
+- ✅ Type assertions with type switches
+- ✅ Generics (Go 1.18+) for type-safe generic code
+- ✅ Interface-based polymorphism
+- ✅ Code generation tools for boilerplate
+
+**Example:**
+```go
+// ❌ BAD: Using reflection
+func length(v any) int {
+    rv := reflect.ValueOf(v)
+    if rv.Kind() == reflect.Slice {
+        return rv.Len()
+    }
+    return 0
+}
+
+// ✅ GOOD: Using type assertions
+func length(v any) int {
+    switch val := v.(type) {
+    case string:
+        return len(val)
+    case []any:
+        return len(val)
+    case []string:
+        return len(val)
+    default:
+        return 0
+    }
+}
+```
 
 ## Language Requirements
 

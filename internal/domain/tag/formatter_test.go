@@ -266,7 +266,7 @@ func TestFormatSuccess_AllCommandTypes(t *testing.T) {
 				Command:  tag.SetSeverityCommand{ChatID: chatID, Severity: "Critical"},
 				Success:  true,
 			},
-			expected: "✅ severity set to Critical",
+			expected: "✅ Severity set to Critical",
 		},
 	}
 

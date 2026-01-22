@@ -14,6 +14,7 @@ import (
 	taskapp "github.com/lllypuk/flowra/internal/application/task"
 	chatdomain "github.com/lllypuk/flowra/internal/domain/chat"
 	"github.com/lllypuk/flowra/internal/domain/message"
+	"github.com/lllypuk/flowra/internal/domain/tag"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 	"github.com/lllypuk/flowra/internal/middleware"
 )
@@ -90,6 +91,7 @@ type MessageViewData struct {
 	EditedAt        *time.Time
 	IsDeleted       bool
 	IsSystemMessage bool
+	IsBotMessage    bool
 	CanEdit         bool
 	Author          MessageAuthorData
 	Tags            []MessageTagData
@@ -908,8 +910,12 @@ func (h *ChatTemplateHandler) convertMessageToView(msg *message.Message, current
 		return MessageViewData{}
 	}
 
-	// Check if current user can edit this message
-	canEdit := msg.AuthorID() == currentUserID && !msg.IsDeleted()
+	// Check message type
+	isBotMessage := msg.IsBotMessage()
+	isSystemMessage := msg.IsSystemMessage()
+
+	// Check if current user can edit this message (bot and system messages cannot be edited)
+	canEdit := msg.AuthorID() == currentUserID && !msg.IsDeleted() && !isBotMessage && !isSystemMessage
 
 	// Convert reactions to view data
 	reactions := make([]MessageReactionData, 0)
@@ -934,19 +940,32 @@ func (h *ChatTemplateHandler) convertMessageToView(msg *message.Message, current
 		reactions = append(reactions, *r)
 	}
 
-	// Use author ID as fallback for username/display name until user service is integrated
+	// Handle author display based on message type
 	authorID := msg.AuthorID().String()
-	username := authorID[:8] // Use first 8 chars of ID as temporary username
-	displayName := "User " + username
+	var username, displayName string
+
+	if isBotMessage {
+		// Bot messages show as "Flowra Bot"
+		username = "FlowraBot"
+		displayName = "Flowra Bot"
+	} else {
+		// Use author ID as fallback for username/display name until user service is integrated
+		username = authorID[:8] // Use first 8 chars of ID as temporary username
+		displayName = "User " + username
+	}
+
+	// Parse tags and get display content
+	parsed := parseMessageContent(msg.Content())
 
 	return MessageViewData{
 		ID:              msg.ID().String(),
 		ChatID:          msg.ChatID().String(),
-		Content:         msg.Content(),
+		Content:         parsed.DisplayText,
 		CreatedAt:       msg.CreatedAt(),
 		EditedAt:        msg.EditedAt(),
 		IsDeleted:       msg.IsDeleted(),
-		IsSystemMessage: false, // TODO: detect system messages
+		IsSystemMessage: isSystemMessage,
+		IsBotMessage:    isBotMessage,
 		CanEdit:         canEdit,
 		Author: MessageAuthorData{
 			ID:          authorID,
@@ -954,12 +973,50 @@ func (h *ChatTemplateHandler) convertMessageToView(msg *message.Message, current
 			DisplayName: displayName,
 			AvatarURL:   "",
 		},
-		Tags:      []MessageTagData{}, // TODO: parse tags from content
+		Tags:      parsed.Tags,
 		Reactions: reactions,
 	}
 }
 
 // Utility functions
+
+// parsedContent holds both the display content and parsed tags.
+type parsedContent struct {
+	DisplayText string
+	Tags        []MessageTagData
+}
+
+// parseMessageContent parses tags from message content using the tag parser.
+// Returns the plain text (for display) and the extracted tags.
+func parseMessageContent(content string) parsedContent {
+	parser := tag.NewParser()
+	result := parser.Parse(content)
+
+	tags := make([]MessageTagData, 0, len(result.Tags))
+	for _, pt := range result.Tags {
+		tags = append(tags, MessageTagData{
+			Key:   pt.Key,
+			Value: pt.Value,
+		})
+	}
+
+	// Determine display text:
+	// - If there's plain text, use it
+	// - If only tags exist, show the value of the first tag (the main content)
+	// - Otherwise fall back to original content
+	displayText := result.PlainText
+	if displayText == "" && len(tags) > 0 {
+		// Use first tag's value as display text (e.g., "#task My Task" shows "My Task")
+		displayText = tags[0].Value
+	} else if displayText == "" {
+		displayText = content
+	}
+
+	return parsedContent{
+		DisplayText: displayText,
+		Tags:        tags,
+	}
+}
 
 func isTaskType(chatType string) bool {
 	return chatType == chatTypeTask || chatType == chatTypeBug || chatType == chatTypeEpic

@@ -17,12 +17,16 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/event"
 	taskdomain "github.com/lllypuk/flowra/internal/domain/task"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/infrastructure/repair"
 )
 
 // MongoTaskRepository realizuet taskapp.CommandRepository
 type MongoTaskRepository struct {
 	eventStore    appcore.EventStore
 	readModelColl *mongo.Collection
+	outbox        appcore.Outbox
+	eventBus      event.Bus // deprecated: use outbox for reliable event delivery
+	repairQueue   repair.Queue
 	logger        *slog.Logger
 }
 
@@ -33,6 +37,29 @@ type TaskRepoOption func(*MongoTaskRepository)
 func WithTaskRepoLogger(logger *slog.Logger) TaskRepoOption {
 	return func(r *MongoTaskRepository) {
 		r.logger = logger
+	}
+}
+
+// WithTaskRepoEventBus sets the event bus for task repository.
+//
+// Deprecated: Use WithTaskRepoOutbox for reliable event delivery via outbox pattern.
+func WithTaskRepoEventBus(eventBus event.Bus) TaskRepoOption {
+	return func(r *MongoTaskRepository) {
+		r.eventBus = eventBus
+	}
+}
+
+// WithTaskRepoOutbox sets the outbox for reliable event delivery.
+func WithTaskRepoOutbox(outbox appcore.Outbox) TaskRepoOption {
+	return func(r *MongoTaskRepository) {
+		r.outbox = outbox
+	}
+}
+
+// WithTaskRepoRepairQueue sets the repair queue for failed read model updates.
+func WithTaskRepoRepairQueue(repairQueue repair.Queue) TaskRepoOption {
+	return func(r *MongoTaskRepository) {
+		r.repairQueue = repairQueue
 	}
 }
 
@@ -125,10 +152,48 @@ func (r *MongoTaskRepository) Save(ctx context.Context, task *taskdomain.Aggrega
 			slog.String("task_id", task.ID().String()),
 			slog.String("error", updateErr.Error()),
 		)
-		// not padaem - read model mozhno pereschitat
+		// Queue for repair instead of silent failure
+		if r.repairQueue != nil {
+			repairErr := r.repairQueue.Add(ctx, repair.Task{
+				AggregateID:   task.ID().String(),
+				AggregateType: "task",
+				TaskType:      repair.TaskTypeReadModelSync,
+				Error:         updateErr.Error(),
+			})
+			if repairErr != nil {
+				r.logger.ErrorContext(ctx, "failed to queue repair task",
+					slog.String("task_id", task.ID().String()),
+					slog.String("error", repairErr.Error()),
+				)
+			}
+		}
 	}
 
-	// 3. pomechaem event as committed
+	// 3. Write events to outbox for reliable delivery (preferred)
+	if r.outbox != nil {
+		if outboxErr := r.outbox.AddBatch(ctx, uncommittedEvents); outboxErr != nil {
+			r.logger.ErrorContext(ctx, "failed to add events to outbox",
+				slog.String("task_id", task.ID().String()),
+				slog.Int("events_count", len(uncommittedEvents)),
+				slog.String("error", outboxErr.Error()),
+			)
+			// Don't fail - events are saved in event store
+		}
+	} else if r.eventBus != nil {
+		// Fallback: direct publish to EventBus (deprecated, less reliable)
+		for _, evt := range uncommittedEvents {
+			if pubErr := r.eventBus.Publish(ctx, evt); pubErr != nil {
+				r.logger.WarnContext(ctx, "failed to publish task event to bus",
+					slog.String("task_id", task.ID().String()),
+					slog.String("event_type", evt.EventType()),
+					slog.String("error", pubErr.Error()),
+				)
+				// Don't fail - event is already persisted
+			}
+		}
+	}
+
+	// 4. Mark events as committed
 	task.MarkEventsAsCommitted()
 
 	return nil

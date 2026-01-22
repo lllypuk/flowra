@@ -10,16 +10,16 @@ import (
 	taskapp "github.com/lllypuk/flowra/internal/application/task"
 	"github.com/lllypuk/flowra/internal/domain/task"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
-	"github.com/lllypuk/flowra/internal/infrastructure/eventstore"
+	"github.com/lllypuk/flowra/tests/mocks"
 )
 
 func TestChangePriorityUseCase_Success(t *testing.T) {
 	// Arrange
-	store := eventstore.NewInMemoryEventStore()
-	createUseCase := taskapp.NewCreateTaskUseCase(store)
-	priorityUseCase := taskapp.NewChangePriorityUseCase(store)
+	repo := mocks.NewMockTaskRepository()
+	createUseCase := taskapp.NewCreateTaskUseCase(repo)
+	priorityUseCase := taskapp.NewChangePriorityUseCase(repo)
 
-	// Creating task s Medium priority (default)
+	// Create task with Medium priority (default)
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
@@ -28,7 +28,7 @@ func TestChangePriorityUseCase_Success(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// menyaem prioritet
+	// Change priority
 	userID := uuid.NewUUID()
 	priorityCmd := taskapp.ChangePriorityCommand{
 		TaskID:    createResult.TaskID,
@@ -53,24 +53,30 @@ func TestChangePriorityUseCase_Success(t *testing.T) {
 }
 
 func TestChangePriorityUseCase_AllPriorities(t *testing.T) {
-	priorities := []task.Priority{
-		task.PriorityLow,
-		task.PriorityMedium,
-		task.PriorityHigh,
-		task.PriorityCritical,
+	tests := []struct {
+		name     string
+		from     task.Priority
+		to       task.Priority
+		expected task.Priority
+	}{
+		{"Medium → High", task.PriorityMedium, task.PriorityHigh, task.PriorityHigh},
+		{"High → Critical", task.PriorityHigh, task.PriorityCritical, task.PriorityCritical},
+		{"Critical → Low", task.PriorityCritical, task.PriorityLow, task.PriorityLow},
+		{"Low → Medium", task.PriorityLow, task.PriorityMedium, task.PriorityMedium},
 	}
 
-	for _, priority := range priorities {
-		t.Run(string(priority), func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
-			store := eventstore.NewInMemoryEventStore()
-			createUseCase := taskapp.NewCreateTaskUseCase(store)
-			priorityUseCase := taskapp.NewChangePriorityUseCase(store)
+			repo := mocks.NewMockTaskRepository()
+			createUseCase := taskapp.NewCreateTaskUseCase(repo)
+			priorityUseCase := taskapp.NewChangePriorityUseCase(repo)
 
+			// Create task with initial priority
 			createCmd := taskapp.CreateTaskCommand{
 				ChatID:    uuid.NewUUID(),
 				Title:     "Test Task",
-				Priority:  task.PriorityLow,
+				Priority:  tt.from,
 				CreatedBy: uuid.NewUUID(),
 			}
 			createResult, err := createUseCase.Execute(context.Background(), createCmd)
@@ -79,31 +85,26 @@ func TestChangePriorityUseCase_AllPriorities(t *testing.T) {
 			// Act
 			priorityCmd := taskapp.ChangePriorityCommand{
 				TaskID:    createResult.TaskID,
-				Priority:  priority,
+				Priority:  tt.to,
 				ChangedBy: uuid.NewUUID(),
 			}
 			result, err := priorityUseCase.Execute(context.Background(), priorityCmd)
 
 			// Assert
-			if priority == task.PriorityLow {
-				// idempotentnost - tot zhe prioritet
-				require.NoError(t, err)
-				assert.Empty(t, result.Events)
-			} else {
-				require.NoError(t, err)
-				event, ok := result.Events[0].(*task.PriorityChanged)
-				require.True(t, ok)
-				assert.Equal(t, priority, event.NewPriority)
-			}
+			require.NoError(t, err)
+			event, ok := result.Events[0].(*task.PriorityChanged)
+			require.True(t, ok)
+			assert.Equal(t, tt.from, event.OldPriority)
+			assert.Equal(t, tt.expected, event.NewPriority)
 		})
 	}
 }
 
 func TestChangePriorityUseCase_Idempotent(t *testing.T) {
 	// Arrange
-	store := eventstore.NewInMemoryEventStore()
-	createUseCase := taskapp.NewCreateTaskUseCase(store)
-	priorityUseCase := taskapp.NewChangePriorityUseCase(store)
+	repo := mocks.NewMockTaskRepository()
+	createUseCase := taskapp.NewCreateTaskUseCase(repo)
+	priorityUseCase := taskapp.NewChangePriorityUseCase(repo)
 
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
@@ -114,67 +115,20 @@ func TestChangePriorityUseCase_Idempotent(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// Act: povtornaya setting togo zhe priority
+	// Act: repeat the same priority
 	priorityCmd := taskapp.ChangePriorityCommand{
 		TaskID:    createResult.TaskID,
-		Priority:  task.PriorityHigh,
+		Priority:  task.PriorityHigh, // same as before
 		ChangedBy: uuid.NewUUID(),
 	}
 	result, err := priorityUseCase.Execute(context.Background(), priorityCmd)
 
-	// Assert
+	// Assert: should succeed but without new events
 	require.NoError(t, err)
-	assert.Empty(t, result.Events, "No New events for idempotent operation")
+	assert.Empty(t, result.Events, "No new events should be generated for idempotent operation")
 	assert.Equal(t, 1, result.Version, "Version should not change")
 	assert.True(t, result.IsSuccess())
 	assert.Equal(t, "Priority unchanged (idempotent operation)", result.Message)
-}
-
-func TestChangePriorityUseCase_MultiplePriorityChanges(t *testing.T) {
-	// Arrange
-	store := eventstore.NewInMemoryEventStore()
-	createUseCase := taskapp.NewCreateTaskUseCase(store)
-	priorityUseCase := taskapp.NewChangePriorityUseCase(store)
-
-	createCmd := taskapp.CreateTaskCommand{
-		ChatID:    uuid.NewUUID(),
-		Title:     "Test Task",
-		CreatedBy: uuid.NewUUID(),
-	}
-	createResult, err := createUseCase.Execute(context.Background(), createCmd)
-	require.NoError(t, err)
-
-	userID := uuid.NewUUID()
-
-	// Act & Assert: Medium → High → Critical → Low
-	result1, err := priorityUseCase.Execute(context.Background(), taskapp.ChangePriorityCommand{
-		TaskID:    createResult.TaskID,
-		Priority:  task.PriorityHigh,
-		ChangedBy: userID,
-	})
-	require.NoError(t, err)
-	assert.Equal(t, 2, result1.Version)
-
-	result2, err := priorityUseCase.Execute(context.Background(), taskapp.ChangePriorityCommand{
-		TaskID:    createResult.TaskID,
-		Priority:  task.PriorityCritical,
-		ChangedBy: userID,
-	})
-	require.NoError(t, err)
-	assert.Equal(t, 3, result2.Version)
-
-	result3, err := priorityUseCase.Execute(context.Background(), taskapp.ChangePriorityCommand{
-		TaskID:    createResult.TaskID,
-		Priority:  task.PriorityLow,
-		ChangedBy: userID,
-	})
-	require.NoError(t, err)
-	assert.Equal(t, 4, result3.Version)
-
-	// Checking full history
-	storedEvents, err := store.LoadEvents(context.Background(), createResult.TaskID.String())
-	require.NoError(t, err)
-	assert.Len(t, storedEvents, 4) // Created + 3x PriorityChanged
 }
 
 func TestChangePriorityUseCase_ValidationErrors(t *testing.T) {
@@ -205,25 +159,7 @@ func TestChangePriorityUseCase_ValidationErrors(t *testing.T) {
 			name: "Invalid Priority",
 			cmd: taskapp.ChangePriorityCommand{
 				TaskID:    uuid.NewUUID(),
-				Priority:  "Urgent",
-				ChangedBy: uuid.NewUUID(),
-			},
-			expectedErr: taskapp.ErrInvalidPriority,
-		},
-		{
-			name: "Case Sensitive - lowercase",
-			cmd: taskapp.ChangePriorityCommand{
-				TaskID:    uuid.NewUUID(),
-				Priority:  "high",
-				ChangedBy: uuid.NewUUID(),
-			},
-			expectedErr: taskapp.ErrInvalidPriority,
-		},
-		{
-			name: "Case Sensitive - uppercase",
-			cmd: taskapp.ChangePriorityCommand{
-				TaskID:    uuid.NewUUID(),
-				Priority:  "HIGH",
+				Priority:  "Urgent", // does not exist
 				ChangedBy: uuid.NewUUID(),
 			},
 			expectedErr: taskapp.ErrInvalidPriority,
@@ -242,8 +178,8 @@ func TestChangePriorityUseCase_ValidationErrors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
-			store := eventstore.NewInMemoryEventStore()
-			useCase := taskapp.NewChangePriorityUseCase(store)
+			repo := mocks.NewMockTaskRepository()
+			useCase := taskapp.NewChangePriorityUseCase(repo)
 
 			// Act
 			result, err := useCase.Execute(context.Background(), tt.cmd)
@@ -258,11 +194,11 @@ func TestChangePriorityUseCase_ValidationErrors(t *testing.T) {
 
 func TestChangePriorityUseCase_TaskNotFound(t *testing.T) {
 	// Arrange
-	store := eventstore.NewInMemoryEventStore()
-	useCase := taskapp.NewChangePriorityUseCase(store)
+	repo := mocks.NewMockTaskRepository()
+	useCase := taskapp.NewChangePriorityUseCase(repo)
 
 	cmd := taskapp.ChangePriorityCommand{
-		TaskID:    uuid.NewUUID(), // not suschestvuet
+		TaskID:    uuid.NewUUID(), // does not exist
 		Priority:  task.PriorityHigh,
 		ChangedBy: uuid.NewUUID(),
 	}

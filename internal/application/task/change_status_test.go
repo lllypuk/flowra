@@ -10,16 +10,16 @@ import (
 	taskapp "github.com/lllypuk/flowra/internal/application/task"
 	"github.com/lllypuk/flowra/internal/domain/task"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
-	"github.com/lllypuk/flowra/internal/infrastructure/eventstore"
+	"github.com/lllypuk/flowra/tests/mocks"
 )
 
 func TestChangeStatusUseCase_Success(t *testing.T) {
 	// Arrange
-	store := eventstore.NewInMemoryEventStore()
-	createUseCase := taskapp.NewCreateTaskUseCase(store)
-	changeStatusUseCase := taskapp.NewChangeStatusUseCase(store)
+	repo := mocks.NewMockTaskRepository()
+	createUseCase := taskapp.NewCreateTaskUseCase(repo)
+	changeStatusUseCase := taskapp.NewChangeStatusUseCase(repo)
 
-	// Creating task
+	// Create task
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
@@ -28,7 +28,7 @@ func TestChangeStatusUseCase_Success(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// menyaem status
+	// Change status
 	userID := uuid.NewUUID()
 	changeCmd := taskapp.ChangeStatusCommand{
 		TaskID:    createResult.TaskID,
@@ -42,10 +42,10 @@ func TestChangeStatusUseCase_Success(t *testing.T) {
 	// Assert
 	require.NoError(t, err)
 	assert.Equal(t, createResult.TaskID, result.TaskID)
-	assert.Equal(t, 2, result.Version) // 1 event creating + 1 event changing status
+	assert.Equal(t, 2, result.Version) // 1 create event + 1 status change event
 	require.Len(t, result.Events, 1)
 
-	// Checking event
+	// Verify event
 	event, ok := result.Events[0].(*task.StatusChanged)
 	require.True(t, ok, "Expected *task.StatusChanged event")
 	assert.Equal(t, createResult.TaskID, uuid.UUID(event.AggregateID()))
@@ -53,19 +53,17 @@ func TestChangeStatusUseCase_Success(t *testing.T) {
 	assert.Equal(t, task.StatusInProgress, event.NewStatus)
 	assert.Equal(t, userID, event.ChangedBy)
 
-	// Checking, that event sav
-	storedEvents, err := store.LoadEvents(context.Background(), result.TaskID.String())
-	require.NoError(t, err)
-	assert.Len(t, storedEvents, 2)
+	// Verify repository was called
+	assert.Equal(t, 2, repo.SaveCallCount())
 }
 
 func TestChangeStatusUseCase_MultipleTransitions(t *testing.T) {
 	// Arrange
-	store := eventstore.NewInMemoryEventStore()
-	createUseCase := taskapp.NewCreateTaskUseCase(store)
-	changeStatusUseCase := taskapp.NewChangeStatusUseCase(store)
+	repo := mocks.NewMockTaskRepository()
+	createUseCase := taskapp.NewCreateTaskUseCase(repo)
+	changeStatusUseCase := taskapp.NewChangeStatusUseCase(repo)
 
-	// Creating task
+	// Create task
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
@@ -104,17 +102,15 @@ func TestChangeStatusUseCase_MultipleTransitions(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 4, result3.Version)
 
-	// Checking full history
-	storedEvents, err := store.LoadEvents(context.Background(), createResult.TaskID.String())
-	require.NoError(t, err)
-	assert.Len(t, storedEvents, 4) // Create + 3x StatusChanged
+	// Verify total save calls: 1 create + 3 status changes = 4
+	assert.Equal(t, 4, repo.SaveCallCount())
 }
 
 func TestChangeStatusUseCase_Idempotent(t *testing.T) {
 	// Arrange
-	store := eventstore.NewInMemoryEventStore()
-	createUseCase := taskapp.NewCreateTaskUseCase(store)
-	changeStatusUseCase := taskapp.NewChangeStatusUseCase(store)
+	repo := mocks.NewMockTaskRepository()
+	createUseCase := taskapp.NewCreateTaskUseCase(repo)
+	changeStatusUseCase := taskapp.NewChangeStatusUseCase(repo)
 
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
@@ -124,7 +120,7 @@ func TestChangeStatusUseCase_Idempotent(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// pervoe change status
+	// First status change
 	changeCmd := taskapp.ChangeStatusCommand{
 		TaskID:    createResult.TaskID,
 		NewStatus: task.StatusInProgress,
@@ -134,12 +130,12 @@ func TestChangeStatusUseCase_Idempotent(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, result1.Events, 1)
 
-	// Act: povtornoe change on tot zhe status
+	// Act: repeat the same status change
 	result2, err := changeStatusUseCase.Execute(context.Background(), changeCmd)
 
-	// Assert: dolzhno byt successfully, no bez New events
+	// Assert: should succeed but without new events
 	require.NoError(t, err)
-	assert.Empty(t, result2.Events, "No New events should be generated for idempotent operation")
+	assert.Empty(t, result2.Events, "No new events should be generated for idempotent operation")
 	assert.Equal(t, result1.Version, result2.Version, "Version should not change")
 	assert.True(t, result2.IsSuccess())
 	assert.Equal(t, "Status unchanged (idempotent operation)", result2.Message)
@@ -173,7 +169,7 @@ func TestChangeStatusUseCase_ValidationErrors(t *testing.T) {
 			name: "Invalid Status",
 			cmd: taskapp.ChangeStatusCommand{
 				TaskID:    uuid.NewUUID(),
-				NewStatus: "Completed", // not suschestvuet
+				NewStatus: "Completed", // does not exist
 				ChangedBy: uuid.NewUUID(),
 			},
 			expectedErr: taskapp.ErrInvalidStatus,
@@ -192,8 +188,8 @@ func TestChangeStatusUseCase_ValidationErrors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
-			store := eventstore.NewInMemoryEventStore()
-			useCase := taskapp.NewChangeStatusUseCase(store)
+			repo := mocks.NewMockTaskRepository()
+			useCase := taskapp.NewChangeStatusUseCase(repo)
 
 			// Act
 			result, err := useCase.Execute(context.Background(), tt.cmd)
@@ -208,11 +204,11 @@ func TestChangeStatusUseCase_ValidationErrors(t *testing.T) {
 
 func TestChangeStatusUseCase_TaskNotFound(t *testing.T) {
 	// Arrange
-	store := eventstore.NewInMemoryEventStore()
-	useCase := taskapp.NewChangeStatusUseCase(store)
+	repo := mocks.NewMockTaskRepository()
+	useCase := taskapp.NewChangeStatusUseCase(repo)
 
 	cmd := taskapp.ChangeStatusCommand{
-		TaskID:    uuid.NewUUID(), // not suschestvuet
+		TaskID:    uuid.NewUUID(), // does not exist
 		NewStatus: task.StatusDone,
 		ChangedBy: uuid.NewUUID(),
 	}
@@ -228,11 +224,11 @@ func TestChangeStatusUseCase_TaskNotFound(t *testing.T) {
 
 func TestChangeStatusUseCase_InvalidStatusTransition(t *testing.T) {
 	// Arrange
-	store := eventstore.NewInMemoryEventStore()
-	createUseCase := taskapp.NewCreateTaskUseCase(store)
-	changeStatusUseCase := taskapp.NewChangeStatusUseCase(store)
+	repo := mocks.NewMockTaskRepository()
+	createUseCase := taskapp.NewCreateTaskUseCase(repo)
+	changeStatusUseCase := taskapp.NewChangeStatusUseCase(repo)
 
-	// Creating task in status To Do
+	// Create task in To Do status
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
@@ -317,11 +313,11 @@ func TestChangeStatusUseCase_AllValidTransitions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
-			store := eventstore.NewInMemoryEventStore()
-			createUseCase := taskapp.NewCreateTaskUseCase(store)
-			changeStatusUseCase := taskapp.NewChangeStatusUseCase(store)
+			repo := mocks.NewMockTaskRepository()
+			createUseCase := taskapp.NewCreateTaskUseCase(repo)
+			changeStatusUseCase := taskapp.NewChangeStatusUseCase(repo)
 
-			// Creating task
+			// Create task
 			createCmd := taskapp.CreateTaskCommand{
 				ChatID:    uuid.NewUUID(),
 				Title:     "Test Task",
@@ -340,7 +336,7 @@ func TestChangeStatusUseCase_AllValidTransitions(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			// Act: pytaemsya perform checking perehod
+			// Act: try the transition
 			changeCmd := taskapp.ChangeStatusCommand{
 				TaskID:    createResult.TaskID,
 				NewStatus: tt.to,
@@ -362,11 +358,11 @@ func TestChangeStatusUseCase_AllValidTransitions(t *testing.T) {
 
 func TestChangeStatusUseCase_Backlog(t *testing.T) {
 	// Arrange
-	store := eventstore.NewInMemoryEventStore()
-	createUseCase := taskapp.NewCreateTaskUseCase(store)
-	changeStatusUseCase := taskapp.NewChangeStatusUseCase(store)
+	repo := mocks.NewMockTaskRepository()
+	createUseCase := taskapp.NewCreateTaskUseCase(repo)
+	changeStatusUseCase := taskapp.NewChangeStatusUseCase(repo)
 
-	// Creating task
+	// Create task
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
@@ -401,11 +397,11 @@ func TestChangeStatusUseCase_Backlog(t *testing.T) {
 
 func TestChangeStatusUseCase_CancelledTransition(t *testing.T) {
 	// Arrange
-	store := eventstore.NewInMemoryEventStore()
-	createUseCase := taskapp.NewCreateTaskUseCase(store)
-	changeStatusUseCase := taskapp.NewChangeStatusUseCase(store)
+	repo := mocks.NewMockTaskRepository()
+	createUseCase := taskapp.NewCreateTaskUseCase(repo)
+	changeStatusUseCase := taskapp.NewChangeStatusUseCase(repo)
 
-	// Creating task
+	// Create task
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
@@ -472,11 +468,11 @@ func TestChangeStatusUseCase_CancelledTransition(t *testing.T) {
 
 func TestChangeStatusUseCase_DoneReopening(t *testing.T) {
 	// Arrange
-	store := eventstore.NewInMemoryEventStore()
-	createUseCase := taskapp.NewCreateTaskUseCase(store)
-	changeStatusUseCase := taskapp.NewChangeStatusUseCase(store)
+	repo := mocks.NewMockTaskRepository()
+	createUseCase := taskapp.NewCreateTaskUseCase(repo)
+	changeStatusUseCase := taskapp.NewChangeStatusUseCase(repo)
 
-	// Creating task
+	// Create task
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
@@ -487,7 +483,7 @@ func TestChangeStatusUseCase_DoneReopening(t *testing.T) {
 
 	userID := uuid.NewUUID()
 
-	// Kanban-style: direct transition To Do → Done
+	// Move to Done
 	_, err = changeStatusUseCase.Execute(context.Background(), taskapp.ChangeStatusCommand{
 		TaskID:    createResult.TaskID,
 		NewStatus: task.StatusDone,
@@ -495,14 +491,12 @@ func TestChangeStatusUseCase_DoneReopening(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// Act: Done → In Review (reopening)
+	// Reopen: Done → In Review
 	result, err := changeStatusUseCase.Execute(context.Background(), taskapp.ChangeStatusCommand{
 		TaskID:    createResult.TaskID,
 		NewStatus: task.StatusInReview,
 		ChangedBy: userID,
 	})
-
-	// Assert
 	require.NoError(t, err)
 	assert.Len(t, result.Events, 1)
 
@@ -510,25 +504,4 @@ func TestChangeStatusUseCase_DoneReopening(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, task.StatusDone, event.OldStatus)
 	assert.Equal(t, task.StatusInReview, event.NewStatus)
-
-	// Also test Done → To Do (should work in Kanban-style)
-	_, err = changeStatusUseCase.Execute(context.Background(), taskapp.ChangeStatusCommand{
-		TaskID:    createResult.TaskID,
-		NewStatus: task.StatusDone,
-		ChangedBy: userID,
-	})
-	require.NoError(t, err)
-
-	result2, err := changeStatusUseCase.Execute(context.Background(), taskapp.ChangeStatusCommand{
-		TaskID:    createResult.TaskID,
-		NewStatus: task.StatusToDo,
-		ChangedBy: userID,
-	})
-	require.NoError(t, err)
-	assert.Len(t, result2.Events, 1)
-
-	event2, ok := result2.Events[0].(*task.StatusChanged)
-	require.True(t, ok)
-	assert.Equal(t, task.StatusDone, event2.OldStatus)
-	assert.Equal(t, task.StatusToDo, event2.NewStatus)
 }

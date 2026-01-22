@@ -33,7 +33,7 @@ func TestTagIntegration_SendMessageWithTagComponents(t *testing.T) {
 
 	// Create SendMessageUseCase with nil tag components
 	// (simulating the default state without full tag processing setup)
-	sendMessageUC := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus, nil, nil)
+	sendMessageUC := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus, nil, nil, domainUUID.NewUUID())
 
 	// Send message with tag command
 	cmd := message.SendMessageCommand{
@@ -78,7 +78,7 @@ func TestTagIntegration_MessageWithoutTags(t *testing.T) {
 	chatRepo.AddChat(chatID, []domainUUID.UUID{authorID})
 
 	// Send message without tag processing
-	sendMessageUC := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus, nil, nil)
+	sendMessageUC := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus, nil, nil, domainUUID.NewUUID())
 
 	cmd := message.SendMessageCommand{
 		ChatID:          chatID,
@@ -112,7 +112,7 @@ func TestTagIntegration_DisabledTagProcessing(t *testing.T) {
 	chatRepo.AddChat(chatID, []domainUUID.UUID{authorID})
 
 	// Create SendMessageUseCase WITHOUT tag processing
-	sendMessageUC := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus, nil, nil)
+	sendMessageUC := message.NewSendMessageUseCase(messageRepo, chatRepo, eventBus, nil, nil, domainUUID.NewUUID())
 
 	cmd := message.SendMessageCommand{
 		ChatID:          chatID,

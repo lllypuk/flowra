@@ -5,38 +5,37 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/task"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// CreateTaskUseCase handles creation novoy tasks
+// CreateTaskUseCase handles creation of new tasks
 type CreateTaskUseCase struct {
-	eventStore appcore.EventStore
+	taskRepo CommandRepository
 }
 
-// NewCreateTaskUseCase creates New instance CreateTaskUseCase
-func NewCreateTaskUseCase(eventStore appcore.EventStore) *CreateTaskUseCase {
+// NewCreateTaskUseCase creates a new instance of CreateTaskUseCase
+func NewCreateTaskUseCase(taskRepo CommandRepository) *CreateTaskUseCase {
 	return &CreateTaskUseCase{
-		eventStore: eventStore,
+		taskRepo: taskRepo,
 	}
 }
 
-// Execute creates New zadachu
+// Execute creates a new task
 func (uc *CreateTaskUseCase) Execute(ctx context.Context, cmd CreateTaskCommand) (TaskResult, error) {
-	// 1. validation commands
+	// 1. Validate command
 	if err := uc.validate(cmd); err != nil {
 		return TaskResult{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// 2. Applying values by default
+	// 2. Apply default values
 	cmd = uc.applyDefaults(cmd)
 
-	// 3. creation novogo aggregate
+	// 3. Create new aggregate
 	taskID := uuid.NewUUID()
 	aggregate := task.NewTaskAggregate(taskID)
 
-	// 4. performing biznes-operatsii
+	// 4. Perform business operation
 	if err := aggregate.Create(
 		cmd.ChatID,
 		cmd.Title,
@@ -49,15 +48,15 @@ func (uc *CreateTaskUseCase) Execute(ctx context.Context, cmd CreateTaskCommand)
 		return TaskResult{}, fmt.Errorf("failed to create task: %w", err)
 	}
 
-	// 5. retrieval events
+	// 5. Get events before saving (for response)
 	events := aggregate.UncommittedEvents()
 
-	// 6. storage events in Event Store
-	if err := uc.eventStore.SaveEvents(ctx, taskID.String(), events, 0); err != nil {
-		return TaskResult{}, fmt.Errorf("failed to save events: %w", err)
+	// 6. Save via repository (handles EventStore + ReadModel)
+	if err := uc.taskRepo.Save(ctx, aggregate); err != nil {
+		return TaskResult{}, fmt.Errorf("failed to save task: %w", err)
 	}
 
-	// 7. vozvrat result
+	// 7. Return result
 	return NewSuccessResult(taskID, aggregate.Version(), events), nil
 }
 

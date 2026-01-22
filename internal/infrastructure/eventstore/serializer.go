@@ -2,7 +2,9 @@ package eventstore
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"reflect"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -129,6 +131,10 @@ func createEventByType(eventType string) (event.DomainEvent, error) {
 		return &chatdomain.SeveritySet{}, nil
 	case chatdomain.EventTypeChatDeleted:
 		return &chatdomain.Deleted{}, nil
+	case chatdomain.EventTypeChatClosed:
+		return &chatdomain.Closed{}, nil
+	case chatdomain.EventTypeChatReopened:
+		return &chatdomain.Reopened{}, nil
 	// Task events
 	case taskdomain.EventTypeTaskCreated:
 		return &taskdomain.Created{}, nil
@@ -167,6 +173,13 @@ func (s *EventSerializer) Deserialize(doc *EventDocument) (event.DomainEvent, er
 		return nil, fmt.Errorf("failed to unmarshal event data: %w", unmarshalErr)
 	}
 
+	// Fix version and other fields from document (not from Data)
+	// The Data field may contain stale values because SaveEvents overwrites doc.Version
+	// but doesn't update doc.Data
+	if err = setEventFields(evt, doc); err != nil {
+		return nil, fmt.Errorf("failed to set event fields: %w", err)
+	}
+
 	return evt, nil
 }
 
@@ -183,4 +196,45 @@ func (s *EventSerializer) DeserializeMany(docs []*EventDocument) ([]event.Domain
 	}
 
 	return events, nil
+}
+
+// setEventFields sets the correct values for BaseEvent fields from the EventDocument.
+// This is necessary because SaveEvents overwrites doc.Version but doesn't update doc.Data,
+// so the version in Data may be stale.
+func setEventFields(evt event.DomainEvent, doc *EventDocument) error {
+	// Use reflection to access the embedded BaseEvent
+	v := reflect.ValueOf(evt).Elem()
+	if !v.IsValid() {
+		return errors.New("invalid event value")
+	}
+
+	// Find the BaseEvent field
+	baseField := v.FieldByName("BaseEvent")
+	if !baseField.IsValid() {
+		return errors.New("event does not have BaseEvent field")
+	}
+
+	// Set the version from document (authoritative source)
+	verField := baseField.FieldByName("Ver")
+	if verField.IsValid() && verField.CanSet() {
+		verField.SetInt(int64(doc.Version))
+	}
+
+	// Set other fields from document for consistency
+	aggIDField := baseField.FieldByName("AggID")
+	if aggIDField.IsValid() && aggIDField.CanSet() {
+		aggIDField.SetString(doc.AggregateID)
+	}
+
+	aggTypeField := baseField.FieldByName("AggType")
+	if aggTypeField.IsValid() && aggTypeField.CanSet() {
+		aggTypeField.SetString(doc.AggregateType)
+	}
+
+	occAtField := baseField.FieldByName("OccAt")
+	if occAtField.IsValid() && occAtField.CanSet() {
+		occAtField.Set(reflect.ValueOf(doc.OccurredAt))
+	}
+
+	return nil
 }

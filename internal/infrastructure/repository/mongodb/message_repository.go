@@ -486,6 +486,8 @@ type messageDocument struct {
 	ChatID      string               `bson:"chat_id"`
 	AuthorID    string               `bson:"sent_by"`
 	Content     string               `bson:"content"`
+	Type        string               `bson:"type"`               // message type
+	ActorID     *string              `bson:"actor_id,omitempty"` // who initiated (for system messages)
 	ParentID    *string              `bson:"parent_id,omitempty"`
 	CreatedAt   time.Time            `bson:"created_at"`
 	EditedAt    *time.Time           `bson:"edited_at,omitempty"`
@@ -540,11 +542,26 @@ func (r *MongoMessageRepository) messageToDocument(msg *messagedomain.Message) m
 		parentID = &parentIDStr
 	}
 
+	// obrabatyvaem actor ID
+	var actorID *string
+	if msg.ActorID() != nil && !msg.ActorID().IsZero() {
+		actorIDStr := msg.ActorID().String()
+		actorID = &actorIDStr
+	}
+
+	// obrabatyvaem message type
+	msgType := string(msg.Type())
+	if msgType == "" {
+		msgType = string(messagedomain.TypeUser)
+	}
+
 	return messageDocument{
 		MessageID:   msg.ID().String(),
 		ChatID:      msg.ChatID().String(),
 		AuthorID:    msg.AuthorID().String(),
 		Content:     msg.Content(),
+		Type:        msgType,
+		ActorID:     actorID,
 		ParentID:    parentID,
 		CreatedAt:   msg.CreatedAt(),
 		EditedAt:    msg.EditedAt(),
@@ -613,6 +630,21 @@ func (r *MongoMessageRepository) documentToMessage(doc *messageDocument) (*messa
 		))
 	}
 
+	// parse message type
+	msgType := messagedomain.Type(doc.Type)
+	if msgType == "" {
+		msgType = messagedomain.TypeUser
+	}
+
+	// parse actor ID
+	var actorID *uuid.UUID
+	if doc.ActorID != nil {
+		parsedActorID, parseErr := uuid.ParseUUID(*doc.ActorID)
+		if parseErr == nil {
+			actorID = &parsedActorID
+		}
+	}
+
 	return messagedomain.Reconstruct(
 		id,
 		chatID,
@@ -625,5 +657,7 @@ func (r *MongoMessageRepository) documentToMessage(doc *messageDocument) (*messa
 		doc.DeletedAt,
 		attachments,
 		reactions,
+		msgType,
+		actorID,
 	), nil
 }

@@ -128,7 +128,7 @@ func TestMongoTaskRepository_Save_And_Load(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify events were saved
-	assert.NotEmpty(t, eventStore.AllEvents()[taskID.String()])
+	assert.NotEmpty(t, eventStore.AllEvents()[taskID])
 
 	// Load
 	loaded, err := commandRepo.Load(ctx, taskID)

@@ -15,6 +15,8 @@ type Parser struct {
 }
 
 // NewParser creates New parser s zaregistrirovannymi sistemnymi tegami
+//
+//nolint:funlen // Function registers all system tags and needs to be comprehensive
 func NewParser() *Parser {
 	parser := &Parser{
 		knownTags: make(map[string]Definition),
@@ -87,6 +89,43 @@ func NewParser() *Parser {
 		ValueType:     ValueTypeEnum,
 		AllowedValues: []string{"Critical", "Major", "Minor", "Trivial"},
 		Validator:     validateSeverity,
+	})
+
+	// Participant Management Tags (Task 007a)
+	parser.registerTag(Definition{
+		Name:          "invite",
+		RequiresValue: true,
+		ValueType:     ValueTypeUsername,
+		Validator:     validateUsername,
+	})
+
+	parser.registerTag(Definition{
+		Name:          "remove",
+		RequiresValue: true,
+		ValueType:     ValueTypeUsername,
+		Validator:     validateUsername,
+	})
+
+	// Chat Lifecycle Tags (Task 007a)
+	parser.registerTag(Definition{
+		Name:          "close",
+		RequiresValue: false,
+		ValueType:     ValueTypeNone,
+		Validator:     noValidation,
+	})
+
+	parser.registerTag(Definition{
+		Name:          "reopen",
+		RequiresValue: false,
+		ValueType:     ValueTypeNone,
+		Validator:     noValidation,
+	})
+
+	parser.registerTag(Definition{
+		Name:          "delete",
+		RequiresValue: false,
+		ValueType:     ValueTypeNone,
+		Validator:     noValidation,
 	})
 
 	return parser

@@ -119,7 +119,7 @@ func TestMongoChatRepository_Load_SaveRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 
 	// Checking, that event byli sav
-	assert.NotEmpty(t, eventStore.AllEvents()[c.ID().String()])
+	assert.NotEmpty(t, eventStore.AllEvents()[c.ID()])
 
 	// Load
 	loaded, err := commandRepo.Load(ctx, c.ID())
@@ -177,13 +177,13 @@ func TestMongoChatRepository_Save_NoChanges(t *testing.T) {
 	err = commandRepo.Save(ctx, c)
 	require.NoError(t, err)
 
-	eventCountBefore := len(eventStore.AllEvents()[c.ID().String()])
+	eventCountBefore := len(eventStore.AllEvents()[c.ID()])
 
 	// Save again without changes
 	err = commandRepo.Save(ctx, c)
 	require.NoError(t, err) // Should be idempotent
 
-	eventCountAfter := len(eventStore.AllEvents()[c.ID().String()])
+	eventCountAfter := len(eventStore.AllEvents()[c.ID()])
 	assert.Equal(t, eventCountBefore, eventCountAfter)
 }
 

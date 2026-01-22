@@ -11,20 +11,20 @@ import (
 
 // TestChangeStatusUseCase_Success_TaskStatus tests changing Task status
 func TestChangeStatusUseCase_Success_TaskStatus(t *testing.T) {
-	eventStore := newTestEventStore()
+	chatRepo := newTestChatRepo()
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(
+	createdChat := createTestChatWithRepo(
 		t,
-		eventStore,
+		chatRepo,
 		domainChat.TypeTask,
 		"Test Task",
 		workspaceID,
 		creatorID,
 	)
 
-	changeUseCase := chat.NewChangeStatusUseCase(eventStore)
+	changeUseCase := chat.NewChangeStatusUseCase(chatRepo)
 	changeCmd := chat.ChangeStatusCommand{
 		ChatID:    createdChat.ID(),
 		Status:    "In Progress",
@@ -38,13 +38,13 @@ func TestChangeStatusUseCase_Success_TaskStatus(t *testing.T) {
 
 // TestChangeStatusUseCase_Success_BugStatus tests changing Bug status
 func TestChangeStatusUseCase_Success_BugStatus(t *testing.T) {
-	eventStore := newTestEventStore()
+	chatRepo := newTestChatRepo()
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(t, eventStore, domainChat.TypeBug, "Test Bug", workspaceID, creatorID)
+	createdChat := createTestChatWithRepo(t, chatRepo, domainChat.TypeBug, "Test Bug", workspaceID, creatorID)
 
-	changeUseCase := chat.NewChangeStatusUseCase(eventStore)
+	changeUseCase := chat.NewChangeStatusUseCase(chatRepo)
 	changeCmd := chat.ChangeStatusCommand{
 		ChatID:    createdChat.ID(),
 		Status:    "Fixed",
@@ -58,20 +58,20 @@ func TestChangeStatusUseCase_Success_BugStatus(t *testing.T) {
 
 // TestChangeStatusUseCase_Success_EpicStatus tests changing Epic status
 func TestChangeStatusUseCase_Success_EpicStatus(t *testing.T) {
-	eventStore := newTestEventStore()
+	chatRepo := newTestChatRepo()
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(
+	createdChat := createTestChatWithRepo(
 		t,
-		eventStore,
+		chatRepo,
 		domainChat.TypeEpic,
 		"Test Epic",
 		workspaceID,
 		creatorID,
 	)
 
-	changeUseCase := chat.NewChangeStatusUseCase(eventStore)
+	changeUseCase := chat.NewChangeStatusUseCase(chatRepo)
 	changeCmd := chat.ChangeStatusCommand{
 		ChatID:    createdChat.ID(),
 		Status:    "In Progress",
@@ -85,8 +85,8 @@ func TestChangeStatusUseCase_Success_EpicStatus(t *testing.T) {
 
 // TestChangeStatusUseCase_ValidationError_EmptyStatus tests validation error
 func TestChangeStatusUseCase_ValidationError_EmptyStatus(t *testing.T) {
-	eventStore := newTestEventStore()
-	changeUseCase := chat.NewChangeStatusUseCase(eventStore)
+	chatRepo := newTestChatRepo()
+	changeUseCase := chat.NewChangeStatusUseCase(chatRepo)
 
 	changeCmd := chat.ChangeStatusCommand{
 		ChatID:    generateUUID(t),
@@ -101,8 +101,8 @@ func TestChangeStatusUseCase_ValidationError_EmptyStatus(t *testing.T) {
 
 // TestChangeStatusUseCase_ValidationError_InvalidChatID tests validation error
 func TestChangeStatusUseCase_ValidationError_InvalidChatID(t *testing.T) {
-	eventStore := newTestEventStore()
-	changeUseCase := chat.NewChangeStatusUseCase(eventStore)
+	chatRepo := newTestChatRepo()
+	changeUseCase := chat.NewChangeStatusUseCase(chatRepo)
 
 	changeCmd := chat.ChangeStatusCommand{
 		ChatID:    "",

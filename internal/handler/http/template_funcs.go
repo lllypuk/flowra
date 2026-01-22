@@ -275,12 +275,40 @@ func sliceFunc(list []any, start, end int) []any {
 }
 
 func length(v any) int {
+	if v == nil {
+		return 0
+	}
 	switch val := v.(type) {
 	case string:
 		return len(val)
 	case []any:
 		return len(val)
 	case map[string]any:
+		return len(val)
+	// Common slice types used in templates
+	case []string:
+		return len(val)
+	case []int:
+		return len(val)
+	case []MessageTagData:
+		return len(val)
+	case []MessageReactionData:
+		return len(val)
+	case []MessageViewData:
+		return len(val)
+	case []ChatViewData:
+		return len(val)
+	case []ParticipantViewData:
+		return len(val)
+	case []TaskCardViewData:
+		return len(val)
+	case []ActivityViewData:
+		return len(val)
+	case []SelectOption:
+		return len(val)
+	case []MemberViewData:
+		return len(val)
+	case []NotificationViewData:
 		return len(val)
 	default:
 		return 0

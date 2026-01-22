@@ -18,15 +18,19 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/chat"
 	"github.com/lllypuk/flowra/internal/domain/message"
 	notificationdomain "github.com/lllypuk/flowra/internal/domain/notification"
+	"github.com/lllypuk/flowra/internal/domain/tag"
 	taskdomain "github.com/lllypuk/flowra/internal/domain/task"
 	httphandler "github.com/lllypuk/flowra/internal/handler/http"
 	wshandler "github.com/lllypuk/flowra/internal/handler/websocket"
 	"github.com/lllypuk/flowra/internal/infrastructure/auth"
 	"github.com/lllypuk/flowra/internal/infrastructure/eventbus"
 	"github.com/lllypuk/flowra/internal/infrastructure/eventstore"
+	"github.com/lllypuk/flowra/internal/infrastructure/healthcheck"
 	"github.com/lllypuk/flowra/internal/infrastructure/httpserver"
 	"github.com/lllypuk/flowra/internal/infrastructure/keycloak"
 	mongodbinfra "github.com/lllypuk/flowra/internal/infrastructure/mongodb"
+	"github.com/lllypuk/flowra/internal/infrastructure/outbox"
+	"github.com/lllypuk/flowra/internal/infrastructure/repair"
 	"github.com/lllypuk/flowra/internal/infrastructure/repository/mongodb"
 	"github.com/lllypuk/flowra/internal/infrastructure/websocket"
 	"github.com/lllypuk/flowra/internal/middleware"
@@ -50,10 +54,24 @@ const (
 	keycloakTokenBuffer    = 30 * time.Second
 )
 
+// Health check configuration constants.
+const (
+	healthCheckOutboxWarningThreshold  = 100
+	healthCheckOutboxCriticalThreshold = 1000
+	healthCheckRepairQueueThreshold    = 10
+	healthCheckReadModelSampleSize     = 100
+)
+
 // WebSocket client configuration constants.
 const (
 	defaultWSWriteWait      = 10 * time.Second
 	defaultWSMaxMessageSize = 65536
+)
+
+// System bot user ID for automated responses
+const (
+	SystemBotUserID   = "00000000-0000-0000-0000-000000000001"
+	SystemBotUsername = "FlowraBot"
 )
 
 // Container holds all application dependencies and manages their lifecycle.
@@ -69,10 +87,21 @@ type Container struct {
 	Redis        *redis.Client
 	EventStore   *eventstore.MongoEventStore
 	EventBus     *eventbus.RedisEventBus
+	Outbox       appcore.Outbox
 	Hub          *websocket.Hub
 	Broadcaster  *websocket.Broadcaster
 	NotifHandler *eventbus.NotificationHandler
 	LogHandler   *eventbus.LoggingHandler
+
+	// Reliability components
+	DeadLetterHandler *eventbus.DeadLetterHandler
+	RepairQueue       repair.Queue
+
+	// Health Checkers
+	OutboxChecker     appcore.HealthChecker
+	RepairChecker     appcore.HealthChecker
+	DeadLetterChecker appcore.HealthChecker
+	ReadModelChecker  appcore.HealthChecker
 
 	// Repositories
 	UserRepo         *mongodb.MongoUserRepository
@@ -101,11 +130,13 @@ type Container struct {
 	MemberService    *service.MemberService
 	ChatService      *service.ChatService
 	MessageService   *service.MessageService
+	ActionService    *service.ActionService
 
 	// HTTP Handlers
 	AuthHandler         *httphandler.AuthHandler
 	WorkspaceHandler    *httphandler.WorkspaceHandler
 	ChatHandler         *httphandler.ChatHandler
+	ChatActionHandler   *httphandler.ChatActionHandler
 	MessageHandler      *httphandler.MessageHandler
 	TaskHandler         *httphandler.TaskHandler
 	NotificationHandler *httphandler.NotificationHandler
@@ -166,8 +197,18 @@ func NewContainer(cfg *config.Config, opts ...ContainerOption) (*Container, erro
 	}
 
 	c.setupRepositories()
+
+	// Ensure system bot user exists in database
+	if err := c.ensureSystemBot(context.Background()); err != nil {
+		c.Logger.Warn("failed to create system bot user", slog.String("error", err.Error()))
+		// Non-fatal - continue initialization
+	}
+
 	c.setupUseCases()
 	c.setupEventHandlers()
+
+	// Setup health checkers (after repositories are initialized)
+	c.setupHealthCheckers()
 
 	// Setup template rendering
 	if err := c.setupTemplateRenderer(); err != nil {
@@ -308,6 +349,15 @@ func (c *Container) setupInfrastructure() error {
 	// Setup EventBus
 	c.setupEventBus()
 
+	// Setup Outbox (for reliable event delivery)
+	c.setupOutbox()
+
+	// Setup Repair Queue (for failed read model updates)
+	c.setupRepairQueue()
+
+	// Setup Dead Letter Handler (for failed events)
+	c.setupDeadLetterHandler()
+
 	// Setup WebSocket Hub
 	c.setupHub()
 
@@ -407,6 +457,79 @@ func (c *Container) setupEventBus() {
 	)
 }
 
+// setupOutbox initializes the transactional outbox for reliable event delivery.
+func (c *Container) setupOutbox() {
+	if !c.Config.Outbox.Enabled {
+		c.Logger.Debug("outbox disabled by configuration")
+		return
+	}
+
+	db := c.MongoDB.Database(c.MongoDBName)
+	outboxColl := db.Collection(mongodbinfra.CollectionOutbox)
+
+	c.Outbox = outbox.NewMongoOutbox(
+		outboxColl,
+		outbox.WithLogger(c.Logger),
+	)
+
+	c.Logger.Debug("outbox initialized",
+		slog.String("collection", mongodbinfra.CollectionOutbox),
+	)
+}
+
+// setupRepairQueue initializes the repair queue for failed read model updates.
+func (c *Container) setupRepairQueue() {
+	db := c.MongoDB.Database(c.MongoDBName)
+	c.RepairQueue = repair.NewMongoQueue(
+		db.Collection("repair_queue"),
+		c.Logger,
+	)
+	c.Logger.Debug("repair queue initialized")
+}
+
+// setupDeadLetterHandler initializes the dead letter handler for failed events.
+func (c *Container) setupDeadLetterHandler() {
+	c.DeadLetterHandler = eventbus.NewDeadLetterHandler(
+		c.Redis,
+		eventbus.WithDeadLetterLogger(c.Logger),
+	)
+	c.Logger.Debug("dead letter handler initialized")
+}
+
+// setupHealthCheckers initializes all health checker components.
+func (c *Container) setupHealthCheckers() {
+	db := c.MongoDB.Database(c.MongoDBName)
+
+	// Outbox backlog checker
+	c.OutboxChecker = healthcheck.NewOutboxBacklogChecker(
+		c.Outbox,
+		healthcheck.WithWarningThreshold(healthCheckOutboxWarningThreshold),
+		healthcheck.WithCriticalThreshold(healthCheckOutboxCriticalThreshold),
+	)
+
+	// Repair queue checker
+	if c.RepairQueue != nil {
+		c.RepairChecker = healthcheck.NewRepairQueueChecker(
+			c.RepairQueue,
+			healthCheckRepairQueueThreshold,
+		)
+	}
+
+	// Dead letter checker
+	if c.DeadLetterHandler != nil {
+		c.DeadLetterChecker = healthcheck.NewDeadLetterChecker(c.DeadLetterHandler)
+	}
+
+	// ReadModel sync checker
+	c.ReadModelChecker = healthcheck.NewReadModelSyncChecker(
+		db.Collection("chats_read_model"),
+		db.Collection("tasks_read_model"),
+		healthCheckReadModelSampleSize,
+	)
+
+	c.Logger.Debug("health checkers initialized")
+}
+
 // setupHub initializes the WebSocket hub.
 func (c *Container) setupHub() {
 	c.Hub = websocket.NewHub(
@@ -451,10 +574,19 @@ func (c *Container) setupRepositories() {
 	)
 
 	// Chat repository (event sourced - command side)
+	chatRepoOpts := []mongodb.ChatRepoOption{
+		mongodb.WithChatRepoLogger(c.Logger),
+	}
+	if c.Outbox != nil {
+		chatRepoOpts = append(chatRepoOpts, mongodb.WithChatRepoOutbox(c.Outbox))
+	} else {
+		//nolint:staticcheck // Fallback to direct EventBus when Outbox is disabled
+		chatRepoOpts = append(chatRepoOpts, mongodb.WithChatRepoEventBus(c.EventBus))
+	}
 	c.ChatRepo = mongodb.NewMongoChatRepository(
 		c.EventStore,
 		db.Collection("chats_read_model"),
-		mongodb.WithChatRepoLogger(c.Logger),
+		chatRepoOpts...,
 	)
 
 	// Chat read model repository (query side)
@@ -471,10 +603,19 @@ func (c *Container) setupRepositories() {
 	)
 
 	// Task repository (event sourced)
+	taskRepoOpts := []mongodb.TaskRepoOption{
+		mongodb.WithTaskRepoLogger(c.Logger),
+	}
+	if c.Outbox != nil {
+		taskRepoOpts = append(taskRepoOpts, mongodb.WithTaskRepoOutbox(c.Outbox))
+	} else {
+		//nolint:staticcheck // Fallback to direct EventBus when Outbox is disabled
+		taskRepoOpts = append(taskRepoOpts, mongodb.WithTaskRepoEventBus(c.EventBus))
+	}
 	c.TaskRepo = mongodb.NewMongoTaskRepository(
 		c.EventStore,
 		db.Collection("tasks_read_model"),
-		mongodb.WithTaskRepoLogger(c.Logger),
+		taskRepoOpts...,
 	)
 
 	// Notification repository
@@ -501,13 +642,20 @@ func (c *Container) setupUseCases() {
 
 // setupMessageUseCases initializes message-related use cases.
 func (c *Container) setupMessageUseCases() {
-	// SendMessage use case
+	// Create tag processor and executor
+	tagProcessor := tag.NewProcessor()
+	chatUseCases := c.createChatUseCasesForTags()
+	tagExecutor := tag.NewCommandExecutor(chatUseCases, c.UserRepo)
+
+	// SendMessage use case with tag support
+	botUserID, _ := uuid.ParseUUID(SystemBotUserID)
 	c.SendMessageUC = messageapp.NewSendMessageUseCase(
 		c.MessageRepo,
 		c.ChatQueryRepo,
 		c.EventBus,
-		nil, // tag processor - TODO: add when available
-		nil, // tag executor - TODO: add when available
+		tagProcessor,
+		tagExecutor,
+		botUserID,
 	)
 
 	// ListMessages use case
@@ -551,6 +699,33 @@ func (c *Container) setupMessageUseCases() {
 	)
 
 	c.Logger.Debug("message use cases initialized")
+}
+
+// createChatUseCasesForTags creates the ChatUseCases struct needed by tag executor.
+// Uses ChatRepo which updates both event store AND read model (unlike EventStore alone).
+func (c *Container) createChatUseCasesForTags() *tag.ChatUseCases {
+	return &tag.ChatUseCases{
+		// Entity Creation
+		ConvertToTask: chatapp.NewConvertToTaskUseCase(c.ChatRepo),
+		ConvertToBug:  chatapp.NewConvertToBugUseCase(c.ChatRepo),
+		ConvertToEpic: chatapp.NewConvertToEpicUseCase(c.ChatRepo),
+
+		// Entity Management
+		ChangeStatus: chatapp.NewChangeStatusUseCase(c.ChatRepo),
+		AssignUser:   chatapp.NewAssignUserUseCase(c.ChatRepo),
+		SetPriority:  chatapp.NewSetPriorityUseCase(c.ChatRepo),
+		SetDueDate:   chatapp.NewSetDueDateUseCase(c.ChatRepo),
+		Rename:       chatapp.NewRenameChatUseCase(c.ChatRepo),
+		SetSeverity:  chatapp.NewSetSeverityUseCase(c.ChatRepo),
+
+		// Participant Management (Task 007a)
+		AddParticipant:    chatapp.NewAddParticipantUseCase(c.EventStore),
+		RemoveParticipant: chatapp.NewRemoveParticipantUseCase(c.EventStore),
+
+		// Chat Lifecycle (Task 007a)
+		CloseChat:  chatapp.NewCloseChatUseCase(c.EventStore),
+		ReopenChat: chatapp.NewReopenChatUseCase(c.EventStore),
+	}
 }
 
 // setupEventHandlers initializes and registers event handlers with the event bus.
@@ -628,7 +803,8 @@ func (c *Container) setupHTTPHandlers() {
 	// === 5. Chat Service (Real) ===
 	c.ChatService = c.createChatService()
 	c.ChatHandler = httphandler.NewChatHandler(c.ChatService)
-	c.Logger.Debug("chat service initialized (real)")
+	c.ChatActionHandler = httphandler.NewChatActionHandler(c.ActionService)
+	c.Logger.Debug("chat service and handlers initialized (real)")
 
 	// === 6. Auth Service ===
 	authService := c.createAuthService()
@@ -698,6 +874,10 @@ func (c *Container) setupHTTPHandlers() {
 	c.MessageHandler = httphandler.NewMessageHandler(c.MessageService)
 	c.Logger.Debug("message service and handler initialized (real)")
 
+	// === 14. Action Service ===
+	c.ActionService = service.NewActionService(c.SendMessageUC, c.UserRepo)
+	c.Logger.Debug("action service initialized")
+
 	// Initialize TaskHandler with full service
 	c.TaskHandler = httphandler.NewTaskHandler(c.createFullTaskService())
 	c.Logger.Debug("task handler initialized (real)")
@@ -760,7 +940,7 @@ func (c *Container) createChatService() *service.ChatService {
 	createUC := chatapp.NewCreateChatUseCase(c.ChatRepo)
 	getUC := chatapp.NewGetChatUseCase(c.EventStore)
 	listUC := chatapp.NewListChatsUseCase(c.ChatQueryRepo, c.EventStore)
-	renameUC := chatapp.NewRenameChatUseCase(c.EventStore)
+	renameUC := chatapp.NewRenameChatUseCase(c.ChatRepo)
 	addPartUC := chatapp.NewAddParticipantUseCase(c.EventStore)
 	removePartUC := chatapp.NewRemoveParticipantUseCase(c.EventStore)
 
@@ -981,73 +1161,27 @@ func (c *Container) setupBoardTemplateHandler() {
 // createBoardTaskCreator creates a service implementing BoardTaskCreator.
 func (c *Container) createBoardTaskCreator() httphandler.BoardTaskCreator {
 	return &boardTaskCreatorAdapter{
-		eventStore:    c.EventStore,
-		readModelColl: c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model"),
-		logger:        c.Logger,
+		taskRepo: c.TaskRepo,
 	}
 }
 
-// boardTaskCreatorAdapter creates tasks and updates the read model.
+// boardTaskCreatorAdapter creates tasks using the repository pattern.
 type boardTaskCreatorAdapter struct {
-	eventStore    appcore.EventStore
-	readModelColl *mongo.Collection
-	logger        *slog.Logger
+	taskRepo taskapp.CommandRepository
 }
 
 // CreateTask implements BoardTaskCreator.
-// It creates a task and updates the read model for immediate visibility.
+// The repository handles both event store and read model updates.
 func (a *boardTaskCreatorAdapter) CreateTask(
 	ctx context.Context,
 	cmd taskapp.CreateTaskCommand,
 ) (*taskapp.TaskResult, error) {
-	// 1. Create task via use case
-	createUC := taskapp.NewCreateTaskUseCase(a.eventStore)
+	createUC := taskapp.NewCreateTaskUseCase(a.taskRepo)
 	result, err := createUC.Execute(ctx, cmd)
 	if err != nil {
 		return nil, err
 	}
-
-	// 2. Update read model directly so the task appears immediately
-	if updateErr := a.updateTaskReadModel(ctx, result, cmd); updateErr != nil {
-		a.logger.WarnContext(ctx, "failed to update task read model",
-			slog.String("task_id", result.TaskID.String()),
-			slog.String("error", updateErr.Error()),
-		)
-		// Don't fail - the event was saved, read model can be rebuilt
-	}
-
 	return &result, nil
-}
-
-// updateTaskReadModel updates the tasks_read_model collection.
-func (a *boardTaskCreatorAdapter) updateTaskReadModel(
-	ctx context.Context,
-	result taskapp.TaskResult,
-	cmd taskapp.CreateTaskCommand,
-) error {
-	doc := map[string]any{
-		"_id":         result.TaskID.String(),
-		"task_id":     result.TaskID.String(),
-		"chat_id":     cmd.ChatID.String(),
-		"title":       cmd.Title,
-		"entity_type": string(cmd.EntityType),
-		"status":      string(taskdomain.StatusToDo),
-		"priority":    string(cmd.Priority),
-		"created_by":  cmd.CreatedBy.String(),
-		"created_at":  time.Now(),
-		"version":     result.Version,
-	}
-
-	if cmd.AssigneeID != nil {
-		doc["assigned_to"] = cmd.AssigneeID.String()
-	}
-
-	if cmd.DueDate != nil {
-		doc["due_date"] = *cmd.DueDate
-	}
-
-	_, err := a.readModelColl.InsertOne(ctx, doc)
-	return err
 }
 
 // createBoardChatCreator creates a service implementing BoardChatCreator.
@@ -1253,8 +1387,8 @@ func (c *Container) createFullTaskService() httphandler.TaskService {
 		boardTaskServiceAdapter: boardTaskServiceAdapter{
 			collection: c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model"),
 		},
-		eventStore: c.EventStore,
-		userRepo:   c.UserRepo,
+		taskRepo: c.TaskRepo,
+		userRepo: c.UserRepo,
 	}
 }
 
@@ -1263,129 +1397,58 @@ func (c *Container) createFullTaskService() httphandler.TaskService {
 type fullTaskServiceAdapter struct {
 	boardTaskServiceAdapter
 
-	eventStore appcore.EventStore
-	userRepo   appcore.UserRepository
+	taskRepo taskapp.CommandRepository
+	userRepo appcore.UserRepository
 }
 
 // CreateTask implements httphandler.TaskService.
+// Repository handles both event store and read model updates.
 func (a *fullTaskServiceAdapter) CreateTask(
 	ctx context.Context,
 	cmd taskapp.CreateTaskCommand,
 ) (taskapp.TaskResult, error) {
-	createUC := taskapp.NewCreateTaskUseCase(a.eventStore)
+	createUC := taskapp.NewCreateTaskUseCase(a.taskRepo)
 	return createUC.Execute(ctx, cmd)
 }
 
 // ChangeStatus implements httphandler.TaskService.
+// Repository handles both event store and read model updates.
 func (a *fullTaskServiceAdapter) ChangeStatus(
 	ctx context.Context,
 	cmd taskapp.ChangeStatusCommand,
 ) (taskapp.TaskResult, error) {
-	changeStatusUC := taskapp.NewChangeStatusUseCase(a.eventStore)
-	result, err := changeStatusUC.Execute(ctx, cmd)
-	if err != nil {
-		return result, err
-	}
-
-	// Update read model with new status
-	if a.collection != nil {
-		filter := bson.M{"task_id": cmd.TaskID.String()}
-		update := bson.M{
-			"$set": bson.M{
-				"status":  string(cmd.NewStatus),
-				"version": result.Version,
-			},
-		}
-		_, _ = a.collection.UpdateOne(ctx, filter, update)
-	}
-
-	return result, nil
+	changeStatusUC := taskapp.NewChangeStatusUseCase(a.taskRepo)
+	return changeStatusUC.Execute(ctx, cmd)
 }
 
 // AssignTask implements httphandler.TaskService.
+// Repository handles both event store and read model updates.
 func (a *fullTaskServiceAdapter) AssignTask(
 	ctx context.Context,
 	cmd taskapp.AssignTaskCommand,
 ) (taskapp.TaskResult, error) {
-	assignUC := taskapp.NewAssignTaskUseCase(a.eventStore, a.userRepo)
-	result, err := assignUC.Execute(ctx, cmd)
-	if err != nil {
-		return result, err
-	}
-
-	// Update read model with new assignee
-	if a.collection != nil {
-		filter := bson.M{"task_id": cmd.TaskID.String()}
-		var assignedTo interface{}
-		if cmd.AssigneeID != nil {
-			assignedTo = cmd.AssigneeID.String()
-		}
-		update := bson.M{
-			"$set": bson.M{
-				"assigned_to": assignedTo,
-				"version":     result.Version,
-			},
-		}
-		_, _ = a.collection.UpdateOne(ctx, filter, update)
-	}
-
-	return result, nil
+	assignUC := taskapp.NewAssignTaskUseCase(a.taskRepo, a.userRepo)
+	return assignUC.Execute(ctx, cmd)
 }
 
 // ChangePriority implements httphandler.TaskService.
+// Repository handles both event store and read model updates.
 func (a *fullTaskServiceAdapter) ChangePriority(
 	ctx context.Context,
 	cmd taskapp.ChangePriorityCommand,
 ) (taskapp.TaskResult, error) {
-	changePriorityUC := taskapp.NewChangePriorityUseCase(a.eventStore)
-	result, err := changePriorityUC.Execute(ctx, cmd)
-	if err != nil {
-		return result, err
-	}
-
-	// Update read model with new priority
-	if a.collection != nil {
-		filter := bson.M{"task_id": cmd.TaskID.String()}
-		update := bson.M{
-			"$set": bson.M{
-				"priority": string(cmd.Priority),
-				"version":  result.Version,
-			},
-		}
-		_, _ = a.collection.UpdateOne(ctx, filter, update)
-	}
-
-	return result, nil
+	changePriorityUC := taskapp.NewChangePriorityUseCase(a.taskRepo)
+	return changePriorityUC.Execute(ctx, cmd)
 }
 
 // SetDueDate implements httphandler.TaskService.
+// Repository handles both event store and read model updates.
 func (a *fullTaskServiceAdapter) SetDueDate(
 	ctx context.Context,
 	cmd taskapp.SetDueDateCommand,
 ) (taskapp.TaskResult, error) {
-	setDueDateUC := taskapp.NewSetDueDateUseCase(a.eventStore)
-	result, err := setDueDateUC.Execute(ctx, cmd)
-	if err != nil {
-		return result, err
-	}
-
-	// Update read model with new due date
-	if a.collection != nil {
-		filter := bson.M{"task_id": cmd.TaskID.String()}
-		var dueDate interface{}
-		if cmd.DueDate != nil {
-			dueDate = *cmd.DueDate
-		}
-		update := bson.M{
-			"$set": bson.M{
-				"due_date": dueDate,
-				"version":  result.Version,
-			},
-		}
-		_, _ = a.collection.UpdateOne(ctx, filter, update)
-	}
-
-	return result, nil
+	setDueDateUC := taskapp.NewSetDueDateUseCase(a.taskRepo)
+	return setDueDateUC.Execute(ctx, cmd)
 }
 
 // DeleteTask implements httphandler.TaskService.
@@ -1634,6 +1697,49 @@ func (a *userRepoAdapter) FindByExternalID(ctx echo.Context, externalID string) 
 	return a.repo.FindByExternalID(ctx.Request().Context(), externalID)
 }
 
+// ensureSystemBot ensures that the system bot user exists in the database.
+// This is called during container initialization to guarantee the bot user is available
+// for automated responses (tag processing, notifications, etc.).
+func (c *Container) ensureSystemBot(ctx context.Context) error {
+	botUserID, err := uuid.ParseUUID(SystemBotUserID)
+	if err != nil {
+		return fmt.Errorf("invalid system bot user ID: %w", err)
+	}
+
+	// Check if bot user already exists
+	existingUser, err := c.UserRepo.FindByID(ctx, botUserID)
+	if err == nil && existingUser != nil {
+		c.Logger.DebugContext(ctx, "system bot user already exists",
+			slog.String("user_id", SystemBotUserID),
+			slog.String("username", existingUser.Username()),
+		)
+		return nil
+	}
+
+	// Create the system bot user
+	botUser, err := user.NewUser(
+		SystemBotUserID,   // Use the bot UUID as external ID
+		SystemBotUsername, // Username: "FlowraBot"
+		"bot@flowra.internal",
+		"Flowra Bot", // Display name
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create system bot user: %w", err)
+	}
+
+	// Save the bot user
+	if err = c.UserRepo.Save(ctx, botUser); err != nil {
+		return fmt.Errorf("failed to save system bot user: %w", err)
+	}
+
+	c.Logger.InfoContext(ctx, "system bot user created",
+		slog.String("user_id", SystemBotUserID),
+		slog.String("username", SystemBotUsername),
+	)
+
+	return nil
+}
+
 // Close gracefully closes all container resources.
 // Resources are closed in reverse order of initialization.
 func (c *Container) Close() error {
@@ -1799,7 +1905,52 @@ func (c *Container) GetHealthStatus(ctx context.Context) []httpserver.ComponentS
 	}
 	statuses = append(statuses, eventBusStatus)
 
+	// Consistency health checks
+	if c.OutboxChecker != nil {
+		status := c.OutboxChecker.Check(ctx)
+		statuses = append(statuses, httpserver.ComponentStatus{
+			Name:    c.OutboxChecker.Name(),
+			Status:  mapHealthStatus(status.Healthy),
+			Message: status.Message,
+		})
+	}
+
+	if c.RepairChecker != nil {
+		status := c.RepairChecker.Check(ctx)
+		statuses = append(statuses, httpserver.ComponentStatus{
+			Name:    c.RepairChecker.Name(),
+			Status:  mapHealthStatus(status.Healthy),
+			Message: status.Message,
+		})
+	}
+
+	if c.DeadLetterChecker != nil {
+		status := c.DeadLetterChecker.Check(ctx)
+		statuses = append(statuses, httpserver.ComponentStatus{
+			Name:    c.DeadLetterChecker.Name(),
+			Status:  mapHealthStatus(status.Healthy),
+			Message: status.Message,
+		})
+	}
+
+	if c.ReadModelChecker != nil {
+		status := c.ReadModelChecker.Check(ctx)
+		statuses = append(statuses, httpserver.ComponentStatus{
+			Name:    c.ReadModelChecker.Name(),
+			Status:  mapHealthStatus(status.Healthy),
+			Message: status.Message,
+		})
+	}
+
 	return statuses
+}
+
+// mapHealthStatus converts appcore.HealthStatus.Healthy to httpserver status.
+func mapHealthStatus(healthy bool) string {
+	if healthy {
+		return httpserver.StatusHealthy
+	}
+	return httpserver.StatusUnhealthy
 }
 
 // oauthClientAdapter adapts keycloak.OAuthClient to httphandler.OAuthClient interface.

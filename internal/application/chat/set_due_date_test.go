@@ -14,13 +14,13 @@ import (
 
 // TestSetDueDateUseCase_Success_SetFutureDate tests setting a future due date
 func TestSetDueDateUseCase_Success_SetFutureDate(t *testing.T) {
-	eventStore := newTestEventStore()
+	chatRepo := newTestChatRepo()
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(
+	createdChat := createTestChatWithRepo(
 		t,
-		eventStore,
+		chatRepo,
 		domainChat.TypeTask,
 		"Test Task",
 		workspaceID,
@@ -28,7 +28,7 @@ func TestSetDueDateUseCase_Success_SetFutureDate(t *testing.T) {
 	)
 
 	futureDate := time.Now().AddDate(0, 0, 7) // 7 days in future
-	setDueDateUseCase := chat.NewSetDueDateUseCase(eventStore)
+	setDueDateUseCase := chat.NewSetDueDateUseCase(chatRepo)
 	setDueDateCmd := chat.SetDueDateCommand{
 		ChatID:  createdChat.ID(),
 		DueDate: &futureDate,
@@ -42,13 +42,13 @@ func TestSetDueDateUseCase_Success_SetFutureDate(t *testing.T) {
 
 // TestSetDueDateUseCase_Success_ClearDueDate tests clearing due date
 func TestSetDueDateUseCase_Success_ClearDueDate(t *testing.T) {
-	eventStore := newTestEventStore()
+	chatRepo := newTestChatRepo()
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
-	createdChat := createTestChatWithParams(
+	createdChat := createTestChatWithRepo(
 		t,
-		eventStore,
+		chatRepo,
 		domainChat.TypeTask,
 		"Test Task",
 		workspaceID,
@@ -57,7 +57,7 @@ func TestSetDueDateUseCase_Success_ClearDueDate(t *testing.T) {
 
 	// First set a due date
 	futureDate := time.Now().AddDate(0, 0, 7)
-	setDueDateUseCase := chat.NewSetDueDateUseCase(eventStore)
+	setDueDateUseCase := chat.NewSetDueDateUseCase(chatRepo)
 	setDueDateCmd := chat.SetDueDateCommand{
 		ChatID:  createdChat.ID(),
 		DueDate: &futureDate,
@@ -80,8 +80,8 @@ func TestSetDueDateUseCase_Success_ClearDueDate(t *testing.T) {
 
 // TestSetDueDateUseCase_ValidationError_InvalidChatID tests validation error
 func TestSetDueDateUseCase_ValidationError_InvalidChatID(t *testing.T) {
-	eventStore := newTestEventStore()
-	setDueDateUseCase := chat.NewSetDueDateUseCase(eventStore)
+	chatRepo := newTestChatRepo()
+	setDueDateUseCase := chat.NewSetDueDateUseCase(chatRepo)
 
 	futureDate := time.Now().AddDate(0, 0, 7)
 	setDueDateCmd := chat.SetDueDateCommand{
@@ -97,8 +97,8 @@ func TestSetDueDateUseCase_ValidationError_InvalidChatID(t *testing.T) {
 
 // TestSetDueDateUseCase_Error_ChatNotFound tests error when chat not found
 func TestSetDueDateUseCase_Error_ChatNotFound(t *testing.T) {
-	eventStore := newTestEventStore()
-	setDueDateUseCase := chat.NewSetDueDateUseCase(eventStore)
+	chatRepo := newTestChatRepo()
+	setDueDateUseCase := chat.NewSetDueDateUseCase(chatRepo)
 
 	futureDate := time.Now().AddDate(0, 0, 7)
 	setDueDateCmd := chat.SetDueDateCommand{

@@ -5,88 +5,82 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/appcore"
+	"github.com/lllypuk/flowra/internal/domain/errs"
 	"github.com/lllypuk/flowra/internal/domain/task"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// AggregateCommand represents obschiy interface for commands, work s agregatom tasks
+// AggregateCommand represents a common interface for commands working with task aggregate
 type AggregateCommand interface {
 	GetTaskID() uuid.UUID
 }
 
-// AggregateOperation function for vypolneniya biznes-operatsii on agregate
+// AggregateOperation is a function for performing business operations on the aggregate
 type AggregateOperation func(aggregate *task.Aggregate) error
 
-// BaseExecutor contains obschuyu logiku for vypolneniya commands s Event Sourcing
+// BaseExecutor contains common logic for executing commands with Event Sourcing
 type BaseExecutor struct {
-	eventStore appcore.EventStore
+	taskRepo CommandRepository
 }
 
-// NewBaseExecutor creates New bazovyy executor
-func NewBaseExecutor(eventStore appcore.EventStore) *BaseExecutor {
+// NewBaseExecutor creates a new base executor
+func NewBaseExecutor(taskRepo CommandRepository) *BaseExecutor {
 	return &BaseExecutor{
-		eventStore: eventStore,
+		taskRepo: taskRepo,
 	}
 }
 
-// Execute performs obschuyu logiku Event Sourcing for commands zadach
-// parameters:
-// - ctx: text vypolneniya
-// - taskID: identifier tasks
-// - operation: biznes-operatsiya for vypolneniya on agregate
-// - idempotentMessage: message for sluchaya, when operatsiya idempotentna
+// Execute performs common Event Sourcing logic for task commands
+// Parameters:
+// - ctx: execution context
+// - taskID: task identifier
+// - operation: business operation to perform on the aggregate
+// - idempotentMessage: message for when the operation is idempotent
 func (e *BaseExecutor) Execute(
 	ctx context.Context,
 	taskID uuid.UUID,
 	operation AggregateOperation,
 	idempotentMessage string,
 ) (TaskResult, error) {
-	// 1. Loading events from Event Store
-	events, err := e.eventStore.LoadEvents(ctx, taskID.String())
+	// 1. Load aggregate from repository
+	aggregate, err := e.taskRepo.Load(ctx, taskID)
 	if err != nil {
-		if errors.Is(err, appcore.ErrAggregateNotFound) {
+		if errors.Is(err, errs.ErrNotFound) {
 			return TaskResult{}, ErrTaskNotFound
 		}
-		return TaskResult{}, fmt.Errorf("failed to load events: %w", err)
+		return TaskResult{}, fmt.Errorf("failed to load task: %w", err)
 	}
 
-	if len(events) == 0 {
-		return TaskResult{}, ErrTaskNotFound
-	}
+	// Store current version before operation
+	versionBefore := aggregate.Version()
 
-	// 2. Restoration aggregate from events
-	aggregate := task.NewTaskAggregate(taskID)
-	aggregate.ReplayEvents(events)
-
-	// 3. performing biznes-operatsii
+	// 2. Perform business operation
 	if opErr := operation(aggregate); opErr != nil {
 		return TaskResult{}, opErr
 	}
 
-	// 4. retrieval only New events
+	// 3. Get new events
 	newEvents := aggregate.UncommittedEvents()
 
-	// if no new events (idempotent), return success
+	// If no new events (idempotent), return success
 	if len(newEvents) == 0 {
 		return TaskResult{
 			TaskID:  taskID,
-			Version: len(events),
+			Version: versionBefore,
 			Events:  newEvents,
 			Success: true,
 			Message: idempotentMessage,
 		}, nil
 	}
 
-	// 5. storage New events
-	expectedVersion := len(events)
-	if saveErr := e.eventStore.SaveEvents(ctx, taskID.String(), newEvents, expectedVersion); saveErr != nil {
-		if errors.Is(saveErr, appcore.ErrConcurrencyConflict) {
+	// 4. Save via repository (handles EventStore + ReadModel)
+	if saveErr := e.taskRepo.Save(ctx, aggregate); saveErr != nil {
+		if errors.Is(saveErr, errs.ErrConcurrentModification) {
 			return TaskResult{}, ErrConcurrentUpdate
 		}
-		return TaskResult{}, fmt.Errorf("failed to save events: %w", saveErr)
+		return TaskResult{}, fmt.Errorf("failed to save task: %w", saveErr)
 	}
 
-	// 6. vozvrat result
-	return NewSuccessResult(taskID, expectedVersion+len(newEvents), newEvents), nil
+	// 5. Return result
+	return NewSuccessResult(taskID, aggregate.Version(), newEvents), nil
 }

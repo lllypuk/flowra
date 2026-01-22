@@ -4,32 +4,31 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/task"
 )
 
 const minYear = 2020
 
-// SetDueDateUseCase handles ustanovku deadline tasks
+// SetDueDateUseCase handles setting task due date
 type SetDueDateUseCase struct {
 	baseExecutor *BaseExecutor
 }
 
-// NewSetDueDateUseCase creates New use case for setting deadline
-func NewSetDueDateUseCase(eventStore appcore.EventStore) *SetDueDateUseCase {
+// NewSetDueDateUseCase creates a new use case for setting due date
+func NewSetDueDateUseCase(taskRepo CommandRepository) *SetDueDateUseCase {
 	return &SetDueDateUseCase{
-		baseExecutor: NewBaseExecutor(eventStore),
+		baseExecutor: NewBaseExecutor(taskRepo),
 	}
 }
 
-// Execute sets deadline tasks
+// Execute sets task due date
 func (uc *SetDueDateUseCase) Execute(ctx context.Context, cmd SetDueDateCommand) (TaskResult, error) {
-	// validation commands
+	// Validate command
 	if err := uc.validate(cmd); err != nil {
 		return TaskResult{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// performing operatsii via bazovyy executor
+	// Perform operation via base executor
 	return uc.baseExecutor.Execute(
 		ctx,
 		cmd.TaskID,

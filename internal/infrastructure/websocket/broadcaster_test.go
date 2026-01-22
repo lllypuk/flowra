@@ -394,8 +394,8 @@ func TestBroadcaster_HandleEvent(t *testing.T) {
 		hub.JoinChat(client, chatID)
 		time.Sleep(20 * time.Millisecond)
 
-		// Publish event with chat_id in payload
-		payload := map[string]string{"chat_id": chatID.String()}
+		// Publish event with ChatID in payload (matches task domain event structure)
+		payload := map[string]string{"ChatID": chatID.String()}
 		evt := newTestDomainEventWithPayload("task.status_changed", uuid.NewUUID().String(), "task", payload)
 		err = eventBus.Publish(ctx, evt)
 		require.NoError(t, err)

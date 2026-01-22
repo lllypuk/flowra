@@ -11,13 +11,13 @@ import (
 	taskapp "github.com/lllypuk/flowra/internal/application/task"
 	"github.com/lllypuk/flowra/internal/domain/task"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
-	"github.com/lllypuk/flowra/internal/infrastructure/eventstore"
+	"github.com/lllypuk/flowra/tests/mocks"
 )
 
 func TestCreateTaskUseCase_Success(t *testing.T) {
 	// Arrange
-	store := eventstore.NewInMemoryEventStore()
-	useCase := taskapp.NewCreateTaskUseCase(store)
+	repo := mocks.NewMockTaskRepository()
+	useCase := taskapp.NewCreateTaskUseCase(repo)
 
 	chatID := uuid.NewUUID()
 	userID := uuid.NewUUID()
@@ -44,7 +44,7 @@ func TestCreateTaskUseCase_Success(t *testing.T) {
 	assert.Equal(t, 1, result.Version)
 	require.Len(t, result.Events, 1)
 
-	// Checking event
+	// Verify event
 	event, ok := result.Events[0].(*task.Created)
 	require.True(t, ok, "Expected *task.Created event")
 	assert.Equal(t, chatID, event.ChatID)
@@ -56,24 +56,22 @@ func TestCreateTaskUseCase_Success(t *testing.T) {
 	assert.NotNil(t, event.DueDate)
 	assert.Equal(t, userID, event.CreatedBy)
 
-	// Checking, that event sav in Event Store
-	storedEvents, err := store.LoadEvents(context.Background(), result.TaskID.String())
-	require.NoError(t, err)
-	assert.Len(t, storedEvents, 1)
+	// Verify task was saved in repository
+	assert.Equal(t, 1, repo.SaveCallCount())
 }
 
 func TestCreateTaskUseCase_WithDefaults(t *testing.T) {
 	// Arrange
-	store := eventstore.NewInMemoryEventStore()
-	useCase := taskapp.NewCreateTaskUseCase(store)
+	repo := mocks.NewMockTaskRepository()
+	useCase := taskapp.NewCreateTaskUseCase(repo)
 
 	cmd := taskapp.CreateTaskCommand{
 		ChatID: uuid.NewUUID(),
 		Title:  "Simple task",
-		// EntityType not ukazan - dolzhen stat TypeTask
-		// Priority not ukazan - dolzhen stat PriorityMedium
-		// AssigneeID not ukazan
-		// DueDate not ukazan
+		// EntityType not specified - should default to TypeTask
+		// Priority not specified - should default to PriorityMedium
+		// AssigneeID not specified
+		// DueDate not specified
 		CreatedBy: uuid.NewUUID(),
 	}
 
@@ -94,8 +92,8 @@ func TestCreateTaskUseCase_WithDefaults(t *testing.T) {
 
 func TestCreateTaskUseCase_TitleTrimming(t *testing.T) {
 	// Arrange
-	store := eventstore.NewInMemoryEventStore()
-	useCase := taskapp.NewCreateTaskUseCase(store)
+	repo := mocks.NewMockTaskRepository()
+	useCase := taskapp.NewCreateTaskUseCase(repo)
 
 	cmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
@@ -151,7 +149,7 @@ func TestCreateTaskUseCase_ValidationErrors(t *testing.T) {
 			name: "Title too long",
 			cmd: taskapp.CreateTaskCommand{
 				ChatID:    uuid.NewUUID(),
-				Title:     string(make([]byte, 501)), // 501 simvol
+				Title:     string(make([]byte, 501)), // 501 characters
 				CreatedBy: uuid.NewUUID(),
 			},
 			expectedErr: taskapp.ErrInvalidTitle,
@@ -171,7 +169,7 @@ func TestCreateTaskUseCase_ValidationErrors(t *testing.T) {
 			cmd: taskapp.CreateTaskCommand{
 				ChatID:    uuid.NewUUID(),
 				Title:     "Test",
-				Priority:  "Urgent", // not suschestvuet
+				Priority:  "Urgent", // does not exist
 				CreatedBy: uuid.NewUUID(),
 			},
 			expectedErr: taskapp.ErrInvalidPriority,
@@ -200,8 +198,8 @@ func TestCreateTaskUseCase_ValidationErrors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
-			store := eventstore.NewInMemoryEventStore()
-			useCase := taskapp.NewCreateTaskUseCase(store)
+			repo := mocks.NewMockTaskRepository()
+			useCase := taskapp.NewCreateTaskUseCase(repo)
 
 			// Act
 			result, err := useCase.Execute(context.Background(), tt.cmd)
@@ -229,8 +227,8 @@ func TestCreateTaskUseCase_AllEntityTypes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
-			store := eventstore.NewInMemoryEventStore()
-			useCase := taskapp.NewCreateTaskUseCase(store)
+			repo := mocks.NewMockTaskRepository()
+			useCase := taskapp.NewCreateTaskUseCase(repo)
 
 			cmd := taskapp.CreateTaskCommand{
 				ChatID:     uuid.NewUUID(),
@@ -265,8 +263,8 @@ func TestCreateTaskUseCase_AllPriorities(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
-			store := eventstore.NewInMemoryEventStore()
-			useCase := taskapp.NewCreateTaskUseCase(store)
+			repo := mocks.NewMockTaskRepository()
+			useCase := taskapp.NewCreateTaskUseCase(repo)
 
 			cmd := taskapp.CreateTaskCommand{
 				ChatID:    uuid.NewUUID(),
@@ -289,8 +287,8 @@ func TestCreateTaskUseCase_AllPriorities(t *testing.T) {
 
 func TestCreateTaskUseCase_InitialStatusIsAlwaysToDo(t *testing.T) {
 	// Arrange
-	store := eventstore.NewInMemoryEventStore()
-	useCase := taskapp.NewCreateTaskUseCase(store)
+	repo := mocks.NewMockTaskRepository()
+	useCase := taskapp.NewCreateTaskUseCase(repo)
 
 	cmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),

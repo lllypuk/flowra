@@ -1,13 +1,13 @@
 {{define "message"}}
-<article class="message {{if .IsSystemMessage}}system-message{{end}} {{if .IsDeleted}}deleted-message{{end}}"
+<article class="message {{if .IsSystemMessage}}system-message{{end}} {{if .IsBotMessage}}bot-message{{end}} {{if .IsDeleted}}deleted-message{{end}}"
          id="message-{{.ID}}">
     {{if not .IsSystemMessage}}
     <div class="message-avatar">
         {{if .Author.AvatarURL}}
         <img src="{{.Author.AvatarURL}}" alt="{{.Author.Username}}">
         {{else}}
-        <div class="avatar-placeholder">
-            {{if .Author.Username}}{{initials .Author.Username}}{{else}}?{{end}}
+        <div class="avatar-placeholder {{if .IsBotMessage}}bot-avatar{{end}}">
+            {{if .IsBotMessage}}🤖{{else}}{{if .Author.Username}}{{initials .Author.Username}}{{else}}?{{end}}{{end}}
         </div>
         {{end}}
     </div>
@@ -17,9 +17,14 @@
         {{if not .IsSystemMessage}}
         <header class="message-header">
             <strong>{{.Author.DisplayName}}</strong>
+            {{if not .IsBotMessage}}
             <small class="text-muted">
                 @{{.Author.Username}}
             </small>
+            {{end}}
+            {{if .IsBotMessage}}
+            <small class="text-muted bot-badge">Bot</small>
+            {{end}}
             <time datetime="{{.CreatedAt}}" class="text-muted">
                 {{.CreatedAt | formatTime}}
             </time>
@@ -42,8 +47,8 @@
         {{if and (not (empty .Tags)) (not .IsDeleted)}}
         <div class="message-tags">
             {{range .Tags}}
-            <span class="tag tag-{{.Key}}">
-                #{{.Key}}{{if .Value}} {{.Value}}{{end}}
+            <span class="tag tag-{{.Key}}" title="{{if .Value}}{{.Value}}{{end}}">
+                #{{.Key}}
             </span>
             {{end}}
         </div>
@@ -282,6 +287,26 @@
     color: #512da8;
 }
 
+.tag.tag-epic {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.tag.tag-title {
+    background: #e0f7fa;
+    color: #00838f;
+}
+
+.tag.tag-severity {
+    background: #ffcdd2;
+    color: #b71c1c;
+}
+
+.tag.tag-assignee {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
 .message-reactions {
     display: flex;
     flex-wrap: wrap;
@@ -356,5 +381,34 @@
 
 .message-edit-actions button {
     margin-bottom: 0;
+}
+
+/* Bot message styles */
+.message.bot-message {
+    background: rgba(59, 130, 246, 0.05);
+    border-left: 3px solid rgba(59, 130, 246, 0.3);
+    padding-left: 0.75rem;
+    margin: 0 -0.5rem 0 -0.5rem;
+    padding-right: 0.5rem;
+}
+
+.message.bot-message .avatar-placeholder.bot-avatar {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-size: 1.125rem;
+}
+
+.message.bot-message .message-header strong {
+    color: #667eea;
+}
+
+.message.bot-message .bot-badge {
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-weight: 500;
+    font-size: 0.625rem;
+    text-transform: uppercase;
 }
 </style>

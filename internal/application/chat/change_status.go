@@ -6,17 +6,18 @@ import (
 	"fmt"
 
 	"github.com/lllypuk/flowra/internal/application/appcore"
+	"github.com/lllypuk/flowra/internal/domain/chat"
 )
 
 // ChangeStatusUseCase handles changing chat status
 type ChangeStatusUseCase struct {
-	eventStore appcore.EventStore
+	chatRepo CommandRepository
 }
 
 // NewChangeStatusUseCase creates a new ChangeStatusUseCase
-func NewChangeStatusUseCase(eventStore appcore.EventStore) *ChangeStatusUseCase {
+func NewChangeStatusUseCase(chatRepo CommandRepository) *ChangeStatusUseCase {
 	return &ChangeStatusUseCase{
-		eventStore: eventStore,
+		chatRepo: chatRepo,
 	}
 }
 
@@ -26,16 +27,26 @@ func (uc *ChangeStatusUseCase) Execute(ctx context.Context, cmd ChangeStatusComm
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	chatAggregate, err := loadAggregate(ctx, uc.eventStore, cmd.ChatID)
+	chatAggregate, err := uc.chatRepo.Load(ctx, cmd.ChatID)
 	if err != nil {
-		return Result{}, err
+		return Result{}, fmt.Errorf("failed to load chat: %w", err)
 	}
 
 	if statusErr := chatAggregate.ChangeStatus(cmd.Status, cmd.ChangedBy); statusErr != nil {
 		return Result{}, fmt.Errorf("failed to change status: %w", statusErr)
 	}
 
-	return saveAggregate(ctx, uc.eventStore, chatAggregate, cmd.ChatID.String())
+	// Save via repository (updates both event store and read model)
+	if err = uc.chatRepo.Save(ctx, chatAggregate); err != nil {
+		return Result{}, fmt.Errorf("failed to save chat: %w", err)
+	}
+
+	return Result{
+		Result: appcore.Result[*chat.Chat]{
+			Value:   chatAggregate,
+			Version: chatAggregate.Version(),
+		},
+	}, nil
 }
 
 func (uc *ChangeStatusUseCase) validate(cmd ChangeStatusCommand) error {

@@ -6,17 +6,18 @@ import (
 	"fmt"
 
 	"github.com/lllypuk/flowra/internal/application/appcore"
+	"github.com/lllypuk/flowra/internal/domain/chat"
 )
 
 // ConvertToTaskUseCase handles converting a chat to Task
 type ConvertToTaskUseCase struct {
-	eventStore appcore.EventStore
+	chatRepo CommandRepository
 }
 
 // NewConvertToTaskUseCase creates a new ConvertToTaskUseCase
-func NewConvertToTaskUseCase(eventStore appcore.EventStore) *ConvertToTaskUseCase {
+func NewConvertToTaskUseCase(chatRepo CommandRepository) *ConvertToTaskUseCase {
 	return &ConvertToTaskUseCase{
-		eventStore: eventStore,
+		chatRepo: chatRepo,
 	}
 }
 
@@ -27,16 +28,26 @@ func (uc *ConvertToTaskUseCase) Execute(ctx context.Context, cmd ConvertToTaskCo
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	chatAggregate, err := loadAggregate(ctx, uc.eventStore, cmd.ChatID)
+	chatAggregate, err := uc.chatRepo.Load(ctx, cmd.ChatID)
 	if err != nil {
-		return Result{}, err
+		return Result{}, fmt.Errorf("failed to load chat: %w", err)
 	}
 
 	if convertErr := chatAggregate.ConvertToTask(cmd.Title, cmd.ConvertedBy); convertErr != nil {
 		return Result{}, fmt.Errorf("failed to convert to task: %w", convertErr)
 	}
 
-	return saveAggregate(ctx, uc.eventStore, chatAggregate, cmd.ChatID.String())
+	// Save via repository (updates both event store and read model)
+	if err = uc.chatRepo.Save(ctx, chatAggregate); err != nil {
+		return Result{}, fmt.Errorf("failed to save chat: %w", err)
+	}
+
+	return Result{
+		Result: appcore.Result[*chat.Chat]{
+			Value:   chatAggregate,
+			Version: chatAggregate.Version(),
+		},
+	}, nil
 }
 
 func (uc *ConvertToTaskUseCase) validate(cmd ConvertToTaskCommand) error {

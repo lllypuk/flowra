@@ -1,6 +1,7 @@
 package message
 
 import (
+	messagedomain "github.com/lllypuk/flowra/internal/domain/message"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
@@ -9,7 +10,9 @@ type SendMessageCommand struct {
 	ChatID          uuid.UUID
 	Content         string
 	AuthorID        uuid.UUID
-	ParentMessageID uuid.UUID // for replies, zero UUID if not reply
+	ParentMessageID uuid.UUID          // for replies, zero UUID if not reply
+	Type            messagedomain.Type // message type (defaults to TypeUser)
+	ActorID         *uuid.UUID         // who initiated (for system messages)
 }
 
 // CommandName returns command name

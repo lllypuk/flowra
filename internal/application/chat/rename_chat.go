@@ -6,16 +6,17 @@ import (
 	"fmt"
 
 	"github.com/lllypuk/flowra/internal/application/appcore"
+	"github.com/lllypuk/flowra/internal/domain/chat"
 )
 
 // RenameChatUseCase handles renaming a chat
 type RenameChatUseCase struct {
-	eventStore appcore.EventStore
+	chatRepo CommandRepository
 }
 
 // NewRenameChatUseCase creates a new RenameChatUseCase
-func NewRenameChatUseCase(eventStore appcore.EventStore) *RenameChatUseCase {
-	return &RenameChatUseCase{eventStore: eventStore}
+func NewRenameChatUseCase(chatRepo CommandRepository) *RenameChatUseCase {
+	return &RenameChatUseCase{chatRepo: chatRepo}
 }
 
 // Execute performs renaming
@@ -24,16 +25,26 @@ func (uc *RenameChatUseCase) Execute(ctx context.Context, cmd RenameChatCommand)
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	chatAggregate, err := loadAggregate(ctx, uc.eventStore, cmd.ChatID)
+	chatAggregate, err := uc.chatRepo.Load(ctx, cmd.ChatID)
 	if err != nil {
-		return Result{}, err
+		return Result{}, fmt.Errorf("failed to load chat: %w", err)
 	}
 
 	if renameErr := chatAggregate.Rename(cmd.NewTitle, cmd.RenamedBy); renameErr != nil {
 		return Result{}, fmt.Errorf("failed to rename: %w", renameErr)
 	}
 
-	return saveAggregate(ctx, uc.eventStore, chatAggregate, cmd.ChatID.String())
+	// Save via repository (updates both event store and read model)
+	if err = uc.chatRepo.Save(ctx, chatAggregate); err != nil {
+		return Result{}, fmt.Errorf("failed to save chat: %w", err)
+	}
+
+	return Result{
+		Result: appcore.Result[*chat.Chat]{
+			Value:   chatAggregate,
+			Version: chatAggregate.Version(),
+		},
+	}, nil
 }
 
 func (uc *RenameChatUseCase) validate(cmd RenameChatCommand) error {

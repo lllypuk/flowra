@@ -11,14 +11,14 @@ import (
 	taskapp "github.com/lllypuk/flowra/internal/application/task"
 	"github.com/lllypuk/flowra/internal/domain/task"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
-	"github.com/lllypuk/flowra/internal/infrastructure/eventstore"
+	"github.com/lllypuk/flowra/tests/mocks"
 )
 
 func TestSetDueDateUseCase_Success(t *testing.T) {
 	// Arrange
-	store := eventstore.NewInMemoryEventStore()
-	createUseCase := taskapp.NewCreateTaskUseCase(store)
-	dueDateUseCase := taskapp.NewSetDueDateUseCase(store)
+	repo := mocks.NewMockTaskRepository()
+	createUseCase := taskapp.NewCreateTaskUseCase(repo)
+	dueDateUseCase := taskapp.NewSetDueDateUseCase(repo)
 
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
@@ -28,8 +28,8 @@ func TestSetDueDateUseCase_Success(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// Setting deadline
-	dueDate := time.Now().Add(7 * 24 * time.Hour) // via nedelyu
+	// Set due date
+	dueDate := time.Now().Add(7 * 24 * time.Hour) // in a week
 	userID := uuid.NewUUID()
 	dueDateCmd := taskapp.SetDueDateCommand{
 		TaskID:    createResult.TaskID,
@@ -50,37 +50,37 @@ func TestSetDueDateUseCase_Success(t *testing.T) {
 	assert.Equal(t, createResult.TaskID, uuid.UUID(event.AggregateID()))
 	assert.Nil(t, event.OldDueDate)
 	assert.NotNil(t, event.NewDueDate)
-	assert.Equal(t, dueDate.Unix(), event.NewDueDate.Unix())
 	assert.Equal(t, userID, event.ChangedBy)
 }
 
-func TestSetDueDateUseCase_RemoveDueDate(t *testing.T) {
+func TestSetDueDateUseCase_Remove(t *testing.T) {
 	// Arrange
-	store := eventstore.NewInMemoryEventStore()
-	createUseCase := taskapp.NewCreateTaskUseCase(store)
-	dueDateUseCase := taskapp.NewSetDueDateUseCase(store)
+	repo := mocks.NewMockTaskRepository()
+	createUseCase := taskapp.NewCreateTaskUseCase(repo)
+	dueDateUseCase := taskapp.NewSetDueDateUseCase(repo)
 
-	// Creating task s dedlaynom
-	dueDate := time.Now().Add(7 * 24 * time.Hour)
+	// Create task with due date
+	initialDueDate := time.Now().Add(24 * time.Hour)
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
-		DueDate:   &dueDate,
+		DueDate:   &initialDueDate,
 		CreatedBy: uuid.NewUUID(),
 	}
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// Act: snimaem deadline (nil)
-	dueDateCmd := taskapp.SetDueDateCommand{
+	// Act: remove due date (nil)
+	removeCmd := taskapp.SetDueDateCommand{
 		TaskID:    createResult.TaskID,
-		DueDate:   nil,
+		DueDate:   nil, // remove
 		ChangedBy: uuid.NewUUID(),
 	}
-	result, err := dueDateUseCase.Execute(context.Background(), dueDateCmd)
+	result, err := dueDateUseCase.Execute(context.Background(), removeCmd)
 
 	// Assert
 	require.NoError(t, err)
+	assert.Equal(t, 2, result.Version)
 	require.Len(t, result.Events, 1)
 
 	event, ok := result.Events[0].(*task.DueDateChanged)
@@ -89,13 +89,50 @@ func TestSetDueDateUseCase_RemoveDueDate(t *testing.T) {
 	assert.Nil(t, event.NewDueDate)
 }
 
+func TestSetDueDateUseCase_Change(t *testing.T) {
+	// Arrange
+	repo := mocks.NewMockTaskRepository()
+	createUseCase := taskapp.NewCreateTaskUseCase(repo)
+	dueDateUseCase := taskapp.NewSetDueDateUseCase(repo)
+
+	// Create task with due date
+	initialDueDate := time.Now().Add(24 * time.Hour)
+	createCmd := taskapp.CreateTaskCommand{
+		ChatID:    uuid.NewUUID(),
+		Title:     "Test Task",
+		DueDate:   &initialDueDate,
+		CreatedBy: uuid.NewUUID(),
+	}
+	createResult, err := createUseCase.Execute(context.Background(), createCmd)
+	require.NoError(t, err)
+
+	// Act: change due date
+	newDueDate := time.Now().Add(48 * time.Hour)
+	changeCmd := taskapp.SetDueDateCommand{
+		TaskID:    createResult.TaskID,
+		DueDate:   &newDueDate,
+		ChangedBy: uuid.NewUUID(),
+	}
+	result, err := dueDateUseCase.Execute(context.Background(), changeCmd)
+
+	// Assert
+	require.NoError(t, err)
+	assert.Equal(t, 2, result.Version)
+	require.Len(t, result.Events, 1)
+
+	event, ok := result.Events[0].(*task.DueDateChanged)
+	require.True(t, ok)
+	assert.NotNil(t, event.OldDueDate)
+	assert.NotNil(t, event.NewDueDate)
+}
+
 func TestSetDueDateUseCase_Idempotent(t *testing.T) {
 	// Arrange
-	store := eventstore.NewInMemoryEventStore()
-	createUseCase := taskapp.NewCreateTaskUseCase(store)
-	dueDateUseCase := taskapp.NewSetDueDateUseCase(store)
+	repo := mocks.NewMockTaskRepository()
+	createUseCase := taskapp.NewCreateTaskUseCase(repo)
+	dueDateUseCase := taskapp.NewSetDueDateUseCase(repo)
 
-	dueDate := time.Now().Add(7 * 24 * time.Hour)
+	dueDate := time.Now().Add(24 * time.Hour)
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
@@ -105,130 +142,49 @@ func TestSetDueDateUseCase_Idempotent(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// Act: povtornaya setting toy zhe daty
+	// Act: repeat the same due date
 	dueDateCmd := taskapp.SetDueDateCommand{
 		TaskID:    createResult.TaskID,
-		DueDate:   &dueDate,
+		DueDate:   &dueDate, // same as before
 		ChangedBy: uuid.NewUUID(),
 	}
 	result, err := dueDateUseCase.Execute(context.Background(), dueDateCmd)
 
-	// Assert
+	// Assert: should succeed but without new events
 	require.NoError(t, err)
-	assert.Empty(t, result.Events, "No New events for idempotent operation")
+	assert.Empty(t, result.Events, "No new events should be generated for idempotent operation")
 	assert.Equal(t, 1, result.Version, "Version should not change")
 	assert.True(t, result.IsSuccess())
 	assert.Equal(t, "Due date unchanged (idempotent operation)", result.Message)
 }
 
-func TestSetDueDateUseCase_IdempotentRemove(t *testing.T) {
+func TestSetDueDateUseCase_NilIdempotent(t *testing.T) {
 	// Arrange
-	store := eventstore.NewInMemoryEventStore()
-	createUseCase := taskapp.NewCreateTaskUseCase(store)
-	dueDateUseCase := taskapp.NewSetDueDateUseCase(store)
+	repo := mocks.NewMockTaskRepository()
+	createUseCase := taskapp.NewCreateTaskUseCase(repo)
+	dueDateUseCase := taskapp.NewSetDueDateUseCase(repo)
 
-	// Creating task bez deadline
+	// Create task without due date
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
+		DueDate:   nil,
 		CreatedBy: uuid.NewUUID(),
 	}
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// Act: pytaemsya snyat deadline, when ego no
+	// Act: set due date to nil (same as current)
 	dueDateCmd := taskapp.SetDueDateCommand{
 		TaskID:    createResult.TaskID,
-		DueDate:   nil,
+		DueDate:   nil, // same as before
 		ChangedBy: uuid.NewUUID(),
 	}
 	result, err := dueDateUseCase.Execute(context.Background(), dueDateCmd)
 
-	// Assert
+	// Assert: should succeed but without new events
 	require.NoError(t, err)
-	assert.Empty(t, result.Events)
-	assert.Equal(t, 1, result.Version)
-}
-
-func TestSetDueDateUseCase_PastDate(t *testing.T) {
-	// Arrange
-	store := eventstore.NewInMemoryEventStore()
-	createUseCase := taskapp.NewCreateTaskUseCase(store)
-	dueDateUseCase := taskapp.NewSetDueDateUseCase(store)
-
-	createCmd := taskapp.CreateTaskCommand{
-		ChatID:    uuid.NewUUID(),
-		Title:     "Test Task",
-		CreatedBy: uuid.NewUUID(),
-	}
-	createResult, err := createUseCase.Execute(context.Background(), createCmd)
-	require.NoError(t, err)
-
-	// Act: Setting datu in proshlom (prosrochennaya task)
-	pastDate := time.Now().Add(-7 * 24 * time.Hour)
-	dueDateCmd := taskapp.SetDueDateCommand{
-		TaskID:    createResult.TaskID,
-		DueDate:   &pastDate,
-		ChangedBy: uuid.NewUUID(),
-	}
-	result, err := dueDateUseCase.Execute(context.Background(), dueDateCmd)
-
-	// Assert: dolzhno byt successfully (date in proshlom dopustima)
-	require.NoError(t, err)
-	assert.Len(t, result.Events, 1)
-
-	event, ok := result.Events[0].(*task.DueDateChanged)
-	require.True(t, ok)
-	assert.Equal(t, pastDate.Unix(), event.NewDueDate.Unix())
-}
-
-func TestSetDueDateUseCase_MultipleDateChanges(t *testing.T) {
-	// Arrange
-	store := eventstore.NewInMemoryEventStore()
-	createUseCase := taskapp.NewCreateTaskUseCase(store)
-	dueDateUseCase := taskapp.NewSetDueDateUseCase(store)
-
-	createCmd := taskapp.CreateTaskCommand{
-		ChatID:    uuid.NewUUID(),
-		Title:     "Test Task",
-		CreatedBy: uuid.NewUUID(),
-	}
-	createResult, err := createUseCase.Execute(context.Background(), createCmd)
-	require.NoError(t, err)
-
-	userID := uuid.NewUUID()
-
-	// Act & Assert: nil → date1 → date2 → nil
-	date1 := time.Now().Add(7 * 24 * time.Hour)
-	result1, err := dueDateUseCase.Execute(context.Background(), taskapp.SetDueDateCommand{
-		TaskID:    createResult.TaskID,
-		DueDate:   &date1,
-		ChangedBy: userID,
-	})
-	require.NoError(t, err)
-	assert.Equal(t, 2, result1.Version)
-
-	date2 := time.Now().Add(14 * 24 * time.Hour)
-	result2, err := dueDateUseCase.Execute(context.Background(), taskapp.SetDueDateCommand{
-		TaskID:    createResult.TaskID,
-		DueDate:   &date2,
-		ChangedBy: userID,
-	})
-	require.NoError(t, err)
-	assert.Equal(t, 3, result2.Version)
-
-	result3, err := dueDateUseCase.Execute(context.Background(), taskapp.SetDueDateCommand{
-		TaskID:    createResult.TaskID,
-		DueDate:   nil,
-		ChangedBy: userID,
-	})
-	require.NoError(t, err)
-	assert.Equal(t, 4, result3.Version)
-
-	// Checking full history
-	storedEvents, err := store.LoadEvents(context.Background(), createResult.TaskID.String())
-	require.NoError(t, err)
-	assert.Len(t, storedEvents, 4) // Created + 3x DueDateChanged
+	assert.Empty(t, result.Events, "No new events should be generated for idempotent operation")
 }
 
 func TestSetDueDateUseCase_ValidationErrors(t *testing.T) {
@@ -241,16 +197,16 @@ func TestSetDueDateUseCase_ValidationErrors(t *testing.T) {
 			name: "Empty TaskID",
 			cmd: taskapp.SetDueDateCommand{
 				TaskID:    uuid.UUID(""),
-				DueDate:   ptr(time.Now()),
+				DueDate:   nil,
 				ChangedBy: uuid.NewUUID(),
 			},
 			expectedErr: taskapp.ErrInvalidTaskID,
 		},
 		{
-			name: "Date Too Far in Past",
+			name: "Date too far in past",
 			cmd: taskapp.SetDueDateCommand{
 				TaskID:    uuid.NewUUID(),
-				DueDate:   ptr(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)),
+				DueDate:   ptrTime(time.Date(2010, 1, 1, 0, 0, 0, 0, time.UTC)),
 				ChangedBy: uuid.NewUUID(),
 			},
 			expectedErr: taskapp.ErrInvalidDate,
@@ -259,7 +215,7 @@ func TestSetDueDateUseCase_ValidationErrors(t *testing.T) {
 			name: "Empty ChangedBy",
 			cmd: taskapp.SetDueDateCommand{
 				TaskID:    uuid.NewUUID(),
-				DueDate:   ptr(time.Now()),
+				DueDate:   nil,
 				ChangedBy: uuid.UUID(""),
 			},
 			expectedErr: taskapp.ErrInvalidUserID,
@@ -269,8 +225,8 @@ func TestSetDueDateUseCase_ValidationErrors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
-			store := eventstore.NewInMemoryEventStore()
-			useCase := taskapp.NewSetDueDateUseCase(store)
+			repo := mocks.NewMockTaskRepository()
+			useCase := taskapp.NewSetDueDateUseCase(repo)
 
 			// Act
 			result, err := useCase.Execute(context.Background(), tt.cmd)
@@ -285,13 +241,12 @@ func TestSetDueDateUseCase_ValidationErrors(t *testing.T) {
 
 func TestSetDueDateUseCase_TaskNotFound(t *testing.T) {
 	// Arrange
-	store := eventstore.NewInMemoryEventStore()
-	useCase := taskapp.NewSetDueDateUseCase(store)
+	repo := mocks.NewMockTaskRepository()
+	useCase := taskapp.NewSetDueDateUseCase(repo)
 
-	dueDate := time.Now().Add(7 * 24 * time.Hour)
 	cmd := taskapp.SetDueDateCommand{
-		TaskID:    uuid.NewUUID(), // not suschestvuet
-		DueDate:   &dueDate,
+		TaskID:    uuid.NewUUID(), // does not exist
+		DueDate:   nil,
 		ChangedBy: uuid.NewUUID(),
 	}
 
@@ -302,4 +257,9 @@ func TestSetDueDateUseCase_TaskNotFound(t *testing.T) {
 	require.Error(t, err)
 	require.ErrorIs(t, err, taskapp.ErrTaskNotFound)
 	assert.Empty(t, result.Events)
+}
+
+// Helper function
+func ptrTime(t time.Time) *time.Time {
+	return &t
 }

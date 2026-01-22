@@ -5,48 +5,42 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/errs"
 	"github.com/lllypuk/flowra/internal/domain/task"
 )
 
-// ChangeStatusUseCase handles change status tasks
+// ChangeStatusUseCase handles changing task status
 type ChangeStatusUseCase struct {
-	eventStore appcore.EventStore
+	taskRepo CommandRepository
 }
 
-// NewChangeStatusUseCase creates New use case for changing status
-func NewChangeStatusUseCase(eventStore appcore.EventStore) *ChangeStatusUseCase {
+// NewChangeStatusUseCase creates a new use case for changing status
+func NewChangeStatusUseCase(taskRepo CommandRepository) *ChangeStatusUseCase {
 	return &ChangeStatusUseCase{
-		eventStore: eventStore,
+		taskRepo: taskRepo,
 	}
 }
 
-// Execute izmenyaet status tasks
+// Execute changes task status
 func (uc *ChangeStatusUseCase) Execute(ctx context.Context, cmd ChangeStatusCommand) (TaskResult, error) {
-	// 1. validation commands
+	// 1. Validate command
 	if err := uc.validate(cmd); err != nil {
 		return TaskResult{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// 2. Loading events from Event Store
-	events, err := uc.eventStore.LoadEvents(ctx, cmd.TaskID.String())
+	// 2. Load aggregate from repository
+	aggregate, err := uc.taskRepo.Load(ctx, cmd.TaskID)
 	if err != nil {
-		if errors.Is(err, appcore.ErrAggregateNotFound) {
+		if errors.Is(err, errs.ErrNotFound) {
 			return TaskResult{}, ErrTaskNotFound
 		}
-		return TaskResult{}, fmt.Errorf("failed to load events: %w", err)
+		return TaskResult{}, fmt.Errorf("failed to load task: %w", err)
 	}
 
-	if len(events) == 0 {
-		return TaskResult{}, ErrTaskNotFound
-	}
+	// Store current version before operation
+	versionBefore := aggregate.Version()
 
-	// 3. Restoration aggregate from events
-	aggregate := task.NewTaskAggregate(cmd.TaskID)
-	aggregate.ReplayEvents(events)
-
-	// 4. performing biznes-operatsii
+	// 3. Perform business operation
 	err = aggregate.ChangeStatus(cmd.NewStatus, cmd.ChangedBy)
 	if err != nil {
 		if errors.Is(err, errs.ErrInvalidTransition) {
@@ -55,31 +49,30 @@ func (uc *ChangeStatusUseCase) Execute(ctx context.Context, cmd ChangeStatusComm
 		return TaskResult{}, fmt.Errorf("failed to change status: %w", err)
 	}
 
-	// 5. retrieval only New events
+	// 4. Get new events
 	newEvents := aggregate.UncommittedEvents()
 
-	// if no new events (idempotent), return success
+	// If no new events (idempotent), return success
 	if len(newEvents) == 0 {
 		return TaskResult{
 			TaskID:  cmd.TaskID,
-			Version: len(events),
+			Version: versionBefore,
 			Events:  newEvents,
 			Success: true,
 			Message: "Status unchanged (idempotent operation)",
 		}, nil
 	}
 
-	// 6. storage New events
-	expectedVersion := len(events)
-	if saveErr := uc.eventStore.SaveEvents(ctx, cmd.TaskID.String(), newEvents, expectedVersion); saveErr != nil {
-		if errors.Is(saveErr, appcore.ErrConcurrencyConflict) {
+	// 5. Save via repository (handles EventStore + ReadModel)
+	if saveErr := uc.taskRepo.Save(ctx, aggregate); saveErr != nil {
+		if errors.Is(saveErr, errs.ErrConcurrentModification) {
 			return TaskResult{}, ErrConcurrentUpdate
 		}
-		return TaskResult{}, fmt.Errorf("failed to save events: %w", saveErr)
+		return TaskResult{}, fmt.Errorf("failed to save task: %w", saveErr)
 	}
 
-	// 7. vozvrat result
-	return NewSuccessResult(cmd.TaskID, expectedVersion+len(newEvents), newEvents), nil
+	// 6. Return result
+	return NewSuccessResult(cmd.TaskID, aggregate.Version(), newEvents), nil
 }
 
 // validate checks command correctness

@@ -5,7 +5,9 @@ import (
 	"sync"
 
 	"github.com/lllypuk/flowra/internal/application/appcore"
+	"github.com/lllypuk/flowra/internal/domain/chat"
 	"github.com/lllypuk/flowra/internal/domain/event"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 // MockEventStore implements appcore.EventStore for testing
@@ -77,6 +79,78 @@ func (s *MockEventStore) LoadEvents(ctx context.Context, aggregateID string) ([]
 	return append([]event.DomainEvent{}, events...), nil
 }
 
+// GetEvents returns all events for an aggregate (implements CommandRepository)
+func (s *MockEventStore) GetEvents(ctx context.Context, aggregateID uuid.UUID) ([]event.DomainEvent, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	s.calls["GetEvents"]++
+
+	events, ok := s.events[aggregateID.String()]
+	if !ok {
+		return nil, appcore.ErrAggregateNotFound
+	}
+
+	// Return a copy
+	return append([]event.DomainEvent{}, events...), nil
+}
+
+// Load loads Chat from event store by reconstructing state from events (implements CommandRepository)
+func (s *MockEventStore) Load(ctx context.Context, chatID uuid.UUID) (*chat.Chat, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	s.calls["Load"]++
+
+	events, ok := s.events[chatID.String()]
+	if !ok || len(events) == 0 {
+		return nil, appcore.ErrAggregateNotFound
+	}
+
+	// Reconstruct aggregate from events
+	chatAgg := chat.NewEmptyChat()
+	for _, e := range events {
+		if err := chatAgg.Apply(e); err != nil {
+			return nil, err
+		}
+	}
+
+	return chatAgg, nil
+}
+
+// Save saves chat aggregate (implements CommandRepository)
+func (s *MockEventStore) Save(ctx context.Context, c *chat.Chat) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.calls["Save"]++
+
+	// Get uncommitted events and save them
+	events := c.GetUncommittedEvents()
+	if len(events) == 0 {
+		return nil
+	}
+
+	aggregateID := c.ID().String()
+	currentVersion, exists := s.versions[aggregateID]
+	if exists {
+		expectedVersion := currentVersion
+		for _, e := range events {
+			s.events[aggregateID] = append(s.events[aggregateID], e)
+			expectedVersion++
+		}
+		s.versions[aggregateID] = expectedVersion
+	} else {
+		// New aggregate
+		for _, e := range events {
+			s.events[aggregateID] = append(s.events[aggregateID], e)
+		}
+		s.versions[aggregateID] = len(events)
+	}
+
+	return nil
+}
+
 // GetVersion returns the current version of an aggregate
 func (s *MockEventStore) GetVersion(ctx context.Context, aggregateID string) (int, error) {
 	s.mu.RLock()
@@ -100,14 +174,15 @@ func (s *MockEventStore) GetCallCount(method string) int {
 }
 
 // AllEvents returns all events (for tests)
-func (s *MockEventStore) AllEvents() map[string][]event.DomainEvent {
+func (s *MockEventStore) AllEvents() map[uuid.UUID][]event.DomainEvent {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	// Return a copy
-	result := make(map[string][]event.DomainEvent)
+	result := make(map[uuid.UUID][]event.DomainEvent)
 	for k, v := range s.events {
-		result[k] = append([]event.DomainEvent{}, v...)
+		id := uuid.MustParseUUID(k)
+		result[id] = append([]event.DomainEvent{}, v...)
 	}
 	return result
 }

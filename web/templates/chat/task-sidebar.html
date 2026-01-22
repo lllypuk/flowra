@@ -185,6 +185,42 @@
         'Cancelled': 'cancelled'
     };
     
+    // Map form option values to display names
+    var statusDisplayMap = {
+        'todo': 'To Do',
+        'in_progress': 'In Progress',
+        'review': 'In Review',
+        'done': 'Done',
+        'backlog': 'Backlog',
+        'cancelled': 'Cancelled'
+    };
+
+    // Map form option values to CSS classes
+    var cssClassMap = {
+        'todo': 'status-todo',
+        'in_progress': 'status-in_progress',
+        'review': 'status-review',
+        'done': 'status-done',
+        'backlog': 'status-backlog',
+        'cancelled': 'status-cancelled'
+    };
+
+    // Update header badge immediately when user changes status dropdown
+    var statusSelect = document.getElementById('task-status');
+    if (statusSelect) {
+        statusSelect.addEventListener('change', function() {
+            var headerBadge = document.getElementById('chat-header-status');
+            if (headerBadge) {
+                var formValue = this.value;
+                var displayName = statusDisplayMap[formValue] || formValue;
+                var cssClass = cssClassMap[formValue] || 'status-' + formValue;
+
+                headerBadge.textContent = displayName;
+                headerBadge.className = 'status-badge ' + cssClass;
+            }
+        });
+    }
+
     // Listen for task.updated WebSocket events
     document.body.addEventListener('task.updated', function(evt) {
         var data = evt.detail;
@@ -193,13 +229,26 @@
         if (data.task_id === taskId && data.changes) {
             var changes = data.changes;
             
-            // Update status dropdown if status changed
-            if (changes.status) {
+            // Update status dropdown and header badge if status changed
+            if (changes.status && changes.status.new) {
+                // Map domain status to form value
+                var mappedStatus = statusMap[changes.status.new] || changes.status.new.toLowerCase().replace(/ /g, '_');
+
+                // Update status dropdown
                 var statusSelect = document.getElementById('task-status');
-                if (statusSelect && changes.status.new) {
-                    // Map domain status to form value
-                    var mappedStatus = statusMap[changes.status.new] || changes.status.new.toLowerCase().replace(/ /g, '_');
+                if (statusSelect) {
                     statusSelect.value = mappedStatus;
+                }
+
+                // Also update the header status badge
+                var headerBadge = document.getElementById('chat-header-status');
+                if (headerBadge) {
+                    // Update text
+                    headerBadge.textContent = changes.status.new;
+
+                    // Update CSS class using mappedStatus (form value)
+                    var newClass = cssClassMap[mappedStatus] || 'status-' + mappedStatus;
+                    headerBadge.className = 'status-badge ' + newClass;
                 }
             }
             

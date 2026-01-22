@@ -136,6 +136,20 @@ func (r *MongoUserRepository) GetByUsername(ctx context.Context, username string
 	}, nil
 }
 
+// GetByID implements appcore.UserRepository.
+// It finds a user by ID and returns minimal user info.
+func (r *MongoUserRepository) GetByID(ctx context.Context, userID uuid.UUID) (*appcore.User, error) {
+	user, err := r.FindByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return &appcore.User{
+		ID:       user.ID(),
+		Username: user.Username(),
+		FullName: user.DisplayName(),
+	}, nil
+}
+
 // Exists checks, suschestvuet li user s zadannym ID
 func (r *MongoUserRepository) Exists(ctx context.Context, userID uuid.UUID) (bool, error) {
 	if userID.IsZero() {

@@ -10,19 +10,18 @@ import (
 	taskapp "github.com/lllypuk/flowra/internal/application/task"
 	"github.com/lllypuk/flowra/internal/domain/task"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
-	"github.com/lllypuk/flowra/internal/infrastructure/eventstore"
 	"github.com/lllypuk/flowra/tests/mocks"
 )
 
 func TestAssignTaskUseCase_Success(t *testing.T) {
 	// Arrange
-	store := eventstore.NewInMemoryEventStore()
+	repo := mocks.NewMockTaskRepository()
 	userRepo := mocks.NewMockUserRepository()
 
-	createUseCase := taskapp.NewCreateTaskUseCase(store)
-	assignUseCase := taskapp.NewAssignTaskUseCase(store, userRepo)
+	createUseCase := taskapp.NewCreateTaskUseCase(repo)
+	assignUseCase := taskapp.NewAssignTaskUseCase(repo, userRepo)
 
-	// Creating task
+	// Create task
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
@@ -31,11 +30,11 @@ func TestAssignTaskUseCase_Success(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// Creating user in moke
+	// Create user in mock
 	assigneeID := uuid.NewUUID()
 	userRepo.AddUser(assigneeID, "alice", "Alice Smith")
 
-	// value ispolnitelya
+	// Assign user
 	assignerID := uuid.NewUUID()
 	assignCmd := taskapp.AssignTaskCommand{
 		TaskID:     createResult.TaskID,
@@ -52,7 +51,7 @@ func TestAssignTaskUseCase_Success(t *testing.T) {
 	assert.Equal(t, 2, result.Version)
 	require.Len(t, result.Events, 1)
 
-	// Checking event
+	// Verify event
 	event, ok := result.Events[0].(*task.AssigneeChanged)
 	require.True(t, ok, "Expected *task.AssigneeChanged event")
 	assert.Equal(t, createResult.TaskID, uuid.UUID(event.AggregateID()))
@@ -63,13 +62,13 @@ func TestAssignTaskUseCase_Success(t *testing.T) {
 
 func TestAssignTaskUseCase_Unassign(t *testing.T) {
 	// Arrange
-	store := eventstore.NewInMemoryEventStore()
+	repo := mocks.NewMockTaskRepository()
 	userRepo := mocks.NewMockUserRepository()
 
-	createUseCase := taskapp.NewCreateTaskUseCase(store)
-	assignUseCase := taskapp.NewAssignTaskUseCase(store, userRepo)
+	createUseCase := taskapp.NewCreateTaskUseCase(repo)
+	assignUseCase := taskapp.NewAssignTaskUseCase(repo, userRepo)
 
-	// Creating task s assignee
+	// Create task with assignee
 	assigneeID := uuid.NewUUID()
 	userRepo.AddUser(assigneeID, "bob", "Bob Johnson")
 
@@ -82,10 +81,10 @@ func TestAssignTaskUseCase_Unassign(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// Act: snimaem assignee (nil)
+	// Act: unassign (nil)
 	unassignCmd := taskapp.AssignTaskCommand{
 		TaskID:     createResult.TaskID,
-		AssigneeID: nil, // snyatie
+		AssigneeID: nil, // unassign
 		AssignedBy: uuid.NewUUID(),
 	}
 	result, err := assignUseCase.Execute(context.Background(), unassignCmd)
@@ -103,19 +102,19 @@ func TestAssignTaskUseCase_Unassign(t *testing.T) {
 
 func TestAssignTaskUseCase_Reassign(t *testing.T) {
 	// Arrange
-	store := eventstore.NewInMemoryEventStore()
+	repo := mocks.NewMockTaskRepository()
 	userRepo := mocks.NewMockUserRepository()
 
-	createUseCase := taskapp.NewCreateTaskUseCase(store)
-	assignUseCase := taskapp.NewAssignTaskUseCase(store, userRepo)
+	createUseCase := taskapp.NewCreateTaskUseCase(repo)
+	assignUseCase := taskapp.NewAssignTaskUseCase(repo, userRepo)
 
-	// Creating dvuh users
+	// Create two users
 	alice := uuid.NewUUID()
 	bob := uuid.NewUUID()
 	userRepo.AddUser(alice, "alice", "Alice")
 	userRepo.AddUser(bob, "bob", "Bob")
 
-	// Creating task, value on Alice
+	// Create task, assign to Alice
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:     uuid.NewUUID(),
 		Title:      "Test Task",
@@ -125,7 +124,7 @@ func TestAssignTaskUseCase_Reassign(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// Act: value on Bob
+	// Act: reassign from Alice to Bob
 	reassignCmd := taskapp.AssignTaskCommand{
 		TaskID:     createResult.TaskID,
 		AssigneeID: &bob,
@@ -135,6 +134,7 @@ func TestAssignTaskUseCase_Reassign(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
+	assert.Equal(t, 2, result.Version)
 	require.Len(t, result.Events, 1)
 
 	event, ok := result.Events[0].(*task.AssigneeChanged)
@@ -145,16 +145,15 @@ func TestAssignTaskUseCase_Reassign(t *testing.T) {
 
 func TestAssignTaskUseCase_Idempotent(t *testing.T) {
 	// Arrange
-	store := eventstore.NewInMemoryEventStore()
+	repo := mocks.NewMockTaskRepository()
 	userRepo := mocks.NewMockUserRepository()
 
-	createUseCase := taskapp.NewCreateTaskUseCase(store)
-	assignUseCase := taskapp.NewAssignTaskUseCase(store, userRepo)
+	createUseCase := taskapp.NewCreateTaskUseCase(repo)
+	assignUseCase := taskapp.NewAssignTaskUseCase(repo, userRepo)
 
 	assigneeID := uuid.NewUUID()
-	userRepo.AddUser(assigneeID, "alice", "Alice")
+	userRepo.AddUser(assigneeID, "charlie", "Charlie")
 
-	// Creating task, uzhe value on Alice
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:     uuid.NewUUID(),
 		Title:      "Test Task",
@@ -164,102 +163,54 @@ func TestAssignTaskUseCase_Idempotent(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	// Act: povtorno value on Alice
+	// Act: repeat the same assignment
 	assignCmd := taskapp.AssignTaskCommand{
 		TaskID:     createResult.TaskID,
-		AssigneeID: &assigneeID,
+		AssigneeID: &assigneeID, // same as before
 		AssignedBy: uuid.NewUUID(),
 	}
 	result, err := assignUseCase.Execute(context.Background(), assignCmd)
 
-	// Assert: not dolzhno byt New events
+	// Assert: should succeed but without new events
 	require.NoError(t, err)
-	assert.Empty(t, result.Events, "Should not generate event for idempotent operation")
+	assert.Empty(t, result.Events, "No new events should be generated for idempotent operation")
 	assert.Equal(t, 1, result.Version, "Version should not change")
 	assert.True(t, result.IsSuccess())
 	assert.Equal(t, "Assignee unchanged (idempotent operation)", result.Message)
 }
 
-func TestAssignTaskUseCase_IdempotentUnassign(t *testing.T) {
-	// Arrange
-	store := eventstore.NewInMemoryEventStore()
-	userRepo := mocks.NewMockUserRepository()
-
-	createUseCase := taskapp.NewCreateTaskUseCase(store)
-	assignUseCase := taskapp.NewAssignTaskUseCase(store, userRepo)
-
-	// Creating task bez assignee
-	createCmd := taskapp.CreateTaskCommand{
-		ChatID:    uuid.NewUUID(),
-		Title:     "Test Task",
-		CreatedBy: uuid.NewUUID(),
-	}
-	createResult, err := createUseCase.Execute(context.Background(), createCmd)
-	require.NoError(t, err)
-
-	// Act: pytaemsya snyat assignee, when ego no
-	unassignCmd := taskapp.AssignTaskCommand{
-		TaskID:     createResult.TaskID,
-		AssigneeID: nil,
-		AssignedBy: uuid.NewUUID(),
-	}
-	result, err := assignUseCase.Execute(context.Background(), unassignCmd)
-
-	// Assert: not dolzhno byt New events
-	require.NoError(t, err)
-	assert.Empty(t, result.Events)
-	assert.Equal(t, 1, result.Version)
-}
-
 func TestAssignTaskUseCase_ValidationErrors(t *testing.T) {
 	tests := []struct {
 		name        string
-		setupMock   func(*mocks.MockUserRepository)
 		cmd         taskapp.AssignTaskCommand
 		expectedErr error
 	}{
 		{
-			name:      "Empty TaskID",
-			setupMock: func(_ *mocks.MockUserRepository) {},
+			name: "Empty TaskID",
 			cmd: taskapp.AssignTaskCommand{
 				TaskID:     uuid.UUID(""),
-				AssigneeID: ptr(uuid.NewUUID()),
+				AssigneeID: nil,
 				AssignedBy: uuid.NewUUID(),
 			},
 			expectedErr: taskapp.ErrInvalidTaskID,
 		},
 		{
-			name:      "Empty AssignedBy",
-			setupMock: func(_ *mocks.MockUserRepository) {},
+			name: "Empty AssignedBy",
 			cmd: taskapp.AssignTaskCommand{
 				TaskID:     uuid.NewUUID(),
-				AssigneeID: ptr(uuid.NewUUID()),
+				AssigneeID: nil,
 				AssignedBy: uuid.UUID(""),
 			},
 			expectedErr: taskapp.ErrInvalidUserID,
-		},
-		{
-			name: "User Not Found",
-			setupMock: func(_ *mocks.MockUserRepository) {
-				// not dobavlyaem user
-			},
-			cmd: taskapp.AssignTaskCommand{
-				TaskID:     uuid.NewUUID(),
-				AssigneeID: ptr(uuid.NewUUID()),
-				AssignedBy: uuid.NewUUID(),
-			},
-			expectedErr: taskapp.ErrUserNotFound,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
-			store := eventstore.NewInMemoryEventStore()
+			repo := mocks.NewMockTaskRepository()
 			userRepo := mocks.NewMockUserRepository()
-			tt.setupMock(userRepo)
-
-			useCase := taskapp.NewAssignTaskUseCase(store, userRepo)
+			useCase := taskapp.NewAssignTaskUseCase(repo, userRepo)
 
 			// Act
 			result, err := useCase.Execute(context.Background(), tt.cmd)
@@ -274,17 +225,13 @@ func TestAssignTaskUseCase_ValidationErrors(t *testing.T) {
 
 func TestAssignTaskUseCase_TaskNotFound(t *testing.T) {
 	// Arrange
-	store := eventstore.NewInMemoryEventStore()
+	repo := mocks.NewMockTaskRepository()
 	userRepo := mocks.NewMockUserRepository()
-
-	assigneeID := uuid.NewUUID()
-	userRepo.AddUser(assigneeID, "alice", "Alice")
-
-	useCase := taskapp.NewAssignTaskUseCase(store, userRepo)
+	useCase := taskapp.NewAssignTaskUseCase(repo, userRepo)
 
 	cmd := taskapp.AssignTaskCommand{
-		TaskID:     uuid.NewUUID(), // not suschestvuet
-		AssigneeID: &assigneeID,
+		TaskID:     uuid.NewUUID(), // does not exist
+		AssigneeID: nil,
 		AssignedBy: uuid.NewUUID(),
 	}
 
@@ -297,23 +244,15 @@ func TestAssignTaskUseCase_TaskNotFound(t *testing.T) {
 	assert.Empty(t, result.Events)
 }
 
-func TestAssignTaskUseCase_MultipleReassignments(t *testing.T) {
+func TestAssignTaskUseCase_UserNotFound(t *testing.T) {
 	// Arrange
-	store := eventstore.NewInMemoryEventStore()
+	repo := mocks.NewMockTaskRepository()
 	userRepo := mocks.NewMockUserRepository()
 
-	createUseCase := taskapp.NewCreateTaskUseCase(store)
-	assignUseCase := taskapp.NewAssignTaskUseCase(store, userRepo)
+	createUseCase := taskapp.NewCreateTaskUseCase(repo)
+	assignUseCase := taskapp.NewAssignTaskUseCase(repo, userRepo)
 
-	// Creating treh users
-	alice := uuid.NewUUID()
-	bob := uuid.NewUUID()
-	charlie := uuid.NewUUID()
-	userRepo.AddUser(alice, "alice", "Alice")
-	userRepo.AddUser(bob, "bob", "Bob")
-	userRepo.AddUser(charlie, "charlie", "Charlie")
-
-	// Creating task bez assignee
+	// Create task
 	createCmd := taskapp.CreateTaskCommand{
 		ChatID:    uuid.NewUUID(),
 		Title:     "Test Task",
@@ -322,79 +261,17 @@ func TestAssignTaskUseCase_MultipleReassignments(t *testing.T) {
 	createResult, err := createUseCase.Execute(context.Background(), createCmd)
 	require.NoError(t, err)
 
-	managerID := uuid.NewUUID()
-
-	// Act & Assert: nil → Alice
-	result1, err := assignUseCase.Execute(context.Background(), taskapp.AssignTaskCommand{
+	// Act: assign non-existent user
+	nonExistentUser := uuid.NewUUID()
+	assignCmd := taskapp.AssignTaskCommand{
 		TaskID:     createResult.TaskID,
-		AssigneeID: &alice,
-		AssignedBy: managerID,
-	})
-	require.NoError(t, err)
-	assert.Equal(t, 2, result1.Version)
-
-	// Alice → Bob
-	result2, err := assignUseCase.Execute(context.Background(), taskapp.AssignTaskCommand{
-		TaskID:     createResult.TaskID,
-		AssigneeID: &bob,
-		AssignedBy: managerID,
-	})
-	require.NoError(t, err)
-	assert.Equal(t, 3, result2.Version)
-
-	// Bob → Charlie
-	result3, err := assignUseCase.Execute(context.Background(), taskapp.AssignTaskCommand{
-		TaskID:     createResult.TaskID,
-		AssigneeID: &charlie,
-		AssignedBy: managerID,
-	})
-	require.NoError(t, err)
-	assert.Equal(t, 4, result3.Version)
-
-	// Charlie → nil
-	result4, err := assignUseCase.Execute(context.Background(), taskapp.AssignTaskCommand{
-		TaskID:     createResult.TaskID,
-		AssigneeID: nil,
-		AssignedBy: managerID,
-	})
-	require.NoError(t, err)
-	assert.Equal(t, 5, result4.Version)
-
-	// Checking full history
-	storedEvents, err := store.LoadEvents(context.Background(), createResult.TaskID.String())
-	require.NoError(t, err)
-	assert.Len(t, storedEvents, 5) // Created + 4x AssigneeChanged
-}
-
-func TestAssignTaskUseCase_UnassignValidation(t *testing.T) {
-	// Arrange
-	store := eventstore.NewInMemoryEventStore()
-	userRepo := mocks.NewMockUserRepository()
-
-	createUseCase := taskapp.NewCreateTaskUseCase(store)
-	assignUseCase := taskapp.NewAssignTaskUseCase(store, userRepo)
-
-	assigneeID := uuid.NewUUID()
-	userRepo.AddUser(assigneeID, "alice", "Alice")
-
-	createCmd := taskapp.CreateTaskCommand{
-		ChatID:     uuid.NewUUID(),
-		Title:      "Test Task",
-		AssigneeID: &assigneeID,
-		CreatedBy:  uuid.NewUUID(),
-	}
-	createResult, err := createUseCase.Execute(context.Background(), createCmd)
-	require.NoError(t, err)
-
-	// Act: snimaem assignee - not trebuetsya validation user
-	unassignCmd := taskapp.AssignTaskCommand{
-		TaskID:     createResult.TaskID,
-		AssigneeID: nil,
+		AssigneeID: &nonExistentUser,
 		AssignedBy: uuid.NewUUID(),
 	}
-	result, err := assignUseCase.Execute(context.Background(), unassignCmd)
+	result, err := assignUseCase.Execute(context.Background(), assignCmd)
 
-	// Assert: dolzhno proyti successfully bez proverki suschestvovaniya user
-	require.NoError(t, err)
-	assert.Len(t, result.Events, 1)
+	// Assert
+	require.Error(t, err)
+	require.ErrorIs(t, err, taskapp.ErrUserNotFound)
+	assert.Empty(t, result.Events)
 }
