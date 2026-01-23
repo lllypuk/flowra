@@ -94,7 +94,10 @@
     </div>
 </div>
 {{else}}
-<div class="task-details">
+<div class="task-details"
+     hx-get="/partials/chats/{{.Data.Chat.ID}}/task-details"
+     hx-trigger="load"
+     hx-swap="outerHTML">
     <p>Loading task details...</p>
 </div>
 {{end}}

@@ -1274,7 +1274,7 @@ func TestRegisterAllHandlers(t *testing.T) {
 		notifHandler := eventbus.NewNotificationHandler(uc)
 		logHandler := eventbus.NewLoggingHandler(logger)
 
-		err := eventbus.RegisterAllHandlers(bus, notifHandler, logHandler, logger)
+		err := eventbus.RegisterAllHandlers(bus, notifHandler, logHandler, nil, logger)
 		require.NoError(t, err)
 
 		// Notification handler events
@@ -1290,7 +1290,7 @@ func TestRegisterAllHandlers(t *testing.T) {
 		logger := slog.Default()
 		logHandler := eventbus.NewLoggingHandler(logger)
 
-		err := eventbus.RegisterAllHandlers(bus, nil, logHandler, logger)
+		err := eventbus.RegisterAllHandlers(bus, nil, logHandler, nil, logger)
 		require.NoError(t, err)
 	})
 
@@ -1302,7 +1302,7 @@ func TestRegisterAllHandlers(t *testing.T) {
 		uc := notification.NewCreateNotificationUseCase(repo)
 		notifHandler := eventbus.NewNotificationHandler(uc)
 
-		err := eventbus.RegisterAllHandlers(bus, notifHandler, nil, logger)
+		err := eventbus.RegisterAllHandlers(bus, notifHandler, nil, nil, logger)
 		require.NoError(t, err)
 	})
 }

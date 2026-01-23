@@ -102,6 +102,19 @@ func (m *MockBoardTaskService) GetTask(
 	return t, nil
 }
 
+// GetTaskByChatID implements BoardTaskService.
+func (m *MockBoardTaskService) GetTaskByChatID(
+	_ context.Context,
+	chatID uuid.UUID,
+) (*taskapp.ReadModel, error) {
+	for _, t := range m.tasks {
+		if t.ChatID == chatID {
+			return t, nil
+		}
+	}
+	return nil, taskapp.ErrTaskNotFound
+}
+
 // MockBoardMemberService is a mock implementation of BoardMemberService for testing.
 type MockBoardMemberService struct {
 	members map[uuid.UUID][]httphandler.MemberViewData
