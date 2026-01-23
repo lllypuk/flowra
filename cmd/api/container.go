@@ -1274,7 +1274,7 @@ func (a *boardTaskServiceAdapter) GetTask(ctx context.Context, taskID uuid.UUID)
 	if a.collection == nil {
 		return nil, taskapp.ErrTaskNotFound
 	}
-	filter := map[string]any{"_id": taskID.String()}
+	filter := map[string]any{"task_id": taskID.String()}
 	var result taskReadModelDoc
 	if err := a.collection.FindOne(ctx, filter).Decode(&result); err != nil {
 		return nil, taskapp.ErrTaskNotFound
@@ -1341,7 +1341,7 @@ func (a *boardTaskServiceAdapter) buildFilter(filters taskapp.Filters) map[strin
 
 // taskReadModelDoc represents a task document in MongoDB.
 type taskReadModelDoc struct {
-	ID         string     `bson:"_id"`
+	ID         string     `bson:"task_id"`
 	ChatID     string     `bson:"chat_id"`
 	Title      string     `bson:"title"`
 	EntityType string     `bson:"entity_type"`
