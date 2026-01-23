@@ -60,10 +60,10 @@ curl -X POST "http://localhost:8090/admin/realms" \
 
 | Username   | Email                  | Password     | Roles                  |
 |------------|------------------------|--------------|------------------------|
-| testuser   | testuser@example.com   | password123  | user                   |
+| testuser   | testuser@example.com   | test123  | user                   |
 | admin      | admin@example.com      | admin123     | user, admin            |
-| alice      | alice@example.com      | password123  | user, workspace_owner  |
-| bob        | bob@example.com        | password123  | user                   |
+| alice      | alice@example.com      | test123  | user, workspace_owner  |
+| bob        | bob@example.com        | test123  | user                   |
 
 ## OAuth2 Client Configuration
 

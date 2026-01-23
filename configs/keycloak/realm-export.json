@@ -71,15 +71,8 @@
       "realmRoles": ["user", "admin"]
     }
   ],
-  "defaultDefaultClientScopes": [
-    "openid",
-    "profile",
-    "email",
-    "roles"
-  ],
-  "defaultOptionalClientScopes": [
-    "groups"
-  ],
+  "defaultDefaultClientScopes": ["openid", "profile", "email", "roles"],
+  "defaultOptionalClientScopes": ["groups"],
   "clientScopes": [
     {
       "name": "openid",
@@ -239,10 +232,7 @@
         "http://localhost:8080/auth/callback",
         "http://localhost:3000/auth/callback"
       ],
-      "webOrigins": [
-        "http://localhost:8080",
-        "http://localhost:3000"
-      ],
+      "webOrigins": ["http://localhost:8080", "http://localhost:3000"],
       "bearerOnly": false,
       "consentRequired": false,
       "standardFlowEnabled": true,
@@ -258,15 +248,8 @@
         "post.logout.redirect.uris": "http://localhost:8080/+http://localhost:3000/"
       },
       "fullScopeAllowed": true,
-      "defaultClientScopes": [
-        "openid",
-        "profile",
-        "email",
-        "roles"
-      ],
-      "optionalClientScopes": [
-        "groups"
-      ]
+      "defaultClientScopes": ["openid", "profile", "email", "roles"],
+      "optionalClientScopes": ["groups"]
     }
   ],
   "users": [
@@ -280,7 +263,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "password123",
+          "value": "test123",
           "temporary": false
         }
       ],
@@ -314,7 +297,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "password123",
+          "value": "test123",
           "temporary": false
         }
       ],
@@ -331,7 +314,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "password123",
+          "value": "test123",
           "temporary": false
         }
       ],
