@@ -42,6 +42,9 @@ type BoardTaskService interface {
 
 	// GetTask gets a task by ID.
 	GetTask(ctx context.Context, taskID uuid.UUID) (*taskapp.ReadModel, error)
+
+	// GetTaskByChatID gets a task by its associated chat ID.
+	GetTaskByChatID(ctx context.Context, chatID uuid.UUID) (*taskapp.ReadModel, error)
 }
 
 // BoardMemberService defines the interface for member operations needed by the board.

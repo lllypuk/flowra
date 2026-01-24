@@ -252,14 +252,14 @@ client := &http.Client{Timeout: 30 * time.Second}
 // Act & Assert: Complete user registration flow
 
 // Step 1: Register user
-registerResp := registerUser(t, client, app.URL, "e2e@example.com", "password123")
+registerResp := registerUser(t, client, app.URL, "e2e@example.com", "test123")
 assert.Equal(t, http.StatusCreated, registerResp.StatusCode)
 
 // Step 2: Verify email (simulate)
 verifyEmail(t, client, app.URL, "verification-token")
 
 // Step 3: Login
-loginResp := loginUser(t, client, app.URL, "e2e@example.com", "password123")
+loginResp := loginUser(t, client, app.URL, "e2e@example.com", "test123")
 assert.Equal(t, http.StatusOK, loginResp.StatusCode)
 
 token := extractAuthToken(t, loginResp)

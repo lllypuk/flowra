@@ -82,16 +82,17 @@ type Container struct {
 	Logger *slog.Logger
 
 	// Infrastructure
-	MongoDB      *mongo.Client
-	MongoDBName  string
-	Redis        *redis.Client
-	EventStore   *eventstore.MongoEventStore
-	EventBus     *eventbus.RedisEventBus
-	Outbox       appcore.Outbox
-	Hub          *websocket.Hub
-	Broadcaster  *websocket.Broadcaster
-	NotifHandler *eventbus.NotificationHandler
-	LogHandler   *eventbus.LoggingHandler
+	MongoDB             *mongo.Client
+	MongoDBName         string
+	Redis               *redis.Client
+	EventStore          *eventstore.MongoEventStore
+	EventBus            *eventbus.RedisEventBus
+	Outbox              appcore.Outbox
+	Hub                 *websocket.Hub
+	Broadcaster         *websocket.Broadcaster
+	NotifHandler        *eventbus.NotificationHandler
+	LogHandler          *eventbus.LoggingHandler
+	TaskCreationHandler *eventbus.TaskCreationHandler
 
 	// Reliability components
 	DeadLetterHandler *eventbus.DeadLetterHandler
@@ -739,6 +740,13 @@ func (c *Container) setupEventHandlers() {
 	// Create logging handler for debugging
 	c.LogHandler = eventbus.NewLoggingHandler(c.Logger)
 
+	// Create task creation handler for chat type changes
+	createTaskUC := taskapp.NewCreateTaskUseCase(c.TaskRepo)
+	c.TaskCreationHandler = eventbus.NewTaskCreationHandler(
+		createTaskUC,
+		c.Logger,
+	)
+
 	c.Logger.Debug("event handlers initialized")
 }
 
@@ -771,6 +779,7 @@ func (c *Container) registerEventHandlers() error {
 		c.EventBus,
 		c.NotifHandler,
 		c.LogHandler,
+		c.TaskCreationHandler,
 		c.Logger,
 	)
 }
@@ -1274,7 +1283,20 @@ func (a *boardTaskServiceAdapter) GetTask(ctx context.Context, taskID uuid.UUID)
 	if a.collection == nil {
 		return nil, taskapp.ErrTaskNotFound
 	}
-	filter := map[string]any{"_id": taskID.String()}
+	filter := map[string]any{"task_id": taskID.String()}
+	var result taskReadModelDoc
+	if err := a.collection.FindOne(ctx, filter).Decode(&result); err != nil {
+		return nil, taskapp.ErrTaskNotFound
+	}
+	return result.toReadModel(), nil
+}
+
+// GetTaskByChatID implements TaskDetailService.
+func (a *boardTaskServiceAdapter) GetTaskByChatID(ctx context.Context, chatID uuid.UUID) (*taskapp.ReadModel, error) {
+	if a.collection == nil {
+		return nil, taskapp.ErrTaskNotFound
+	}
+	filter := map[string]any{"chat_id": chatID.String()}
 	var result taskReadModelDoc
 	if err := a.collection.FindOne(ctx, filter).Decode(&result); err != nil {
 		return nil, taskapp.ErrTaskNotFound
@@ -1341,7 +1363,7 @@ func (a *boardTaskServiceAdapter) buildFilter(filters taskapp.Filters) map[strin
 
 // taskReadModelDoc represents a task document in MongoDB.
 type taskReadModelDoc struct {
-	ID         string     `bson:"_id"`
+	ID         string     `bson:"task_id"`
 	ChatID     string     `bson:"chat_id"`
 	Title      string     `bson:"title"`
 	EntityType string     `bson:"entity_type"`
@@ -1379,6 +1401,39 @@ func (d *taskReadModelDoc) toReadModel() *taskapp.ReadModel {
 	}
 
 	return model
+}
+
+// chatBasicInfoServiceAdapter adapts MongoDB collection to ChatBasicInfoService.
+type chatBasicInfoServiceAdapter struct {
+	collection *mongo.Collection
+}
+
+// GetChatBasicInfo implements ChatBasicInfoService.
+func (a *chatBasicInfoServiceAdapter) GetChatBasicInfo(
+	ctx context.Context,
+	chatID uuid.UUID,
+) (*httphandler.ChatBasicInfo, error) {
+	if a.collection == nil {
+		return nil, errors.New("collection not initialized")
+	}
+
+	filter := bson.M{"chat_id": chatID.String()}
+	var doc struct {
+		ChatID      string `bson:"chat_id"`
+		WorkspaceID string `bson:"workspace_id"`
+		Type        string `bson:"type"`
+	}
+
+	err := a.collection.FindOne(ctx, filter).Decode(&doc)
+	if err != nil {
+		return nil, fmt.Errorf("chat not found: %w", err)
+	}
+
+	return &httphandler.ChatBasicInfo{
+		ID:          doc.ChatID,
+		WorkspaceID: doc.WorkspaceID,
+		Type:        doc.Type,
+	}, nil
 }
 
 // createFullTaskService creates a service implementing httphandler.TaskService.
@@ -1500,6 +1555,9 @@ func (c *Container) setupTaskDetailTemplateHandler() {
 	// Create task detail service adapter
 	taskService := c.createTaskDetailService()
 
+	// Create chat basic info service adapter
+	chatInfoService := c.createChatBasicInfoService()
+
 	// For now, event service is nil - will be implemented for activity timeline
 	c.TaskDetailTemplateHandler = httphandler.NewTaskDetailTemplateHandler(
 		c.TemplateRenderer,
@@ -1507,6 +1565,7 @@ func (c *Container) setupTaskDetailTemplateHandler() {
 		taskService,
 		nil, // TaskEventService - TODO: implement for activity timeline
 		c.createBoardMemberService(),
+		chatInfoService,
 	)
 
 	c.Logger.Debug("task detail template handler initialized")
@@ -1516,6 +1575,13 @@ func (c *Container) setupTaskDetailTemplateHandler() {
 // Reuses the boardTaskServiceAdapter since both interfaces require the same GetTask method.
 func (c *Container) createTaskDetailService() httphandler.TaskDetailService {
 	return c.createBoardTaskService()
+}
+
+// createChatBasicInfoService creates a service implementing ChatBasicInfoService.
+func (c *Container) createChatBasicInfoService() httphandler.ChatBasicInfoService {
+	return &chatBasicInfoServiceAdapter{
+		collection: c.MongoDB.Database(c.MongoDBName).Collection("chats_read_model"),
+	}
 }
 
 // createNotificationTemplateService creates a service implementing NotificationTemplateService.

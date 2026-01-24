@@ -678,6 +678,15 @@ func (r *HandlerRegistry) RegisterNotificationHandler(handler *NotificationHandl
 	return r.Register(eventTypes, handler.AsEventHandler())
 }
 
+// RegisterTaskCreationHandler registers the task creation handler for chat type change events.
+func (r *HandlerRegistry) RegisterTaskCreationHandler(handler *TaskCreationHandler) error {
+	eventTypes := []string{
+		chat.EventTypeChatTypeChanged,
+	}
+
+	return r.Register(eventTypes, handler.AsEventHandler())
+}
+
 // RegisterLoggingHandler registers the logging handler for specified event types.
 // Note: Redis Pub/Sub doesn't support wildcards natively, so you need to specify
 // all event types explicitly.
@@ -690,6 +699,7 @@ func RegisterAllHandlers(
 	bus *RedisEventBus,
 	notifHandler *NotificationHandler,
 	logHandler *LoggingHandler,
+	taskCreationHandler *TaskCreationHandler,
 	logger *slog.Logger,
 ) error {
 	registry := NewHandlerRegistry(bus, logger)
@@ -698,6 +708,13 @@ func RegisterAllHandlers(
 	if notifHandler != nil {
 		if err := registry.RegisterNotificationHandler(notifHandler); err != nil {
 			return fmt.Errorf("failed to register notification handler: %w", err)
+		}
+	}
+
+	// Register task creation handler for chat type changes
+	if taskCreationHandler != nil {
+		if err := registry.RegisterTaskCreationHandler(taskCreationHandler); err != nil {
+			return fmt.Errorf("failed to register task creation handler: %w", err)
 		}
 	}
 

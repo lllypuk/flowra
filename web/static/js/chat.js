@@ -149,6 +149,31 @@ function initTagAutocomplete() {
             closeAllAutocompleteDropdowns();
         }
     });
+
+    // Reposition dropdown on scroll
+    var messagesContainers = document.querySelectorAll('.messages-container');
+    messagesContainers.forEach(function(container) {
+        container.addEventListener('scroll', function() {
+            if (activeAutocompleteInput) {
+                var wrapper = activeAutocompleteInput.closest('.message-input-wrapper');
+                var dropdown = wrapper ? wrapper.querySelector('.autocomplete-dropdown') : null;
+                if (dropdown && !dropdown.classList.contains('hidden')) {
+                    positionDropdown(activeAutocompleteInput, dropdown);
+                }
+            }
+        });
+    });
+
+    // Reposition dropdown on window resize
+    window.addEventListener('resize', function() {
+        if (activeAutocompleteInput) {
+            var wrapper = activeAutocompleteInput.closest('.message-input-wrapper');
+            var dropdown = wrapper ? wrapper.querySelector('.autocomplete-dropdown') : null;
+            if (dropdown && !dropdown.classList.contains('hidden')) {
+                positionDropdown(activeAutocompleteInput, dropdown);
+            }
+        }
+    });
 }
 
 /**
@@ -165,6 +190,23 @@ function handleTagAutocompleteEvent(e) {
  */
 function handleAutocompleteNavigationEvent(e) {
     handleAutocompleteNavigation(e);
+}
+
+/**
+ * Position dropdown above textarea
+ * @param {HTMLTextAreaElement} textarea - The textarea element
+ * @param {HTMLElement} dropdown - The dropdown element
+ */
+function positionDropdown(textarea, dropdown) {
+    var rect = textarea.getBoundingClientRect();
+    var dropdownHeight = dropdown.offsetHeight || 250; // fallback to max-height
+
+    // Position dropdown above the textarea
+    dropdown.style.position = 'fixed';
+    dropdown.style.left = rect.left + 'px';
+    dropdown.style.width = rect.width + 'px';
+    dropdown.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
+    dropdown.style.top = 'auto';
 }
 
 /**
@@ -205,6 +247,8 @@ function handleTagAutocomplete(textarea) {
 
         if (hasVisible) {
             dropdown.classList.remove('hidden');
+            // Position dropdown
+            positionDropdown(textarea, dropdown);
             // Reset active state
             items.forEach(function(item) {
                 item.classList.remove('active');

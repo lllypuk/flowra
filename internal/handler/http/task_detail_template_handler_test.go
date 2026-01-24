@@ -48,6 +48,19 @@ func (m *MockTaskDetailService) GetTask(
 	return t, nil
 }
 
+// GetTaskByChatID implements TaskDetailService.
+func (m *MockTaskDetailService) GetTaskByChatID(
+	_ context.Context,
+	chatID uuid.UUID,
+) (*taskapp.ReadModel, error) {
+	for _, t := range m.tasks {
+		if t.ChatID == chatID {
+			return t, nil
+		}
+	}
+	return nil, taskapp.ErrTaskNotFound
+}
+
 // MockTaskEventService is a mock implementation of TaskEventService for testing.
 type MockTaskEventService struct {
 	events map[uuid.UUID][]event.DomainEvent
@@ -178,7 +191,7 @@ func TestTaskDetailTemplateHandler_TaskSidebarPartial(t *testing.T) {
 		mockMemberService := NewMockTaskDetailMemberService()
 
 		handler := httphandler.NewTaskDetailTemplateHandler(
-			nil, nil, mockTaskService, mockEventService, mockMemberService,
+			nil, nil, mockTaskService, mockEventService, mockMemberService, nil,
 		)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/"+taskID.String()+"/sidebar", nil)
@@ -203,7 +216,7 @@ func TestTaskDetailTemplateHandler_TaskSidebarPartial(t *testing.T) {
 		mockMemberService := NewMockTaskDetailMemberService()
 
 		handler := httphandler.NewTaskDetailTemplateHandler(
-			nil, nil, mockTaskService, mockEventService, mockMemberService,
+			nil, nil, mockTaskService, mockEventService, mockMemberService, nil,
 		)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/invalid-uuid/sidebar", nil)
@@ -229,7 +242,7 @@ func TestTaskDetailTemplateHandler_TaskSidebarPartial(t *testing.T) {
 		mockMemberService := NewMockTaskDetailMemberService()
 
 		handler := httphandler.NewTaskDetailTemplateHandler(
-			nil, nil, mockTaskService, mockEventService, mockMemberService,
+			nil, nil, mockTaskService, mockEventService, mockMemberService, nil,
 		)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/"+taskID.String()+"/sidebar", nil)
@@ -250,7 +263,7 @@ func TestTaskDetailTemplateHandler_TaskSidebarPartial(t *testing.T) {
 		userID := uuid.NewUUID()
 		taskID := uuid.NewUUID()
 
-		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, nil, nil, nil)
+		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, nil, nil, nil, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/"+taskID.String()+"/sidebar", nil)
 		rec := httptest.NewRecorder()
@@ -278,7 +291,7 @@ func TestTaskDetailTemplateHandler_TaskSidebarPartial(t *testing.T) {
 		mockTaskService.AddTask(testTask)
 
 		handler := httphandler.NewTaskDetailTemplateHandler(
-			nil, nil, mockTaskService, mockEventService, mockMemberService,
+			nil, nil, mockTaskService, mockEventService, mockMemberService, nil,
 		)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/"+testTask.ID.String()+"/sidebar", nil)
@@ -304,7 +317,7 @@ func TestTaskDetailTemplateHandler_TaskActivityPartial(t *testing.T) {
 		mockMemberService := NewMockTaskDetailMemberService()
 
 		handler := httphandler.NewTaskDetailTemplateHandler(
-			nil, nil, mockTaskService, mockEventService, mockMemberService,
+			nil, nil, mockTaskService, mockEventService, mockMemberService, nil,
 		)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/"+taskID.String()+"/activity", nil)
@@ -328,7 +341,7 @@ func TestTaskDetailTemplateHandler_TaskActivityPartial(t *testing.T) {
 		mockMemberService := NewMockTaskDetailMemberService()
 
 		handler := httphandler.NewTaskDetailTemplateHandler(
-			nil, nil, mockTaskService, mockEventService, mockMemberService,
+			nil, nil, mockTaskService, mockEventService, mockMemberService, nil,
 		)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/invalid-uuid/activity", nil)
@@ -362,7 +375,7 @@ func TestTaskDetailTemplateHandler_TaskActivityPartial(t *testing.T) {
 		mockEventService.AddEvents(taskID, events)
 
 		handler := httphandler.NewTaskDetailTemplateHandler(
-			nil, nil, mockTaskService, mockEventService, mockMemberService,
+			nil, nil, mockTaskService, mockEventService, mockMemberService, nil,
 		)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/"+taskID.String()+"/activity", nil)
@@ -383,7 +396,7 @@ func TestTaskDetailTemplateHandler_TaskEditTitleForm(t *testing.T) {
 		e := echo.New()
 		taskID := uuid.NewUUID()
 
-		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, nil, nil, nil)
+		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, nil, nil, nil, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/"+taskID.String()+"/edit-title", nil)
 		rec := httptest.NewRecorder()
@@ -403,7 +416,7 @@ func TestTaskDetailTemplateHandler_TaskEditTitleForm(t *testing.T) {
 
 		mockTaskService := NewMockTaskDetailService()
 
-		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil)
+		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/invalid-uuid/edit-title", nil)
 		rec := httptest.NewRecorder()
@@ -425,7 +438,7 @@ func TestTaskDetailTemplateHandler_TaskEditTitleForm(t *testing.T) {
 
 		mockTaskService := NewMockTaskDetailService()
 
-		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil)
+		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/"+taskID.String()+"/edit-title", nil)
 		rec := httptest.NewRecorder()
@@ -450,7 +463,7 @@ func TestTaskDetailTemplateHandler_TaskEditTitleForm(t *testing.T) {
 		testTask := makeTestTaskDetailReadModel(chatID)
 		mockTaskService.AddTask(testTask)
 
-		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil)
+		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/"+testTask.ID.String()+"/edit-title", nil)
 		rec := httptest.NewRecorder()
@@ -469,7 +482,7 @@ func TestTaskDetailTemplateHandler_TaskTitleDisplay(t *testing.T) {
 		e := echo.New()
 		taskID := uuid.NewUUID()
 
-		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, nil, nil, nil)
+		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, nil, nil, nil, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/"+taskID.String()+"/title-display", nil)
 		rec := httptest.NewRecorder()
@@ -490,7 +503,7 @@ func TestTaskDetailTemplateHandler_TaskTitleDisplay(t *testing.T) {
 
 		mockTaskService := NewMockTaskDetailService()
 
-		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil)
+		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/"+taskID.String()+"/title-display", nil)
 		rec := httptest.NewRecorder()
@@ -511,7 +524,7 @@ func TestTaskDetailTemplateHandler_TaskEditDescriptionForm(t *testing.T) {
 		e := echo.New()
 		taskID := uuid.NewUUID()
 
-		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, nil, nil, nil)
+		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, nil, nil, nil, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/"+taskID.String()+"/edit-description", nil)
 		rec := httptest.NewRecorder()
@@ -532,7 +545,7 @@ func TestTaskDetailTemplateHandler_TaskEditDescriptionForm(t *testing.T) {
 
 		mockTaskService := NewMockTaskDetailService()
 
-		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil)
+		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/"+taskID.String()+"/edit-description", nil)
 		rec := httptest.NewRecorder()
@@ -557,7 +570,7 @@ func TestTaskDetailTemplateHandler_TaskEditDescriptionForm(t *testing.T) {
 		testTask := makeTestTaskDetailReadModel(chatID)
 		mockTaskService.AddTask(testTask)
 
-		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil)
+		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/"+testTask.ID.String()+"/edit-description", nil)
 		rec := httptest.NewRecorder()
@@ -576,7 +589,7 @@ func TestTaskDetailTemplateHandler_TaskDescriptionDisplay(t *testing.T) {
 		e := echo.New()
 		taskID := uuid.NewUUID()
 
-		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, nil, nil, nil)
+		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, nil, nil, nil, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/"+taskID.String()+"/description-display", nil)
 		rec := httptest.NewRecorder()
@@ -597,7 +610,7 @@ func TestTaskDetailTemplateHandler_TaskDescriptionDisplay(t *testing.T) {
 
 		mockTaskService := NewMockTaskDetailService()
 
-		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil)
+		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/"+taskID.String()+"/description-display", nil)
 		rec := httptest.NewRecorder()
@@ -618,7 +631,7 @@ func TestTaskDetailTemplateHandler_TaskQuickEditPopover(t *testing.T) {
 		e := echo.New()
 		taskID := uuid.NewUUID()
 
-		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, nil, nil, nil)
+		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, nil, nil, nil, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/"+taskID.String()+"/quick-edit", nil)
 		rec := httptest.NewRecorder()
@@ -638,7 +651,7 @@ func TestTaskDetailTemplateHandler_TaskQuickEditPopover(t *testing.T) {
 
 		mockTaskService := NewMockTaskDetailService()
 
-		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil)
+		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/invalid-uuid/quick-edit", nil)
 		rec := httptest.NewRecorder()
@@ -660,7 +673,7 @@ func TestTaskDetailTemplateHandler_TaskQuickEditPopover(t *testing.T) {
 
 		mockTaskService := NewMockTaskDetailService()
 
-		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil)
+		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/"+taskID.String()+"/quick-edit", nil)
 		rec := httptest.NewRecorder()
@@ -685,7 +698,7 @@ func TestTaskDetailTemplateHandler_TaskQuickEditPopover(t *testing.T) {
 		testTask := makeTestTaskDetailReadModel(chatID)
 		mockTaskService.AddTask(testTask)
 
-		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil)
+		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/"+testTask.ID.String()+"/quick-edit", nil)
 		rec := httptest.NewRecorder()
@@ -703,7 +716,7 @@ func TestNewTaskDetailTemplateHandler(t *testing.T) {
 	t.Run("creates handler with nil logger", func(t *testing.T) {
 		mockTaskService := NewMockTaskDetailService()
 
-		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil)
+		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil, nil)
 
 		assert.NotNil(t, handler)
 	})
@@ -714,7 +727,7 @@ func TestNewTaskDetailTemplateHandler(t *testing.T) {
 		mockMemberService := NewMockTaskDetailMemberService()
 
 		handler := httphandler.NewTaskDetailTemplateHandler(
-			nil, nil, mockTaskService, mockEventService, mockMemberService,
+			nil, nil, mockTaskService, mockEventService, mockMemberService, nil,
 		)
 
 		assert.NotNil(t, handler)
@@ -746,7 +759,7 @@ func TestTaskDetailViewData_DueDateCalculations(t *testing.T) {
 		}
 		mockTaskService.AddTask(testTask)
 
-		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil)
+		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/"+testTask.ID.String()+"/sidebar", nil)
 		rec := httptest.NewRecorder()
@@ -783,7 +796,7 @@ func TestTaskDetailViewData_DueDateCalculations(t *testing.T) {
 		}
 		mockTaskService.AddTask(testTask)
 
-		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil)
+		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/"+testTask.ID.String()+"/sidebar", nil)
 		rec := httptest.NewRecorder()
@@ -819,7 +832,7 @@ func TestTaskDetailViewData_DueDateCalculations(t *testing.T) {
 		}
 		mockTaskService.AddTask(testTask)
 
-		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil)
+		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/"+testTask.ID.String()+"/sidebar", nil)
 		rec := httptest.NewRecorder()
@@ -862,7 +875,7 @@ func TestTaskDetailTemplateHandler_EventTypeConversion(t *testing.T) {
 		mockEventService.AddEvents(taskID, events)
 
 		handler := httphandler.NewTaskDetailTemplateHandler(
-			nil, nil, mockTaskService, mockEventService, nil,
+			nil, nil, mockTaskService, mockEventService, nil, nil,
 		)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/"+taskID.String()+"/activity", nil)
@@ -892,7 +905,7 @@ func TestTaskDetailTemplateHandler_EventTypeConversion(t *testing.T) {
 		mockEventService.AddEvents(taskID, events)
 
 		handler := httphandler.NewTaskDetailTemplateHandler(
-			nil, nil, mockTaskService, mockEventService, nil,
+			nil, nil, mockTaskService, mockEventService, nil, nil,
 		)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/"+taskID.String()+"/activity", nil)
@@ -930,7 +943,7 @@ func TestTaskDetailTemplateHandler_WithAssignee(t *testing.T) {
 		}
 		mockTaskService.AddTask(testTask)
 
-		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil)
+		handler := httphandler.NewTaskDetailTemplateHandler(nil, nil, mockTaskService, nil, nil, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/partials/tasks/"+testTask.ID.String()+"/sidebar", nil)
 		rec := httptest.NewRecorder()

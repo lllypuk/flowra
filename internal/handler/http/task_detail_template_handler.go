@@ -25,12 +25,29 @@ const (
 type TaskDetailService interface {
 	// GetTask gets a task by ID.
 	GetTask(ctx context.Context, taskID uuid.UUID) (*taskapp.ReadModel, error)
+
+	// GetTaskByChatID gets a task by its associated chat ID.
+	GetTaskByChatID(ctx context.Context, chatID uuid.UUID) (*taskapp.ReadModel, error)
 }
 
 // TaskEventService defines the interface for loading task events for activity timeline.
 type TaskEventService interface {
 	// GetEvents returns all events for a task (for activity timeline).
 	GetEvents(ctx context.Context, taskID uuid.UUID) ([]event.DomainEvent, error)
+}
+
+// ChatBasicInfoService defines the interface for loading basic chat information.
+// Declared on the consumer side per project guidelines.
+type ChatBasicInfoService interface {
+	// GetChatBasicInfo returns minimal chat information needed for task details.
+	GetChatBasicInfo(ctx context.Context, chatID uuid.UUID) (*ChatBasicInfo, error)
+}
+
+// ChatBasicInfo contains minimal chat information needed for task sidebar.
+type ChatBasicInfo struct {
+	ID          string
+	WorkspaceID string
+	Type        string
 }
 
 // TaskDetailMemberService is an alias for BoardMemberService to avoid interface duplication.
@@ -89,11 +106,12 @@ type SelectOption struct {
 
 // TaskDetailTemplateHandler provides handlers for rendering task detail views.
 type TaskDetailTemplateHandler struct {
-	renderer      *TemplateRenderer
-	logger        *slog.Logger
-	taskService   TaskDetailService
-	eventService  TaskEventService
-	memberService TaskDetailMemberService
+	renderer        *TemplateRenderer
+	logger          *slog.Logger
+	taskService     TaskDetailService
+	eventService    TaskEventService
+	memberService   TaskDetailMemberService
+	chatInfoService ChatBasicInfoService
 }
 
 // NewTaskDetailTemplateHandler creates a new task detail template handler.
@@ -103,16 +121,18 @@ func NewTaskDetailTemplateHandler(
 	taskService TaskDetailService,
 	eventService TaskEventService,
 	memberService TaskDetailMemberService,
+	chatInfoService ChatBasicInfoService,
 ) *TaskDetailTemplateHandler {
 	if logger == nil {
 		logger = slog.Default()
 	}
 	return &TaskDetailTemplateHandler{
-		renderer:      renderer,
-		logger:        logger,
-		taskService:   taskService,
-		eventService:  eventService,
-		memberService: memberService,
+		renderer:        renderer,
+		logger:          logger,
+		taskService:     taskService,
+		eventService:    eventService,
+		memberService:   memberService,
+		chatInfoService: chatInfoService,
 	}
 }
 
@@ -127,6 +147,65 @@ func (h *TaskDetailTemplateHandler) SetupTaskDetailRoutes(e *echo.Echo) {
 	partials.GET("/tasks/:task_id/edit-description", h.TaskEditDescriptionForm)
 	partials.GET("/tasks/:task_id/description-display", h.TaskDescriptionDisplay)
 	partials.GET("/tasks/:task_id/quick-edit", h.TaskQuickEditPopover)
+
+	// Chat-based task details (for sidebar in chat view)
+	partials.GET("/chats/:chat_id/task-details", h.TaskDetailsByChatID)
+}
+
+// TaskDetailsByChatID returns task details for a chat (resolves task by chat_id).
+func (h *TaskDetailTemplateHandler) TaskDetailsByChatID(c echo.Context) error {
+	user := h.getUserView(c)
+	if user == nil {
+		return c.String(http.StatusUnauthorized, "Unauthorized")
+	}
+
+	chatID, err := uuid.ParseUUID(c.Param("chat_id"))
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid chat ID")
+	}
+
+	if h.taskService == nil {
+		return c.String(http.StatusInternalServerError, "Task service unavailable")
+	}
+
+	// Get task by chat ID
+	taskModel, err := h.taskService.GetTaskByChatID(c.Request().Context(), chatID)
+	if err != nil {
+		return c.String(http.StatusNotFound, "Task not found for this chat")
+	}
+
+	// Get basic chat info
+	var chatInfo *ChatBasicInfo
+	if h.chatInfoService != nil {
+		chatInfo, _ = h.chatInfoService.GetChatBasicInfo(c.Request().Context(), chatID)
+	}
+
+	// Fallback if chat info not available
+	if chatInfo == nil {
+		chatInfo = &ChatBasicInfo{
+			ID:          chatID.String(),
+			WorkspaceID: "", // Will need to be handled in template
+			Type:        string(taskModel.EntityType),
+		}
+	}
+
+	// Get workspace members for assignee dropdown
+	var participants []MemberViewData
+
+	// Build data structure matching template expectations
+	innerData := map[string]any{
+		"Task":         h.convertToDetailView(taskModel),
+		"Chat":         chatInfo,
+		"Statuses":     getStatusOptions(),
+		"Priorities":   getPriorityOptions(),
+		"Participants": participants,
+	}
+
+	data := map[string]any{
+		"Data": innerData,
+	}
+
+	return h.renderPartial(c, "chat/task-sidebar", data)
 }
 
 // TaskSidebarPartial returns the full task sidebar as HTML partial.

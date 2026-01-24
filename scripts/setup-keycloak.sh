@@ -254,10 +254,10 @@ print_summary() {
     echo "Client Secret: flowra-dev-secret-change-in-production"
     echo ""
     echo "Test users:"
-    echo "  testuser / password123 (role: user)"
+    echo "  testuser / test123 (role: user)"
     echo "  admin / admin123 (roles: user, admin)"
-    echo "  alice / password123 (roles: user, workspace_owner)"
-    echo "  bob / password123 (role: user)"
+    echo "  alice / test123 (roles: user, workspace_owner)"
+    echo "  bob / test123 (role: user)"
     echo ""
 }
 
