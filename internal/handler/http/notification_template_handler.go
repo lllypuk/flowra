@@ -1,6 +1,7 @@
 package httphandler
 
 import (
+	"bytes"
 	"context"
 	"log/slog"
 	"net/http"
@@ -306,13 +307,39 @@ func (h *NotificationTemplateHandler) render(c echo.Context, templateName, title
 }
 
 // renderPartial renders a template partial for HTMX requests.
+// It buffers the template output to prevent partial writes on error.
 func (h *NotificationTemplateHandler) renderPartial(c echo.Context, templateName string, data any) error {
 	if h.renderer == nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "template renderer not configured")
+		return c.HTML(http.StatusOK, `<li class="error-state">Service unavailable</li>`)
+	}
+
+	// Buffer the template output to prevent partial writes on error
+	var buf bytes.Buffer
+	if err := h.renderer.Render(&buf, templateName, data, c); err != nil {
+		h.logger.Error("failed to render partial template",
+			slog.String("template", templateName),
+			slog.String("error", err.Error()))
+		return h.renderErrorState(c, "Failed to load notifications")
 	}
 
 	c.Response().Header().Set("Content-Type", "text/html; charset=utf-8")
-	return h.renderer.Render(c.Response().Writer, templateName, data, c)
+	return c.HTMLBlob(http.StatusOK, buf.Bytes())
+}
+
+// renderErrorState returns an error state HTML for HTMX with retry capability.
+func (h *NotificationTemplateHandler) renderErrorState(c echo.Context, message string) error {
+	html := `<li class="error-state">
+		<span class="error-icon" aria-hidden="true">&#x26A0;</span>
+		<span>` + message + `</span>
+		<button class="retry-btn outline small"
+				hx-get="/partials/notifications?limit=10"
+				hx-target="#notification-dropdown-list"
+				hx-swap="innerHTML">
+			Retry
+		</button>
+	</li>`
+	c.Response().Header().Set("Content-Type", "text/html; charset=utf-8")
+	return c.HTML(http.StatusOK, html)
 }
 
 // getUserView extracts user information from the context for templates.

@@ -1,7 +1,8 @@
 # Task 010: Notifications Dropdown Stuck on "Loading..."
 
-**Status**: Pending
+**Status**: Complete
 **Priority**: Medium
+**Completed**: 2026-02-04
 **Depends on**: None
 **Created**: 2026-02-04
 **Discovered**: Frontend testing with agent-browser
@@ -258,8 +259,8 @@ Update navbar.html to add retry on error:
 
 ## Success Criteria
 
-1. [ ] Notifications dropdown loads successfully
-2. [ ] Empty state shows "No notifications" message
-3. [ ] Error state shows user-friendly message
-4. [ ] Retry mechanism available on error
-5. [ ] No silent failures - always show feedback
+1. [x] Notifications dropdown loads successfully
+2. [x] Empty state shows "No notifications" message
+3. [x] Error state shows user-friendly message
+4. [x] Retry mechanism available on error
+5. [x] No silent failures - always show feedback

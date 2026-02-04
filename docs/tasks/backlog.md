@@ -60,11 +60,12 @@ See `docs/tasks/008-tag-system-fixes.md` for details.
 - **Details**: `docs/tasks/009-chat-task-details-resource-not-found.md`
 
 ### Task 010: Notifications Dropdown Loading Stuck
-- [ ] Add error recovery to notification handler
-- [ ] Create error state template for dropdown
-- [ ] Add retry mechanism on error
-- [ ] Verify template bundle includes required partials
+- [x] Add error recovery to notification handler
+- [x] Create error state template for dropdown
+- [x] Add retry mechanism on error
+- [x] Verify template bundle includes required partials
 - Priority: Medium
+- **Completed**: 2026-02-04
 - **Details**: `docs/tasks/010-notifications-dropdown-loading-stuck.md`
 
 ---
