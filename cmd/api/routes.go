@@ -28,6 +28,7 @@ func SetupRoutes(c *Container) *httpserver.Router {
 				"/health",
 				"/ready",
 				"/health/details",
+				"/metrics",
 				"/api/v1/auth/login",
 				"/api/v1/auth/register",
 			},
@@ -59,6 +60,9 @@ func SetupRoutes(c *Container) *httpserver.Router {
 	if err := httphandler.SetupStaticRoutes(e, web.StaticFS); err != nil {
 		c.Logger.Error("failed to setup static routes", "error", err)
 	}
+
+	// Register Prometheus metrics endpoint
+	router.RegisterMetricsEndpoint()
 
 	// Register health check endpoints using the HealthChecker interface.
 	// Container implements httpserver.HealthChecker, so we pass it directly.

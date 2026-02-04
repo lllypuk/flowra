@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
@@ -19,6 +20,7 @@ import (
 	"github.com/lllypuk/flowra/internal/infrastructure/eventbus"
 	"github.com/lllypuk/flowra/internal/infrastructure/eventstore"
 	"github.com/lllypuk/flowra/internal/infrastructure/keycloak"
+	"github.com/lllypuk/flowra/internal/infrastructure/metrics"
 	mongodbinfra "github.com/lllypuk/flowra/internal/infrastructure/mongodb"
 	"github.com/lllypuk/flowra/internal/infrastructure/outbox"
 	"github.com/lllypuk/flowra/internal/infrastructure/projector"
@@ -107,6 +109,9 @@ func main() {
 	outboxColl := db.Collection(mongodbinfra.CollectionOutbox)
 	mongoOutbox := outbox.NewMongoOutbox(outboxColl, outbox.WithLogger(logger))
 
+	// Setup metrics
+	outboxMetrics := metrics.NewOutboxMetrics(prometheus.DefaultRegisterer)
+
 	// Setup workers
 	userSyncWorker, syncConfig := setupUserSyncWorker(cfg, userRepo, logger)
 
@@ -125,6 +130,7 @@ func main() {
 		eventBus,
 		logger,
 		outboxConfig,
+		outboxMetrics,
 	)
 
 	// Setup repair worker

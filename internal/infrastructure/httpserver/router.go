@@ -6,6 +6,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/lllypuk/flowra/internal/middleware"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // RouterConfig holds configuration for the router.
@@ -382,4 +383,11 @@ func (r *Router) PrintRoutes() {
 			slog.String("name", route.Name),
 		)
 	}
+}
+
+// RegisterMetricsEndpoint registers the Prometheus metrics endpoint.
+func (r *Router) RegisterMetricsEndpoint() {
+	// Import is at package level to avoid unused import when metrics aren't needed
+	// We use echo.WrapHandler to convert http.Handler to echo.HandlerFunc
+	r.echo.GET("/metrics", echo.WrapHandler(promhttp.Handler()))
 }

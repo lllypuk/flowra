@@ -1,0 +1,57 @@
+groups:
+  - name: outbox_alerts
+    interval: 30s
+    rules:
+      - alert: OutboxBacklogHigh
+        expr: flowra_outbox_events_pending > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Outbox backlog is high"
+          description: "The outbox has {{ $value }} pending events, which is above the warning threshold of 100. Events may be delayed."
+
+      - alert: OutboxBacklogCritical
+        expr: flowra_outbox_events_pending > 1000
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Outbox backlog is critically high"
+          description: "The outbox has {{ $value }} pending events, which is above the critical threshold of 1000. Event processing may be severely delayed or stalled."
+
+      - alert: OutboxProcessingStalled
+        expr: flowra_outbox_oldest_event_age_seconds > 60
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Outbox processing appears stalled"
+          description: "The oldest unprocessed event is {{ $value }} seconds old, indicating event processing may be stalled or very slow."
+
+      - alert: OutboxHighErrorRate
+        expr: (rate(flowra_outbox_events_processed_total{status="failed"}[5m]) / rate(flowra_outbox_events_processed_total[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High outbox event failure rate"
+          description: "More than 10% of outbox events are failing to publish. Current rate: {{ $value | humanizePercentage }}."
+
+      - alert: OutboxPublishLatencyHigh
+        expr: histogram_quantile(0.95, rate(flowra_outbox_publish_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High outbox publish latency"
+          description: "95th percentile publish latency is {{ $value }}s, which may indicate Redis performance issues."
+
+      - alert: OutboxProcessingLatencyHigh
+        expr: histogram_quantile(0.95, rate(flowra_outbox_processing_duration_seconds_bucket[5m])) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High outbox processing latency"
+          description: "95th percentile processing latency is {{ $value }}s, indicating events are taking a long time from creation to publishing."
