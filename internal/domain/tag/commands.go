@@ -17,7 +17,7 @@ type CreateTaskCommand struct {
 	Title  string
 }
 
-// CommandType returns type commands
+// CommandType returns the command type
 func (c CreateTaskCommand) CommandType() string {
 	return "CreateTask"
 }
@@ -28,7 +28,7 @@ type CreateBugCommand struct {
 	Title  string
 }
 
-// CommandType returns type commands
+// CommandType returns the command type
 func (c CreateBugCommand) CommandType() string {
 	return "CreateBug"
 }
@@ -39,65 +39,65 @@ type CreateEpicCommand struct {
 	Title  string
 }
 
-// CommandType returns type commands
+// CommandType returns the command type
 func (c CreateEpicCommand) CommandType() string {
 	return "CreateEpic"
 }
 
 // ====== Task 04: Entity Management Commands ======
 
-// ChangeStatusCommand - command changing status
+// ChangeStatusCommand - command for changing status
 type ChangeStatusCommand struct {
 	ChatID uuid.UUID
 	Status string
 }
 
-// CommandType returns type commands
+// CommandType returns the command type
 func (c ChangeStatusCommand) CommandType() string {
 	return "ChangeStatus"
 }
 
-// AssignUserCommand - command assigning ispolnitelya
+// AssignUserCommand - command for assigning user
 type AssignUserCommand struct {
 	ChatID   uuid.UUID
 	Username string     // @alex
-	UserID   *uuid.UUID // rezolvlennyy ID (mozhet byt nil at snyatii)
+	UserID   *uuid.UUID // resolved ID (can be nil when removing)
 }
 
-// CommandType returns type commands
+// CommandType returns the command type
 func (c AssignUserCommand) CommandType() string {
 	return "AssignUser"
 }
 
-// ChangePriorityCommand - command changing priority
+// ChangePriorityCommand - command for changing priority
 type ChangePriorityCommand struct {
 	ChatID   uuid.UUID
 	Priority string
 }
 
-// CommandType returns type commands
+// CommandType returns the command type
 func (c ChangePriorityCommand) CommandType() string {
 	return "ChangePriority"
 }
 
-// SetDueDateCommand - command setting deadline
+// SetDueDateCommand - command for setting deadline
 type SetDueDateCommand struct {
 	ChatID  uuid.UUID
-	DueDate *time.Time // nil value snyat due date
+	DueDate *time.Time // nil value removes due date
 }
 
-// CommandType returns type commands
+// CommandType returns the command type
 func (c SetDueDateCommand) CommandType() string {
 	return "SetDueDate"
 }
 
-// ChangeTitleCommand - command changing nazvaniya
+// ChangeTitleCommand - command for changing title
 type ChangeTitleCommand struct {
 	ChatID uuid.UUID
 	Title  string
 }
 
-// CommandType returns type commands
+// CommandType returns the command type
 func (c ChangeTitleCommand) CommandType() string {
 	return "ChangeTitle"
 }
@@ -108,7 +108,7 @@ type SetSeverityCommand struct {
 	Severity string
 }
 
-// CommandType returns type commands
+// CommandType returns the command type
 func (c SetSeverityCommand) CommandType() string {
 	return "SetSeverity"
 }

@@ -662,11 +662,11 @@ func (h *ChatTemplateHandler) ChatCreate(c echo.Context) error {
 	// Parse chat type to domain type
 	var domainType chatdomain.Type
 	switch chatType {
-	case "task":
+	case chatTypeTask:
 		domainType = chatdomain.TypeTask
-	case "bug":
+	case chatTypeBug:
 		domainType = chatdomain.TypeBug
-	case "epic":
+	case chatTypeEpic:
 		domainType = chatdomain.TypeEpic
 	default:
 		domainType = chatdomain.TypeDiscussion

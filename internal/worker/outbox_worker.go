@@ -9,6 +9,7 @@ import (
 
 	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/event"
+	"github.com/lllypuk/flowra/internal/infrastructure/metrics"
 )
 
 // Default outbox worker configuration values.
@@ -58,6 +59,7 @@ type OutboxWorker struct {
 	eventBus event.Bus
 	logger   *slog.Logger
 	config   OutboxWorkerConfig
+	metrics  *metrics.OutboxMetrics
 }
 
 // NewOutboxWorker creates a new outbox worker.
@@ -66,6 +68,7 @@ func NewOutboxWorker(
 	eventBus event.Bus,
 	logger *slog.Logger,
 	config OutboxWorkerConfig,
+	metrics *metrics.OutboxMetrics,
 ) *OutboxWorker {
 	if logger == nil {
 		logger = slog.Default()
@@ -76,6 +79,7 @@ func NewOutboxWorker(
 		eventBus: eventBus,
 		logger:   logger,
 		config:   config,
+		metrics:  metrics,
 	}
 }
 
@@ -105,6 +109,9 @@ func (w *OutboxWorker) Run(ctx context.Context) error {
 			return ctx.Err()
 
 		case <-pollTicker.C:
+			// Update metrics before processing
+			w.updateGaugeMetrics(ctx)
+
 			if err := w.processBatch(ctx); err != nil {
 				w.logger.ErrorContext(ctx, "failed to process outbox batch",
 					slog.String("error", err.Error()),
@@ -112,10 +119,13 @@ func (w *OutboxWorker) Run(ctx context.Context) error {
 			}
 
 		case <-cleanupTicker.C:
-			if _, err := w.outbox.Cleanup(ctx, w.config.CleanupAge); err != nil {
+			deleted, err := w.outbox.Cleanup(ctx, w.config.CleanupAge)
+			if err != nil {
 				w.logger.ErrorContext(ctx, "failed to cleanup outbox",
 					slog.String("error", err.Error()),
 				)
+			} else if w.metrics != nil && deleted > 0 {
+				w.metrics.CleanupDeletedTotal.Add(float64(deleted))
 			}
 		}
 	}
@@ -130,6 +140,11 @@ func (w *OutboxWorker) processBatch(ctx context.Context) error {
 
 	if len(entries) == 0 {
 		return nil
+	}
+
+	// Record poll batch size
+	if w.metrics != nil {
+		w.metrics.PollBatchSize.Observe(float64(len(entries)))
 	}
 
 	w.logger.DebugContext(ctx, "processing outbox batch",
@@ -162,6 +177,14 @@ func (w *OutboxWorker) processBatch(ctx context.Context) error {
 
 // processEntry publishes a single outbox entry to the event bus.
 func (w *OutboxWorker) processEntry(ctx context.Context, entry appcore.OutboxEntry) error {
+	// Record processing duration (from creation to now)
+	defer func() {
+		if w.metrics != nil {
+			processingDuration := time.Since(entry.CreatedAt).Seconds()
+			w.metrics.ProcessingDuration.WithLabelValues(entry.EventType).Observe(processingDuration)
+		}
+	}()
+
 	// Check if max retries exceeded
 	if entry.RetryCount >= w.config.MaxRetries {
 		w.logger.ErrorContext(ctx, "outbox entry exceeded max retries, marking as processed",
@@ -171,7 +194,14 @@ func (w *OutboxWorker) processEntry(ctx context.Context, entry appcore.OutboxEnt
 			slog.String("last_error", entry.LastError),
 		)
 		// Mark as processed to prevent infinite retries
-		return w.outbox.MarkProcessed(ctx, entry.ID)
+		if err := w.outbox.MarkProcessed(ctx, entry.ID); err != nil {
+			return err
+		}
+		// Record as failed
+		if w.metrics != nil {
+			w.metrics.EventsProcessed.WithLabelValues(entry.EventType, "failed").Inc()
+		}
+		return nil
 	}
 
 	// Create event from outbox entry
@@ -183,8 +213,14 @@ func (w *OutboxWorker) processEntry(ctx context.Context, entry appcore.OutboxEnt
 		payload:       entry.Payload,
 	}
 
-	// Publish to event bus
+	// Publish to event bus with timing
+	publishStart := time.Now()
 	if err := w.eventBus.Publish(ctx, evt); err != nil {
+		// Record retry metric
+		if w.metrics != nil {
+			w.metrics.RetryTotal.WithLabelValues(entry.EventType).Inc()
+		}
+
 		// Mark as failed for retry
 		if markErr := w.outbox.MarkFailed(ctx, entry.ID, err); markErr != nil {
 			w.logger.ErrorContext(ctx, "failed to mark outbox entry as failed",
@@ -195,9 +231,20 @@ func (w *OutboxWorker) processEntry(ctx context.Context, entry appcore.OutboxEnt
 		return fmt.Errorf("failed to publish event: %w", err)
 	}
 
+	// Record publish duration
+	if w.metrics != nil {
+		publishDuration := time.Since(publishStart).Seconds()
+		w.metrics.PublishDuration.WithLabelValues(entry.EventType).Observe(publishDuration)
+	}
+
 	// Mark as processed
 	if err := w.outbox.MarkProcessed(ctx, entry.ID); err != nil {
 		return fmt.Errorf("failed to mark entry as processed: %w", err)
+	}
+
+	// Record successful processing
+	if w.metrics != nil {
+		w.metrics.EventsProcessed.WithLabelValues(entry.EventType, "success").Inc()
 	}
 
 	return nil
@@ -213,6 +260,32 @@ func (w *OutboxWorker) GetStats(ctx context.Context) (OutboxStats, error) {
 	return OutboxStats{
 		PendingCount: count,
 	}, nil
+}
+
+// updateGaugeMetrics updates gauge metrics (pending count, oldest event age).
+func (w *OutboxWorker) updateGaugeMetrics(ctx context.Context) {
+	if w.metrics == nil {
+		return
+	}
+
+	count, oldest, err := w.outbox.Stats(ctx)
+	if err != nil {
+		w.logger.WarnContext(ctx, "failed to get outbox stats for metrics",
+			slog.String("error", err.Error()),
+		)
+		return
+	}
+
+	// Update pending count
+	w.metrics.EventsPending.Set(float64(count))
+
+	// Update oldest event age (0 if no events)
+	if !oldest.IsZero() && count > 0 {
+		age := time.Since(oldest).Seconds()
+		w.metrics.OldestEventAge.Set(age)
+	} else {
+		w.metrics.OldestEventAge.Set(0)
+	}
 }
 
 // OutboxStats contains outbox statistics for monitoring.

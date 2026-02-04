@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Chat System with Task Management** built in Go. It's a comprehensive chat platform with integrated task tracking, help desk functionality, and command support. The project uses a microservices architecture with event-driven design.
 
 **Key Technologies:**
-- **Backend**: Go 1.24+ with Echo v4 framework
+- **Backend**: Go 1.25+ with Echo v4 framework
 - **Database**: MongoDB 6+ (main with Go Driver v2), Redis (cache/pub-sub)
 - **Frontend**: HTMX 2+ for dynamic updates, Pico CSS v2 for styling
 - **Auth**: Keycloak for SSO and user management
@@ -208,9 +208,9 @@ docs/                         # Documentation (9+ files)
 
 ## Development Notes
 
-- **Project Status**: January 2026 Release Candidate (~95% complete)
+- **Project Status**: February 2026 Release Candidate (~95% complete)
 - **Backend**: Fully production-ready with all layers implemented
-- **Frontend**: ~20% complete (framework ready, auth + workspace UI done)
+- **Frontend**: ~25% complete (framework ready, auth + workspace + notifications UI done)
 
 ### Layer Implementation Status
 | Layer | Status | Files | Coverage |

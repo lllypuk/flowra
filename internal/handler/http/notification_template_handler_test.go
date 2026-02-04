@@ -172,8 +172,10 @@ func TestNotificationTemplateHandler_NotificationsDropdownPartial(t *testing.T) 
 
 		err := handler.NotificationsDropdownPartial(c)
 
-		// Will fail due to nil renderer, but logic should work
-		require.Error(t, err) // Expected because renderer is nil
+		// Handler gracefully handles nil renderer
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), "Service unavailable")
 	})
 
 	t.Run("unauthorized returns 401", func(t *testing.T) {
@@ -207,8 +209,10 @@ func TestNotificationTemplateHandler_NotificationsDropdownPartial(t *testing.T) 
 
 		err := handler.NotificationsDropdownPartial(c)
 
-		// Will fail due to nil renderer
-		require.Error(t, err)
+		// Handler gracefully handles nil renderer
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), "Service unavailable")
 	})
 }
 
@@ -240,8 +244,10 @@ func TestNotificationTemplateHandler_NotificationCountPartial(t *testing.T) {
 
 		err := handler.NotificationCountPartial(c)
 
-		// Will fail due to nil renderer
-		require.Error(t, err)
+		// Handler gracefully handles nil renderer
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), "Service unavailable")
 	})
 
 	t.Run("unauthorized returns badge with zero count", func(t *testing.T) {
@@ -257,8 +263,10 @@ func TestNotificationTemplateHandler_NotificationCountPartial(t *testing.T) {
 
 		err := handler.NotificationCountPartial(c)
 
-		// Will fail due to nil renderer
-		require.Error(t, err)
+		// Handler gracefully handles nil renderer
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), "Service unavailable")
 	})
 }
 
@@ -284,8 +292,10 @@ func TestNotificationTemplateHandler_NotificationsListPartial(t *testing.T) {
 
 		err := handler.NotificationsListPartial(c)
 
-		// Will fail due to nil renderer
-		require.Error(t, err)
+		// Handler gracefully handles nil renderer
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), "Service unavailable")
 	})
 
 	t.Run("unauthorized returns 401", func(t *testing.T) {
@@ -327,8 +337,10 @@ func TestNotificationTemplateHandler_NotificationsListPartial(t *testing.T) {
 
 		err := handler.NotificationsListPartial(c)
 
-		// Will fail due to nil renderer
-		require.Error(t, err)
+		// Handler gracefully handles nil renderer
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), "Service unavailable")
 	})
 }
 

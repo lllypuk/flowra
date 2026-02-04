@@ -1,0 +1,20 @@
+{{define "chat/task-sidebar-error"}}
+<div class="task-details task-details-empty">
+    <p class="text-muted text-center">{{if .Message}}{{.Message}}{{else}}Task details not available{{end}}</p>
+</div>
+
+<style>
+.task-details-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100px;
+    padding: 1rem;
+}
+
+.task-details-empty p {
+    margin: 0;
+    color: var(--muted-color);
+}
+</style>
+{{end}}
