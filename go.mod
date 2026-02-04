@@ -1,6 +1,6 @@
 module github.com/lllypuk/flowra
 
-go 1.24.0
+go 1.25
 
 require (
 	github.com/MicahParks/jwkset v0.11.0
