@@ -48,7 +48,7 @@ A comprehensive chat system with integrated task tracker, help desk functionalit
 
 ### Prerequisites
 
-- Go 1.24+
+- Go 1.25+
 - Docker & Docker Compose
 - Make
 
@@ -177,7 +177,7 @@ make playwright-install # Install Playwright browsers for frontend tests
 ### Backend
 | Technology | Purpose | Version |
 |------------|---------|---------|
-| **Go** | Primary language | 1.24+ |
+| **Go** | Primary language | 1.25+ |
 | **Echo** | HTTP framework | v4 |
 | **gorilla/websocket** | WebSocket | Latest |
 | **MongoDB** | Primary database | 6+ |
