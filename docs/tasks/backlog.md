@@ -43,7 +43,7 @@ See `docs/tasks/008-tag-system-fixes.md` for details.
 - [x] Investigate Task Details loading failure → **Fixed in Task 009**
 - [x] Check chat type vs task read model consistency → **Fixed in Task 009**
 - [x] Fix double emoji in error messages → **Verified: Not an issue** (formatter works correctly)
-- [ ] Fix Cyrillic comments in tag system files (35+ comments to translate)
+- [x] Fix Cyrillic comments in tag system files → **Completed: 2026-02-04** (translated Runglish to English in 8 files)
 - Priority: Low
 
 ---

@@ -16,7 +16,7 @@ const (
 	entityTypeEpic = "Epic"
 )
 
-// Handler handles messages s tegami
+// Handler handles messages with tags
 type Handler struct {
 	processor   *Processor
 	executor    *CommandExecutor
@@ -24,7 +24,7 @@ type Handler struct {
 	chatRepo    ChatRepository
 }
 
-// NewHandler creates New Handler
+// NewHandler creates a new Handler
 func NewHandler(
 	processor *Processor,
 	executor *CommandExecutor,
@@ -39,34 +39,34 @@ func NewHandler(
 	}
 }
 
-// HandleMessageWithTags handles message s tegami
+// HandleMessageWithTags handles a message with tags
 func (h *Handler) HandleMessageWithTags(
 	ctx context.Context,
 	chatID uuid.UUID,
 	authorID uuid.UUID,
 	content string,
 ) error {
-	// konvertatsiya UUID
+	// convert UUID
 	domainChatID := domainUUID.FromGoogleUUID(chatID)
 
-	// 1. retrieval context chat
+	// 1. retrieve chat context
 	c, err := h.chatRepo.Load(ctx, domainChatID)
 	if err != nil {
 		return fmt.Errorf("failed to load chat: %w", err)
 	}
 
-	// opredelyaem tekuschiy type entity for valid
+	// determine current entity type for validation
 	currentEntityType := h.getEntityType(c)
 
-	// 2. handling tegov via Processor
+	// 2. process tags via Processor
 	result := h.processor.ProcessMessage(chatID, content, currentEntityType)
 
-	// 3. storage messages user
+	// 3. save user message
 	msg, err := message.NewMessage(
 		domainChatID,
 		domainUUID.FromGoogleUUID(authorID),
-		result.PlainText,    // text bez tegov
-		domainUUID.UUID(""), // not thread
+		result.PlainText,    // text without tags
+		domainUUID.UUID(""), // not a thread
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create message: %w", err)
@@ -76,25 +76,25 @@ func (h *Handler) HandleMessageWithTags(
 		return fmt.Errorf("failed to save message: %w", err)
 	}
 
-	// 4. performing commands
+	// 4. execute commands
 	executionErrors := h.executeCommands(ctx, result.AppliedTags, authorID)
 
-	// 5. Adding errors vypolneniya to rezultatu
+	// 5. add execution errors to result
 	result.Errors = append(result.Errors, executionErrors...)
 
-	// 6. generatsiya and send bot response
+	// 6. generate and send bot response
 	if botResponse := result.GenerateBotResponse(); botResponse != "" {
 		if sendErr := h.sendBotResponse(ctx, chatID, botResponse); sendErr != nil {
-			// logiruem, no not feylim ves protsess
+			// log but don't fail the entire process
 			// TODO: add proper logging
-			_ = sendErr // vremenno ignoriruem error send bot response
+			_ = sendErr // temporarily ignore bot response send error
 		}
 	}
 
 	return nil
 }
 
-// executeCommands performs all commands from result work
+// executeCommands executes all commands from processing result
 func (h *Handler) executeCommands(
 	ctx context.Context,
 	applications []TagApplication,
@@ -120,17 +120,17 @@ func (h *Handler) executeCommands(
 	return errors
 }
 
-// sendBotResponse otpravlyaet bot response in chat
+// sendBotResponse sends bot response to chat
 func (h *Handler) sendBotResponse(ctx context.Context, chatID uuid.UUID, response string) error {
 	domainChatID := domainUUID.FromGoogleUUID(chatID)
 
-	// Creating sistemnoe message ot bota
-	// TODO: user nastoyaschiy bot user ID vmesto pustogo
+	// create system message from bot
+	// TODO: use actual bot user ID instead of empty
 	botMessage, err := message.NewMessage(
 		domainChatID,
 		domainUUID.UUID("00000000-0000-0000-0000-000000000000"), // System bot ID
 		response,
-		domainUUID.UUID(""), // not thread
+		domainUUID.UUID(""), // not a thread
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create bot message: %w", err)
@@ -143,7 +143,7 @@ func (h *Handler) sendBotResponse(ctx context.Context, chatID uuid.UUID, respons
 	return nil
 }
 
-// getEntityType returns type entity for valid
+// getEntityType returns entity type for validation
 func (h *Handler) getEntityType(c *chat.Chat) string {
 	switch c.Type() {
 	case chat.TypeTask:

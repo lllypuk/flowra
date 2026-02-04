@@ -121,7 +121,7 @@ func (e *CommandExecutor) Execute(ctx context.Context, cmd Command, actorID uuid
 	}
 }
 
-// executeCreateTask performs komandu creating Task via UseCase
+// executeCreateTask creates a Task via UseCase
 func (e *CommandExecutor) executeCreateTask(ctx context.Context, cmd CreateTaskCommand, actorID uuid.UUID) error {
 	usecaseCmd := chatApp.ConvertToTaskCommand{
 		ChatID:      domainUUID.FromGoogleUUID(cmd.ChatID),
@@ -137,7 +137,7 @@ func (e *CommandExecutor) executeCreateTask(ctx context.Context, cmd CreateTaskC
 	return nil
 }
 
-// executeCreateBug performs komandu creating Bug via UseCase
+// executeCreateBug creates a Bug via UseCase
 func (e *CommandExecutor) executeCreateBug(ctx context.Context, cmd CreateBugCommand, actorID uuid.UUID) error {
 	usecaseCmd := chatApp.ConvertToBugCommand{
 		ChatID:      domainUUID.FromGoogleUUID(cmd.ChatID),
@@ -153,7 +153,7 @@ func (e *CommandExecutor) executeCreateBug(ctx context.Context, cmd CreateBugCom
 	return nil
 }
 
-// executeCreateEpic performs komandu creating Epic via UseCase
+// executeCreateEpic creates an Epic via UseCase
 func (e *CommandExecutor) executeCreateEpic(ctx context.Context, cmd CreateEpicCommand, actorID uuid.UUID) error {
 	usecaseCmd := chatApp.ConvertToEpicCommand{
 		ChatID:      domainUUID.FromGoogleUUID(cmd.ChatID),
@@ -169,7 +169,7 @@ func (e *CommandExecutor) executeCreateEpic(ctx context.Context, cmd CreateEpicC
 	return nil
 }
 
-// executeChangeStatus performs komandu changing status via UseCase
+// executeChangeStatus changes status via UseCase
 func (e *CommandExecutor) executeChangeStatus(ctx context.Context, cmd ChangeStatusCommand, actorID uuid.UUID) error {
 	usecaseCmd := chatApp.ChangeStatusCommand{
 		ChatID:    domainUUID.FromGoogleUUID(cmd.ChatID),
@@ -183,9 +183,9 @@ func (e *CommandExecutor) executeChangeStatus(ctx context.Context, cmd ChangeSta
 	}, "failed to change status")
 }
 
-// executeAssignUser performs komandu assigning user via UseCase
+// executeAssignUser assigns a user via UseCase
 func (e *CommandExecutor) executeAssignUser(ctx context.Context, cmd AssignUserCommand, actorID uuid.UUID) error {
-	// rezolving user po username
+	// resolve user by username
 	var assigneeID *domainUUID.UUID
 	if cmd.Username != "" && cmd.Username != noneUsername {
 		username := strings.TrimPrefix(cmd.Username, "@")
@@ -209,7 +209,7 @@ func (e *CommandExecutor) executeAssignUser(ctx context.Context, cmd AssignUserC
 	}, "failed to assign user")
 }
 
-// executeChangePriority performs komandu changing priority via UseCase
+// executeChangePriority changes priority via UseCase
 func (e *CommandExecutor) executeChangePriority(
 	ctx context.Context,
 	cmd ChangePriorityCommand,
@@ -227,7 +227,7 @@ func (e *CommandExecutor) executeChangePriority(
 	}, "failed to set priority")
 }
 
-// executeSetDueDate performs komandu setting deadline via UseCase
+// executeSetDueDate sets due date via UseCase
 func (e *CommandExecutor) executeSetDueDate(ctx context.Context, cmd SetDueDateCommand, actorID uuid.UUID) error {
 	usecaseCmd := chatApp.SetDueDateCommand{
 		ChatID:  domainUUID.FromGoogleUUID(cmd.ChatID),
@@ -241,7 +241,7 @@ func (e *CommandExecutor) executeSetDueDate(ctx context.Context, cmd SetDueDateC
 	}, "failed to set due date")
 }
 
-// executeChangeTitle performs komandu changing nazvaniya via UseCase
+// executeChangeTitle changes title via UseCase
 func (e *CommandExecutor) executeChangeTitle(ctx context.Context, cmd ChangeTitleCommand, actorID uuid.UUID) error {
 	usecaseCmd := chatApp.RenameChatCommand{
 		ChatID:    domainUUID.FromGoogleUUID(cmd.ChatID),
@@ -255,7 +255,7 @@ func (e *CommandExecutor) executeChangeTitle(ctx context.Context, cmd ChangeTitl
 	}, "failed to rename")
 }
 
-// executeSetSeverity performs komandu setting severity via UseCase
+// executeSetSeverity sets severity via UseCase
 func (e *CommandExecutor) executeSetSeverity(ctx context.Context, cmd SetSeverityCommand, actorID uuid.UUID) error {
 	usecaseCmd := chatApp.SetSeverityCommand{
 		ChatID:   domainUUID.FromGoogleUUID(cmd.ChatID),

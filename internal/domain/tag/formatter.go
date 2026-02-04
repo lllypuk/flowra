@@ -5,23 +5,23 @@ import (
 	"strings"
 )
 
-// GenerateBotResponse generiruet response bota s rezultatami primeneniya tegov
-// returns pustuyu stroku if no tegov for work
+// GenerateBotResponse generates bot response with tag application results
+// returns empty string if no tags were processed
 func (pr *ProcessingResult) GenerateBotResponse() string {
 	if !pr.HasTags() {
-		return "" // no tegov - no response
+		return "" // no tags - no response
 	}
 
 	var lines []string
 
-	// successfully primenennye tags
+	// successfully applied tags
 	for _, applied := range pr.AppliedTags {
 		if applied.Success {
 			lines = append(lines, formatSuccess(applied))
 		}
 	}
 
-	// oshibki
+	// errors
 	for _, err := range pr.Errors {
 		lines = append(lines, formatError(err))
 	}
@@ -29,7 +29,7 @@ func (pr *ProcessingResult) GenerateBotResponse() string {
 	return strings.Join(lines, "\n")
 }
 
-// formatSuccess formatiruet message ob uspeshnom primenenii tega
+// formatSuccess formats success message for tag application
 func formatSuccess(applied TagApplication) string {
 	switch applied.Command.(type) {
 	case CreateTaskCommand:
@@ -85,7 +85,7 @@ func formatSuccess(applied TagApplication) string {
 	}
 }
 
-// formatError formatiruet message ob error
+// formatError formats error message
 func formatError(err TagError) string {
 	prefix := "❌"
 	if err.Severity == ErrorSeverityWarning {

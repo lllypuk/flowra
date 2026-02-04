@@ -9,44 +9,44 @@ import (
 	"time"
 )
 
-// ErrNoActiveEntity vozvraschaetsya when Entity Management Tag used bez aktivnoy entity
+// ErrNoActiveEntity is returned when Entity Management Tag is used without active entity
 var ErrNoActiveEntity = errors.New("no active entity to modify. Create an entity first with #task, #bug, or #epic")
 
-// usernameRegex defines dopustimyy format username: @[a-zA-Z0-9._-]+
+// usernameRegex defines allowed username format: @[a-zA-Z0-9._-]+
 var usernameRegex = regexp.MustCompile(`^@[a-zA-Z0-9._-]+$`)
 
 // ====== Task 04: Status Validation Constants ======
 
 //nolint:gochecknoglobals // Domain constants for entity statuses
 var (
-	// TaskStatuses - dopustimye statusy for Task (CASE-SENSITIVE)
+	// TaskStatuses - allowed statuses for Task (CASE-SENSITIVE)
 	TaskStatuses = []string{"To Do", "In Progress", "Done"}
 
-	// BugStatuses - dopustimye statusy for Bug (CASE-SENSITIVE)
+	// BugStatuses - allowed statuses for Bug (CASE-SENSITIVE)
 	BugStatuses = []string{"New", "Investigating", "Fixed", "Verified"}
 
-	// EpicStatuses - dopustimye statusy for Epic (CASE-SENSITIVE)
+	// EpicStatuses - allowed statuses for Epic (CASE-SENSITIVE)
 	EpicStatuses = []string{"Planned", "In Progress", "Completed"}
 )
 
-// validateUsername checks format username (@username)
+// validateUsername checks username format (@username)
 func validateUsername(value string) error {
-	// pustoe value dopustimo (snyatie assignee)
+	// empty value is allowed (removes assignee)
 	if value == "" || value == "@none" {
 		return nil
 	}
 
-	// check nalichiya @
+	// check for @ presence
 	if !strings.HasPrefix(value, "@") {
 		return errors.New("invalid assignee format. Use @username")
 	}
 
-	// check that after @ est imya
+	// check that there's a name after @
 	if len(value) == 1 {
 		return errors.New("invalid assignee format. Use @username")
 	}
 
-	// check formata username
+	// check username format
 	if !usernameRegex.MatchString(value) {
 		return errors.New("invalid assignee format. Use @username")
 	}
@@ -54,23 +54,23 @@ func validateUsername(value string) error {
 	return nil
 }
 
-// validateISODate checks format daty ISO 8601
+// validateISODate validates ISO 8601 date format
 func validateISODate(value string) error {
-	// pustoe value dopustimo (snyatie due date)
+	// empty value is allowed (removes due date)
 	if value == "" {
 		return nil
 	}
 
-	// podderzhivaemye formaty (MVP)
+	// supported formats (MVP)
 	formats := []string{
 		"2006-01-02",                // YYYY-MM-DD
 		"2006-01-02T15:04",          // YYYY-MM-DDTHH:MM
 		"2006-01-02T15:04:05",       // YYYY-MM-DDTHH:MM:SS
-		time.RFC3339,                // YYYY-MM-DDTHH:MM:SSZ or s timezone
+		time.RFC3339,                // YYYY-MM-DDTHH:MM:SSZ or with timezone
 		"2006-01-02T15:04:05Z07:00", // with explicit timezone
 	}
 
-	// pytaemsya rasparsit datu in odnom from formatov
+	// try to parse date in one of the formats
 	for _, format := range formats {
 		if _, err := time.Parse(format, value); err == nil {
 			return nil
@@ -92,7 +92,7 @@ func validatePriority(value string) error {
 		value, strings.Join(allowedValues, ", "))
 }
 
-// validateSeverity checks value sereznosti baga
+// validateSeverity validates bug severity value
 func validateSeverity(value string) error {
 	allowedValues := []string{"Critical", "Major", "Minor", "Trivial"}
 
@@ -104,7 +104,7 @@ func validateSeverity(value string) error {
 		value, strings.Join(allowedValues, ", "))
 }
 
-// noValidation - valid-zaglushka for tegov bez dopolnitelnoy valid
+// noValidation is a no-op validator for tags without additional validation
 func noValidation(_ string) error {
 	return nil
 }
@@ -125,9 +125,9 @@ func ValidateEntityCreation(tagKey, title string) error {
 
 // ====== Task 04: Entity Management Validators ======
 
-// ValidateStatus validates status for konkretnogo type entity
-// entityType dolzhen byt "Task", "Bug" or "Epic"
-// statusy CASE-SENSITIVE
+// ValidateStatus validates status for specific entity type
+// entityType must be "Task", "Bug" or "Epic"
+// statuses are CASE-SENSITIVE
 func ValidateStatus(entityType, status string) error {
 	var allowedStatuses []string
 
@@ -150,26 +150,26 @@ func ValidateStatus(entityType, status string) error {
 		status, entityType, strings.Join(allowedStatuses, ", "))
 }
 
-// ValidateDueDate parsit datu and returns *time.Time
-// pustoe value returns nil (snyatie due date)
+// ValidateDueDate parses date and returns *time.Time
+// empty value returns nil (removes due date)
 //
 //nolint:nilnil // Returning (nil, nil) is intentional for empty date (remove due date)
 func ValidateDueDate(dateStr string) (*time.Time, error) {
-	// pustoe value dopustimo (snyatie due date)
+	// empty value is allowed (removes due date)
 	if dateStr == "" {
 		return nil, nil
 	}
 
-	// podderzhivaemye formaty (MVP)
+	// supported formats (MVP)
 	formats := []string{
 		"2006-01-02",                // YYYY-MM-DD
 		"2006-01-02T15:04",          // YYYY-MM-DDTHH:MM
 		"2006-01-02T15:04:05",       // YYYY-MM-DDTHH:MM:SS
-		time.RFC3339,                // YYYY-MM-DDTHH:MM:SSZ or s timezone
+		time.RFC3339,                // YYYY-MM-DDTHH:MM:SSZ or with timezone
 		"2006-01-02T15:04:05Z07:00", // with explicit timezone
 	}
 
-	// pytaemsya rasparsit datu in odnom from formatov
+	// try to parse date in one of the formats
 	for _, format := range formats {
 		if t, err := time.Parse(format, dateStr); err == nil {
 			return &t, nil
