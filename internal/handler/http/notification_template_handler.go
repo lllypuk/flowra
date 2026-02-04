@@ -3,6 +3,7 @@ package httphandler
 import (
 	"bytes"
 	"context"
+	"html"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -328,9 +329,9 @@ func (h *NotificationTemplateHandler) renderPartial(c echo.Context, templateName
 
 // renderErrorState returns an error state HTML for HTMX with retry capability.
 func (h *NotificationTemplateHandler) renderErrorState(c echo.Context, message string) error {
-	html := `<li class="error-state">
+	errorHTML := `<li class="error-state">
 		<span class="error-icon" aria-hidden="true">&#x26A0;</span>
-		<span>` + message + `</span>
+		<span>` + html.EscapeString(message) + `</span>
 		<button class="retry-btn outline small"
 				hx-get="/partials/notifications?limit=10"
 				hx-target="#notification-dropdown-list"
@@ -339,7 +340,7 @@ func (h *NotificationTemplateHandler) renderErrorState(c echo.Context, message s
 		</button>
 	</li>`
 	c.Response().Header().Set("Content-Type", "text/html; charset=utf-8")
-	return c.HTML(http.StatusOK, html)
+	return c.HTML(http.StatusOK, errorHTML)
 }
 
 // getUserView extracts user information from the context for templates.
