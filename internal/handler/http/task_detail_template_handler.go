@@ -16,8 +16,9 @@ import (
 
 // Task detail template handler constants.
 const (
-	defaultActivityLimit = 50
-	dueSoonDays          = 3
+	defaultActivityLimit    = 50
+	dueSoonDays             = 3
+	maxMembersListLimitTask = 100
 )
 
 // TaskDetailService defines the interface for task operations needed by the detail view.
@@ -168,16 +169,25 @@ func (h *TaskDetailTemplateHandler) TaskDetailsByChatID(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "Task service unavailable")
 	}
 
-	// Get task by chat ID
-	taskModel, err := h.taskService.GetTaskByChatID(c.Request().Context(), chatID)
-	if err != nil {
-		return c.String(http.StatusNotFound, "Task not found for this chat")
-	}
-
-	// Get basic chat info
+	// Get basic chat info first to check type
 	var chatInfo *ChatBasicInfo
 	if h.chatInfoService != nil {
 		chatInfo, _ = h.chatInfoService.GetChatBasicInfo(c.Request().Context(), chatID)
+	}
+
+	// Check if this chat type supports task details
+	if chatInfo != nil && !isTaskChatType(chatInfo.Type) {
+		return h.renderPartial(c, "chat/task-sidebar-error", map[string]any{
+			"Message": "This chat does not have task details",
+		})
+	}
+
+	// Get task by chat ID
+	taskModel, err := h.taskService.GetTaskByChatID(c.Request().Context(), chatID)
+	if err != nil {
+		return h.renderPartial(c, "chat/task-sidebar-error", map[string]any{
+			"Message": "Task details not available",
+		})
 	}
 
 	// Fallback if chat info not available
@@ -191,6 +201,13 @@ func (h *TaskDetailTemplateHandler) TaskDetailsByChatID(c echo.Context) error {
 
 	// Get workspace members for assignee dropdown
 	var participants []MemberViewData
+	if h.memberService != nil && chatInfo.WorkspaceID != "" {
+		workspaceID, parseErr := uuid.ParseUUID(chatInfo.WorkspaceID)
+		if parseErr == nil {
+			participants, _ = h.memberService.ListWorkspaceMembers(
+				c.Request().Context(), workspaceID, 0, maxMembersListLimitTask)
+		}
+	}
 
 	// Build data structure matching template expectations
 	innerData := map[string]any{
@@ -206,6 +223,11 @@ func (h *TaskDetailTemplateHandler) TaskDetailsByChatID(c echo.Context) error {
 	}
 
 	return h.renderPartial(c, "chat/task-sidebar", data)
+}
+
+// isTaskChatType checks if a chat type supports task details.
+func isTaskChatType(chatType string) bool {
+	return chatType == chatTypeTask || chatType == chatTypeBug || chatType == chatTypeEpic
 }
 
 // TaskSidebarPartial returns the full task sidebar as HTML partial.
@@ -229,14 +251,18 @@ func (h *TaskDetailTemplateHandler) TaskSidebarPartial(c echo.Context) error {
 		return c.String(http.StatusNotFound, "Task not found")
 	}
 
-	// Get workspace members for assignee dropdown
-	// TODO: Get workspace ID from task's chat
+	// Get workspace members for assignee dropdown via chat info
 	var participants []MemberViewData
-	// if h.memberService != nil {
-	// 	participants, _ = h.memberService.ListWorkspaceMembers(
-	// 		c.Request().Context(), workspaceID, 0, maxMembersListLimit,
-	// 	)
-	// }
+	if h.memberService != nil && h.chatInfoService != nil {
+		chatInfo, chatErr := h.chatInfoService.GetChatBasicInfo(c.Request().Context(), taskModel.ChatID)
+		if chatErr == nil && chatInfo != nil && chatInfo.WorkspaceID != "" {
+			workspaceID, parseErr := uuid.ParseUUID(chatInfo.WorkspaceID)
+			if parseErr == nil {
+				participants, _ = h.memberService.ListWorkspaceMembers(
+					c.Request().Context(), workspaceID, 0, maxMembersListLimitTask)
+			}
+		}
+	}
 
 	data := TaskSidebarViewData{
 		Task:         h.convertToDetailView(taskModel),

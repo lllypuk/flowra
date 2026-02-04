@@ -40,8 +40,8 @@ Deferred items from completed tasks.
 See `docs/tasks/008-tag-system-fixes.md` for details.
 
 ### Remaining Items
-- [ ] Investigate Task Details loading failure → **Covered by Task 009**
-- [ ] Check chat type vs task read model consistency → **Covered by Task 009**
+- [x] Investigate Task Details loading failure → **Fixed in Task 009**
+- [x] Check chat type vs task read model consistency → **Fixed in Task 009**
 - [x] Fix double emoji in error messages → **Verified: Not an issue** (formatter works correctly)
 - [ ] Fix Cyrillic comments in tag system files (35+ comments to translate)
 - Priority: Low
@@ -51,11 +51,12 @@ See `docs/tasks/008-tag-system-fixes.md` for details.
 ## From Frontend Testing (2026-02-04)
 
 ### Task 009: Chat Task Details "Resource Not Found"
-- [ ] Add WorkspaceID to Task ReadModel
-- [ ] Implement participants loading for assignee dropdown
-- [ ] Improve error handling (return HTML, not 404)
-- [ ] Handle Discussion chats (don't load task sidebar)
+- [ ] Add WorkspaceID to Task ReadModel (deferred - using chatInfo instead)
+- [x] Implement participants loading for assignee dropdown
+- [x] Improve error handling (return HTML, not 404)
+- [x] Handle Discussion chats (don't load task sidebar)
 - Priority: Medium
+- **Completed**: 2026-02-04
 - **Details**: `docs/tasks/009-chat-task-details-resource-not-found.md`
 
 ### Task 010: Notifications Dropdown Loading Stuck
