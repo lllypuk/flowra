@@ -4,17 +4,6 @@ Deferred items from completed tasks.
 
 ---
 
-## From Task 004 (Outbox Pattern)
-
-### Add Outbox Metrics and Monitoring
-- [x] Add Prometheus metrics for outbox lag
-- [x] Dashboard for outbox backlog visualization
-- Priority: Low
-- **Details**: `docs/tasks/004-outbox-metrics-monitoring.md`
-- **Completed**: 2026-02-04
-
----
-
 ## From Task 007 (Tag-Based Entity Management)
 
 ### Frontend Integration for Tag System
@@ -31,42 +20,6 @@ Deferred items from completed tasks.
 - [ ] How to handle changes made via API by external integrations?
 - Priority: Low
 - **Details**: `docs/tasks/007-tag-system-frontend-integration.md`
-
----
-
-## From Task 008 (Tag System Fixes)
-
-**Note**: Task 008 is complete. Critical fixes (concurrency bug, bot real-time messages) were implemented 2026-01-21.
-See `docs/tasks/008-tag-system-fixes.md` for details.
-
-### Remaining Items
-- [x] Investigate Task Details loading failure → **Fixed in Task 009**
-- [x] Check chat type vs task read model consistency → **Fixed in Task 009**
-- [x] Fix double emoji in error messages → **Verified: Not an issue** (formatter works correctly)
-- [x] Fix Cyrillic comments in tag system files → **Completed: 2026-02-04** (translated Runglish to English in 8 files)
-- Priority: Low
-
----
-
-## From Frontend Testing (2026-02-04)
-
-### Task 009: Chat Task Details "Resource Not Found"
-- [ ] Add WorkspaceID to Task ReadModel (deferred - using chatInfo instead)
-- [x] Implement participants loading for assignee dropdown
-- [x] Improve error handling (return HTML, not 404)
-- [x] Handle Discussion chats (don't load task sidebar)
-- Priority: Medium
-- **Completed**: 2026-02-04
-- **Details**: `docs/tasks/009-chat-task-details-resource-not-found.md`
-
-### Task 010: Notifications Dropdown Loading Stuck
-- [x] Add error recovery to notification handler
-- [x] Create error state template for dropdown
-- [x] Add retry mechanism on error
-- [x] Verify template bundle includes required partials
-- Priority: Medium
-- **Completed**: 2026-02-04
-- **Details**: `docs/tasks/010-notifications-dropdown-loading-stuck.md`
 
 ---
 
