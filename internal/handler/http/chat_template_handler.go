@@ -92,6 +92,8 @@ type MessageViewData struct {
 	IsDeleted       bool
 	IsSystemMessage bool
 	IsBotMessage    bool
+	IsGroupStart    bool // first message in a group of consecutive system/bot messages
+	IsGroupEnd      bool // last message in a group of consecutive system/bot messages
 	CanEdit         bool
 	Author          MessageAuthorData
 	Tags            []MessageTagData
@@ -477,6 +479,9 @@ func (h *ChatTemplateHandler) MessagesPartial(c echo.Context) error {
 		}
 		messageViews = append(messageViews, h.convertMessageToView(msg, userID))
 	}
+
+	// Apply grouping for consecutive system/bot messages within 5 seconds
+	applyMessageGrouping(messageViews)
 
 	h.logger.Debug("messages converted to views",
 		slog.String("chat_id", chatID.String()),
@@ -1034,4 +1039,34 @@ func containsIgnoreCase(s, substr string) bool {
 		return true
 	}
 	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
+}
+
+// groupingThreshold is the maximum time between messages to be considered in the same group.
+const groupingThreshold = 5 * time.Second
+
+// isGroupableMessage returns true if the message can be grouped (system or bot).
+func isGroupableMessage(msg *MessageViewData) bool {
+	return msg.IsBotMessage || msg.IsSystemMessage
+}
+
+// canGroupWith returns true if two messages can be grouped together.
+func canGroupWith(current, other *MessageViewData, threshold time.Duration) bool {
+	return isGroupableMessage(other) && other.CreatedAt.Sub(current.CreatedAt).Abs() <= threshold
+}
+
+// applyMessageGrouping marks consecutive system/bot messages within 5 seconds as grouped.
+// Sets IsGroupStart on the first message and IsGroupEnd on the last message of each group.
+func applyMessageGrouping(messages []MessageViewData) {
+	for i := range messages {
+		msg := &messages[i]
+		if !isGroupableMessage(msg) {
+			continue
+		}
+
+		prevInGroup := i > 0 && canGroupWith(msg, &messages[i-1], groupingThreshold)
+		nextInGroup := i < len(messages)-1 && canGroupWith(msg, &messages[i+1], groupingThreshold)
+
+		msg.IsGroupStart = !prevInGroup
+		msg.IsGroupEnd = !nextInGroup
+	}
 }

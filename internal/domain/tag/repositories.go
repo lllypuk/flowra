@@ -24,6 +24,7 @@ type ChatRepository interface {
 // following idiomatic Go approach.
 type UserRepository interface {
 	FindByUsername(ctx context.Context, username string) (*user.User, error)
+	FindByID(ctx context.Context, id uuid.UUID) (*user.User, error)
 }
 
 // MessageRepository defines interface for working with messages.

@@ -113,7 +113,7 @@ func TestGenerateBotResponse(t *testing.T) {
 				},
 				Errors: []tag.TagError{},
 			},
-			expected: "✅ Task created: New task\n✅ Priority changed to High\n✅ Assigned to: @alex",
+			expected: "✅ Task created: New task\n✅ Priority changed to High\n✅ Assigned to: alex",
 		},
 		{
 			name: "warning severity",
@@ -196,7 +196,7 @@ func TestFormatSuccess_AllCommandTypes(t *testing.T) {
 				Command:  tag.AssignUserCommand{ChatID: chatID, Username: "@bob"},
 				Success:  true,
 			},
-			expected: "✅ Assigned to: @bob",
+			expected: "✅ Assigned to: bob",
 		},
 		{
 			name: "AssignUserCommand - remove (@none)",
@@ -236,7 +236,7 @@ func TestFormatSuccess_AllCommandTypes(t *testing.T) {
 				Command:  tag.SetDueDateCommand{ChatID: chatID},
 				Success:  true,
 			},
-			expected: "✅ Due date set to 2025-10-20",
+			expected: "✅ Due date set to October 20, 2025",
 		},
 		{
 			name: "SetDueDateCommand - remove",

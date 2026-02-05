@@ -11,7 +11,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// ActionService converts UI actions to chat messages with tags
+// ActionService converts UI actions to chat messages with human-readable content
 type ActionService struct {
 	sendMessageUC *messageapp.SendMessageUseCase
 	userRepo      appcore.UserRepository
@@ -28,6 +28,18 @@ func NewActionService(
 	}
 }
 
+// getActorDisplayName returns the display name for the actor
+func (s *ActionService) getActorDisplayName(ctx context.Context, actorID uuid.UUID) string {
+	if s.userRepo == nil {
+		return ""
+	}
+	usr, err := s.userRepo.GetByID(ctx, actorID)
+	if err != nil || usr == nil {
+		return ""
+	}
+	return usr.FullName
+}
+
 // ChangeStatus creates a system message to change entity status
 func (s *ActionService) ChangeStatus(
 	ctx context.Context,
@@ -35,7 +47,13 @@ func (s *ActionService) ChangeStatus(
 	newStatus string,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
-	content := fmt.Sprintf("#status %s", newStatus)
+	actorName := s.getActorDisplayName(ctx, actorID)
+	var content string
+	if actorName != "" {
+		content = fmt.Sprintf("✅ %s changed status to %s", actorName, newStatus)
+	} else {
+		content = fmt.Sprintf("✅ Status changed to %s", newStatus)
+	}
 	return s.executeAction(ctx, chatID, content, actorID)
 }
 
@@ -46,17 +64,18 @@ func (s *ActionService) AssignUser(
 	assigneeID *uuid.UUID,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
-	var content string
+	actorName := s.getActorDisplayName(ctx, actorID)
+
 	if assigneeID == nil {
-		content = "#assignee @none"
-	} else {
-		// Resolve userID to username
-		usr, err := s.userRepo.GetByID(ctx, *assigneeID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to resolve user: %w", err)
-		}
-		content = fmt.Sprintf("#assignee @%s", usr.Username)
+		content := s.formatAction(actorName, "removed the assignee", "Assignee removed")
+		return s.executeAction(ctx, chatID, content, actorID)
 	}
+
+	assigneeName, err := s.resolveUserDisplayName(ctx, *assigneeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve user: %w", err)
+	}
+	content := s.formatActionWithTarget(actorName, "assigned this to", "Assigned to", assigneeName)
 	return s.executeAction(ctx, chatID, content, actorID)
 }
 
@@ -67,7 +86,13 @@ func (s *ActionService) SetPriority(
 	priority string,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
-	content := fmt.Sprintf("#priority %s", priority)
+	actorName := s.getActorDisplayName(ctx, actorID)
+	var content string
+	if actorName != "" {
+		content = fmt.Sprintf("✅ %s set priority to %s", actorName, priority)
+	} else {
+		content = fmt.Sprintf("✅ Priority changed to %s", priority)
+	}
 	return s.executeAction(ctx, chatID, content, actorID)
 }
 
@@ -78,12 +103,15 @@ func (s *ActionService) SetDueDate(
 	dueDate *time.Time,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
-	var content string
+	actorName := s.getActorDisplayName(ctx, actorID)
+
 	if dueDate == nil {
-		content = "#due"
-	} else {
-		content = fmt.Sprintf("#due %s", dueDate.Format("2006-01-02"))
+		content := s.formatAction(actorName, "removed the due date", "Due date removed")
+		return s.executeAction(ctx, chatID, content, actorID)
 	}
+
+	formattedDate := dueDate.Format("January 2, 2006")
+	content := s.formatActionWithTarget(actorName, "set due date to", "Due date set to", formattedDate)
 	return s.executeAction(ctx, chatID, content, actorID)
 }
 
@@ -94,11 +122,21 @@ func (s *ActionService) InviteUser(
 	userID uuid.UUID,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
+	actorName := s.getActorDisplayName(ctx, actorID)
 	usr, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve user: %w", err)
 	}
-	content := fmt.Sprintf("#invite @%s", usr.Username)
+	inviteeName := usr.FullName
+	if inviteeName == "" {
+		inviteeName = usr.Username
+	}
+	var content string
+	if actorName != "" {
+		content = fmt.Sprintf("✅ %s invited %s to the chat", actorName, inviteeName)
+	} else {
+		content = fmt.Sprintf("✅ %s was invited to the chat", inviteeName)
+	}
 	return s.executeAction(ctx, chatID, content, actorID)
 }
 
@@ -109,11 +147,21 @@ func (s *ActionService) RemoveUser(
 	userID uuid.UUID,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
+	actorName := s.getActorDisplayName(ctx, actorID)
 	usr, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve user: %w", err)
 	}
-	content := fmt.Sprintf("#remove @%s", usr.Username)
+	removedName := usr.FullName
+	if removedName == "" {
+		removedName = usr.Username
+	}
+	var content string
+	if actorName != "" {
+		content = fmt.Sprintf("✅ %s removed %s from the chat", actorName, removedName)
+	} else {
+		content = fmt.Sprintf("✅ %s was removed from the chat", removedName)
+	}
 	return s.executeAction(ctx, chatID, content, actorID)
 }
 
@@ -124,7 +172,13 @@ func (s *ActionService) Rename(
 	newTitle string,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
-	content := fmt.Sprintf("#title %s", newTitle)
+	actorName := s.getActorDisplayName(ctx, actorID)
+	var content string
+	if actorName != "" {
+		content = fmt.Sprintf("✅ %s changed title to: %s", actorName, newTitle)
+	} else {
+		content = fmt.Sprintf("✅ Title changed to: %s", newTitle)
+	}
 	return s.executeAction(ctx, chatID, content, actorID)
 }
 
@@ -134,7 +188,14 @@ func (s *ActionService) Close(
 	chatID uuid.UUID,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
-	return s.executeAction(ctx, chatID, "#close", actorID)
+	actorName := s.getActorDisplayName(ctx, actorID)
+	var content string
+	if actorName != "" {
+		content = fmt.Sprintf("✅ %s closed the chat", actorName)
+	} else {
+		content = "✅ Chat closed"
+	}
+	return s.executeAction(ctx, chatID, content, actorID)
 }
 
 // Reopen creates a system message to reopen the chat
@@ -143,7 +204,14 @@ func (s *ActionService) Reopen(
 	chatID uuid.UUID,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
-	return s.executeAction(ctx, chatID, "#reopen", actorID)
+	actorName := s.getActorDisplayName(ctx, actorID)
+	var content string
+	if actorName != "" {
+		content = fmt.Sprintf("✅ %s reopened the chat", actorName)
+	} else {
+		content = "✅ Chat reopened"
+	}
+	return s.executeAction(ctx, chatID, content, actorID)
 }
 
 // Delete creates a system message to delete the chat
@@ -152,7 +220,42 @@ func (s *ActionService) Delete(
 	chatID uuid.UUID,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
-	return s.executeAction(ctx, chatID, "#delete", actorID)
+	actorName := s.getActorDisplayName(ctx, actorID)
+	var content string
+	if actorName != "" {
+		content = fmt.Sprintf("✅ %s deleted the chat", actorName)
+	} else {
+		content = "✅ Chat deleted"
+	}
+	return s.executeAction(ctx, chatID, content, actorID)
+}
+
+// formatAction formats a message with or without actor name
+func (s *ActionService) formatAction(actorName, actionWithActor, actionWithoutActor string) string {
+	if actorName != "" {
+		return fmt.Sprintf("✅ %s %s", actorName, actionWithActor)
+	}
+	return fmt.Sprintf("✅ %s", actionWithoutActor)
+}
+
+// formatActionWithTarget formats a message with a target value
+func (s *ActionService) formatActionWithTarget(actorName, actionWithActor, actionWithoutActor, target string) string {
+	if actorName != "" {
+		return fmt.Sprintf("✅ %s %s %s", actorName, actionWithActor, target)
+	}
+	return fmt.Sprintf("✅ %s %s", actionWithoutActor, target)
+}
+
+// resolveUserDisplayName resolves user ID to display name
+func (s *ActionService) resolveUserDisplayName(ctx context.Context, userID uuid.UUID) (string, error) {
+	usr, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return "", err
+	}
+	if usr.FullName != "" {
+		return usr.FullName, nil
+	}
+	return usr.Username, nil
 }
 
 // executeAction is the common implementation for all actions

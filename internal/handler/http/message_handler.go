@@ -50,6 +50,9 @@ type MessageResponse struct {
 	ChatID      uuid.UUID            `json:"chat_id"`
 	SenderID    uuid.UUID            `json:"sender_id"`
 	Content     string               `json:"content"`
+	Type        string               `json:"type"`               // "user", "system", or "bot"
+	IsSystem    bool                 `json:"is_system"`          // true for system/bot messages
+	ActorID     *uuid.UUID           `json:"actor_id,omitempty"` // who initiated (for system messages)
 	ReplyToID   *uuid.UUID           `json:"reply_to_id,omitempty"`
 	CreatedAt   string               `json:"created_at"`
 	EditedAt    *string              `json:"edited_at,omitempty"`
@@ -342,8 +345,15 @@ func ToMessageResponse(msg *message.Message) MessageResponse {
 		ChatID:    msg.ChatID(),
 		SenderID:  msg.AuthorID(),
 		Content:   msg.Content(),
+		Type:      string(msg.Type()),
+		IsSystem:  msg.IsSystemMessage() || msg.IsBotMessage(),
 		CreatedAt: msg.CreatedAt().Format(time.RFC3339),
 		IsDeleted: msg.IsDeleted(),
+	}
+
+	// Set actor ID for system messages
+	if msg.ActorID() != nil {
+		resp.ActorID = msg.ActorID()
 	}
 
 	// Set reply to ID if it's a reply

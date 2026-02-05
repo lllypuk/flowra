@@ -1,6 +1,6 @@
 # Task 007: Tag System Frontend Integration
 
-**Status**: Pending
+**Status**: Complete
 **Priority**: Medium
 **Depends on**: None
 **Created**: 2026-02-04
@@ -184,26 +184,33 @@ Connect sidebar form controls to action endpoints:
 
 ## Implementation Plan
 
-### Phase 1: System Message Identification
+### Phase 1: System Message Identification ✅
 
-- [ ] Add `is_system` or `sender_type` field to message model
-- [ ] Bot user ID is `00000000-0000-0000-0000-000000000000`
-- [ ] Update message query to include system flag
-- [ ] Update API response to include system flag
+- [x] Add `is_system` or `sender_type` field to message model (already exists: `Type` with user/system/bot)
+- [x] Bot user ID is `00000000-0000-0000-0000-000000000000`
+- [x] Update message query to include system flag (already in repository)
+- [x] Update API response to include system flag
 
-**Files to modify:**
+**Completed changes:**
 
 | File | Change |
 |------|--------|
-| `internal/application/message/repository.go` | Add IsSystem to ReadModel |
-| `internal/infrastructure/repository/mongodb/message_repository.go` | Query bot user messages |
-| `internal/handler/http/message_handler.go` | Include is_system in response |
+| `internal/domain/message/message.go` | Already has `Type`, `IsSystemMessage()`, `IsBotMessage()` |
+| `internal/infrastructure/repository/mongodb/message_repository.go` | Already persists `type` and `actor_id` |
+| `internal/handler/http/message_handler.go` | Added `Type`, `IsSystem`, `ActorID` to `MessageResponse` |
+| `internal/domain/tag/handler.go` | Updated to use `NewMessageWithType` with `TypeBot` |
 
-### Phase 2: System Message Template
+### Phase 2: System Message Template ✅
 
-- [ ] Create `web/templates/components/system-message.html`
-- [ ] Add conditional rendering in message list
-- [ ] Style system messages distinctly
+- [x] Create `web/templates/components/system-message.html` (not needed - updated existing `message.html`)
+- [x] Add conditional rendering in message list (already exists with `IsSystemMessage`/`IsBotMessage`)
+- [x] Style system messages distinctly
+
+**Completed changes:**
+
+| File | Change |
+|------|--------|
+| `web/templates/components/message.html` | Updated to hide avatar and header for bot messages, compact styling |
 
 **Template structure:**
 
@@ -243,11 +250,18 @@ Connect sidebar form controls to action endpoints:
 }
 ```
 
-### Phase 3: Message Grouping Logic
+### Phase 3: Message Grouping Logic ✅
 
-- [ ] Add grouping logic in template or handler
-- [ ] Group consecutive system messages by timestamp proximity
-- [ ] Render grouped messages in single container
+- [x] Add grouping logic in template or handler
+- [x] Group consecutive system messages by timestamp proximity (5 seconds)
+- [x] Render grouped messages in single container
+
+**Completed changes:**
+
+| File | Change |
+|------|--------|
+| `internal/handler/http/chat_template_handler.go` | Added `IsGroupStart`/`IsGroupEnd` to `MessageViewData`, `applyMessageGrouping()` function |
+| `web/templates/components/message.html` | Added `group-start`/`group-end` CSS classes and styling |
 
 **Grouping algorithm:**
 
@@ -279,16 +293,72 @@ func groupMessages(messages []Message) []MessageGroup {
 }
 ```
 
-### Phase 4: Human-Readable Formatting
+### Phase 3.5: Batch UI Changes (Deferred)
 
-- [ ] Update `formatter.go` to include actor name
-- [ ] Format dates in human-readable style
-- [ ] Use proper username display (not @handle)
+**Status**: Deferred to future enhancement. Phase 3 grouping already provides visual grouping of consecutive messages.
+
+- [ ] Implement debounce/batching for rapid UI changes
+- [ ] Collect changes within 2-second window
+- [ ] Generate combined message: "John changed status to X, priority to Y, and assigned to Z"
+
+**Batching approach:**
+
+```go
+type PendingChanges struct {
+    ActorID   uuid.UUID
+    ChatID    uuid.UUID
+    Changes   []Change
+    FirstTime time.Time
+}
+
+type Change struct {
+    Type  string // "status", "priority", "assignee", "due_date"
+    Value string
+}
+
+// In action handler: collect changes, flush after 2s idle or on different actor/chat
+func (b *ChangeBatcher) AddChange(actorID, chatID uuid.UUID, change Change) {
+    // If pending changes exist for same actor+chat and within window, append
+    // Otherwise flush existing and start new batch
+}
+
+func (b *ChangeBatcher) formatBatchMessage(changes []Change, actorName string) string {
+    // "John changed status to In Progress, priority to High, and assigned to Jane"
+}
+```
+```
+
+### Phase 4: Human-Readable Formatting ✅
+
+- [x] Update `formatter.go` to include actor name
+- [x] Format dates in human-readable style
+- [x] Use proper username display (not @handle)
+- [x] Support integration names for external API changes
+
+**Completed changes:**
+
+| File | Change |
+|------|--------|
+| `internal/domain/tag/formatter.go` | Added `ActorInfo`, `GenerateBotResponseWithActor()`, `formatHumanReadableDate()` |
+| `internal/domain/tag/repositories.go` | Added `FindByID` to `UserRepository` |
+| `internal/domain/tag/handler.go` | Added `userRepo`, `getActorInfo()`, uses `GenerateBotResponseWithActor()` |
+| `internal/service/action_service.go` | All actions now generate human-readable messages with actor names |
 
 **Formatter changes:**
 
 ```go
-func (f *Formatter) formatSuccess(app TagApplication, actorName string) string {
+type ActorInfo struct {
+    Name          string
+    IsIntegration bool
+    Integration   string // "Jira sync", "GitHub webhook", etc.
+}
+
+func (f *Formatter) formatSuccess(app TagApplication, actor ActorInfo) string {
+    actorName := actor.Name
+    if actor.IsIntegration {
+        actorName = actor.Integration // "Jira sync", "GitHub webhook"
+    }
+
     switch cmd := app.Command.(type) {
     case ChangeStatusCommand:
         return fmt.Sprintf("✅ %s changed status to %s", actorName, cmd.Status)
@@ -302,12 +372,33 @@ func (f *Formatter) formatSuccess(app TagApplication, actorName string) string {
 }
 ```
 
-### Phase 5: Connect Action Buttons
+**Integration identification:**
 
-- [ ] Add HTMX attributes to sidebar form controls
-- [ ] Handle loading states during requests
-- [ ] Show success/error feedback
-- [ ] Refresh affected UI components
+```go
+// In action handler or middleware
+func getActorInfo(ctx context.Context) ActorInfo {
+    // Check for X-Integration-Name header or API key metadata
+    if integrationName := ctx.Value("integration_name"); integrationName != nil {
+        return ActorInfo{IsIntegration: true, Integration: integrationName.(string)}
+    }
+    // Regular user
+    user := auth.UserFromContext(ctx)
+    return ActorInfo{Name: user.DisplayName}
+}
+```
+
+### Phase 5: Connect Action Buttons ✅
+
+- [x] Add HTMX attributes to sidebar form controls
+- [x] Handle loading states during requests
+- [x] Show success/error feedback (via chatUpdated HX-Trigger)
+- [x] Refresh affected UI components (via WebSocket)
+
+**Completed changes:**
+
+| File | Change |
+|------|--------|
+| `web/templates/chat/task-sidebar.html` | Updated all form controls to use `/api/v1/chats/:id/actions/*` endpoints with HTMX |
 
 **Example for status dropdown:**
 
@@ -329,75 +420,55 @@ func (f *Formatter) formatSuccess(app TagApplication, actorName string) string {
 
 ---
 
-## Open Design Questions
+## Design Decisions
 
-These questions were deferred from original implementation and should be addressed:
+Resolved on 2026-02-05:
 
 ### 1. Collapsible System Messages
 
-**Question**: Should system messages be collapsible/expandable in UI?
+**Decision**: Always visible (no collapsing)
 
-**Options**:
-- A) Always visible (current)
-- B) Collapsible per message
-- C) Collapsible as a group ("Show N system messages")
-- D) Auto-collapse after N seconds
-
-**Recommendation**: Option C - group collapse for cleaner history
+System messages remain visible at all times. No collapse/expand functionality needed.
 
 ### 2. Batch Changes Handling
 
-**Question**: How to handle rapid consecutive changes?
+**Decision**: Batch into single message
 
-**Example**: User quickly changes status, then priority, then assignee within seconds.
+When user makes rapid consecutive changes via UI (status, priority, assignee within seconds), combine them into a single system message:
+- Example: "John changed status to In Progress, priority to High, and assigned to Jane"
 
-**Options**:
-- A) Show each change individually
-- B) Batch into single message ("John changed status, priority, and assignee")
-- C) Debounce changes (wait 2s, then show combined)
-
-**Recommendation**: Option B for user-initiated changes, Option A for tag-based changes
+Note: Tag-based changes from a single message are already grouped by the formatter.
 
 ### 3. Suppress System Messages
 
-**Question**: Should we allow suppressing system messages for automated/bulk operations?
+**Decision**: Never suppress
 
-**Use case**: Bot updating 50 tasks at once shouldn't flood history.
-
-**Options**:
-- A) Never suppress
-- B) Add `silent=true` parameter to action endpoints
-- C) Auto-suppress if same actor makes >5 changes in <10s
-- D) Per-workspace setting
-
-**Recommendation**: Option B with audit log retention
+All changes always create visible system messages in chat. No silent mode for bulk operations - full transparency is preferred.
 
 ### 4. External Integration Messages
 
-**Question**: How to handle changes made via API by external integrations?
+**Decision**: Show with integration name
 
-**Options**:
-- A) Show as regular system messages
-- B) Show with integration name ("Jira sync changed status...")
-- C) Don't show, only log
-- D) Configurable per integration
+Changes from external integrations display the integration source:
+- Example: "Jira sync changed status to Done"
+- Example: "GitHub webhook closed this task"
 
-**Recommendation**: Option B for transparency
+This provides transparency about where changes originate.
 
 ---
 
-## Affected Files
+## Affected Files (Actual)
 
 | File | Change |
 |------|--------|
-| `internal/application/message/repository.go` | Add IsSystem field |
-| `internal/domain/tag/formatter.go` | Add actor name parameter |
-| `internal/domain/tag/handler.go` | Pass actor name to formatter |
-| `internal/handler/http/message_handler.go` | Include system flag in response |
-| `web/templates/chat/message-list.html` | Add conditional system rendering |
-| `web/templates/components/system-message.html` | New - system message template |
-| `web/templates/chat/task-sidebar.html` | Add HTMX action attributes |
-| `web/static/css/main.css` | Add system message styles |
+| `internal/handler/http/message_handler.go` | Added `Type`, `IsSystem`, `ActorID` to `MessageResponse` |
+| `internal/handler/http/chat_template_handler.go` | Added `IsGroupStart`/`IsGroupEnd`, `applyMessageGrouping()` |
+| `internal/domain/tag/formatter.go` | Added `ActorInfo`, `GenerateBotResponseWithActor()`, `formatHumanReadableDate()` |
+| `internal/domain/tag/handler.go` | Added `userRepo`, `getActorInfo()`, use `NewMessageWithType` with `TypeBot` |
+| `internal/domain/tag/repositories.go` | Added `FindByID` to `UserRepository` |
+| `internal/service/action_service.go` | All actions generate human-readable messages with actor names |
+| `web/templates/components/message.html` | Updated compact bot message styles, grouping CSS |
+| `web/templates/chat/task-sidebar.html` | Updated to use `/api/v1/chats/:id/actions/*` endpoints |
 
 ---
 
@@ -408,12 +479,17 @@ These questions were deferred from original implementation and should be address
 - [ ] Test message grouping algorithm
 - [ ] Test human-readable formatter output
 - [ ] Test system message identification
+- [ ] Test change batcher collects and flushes correctly
+- [ ] Test batch message formatting with multiple changes
+- [ ] Test ActorInfo with regular user vs integration
 
 ### Integration Tests
 
 - [ ] Test action endpoint triggers system message
 - [ ] Test HTMX response headers
 - [ ] Test WebSocket broadcast after action
+- [ ] Test rapid changes batched into single message
+- [ ] Test integration header results in correct actor name
 
 ### Manual Testing
 
@@ -423,15 +499,19 @@ These questions were deferred from original implementation and should be address
 4. Change status via sidebar dropdown
 5. Verify system message appears in chat
 6. Verify chat updates via WebSocket
+7. Quickly change status, priority, assignee - verify single batched message
+8. Test API call with `X-Integration-Name: Jira` header - verify "Jira changed..." message
 
 ---
 
 ## Success Criteria
 
-1. [ ] System messages render with distinct compact style
-2. [ ] Consecutive system messages are visually grouped
-3. [ ] Messages show actor names (e.g., "John changed status...")
-4. [ ] Dates formatted in human-readable style
-5. [ ] All sidebar controls trigger corresponding action endpoints
-6. [ ] Changes via sidebar appear as system messages in chat
-7. [ ] Design questions resolved and documented
+1. [x] System messages render with distinct compact style
+2. [x] Consecutive system messages are visually grouped
+3. [x] Messages show actor names (e.g., "John changed status...")
+4. [x] Dates formatted in human-readable style
+5. [x] All sidebar controls trigger corresponding action endpoints
+6. [x] Changes via sidebar appear as system messages in chat
+7. [x] Design questions resolved and documented
+8. [ ] Rapid UI changes batched into single message (deferred to future enhancement)
+9. [x] External integration changes show integration name (ActorInfo.Integration support added)
