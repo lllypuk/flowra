@@ -602,6 +602,39 @@ dialog::backdrop {
     }
 }
 
+/* ===== WebSocket Connection Status ===== */
+.connection-status {
+    display: flex;
+    align-items: center;
+    cursor: help;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    transition: background-color 0.3s;
+}
+
+.status-dot.connected {
+    background-color: #22c55e; /* green */
+}
+
+.status-dot.connecting {
+    background-color: #eab308; /* yellow */
+    animation: pulse 1s infinite;
+}
+
+.status-dot.disconnected {
+    background-color: #ef4444; /* red */
+    cursor: pointer;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
 /* ===== Dark Mode Support ===== */
 @media (prefers-color-scheme: dark) {
     :root {
