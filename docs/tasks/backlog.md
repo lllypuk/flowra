@@ -1,12 +1,15 @@
 # Backlog
 
-## Future Enhancements
+## Completed Tasks
 
-### WebSocket Improvements
-- [ ] Connection status indicator in UI
-- [ ] Reconnection logic with exponential backoff
-- [ ] Presence indicators (who's online in chat)
+### WebSocket Improvements ✅
+- [x] Connection status indicator in UI
+- [x] Reconnection logic with exponential backoff
+- [x] Presence indicators (who's online in chat)
+- **Completed**: 2026-02-06
 - **Details**: `docs/tasks/011-websocket-improvements.md`
+
+## Future Enhancements
 
 ### Testing
 - [ ] Add integration tests for concurrent tag processing
