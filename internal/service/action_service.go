@@ -15,6 +15,7 @@ import (
 type ActionService struct {
 	sendMessageUC *messageapp.SendMessageUseCase
 	userRepo      appcore.UserRepository
+	batcher       *ChangeBatcher
 }
 
 // NewActionService creates a new ActionService
@@ -22,10 +23,15 @@ func NewActionService(
 	sendMessageUC *messageapp.SendMessageUseCase,
 	userRepo appcore.UserRepository,
 ) *ActionService {
-	return &ActionService{
+	svc := &ActionService{
 		sendMessageUC: sendMessageUC,
 		userRepo:      userRepo,
 	}
+
+	// Initialize batcher with flush function
+	svc.batcher = NewChangeBatcher(2*time.Second, svc.flushBatchMessage)
+
+	return svc
 }
 
 // getActorDisplayName returns the display name for the actor
@@ -48,13 +54,14 @@ func (s *ActionService) ChangeStatus(
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
 	actorName := s.getActorDisplayName(ctx, actorID)
-	var content string
-	if actorName != "" {
-		content = fmt.Sprintf("✅ %s changed status to %s", actorName, newStatus)
-	} else {
-		content = fmt.Sprintf("✅ Status changed to %s", newStatus)
+	
+	// Add to batch instead of immediate execution
+	err := s.batcher.AddChange(ctx, actorID, chatID, actorName, ChangeTypeStatus, newStatus)
+	if err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
 	}
-	return s.executeAction(ctx, chatID, content, actorID)
+	
+	return &appcore.ActionResult{Success: true}, nil
 }
 
 // AssignUser creates a system message to assign a user
@@ -66,17 +73,23 @@ func (s *ActionService) AssignUser(
 ) (*appcore.ActionResult, error) {
 	actorName := s.getActorDisplayName(ctx, actorID)
 
+	var assigneeName string
 	if assigneeID == nil {
-		content := s.formatAction(actorName, "removed the assignee", "Assignee removed")
-		return s.executeAction(ctx, chatID, content, actorID)
+		assigneeName = "" // Empty means removed
+	} else {
+		name, err := s.resolveUserDisplayName(ctx, *assigneeID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve user: %w", err)
+		}
+		assigneeName = name
 	}
 
-	assigneeName, err := s.resolveUserDisplayName(ctx, *assigneeID)
+	err := s.batcher.AddChange(ctx, actorID, chatID, actorName, ChangeTypeAssignee, assigneeName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve user: %w", err)
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
 	}
-	content := s.formatActionWithTarget(actorName, "assigned this to", "Assigned to", assigneeName)
-	return s.executeAction(ctx, chatID, content, actorID)
+
+	return &appcore.ActionResult{Success: true}, nil
 }
 
 // SetPriority creates a system message to change priority
@@ -87,13 +100,13 @@ func (s *ActionService) SetPriority(
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
 	actorName := s.getActorDisplayName(ctx, actorID)
-	var content string
-	if actorName != "" {
-		content = fmt.Sprintf("✅ %s set priority to %s", actorName, priority)
-	} else {
-		content = fmt.Sprintf("✅ Priority changed to %s", priority)
+	
+	err := s.batcher.AddChange(ctx, actorID, chatID, actorName, ChangeTypePriority, priority)
+	if err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
 	}
-	return s.executeAction(ctx, chatID, content, actorID)
+	
+	return &appcore.ActionResult{Success: true}, nil
 }
 
 // SetDueDate creates a system message to set due date
@@ -105,14 +118,19 @@ func (s *ActionService) SetDueDate(
 ) (*appcore.ActionResult, error) {
 	actorName := s.getActorDisplayName(ctx, actorID)
 
+	var formattedDate string
 	if dueDate == nil {
-		content := s.formatAction(actorName, "removed the due date", "Due date removed")
-		return s.executeAction(ctx, chatID, content, actorID)
+		formattedDate = "" // Empty means removed
+	} else {
+		formattedDate = dueDate.Format("January 2, 2006")
 	}
 
-	formattedDate := dueDate.Format("January 2, 2006")
-	content := s.formatActionWithTarget(actorName, "set due date to", "Due date set to", formattedDate)
-	return s.executeAction(ctx, chatID, content, actorID)
+	err := s.batcher.AddChange(ctx, actorID, chatID, actorName, ChangeTypeDueDate, formattedDate)
+	if err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	}
+
+	return &appcore.ActionResult{Success: true}, nil
 }
 
 // InviteUser creates a system message to add a participant
@@ -285,4 +303,22 @@ func (s *ActionService) executeAction(
 		MessageID: result.Value.ID(),
 		Success:   true,
 	}, nil
+}
+
+// flushBatchMessage is called by the batcher to send a combined message
+func (s *ActionService) flushBatchMessage(
+	ctx context.Context,
+	chatID uuid.UUID,
+	content string,
+	actorID uuid.UUID,
+) error {
+	_, err := s.executeAction(ctx, chatID, content, actorID)
+	return err
+}
+
+// Shutdown stops the batcher and cleans up resources
+func (s *ActionService) Shutdown() {
+	if s.batcher != nil {
+		s.batcher.Close()
+	}
 }
