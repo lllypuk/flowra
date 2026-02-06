@@ -162,7 +162,7 @@ func (h *ChatHandler) RegisterRoutes(r *httpserver.Router) {
 	// Participant management
 	r.Auth().POST("/chats/:id/participants", h.AddParticipant)
 	r.Auth().DELETE("/chats/:id/participants/:user_id", h.RemoveParticipant)
-	
+
 	// Presence
 	r.Auth().GET("/chats/:id/presence", h.GetPresence)
 }

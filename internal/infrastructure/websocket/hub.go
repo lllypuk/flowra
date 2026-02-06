@@ -202,7 +202,7 @@ func (h *Hub) Unregister(client *Client) {
 // registerClient adds a client to the hub.
 func (h *Hub) registerClient(client *Client) {
 	h.mu.Lock()
-	
+
 	h.clients[client] = true
 
 	// Check if this is the first connection for this user
@@ -214,14 +214,14 @@ func (h *Hub) registerClient(client *Client) {
 		}
 		h.userClients[client.userID][client] = true
 	}
-	
+
 	h.mu.Unlock()
 
 	h.logger.Debug("client registered",
 		slog.String("user_id", client.userID.String()),
 		slog.Int("total_clients", len(h.clients)),
 	)
-	
+
 	// Broadcast presence change if this is the first connection
 	if isFirstConnection {
 		chatIDs := client.GetChatIDs()
@@ -234,7 +234,7 @@ func (h *Hub) registerClient(client *Client) {
 // unregisterClient removes a client from the hub.
 func (h *Hub) unregisterClient(client *Client) {
 	h.mu.Lock()
-	
+
 	if _, ok := h.clients[client]; !ok {
 		h.mu.Unlock()
 		return
@@ -242,7 +242,7 @@ func (h *Hub) unregisterClient(client *Client) {
 
 	// Get chat IDs before removal for presence broadcast
 	chatIDs := client.GetChatIDs()
-	
+
 	// Check if user has other connections
 	hasOtherConnections := false
 	if !client.userID.IsZero() {
@@ -272,16 +272,16 @@ func (h *Hub) unregisterClient(client *Client) {
 	}
 
 	delete(h.clients, client)
-	
+
 	h.mu.Unlock()
-	
+
 	client.Close()
 
 	h.logger.Debug("client unregistered",
 		slog.String("user_id", client.userID.String()),
 		slog.Int("total_clients", len(h.clients)),
 	)
-	
+
 	// Broadcast offline status only if this was the last connection for this user
 	if !hasOtherConnections && len(chatIDs) > 0 {
 		h.BroadcastPresenceChange(client.userID, chatIDs, false)
