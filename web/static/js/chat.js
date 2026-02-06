@@ -379,9 +379,70 @@ document.body.addEventListener('htmx:wsAfterMessage', function(evt) {
                 detail: msg.data,
                 bubbles: true
             }));
+        } else if (msg.type) {
+            // Dispatch event without data (for presence and typing)
+            document.body.dispatchEvent(new CustomEvent(msg.type, {
+                detail: msg,
+                bubbles: true
+            }));
         }
     } catch (e) {
         console.error('Failed to parse WebSocket message:', e);
+    }
+});
+
+// ============================================================
+// Presence handling
+// ============================================================
+
+/**
+ * Update presence indicator for a user
+ * @param {string} userId - User ID
+ * @param {boolean} isOnline - Whether user is online
+ */
+function updateUserPresence(userId, isOnline) {
+    // Update all presence dots for this user
+    var presenceDots = document.querySelectorAll('[data-user-id="' + userId + '"] .presence-dot');
+    presenceDots.forEach(function(dot) {
+        if (isOnline) {
+            dot.classList.add('online');
+            dot.classList.remove('offline');
+        } else {
+            dot.classList.add('offline');
+            dot.classList.remove('online');
+        }
+    });
+    
+    // Update online count
+    updateOnlineCount();
+}
+
+/**
+ * Update the online user count display
+ */
+function updateOnlineCount() {
+    var onlineDots = document.querySelectorAll('.presence-dot.online');
+    var countEl = document.querySelector('.online-count');
+    if (countEl) {
+        countEl.textContent = onlineDots.length + ' online';
+    }
+}
+
+/**
+ * Handle presence change events from WebSocket
+ */
+document.body.addEventListener('presence.changed', function(evt) {
+    if (evt.detail && evt.detail.user_id && typeof evt.detail.is_online === 'boolean') {
+        updateUserPresence(evt.detail.user_id, evt.detail.is_online);
+    }
+});
+
+/**
+ * Handle typing indicator events from WebSocket
+ */
+document.body.addEventListener('chat.typing', function(evt) {
+    if (evt.detail && evt.detail.user_id && evt.detail.chat_id) {
+        showTypingIndicator(evt.detail.chat_id, evt.detail.user_id);
     }
 });
 
