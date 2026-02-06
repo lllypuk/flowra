@@ -14,6 +14,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/chat"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 	"github.com/lllypuk/flowra/internal/infrastructure/httpserver"
+	"github.com/lllypuk/flowra/internal/infrastructure/websocket"
 	"github.com/lllypuk/flowra/internal/middleware"
 )
 
@@ -129,12 +130,21 @@ type ChatService interface {
 // ChatHandler handles chat-related HTTP requests.
 type ChatHandler struct {
 	chatService ChatService
+	wsHub       *websocket.Hub
 }
 
 // NewChatHandler creates a new ChatHandler.
 func NewChatHandler(chatService ChatService) *ChatHandler {
 	return &ChatHandler{
 		chatService: chatService,
+	}
+}
+
+// NewChatHandlerWithHub creates a new ChatHandler with WebSocket Hub for presence.
+func NewChatHandlerWithHub(chatService ChatService, wsHub *websocket.Hub) *ChatHandler {
+	return &ChatHandler{
+		chatService: chatService,
+		wsHub:       wsHub,
 	}
 }
 
@@ -152,6 +162,9 @@ func (h *ChatHandler) RegisterRoutes(r *httpserver.Router) {
 	// Participant management
 	r.Auth().POST("/chats/:id/participants", h.AddParticipant)
 	r.Auth().DELETE("/chats/:id/participants/:user_id", h.RemoveParticipant)
+	
+	// Presence
+	r.Auth().GET("/chats/:id/presence", h.GetPresence)
 }
 
 // Create handles POST /api/v1/workspaces/:workspace_id/chats.
@@ -540,6 +553,56 @@ func parseChatPagination(c echo.Context) (int, int) {
 	}
 
 	return limit, offset
+}
+
+// GetPresence handles GET /api/v1/chats/:id/presence.
+// Gets online status for all chat members.
+func (h *ChatHandler) GetPresence(c echo.Context) error {
+	userID := middleware.GetUserID(c)
+	if userID.IsZero() {
+		return httpserver.RespondErrorWithCode(c, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
+	}
+
+	chatIDStr := c.Param("id")
+	chatID, parseErr := uuid.ParseUUID(chatIDStr)
+	if parseErr != nil {
+		return httpserver.RespondErrorWithCode(
+			c, http.StatusBadRequest, "INVALID_CHAT_ID", "invalid chat ID format")
+	}
+
+	// Get chat to verify membership and get participants
+	query := chatapp.GetChatQuery{
+		ChatID:      chatID,
+		RequestedBy: userID,
+	}
+
+	result, err := h.chatService.GetChat(c.Request().Context(), query)
+	if err != nil {
+		return handleChatError(c, err)
+	}
+
+	// If no Hub available, return all offline
+	if h.wsHub == nil {
+		presence := make([]websocket.PresenceInfo, 0, len(result.Chat.Participants))
+		for _, p := range result.Chat.Participants {
+			presence = append(presence, websocket.PresenceInfo{
+				UserID:   p.UserID,
+				IsOnline: false,
+			})
+		}
+		return httpserver.RespondOK(c, presence)
+	}
+
+	// Get member IDs
+	memberIDs := make([]uuid.UUID, 0, len(result.Chat.Participants))
+	for _, p := range result.Chat.Participants {
+		memberIDs = append(memberIDs, p.UserID)
+	}
+
+	// Get presence from WebSocket hub
+	presence := h.wsHub.GetChatPresence(memberIDs)
+
+	return httpserver.RespondOK(c, presence)
 }
 
 func handleChatError(c echo.Context, err error) error {

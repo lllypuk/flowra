@@ -22,6 +22,26 @@ type Message struct {
 	Data   json.RawMessage `json:"data,omitempty"`
 }
 
+// PresenceInfo represents online status for a user.
+type PresenceInfo struct {
+	UserID   uuid.UUID `json:"user_id"`
+	IsOnline bool      `json:"is_online"`
+}
+
+// PresenceChangeMessage represents a presence change event.
+type PresenceChangeMessage struct {
+	Type     string    `json:"type"`
+	UserID   uuid.UUID `json:"user_id"`
+	IsOnline bool      `json:"is_online"`
+}
+
+// TypingMessage represents a typing indicator event.
+type TypingMessage struct {
+	Type   string    `json:"type"`
+	ChatID uuid.UUID `json:"chat_id"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
 // Hub manages all WebSocket connections and chat room subscriptions.
 type Hub struct {
 	// clients holds all connected clients.
@@ -182,35 +202,57 @@ func (h *Hub) Unregister(client *Client) {
 // registerClient adds a client to the hub.
 func (h *Hub) registerClient(client *Client) {
 	h.mu.Lock()
-	defer h.mu.Unlock()
-
+	
 	h.clients[client] = true
 
-	// Add to user clients map
+	// Check if this is the first connection for this user
+	isFirstConnection := false
 	if !client.userID.IsZero() {
 		if h.userClients[client.userID] == nil {
 			h.userClients[client.userID] = make(map[*Client]bool)
+			isFirstConnection = true
 		}
 		h.userClients[client.userID][client] = true
 	}
+	
+	h.mu.Unlock()
 
 	h.logger.Debug("client registered",
 		slog.String("user_id", client.userID.String()),
 		slog.Int("total_clients", len(h.clients)),
 	)
+	
+	// Broadcast presence change if this is the first connection
+	if isFirstConnection {
+		chatIDs := client.GetChatIDs()
+		if len(chatIDs) > 0 {
+			h.BroadcastPresenceChange(client.userID, chatIDs, true)
+		}
+	}
 }
 
 // unregisterClient removes a client from the hub.
 func (h *Hub) unregisterClient(client *Client) {
 	h.mu.Lock()
-	defer h.mu.Unlock()
-
+	
 	if _, ok := h.clients[client]; !ok {
+		h.mu.Unlock()
 		return
 	}
 
+	// Get chat IDs before removal for presence broadcast
+	chatIDs := client.GetChatIDs()
+	
+	// Check if user has other connections
+	hasOtherConnections := false
+	if !client.userID.IsZero() {
+		if userClients, ok := h.userClients[client.userID]; ok {
+			hasOtherConnections = len(userClients) > 1
+		}
+	}
+
 	// Remove from all chat rooms
-	for _, chatID := range client.GetChatIDs() {
+	for _, chatID := range chatIDs {
 		if room, ok := h.chatRooms[chatID]; ok {
 			delete(room, client)
 			if len(room) == 0 {
@@ -230,12 +272,20 @@ func (h *Hub) unregisterClient(client *Client) {
 	}
 
 	delete(h.clients, client)
+	
+	h.mu.Unlock()
+	
 	client.Close()
 
 	h.logger.Debug("client unregistered",
 		slog.String("user_id", client.userID.String()),
 		slog.Int("total_clients", len(h.clients)),
 	)
+	
+	// Broadcast offline status only if this was the last connection for this user
+	if !hasOtherConnections && len(chatIDs) > 0 {
+		h.BroadcastPresenceChange(client.userID, chatIDs, false)
+	}
 }
 
 // JoinChat adds a client to a chat room.
@@ -369,4 +419,57 @@ func (h *Hub) UserConnectionCount(userID uuid.UUID) int {
 		return len(clients)
 	}
 	return 0
+}
+
+// GetChatPresence returns online status for a list of users.
+// This is used by the presence API to show who's online in a chat.
+func (h *Hub) GetChatPresence(memberIDs []uuid.UUID) []PresenceInfo {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	presence := make([]PresenceInfo, 0, len(memberIDs))
+	for _, memberID := range memberIDs {
+		clients, exists := h.userClients[memberID]
+		presence = append(presence, PresenceInfo{
+			UserID:   memberID,
+			IsOnline: exists && len(clients) > 0,
+		})
+	}
+	return presence
+}
+
+// BroadcastPresenceChange notifies chat members of presence changes.
+func (h *Hub) BroadcastPresenceChange(userID uuid.UUID, chatIDs []uuid.UUID, isOnline bool) {
+	msg := PresenceChangeMessage{
+		Type:     "presence.changed",
+		UserID:   userID,
+		IsOnline: isOnline,
+	}
+
+	msgBytes, err := json.Marshal(msg)
+	if err != nil {
+		h.logger.Error("failed to marshal presence change message", slog.Any("error", err))
+		return
+	}
+
+	for _, chatID := range chatIDs {
+		h.BroadcastToChat(chatID, msgBytes)
+	}
+}
+
+// BroadcastTyping broadcasts typing indicator to chat members.
+func (h *Hub) BroadcastTyping(chatID uuid.UUID, userID uuid.UUID) {
+	msg := TypingMessage{
+		Type:   "chat.typing",
+		ChatID: chatID,
+		UserID: userID,
+	}
+
+	msgBytes, err := json.Marshal(msg)
+	if err != nil {
+		h.logger.Error("failed to marshal typing message", slog.Any("error", err))
+		return
+	}
+
+	h.BroadcastToChat(chatID, msgBytes)
 }

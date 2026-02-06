@@ -811,7 +811,7 @@ func (c *Container) setupHTTPHandlers() {
 
 	// === 5. Chat Service (Real) ===
 	c.ChatService = c.createChatService()
-	c.ChatHandler = httphandler.NewChatHandler(c.ChatService)
+	c.ChatHandler = httphandler.NewChatHandlerWithHub(c.ChatService, c.Hub)
 	c.ChatActionHandler = httphandler.NewChatActionHandler(c.ActionService)
 	c.Logger.Debug("chat service and handlers initialized (real)")
 
