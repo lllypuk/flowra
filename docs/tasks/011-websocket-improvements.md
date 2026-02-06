@@ -1,9 +1,10 @@
 # Task 011: WebSocket Improvements
 
-**Status**: Pending
+**Status**: In Progress
 **Priority**: Medium
 **Depends on**: None
 **Created**: 2026-02-04
+**Updated**: 2026-02-06
 **Source**: Backlog - Future Enhancements
 
 ---
@@ -717,13 +718,46 @@ type WebSocketConfig struct {
 
 ---
 
+## Progress
+
+### Completed
+
+#### Phase 1: Connection Status Indicator ✅
+- [x] Added status component to navbar (web/templates/layout/navbar.html)
+- [x] Added CSS for status indicator with animations (web/static/css/custom.css)
+- [x] Implemented JavaScript status updates (web/static/js/app.js)
+- [x] Three states: connected (green), connecting (yellow), disconnected (red)
+- [x] Tooltip displays status message
+- [x] Click on disconnected indicator triggers manual reconnection
+
+#### Phase 2: Exponential Backoff ✅
+- [x] Replaced fixed 3s delay with exponential backoff
+- [x] Implemented calculateReconnectDelay() function
+- [x] Base delay: 1s, max delay: 30s, jitter: 0-1000ms
+- [x] Updated max attempts from 5 to 10
+- [x] Status indicator updates during reconnection attempts
+- [x] Integrated with HTMX WebSocket events
+
+### In Progress
+
+#### Phase 3: Presence Indicators
+- [ ] Backend: Add presence event types to Hub
+- [ ] Backend: Broadcast presence changes on connect/disconnect
+- [ ] Backend: Add presence API endpoint
+- [ ] Frontend: Handle presence change messages
+- [ ] Frontend: Create member list component with presence dots
+- [ ] Frontend: Display online count in chat header
+- [ ] Backend: Implement typing indicator broadcast
+
+---
+
 ## Success Criteria
 
-1. [ ] Connection status indicator visible in navbar
-2. [ ] Status correctly reflects connected/connecting/disconnected states
-3. [ ] Exponential backoff delays increase correctly (1s → 2s → 4s → ... → 30s cap)
-4. [ ] Reconnection succeeds automatically when server returns
-5. [ ] Click on disconnected indicator triggers manual reconnection
+1. [x] Connection status indicator visible in navbar
+2. [x] Status correctly reflects connected/connecting/disconnected states
+3. [x] Exponential backoff delays increase correctly (1s → 2s → 4s → ... → 30s cap)
+4. [x] Reconnection succeeds automatically when server returns
+5. [x] Click on disconnected indicator triggers manual reconnection
 6. [ ] Presence API returns correct online/offline status
 7. [ ] Member list shows online/offline dots
 8. [ ] Presence updates broadcast on connect/disconnect
