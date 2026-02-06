@@ -649,11 +649,15 @@ case "chat.typing":
 **File**: `tests/e2e/websocket_test.go`
 
 Add tests:
-- [ ] `TestConnectionStatusIndicator` - verify UI updates
-- [ ] `TestExponentialBackoff` - verify delay increases
-- [ ] `TestPresenceOnConnect` - verify online broadcast
-- [ ] `TestPresenceOnDisconnect` - verify offline broadcast
-- [ ] `TestTypingIndicator` - verify typing broadcast
+- [x] `TestPresenceOnConnect` - verify online broadcast
+- [x] `TestPresenceOnDisconnect` - verify offline broadcast
+- [x] `TestPresenceMultipleConnections` - verify user stays online with multiple connections
+- [x] `TestTypingIndicator` - verify typing broadcast
+
+**Note**: `TestConnectionStatusIndicator` and `TestExponentialBackoff` are frontend UI tests that test JavaScript behavior in the browser. These cannot be tested in backend Go e2e tests and should be tested using frontend testing tools (Playwright, Cypress, or Selenium). The implementations to test are in:
+- `web/static/js/app.js` (exponential backoff logic)
+- `web/templates/layout/navbar.html` (status indicator UI)
+- `web/static/css/custom.css` (status indicator styles)
 
 ### Manual Testing
 
