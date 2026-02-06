@@ -7,12 +7,21 @@
                 rel="prev"
                 onclick="document.getElementById('modal-container').innerHTML = ''"
             ></button>
-            <h3>Participants</h3>
+            <h3>
+                Participants
+                <span class="online-count" 
+                      hx-get="/api/v1/chats/{{.ChatID}}/presence"
+                      hx-trigger="load"
+                      hx-swap="none"
+                      hx-on::after-request="updateOnlineCount()">
+                </span>
+            </h3>
         </header>
 
         <div class="participants-list">
             {{range .Participants}}
-            <div class="participant-item">
+            <div class="participant-item" data-user-id="{{.UserID}}">
+                <span class="presence-dot offline"></span>
                 <div class="participant-avatar">
                     {{if .AvatarURL}}
                     <img src="{{.AvatarURL}}" alt="{{.Username}}" />
@@ -96,6 +105,27 @@
         </footer>
     </article>
 </dialog>
+
+<script>
+    // Load presence data on modal open
+    (function() {
+        var chatId = '{{.ChatID}}';
+        fetch('/api/v1/chats/' + chatId + '/presence')
+            .then(function(response) {
+                if (!response.ok) return;
+                return response.json();
+            })
+            .then(function(presenceData) {
+                if (!presenceData) return;
+                presenceData.forEach(function(p) {
+                    updateUserPresence(p.user_id, p.is_online);
+                });
+            })
+            .catch(function(err) {
+                console.error('Failed to load presence:', err);
+            });
+    })();
+</script>
 
 <style>
     .participants-list {

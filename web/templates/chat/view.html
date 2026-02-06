@@ -79,6 +79,8 @@
         // Find WebSocket connection
         var wsElements = document.querySelectorAll('[hx-ext*="ws"]');
         if (wsElements.length > 0) {
+            var chatId = '{{.Data.Chat.ID}}';
+            
             // Wait a bit for WebSocket to connect
             setTimeout(function () {
                 for (var i = 0; i < wsElements.length; i++) {
@@ -87,14 +89,42 @@
                         ws.send(
                             JSON.stringify({
                                 type: "subscribe",
-                                chat_id: "{{.Data.Chat.ID}}",
+                                chat_id: chatId,
                             }),
                         );
-                        console.log("Subscribed to chat:", "{{.Data.Chat.ID}}");
+                        console.log("Subscribed to chat:", chatId);
                         break;
                     }
                 }
             }, 500);
+            
+            // Load initial presence data
+            fetch('/api/v1/chats/' + chatId + '/presence')
+                .then(function(response) {
+                    if (!response.ok) return;
+                    return response.json();
+                })
+                .then(function(presenceData) {
+                    if (!presenceData) return;
+                    
+                    var onlineCount = 0;
+                    presenceData.forEach(function(p) {
+                        if (p.is_online) onlineCount++;
+                    });
+                    
+                    // Update header online count
+                    var countEl = document.getElementById('chat-online-count');
+                    if (countEl) {
+                        if (onlineCount > 0) {
+                            countEl.textContent = onlineCount + ' online';
+                        } else {
+                            countEl.textContent = '';
+                        }
+                    }
+                })
+                .catch(function(err) {
+                    console.log('Presence not available');
+                });
         }
     })();
 

@@ -422,9 +422,22 @@ function updateUserPresence(userId, isOnline) {
  */
 function updateOnlineCount() {
     var onlineDots = document.querySelectorAll('.presence-dot.online');
-    var countEl = document.querySelector('.online-count');
-    if (countEl) {
-        countEl.textContent = onlineDots.length + ' online';
+    var onlineCount = onlineDots.length;
+    
+    // Update modal count
+    var modalCountEl = document.querySelector('.online-count');
+    if (modalCountEl) {
+        modalCountEl.textContent = onlineCount + ' online';
+    }
+    
+    // Update header count
+    var headerCountEl = document.getElementById('chat-online-count');
+    if (headerCountEl) {
+        if (onlineCount > 0) {
+            headerCountEl.textContent = onlineCount + ' online';
+        } else {
+            headerCountEl.textContent = '';
+        }
     }
 }
 
