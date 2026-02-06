@@ -1063,8 +1063,9 @@ func applyMessageGrouping(messages []MessageViewData) {
 			continue
 		}
 
-		prevInGroup := i > 0 && canGroupWith(msg, &messages[i-1], groupingThreshold)
-		nextInGroup := i < len(messages)-1 && canGroupWith(msg, &messages[i+1], groupingThreshold)
+		prevInGroup := i > 0 && i-1 < len(messages) && canGroupWith(msg, &messages[i-1], groupingThreshold)
+		nextInGroup := i < len(messages)-1 && i+1 < len(messages) &&
+			canGroupWith(msg, &messages[i+1], groupingThreshold)
 
 		msg.IsGroupStart = !prevInGroup
 		msg.IsGroupEnd = !nextInGroup

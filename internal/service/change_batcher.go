@@ -19,6 +19,13 @@ const (
 	ChangeTypeAssignee ChangeType = "assignee"
 	ChangeTypeDueDate  ChangeType = "due_date"
 	ChangeTypeTitle    ChangeType = "title"
+
+	// defaultBatchWindow is the default time window for batching changes
+	defaultBatchWindow = 2 * time.Second
+	// cleanupInterval is how often to clean up abandoned batches
+	cleanupInterval = 10 * time.Second
+	// twoItems is used for checking if we have exactly 2 items for simple conjunction
+	twoItems = 2
 )
 
 // Change represents a single change to an entity
@@ -62,13 +69,13 @@ func NewChangeBatcher(
 	flushFunc func(ctx context.Context, chatID uuid.UUID, content string, actorID uuid.UUID) error,
 ) *ChangeBatcher {
 	if batchWindow == 0 {
-		batchWindow = 2 * time.Second
+		batchWindow = defaultBatchWindow
 	}
 
 	cb := &ChangeBatcher{
 		batches:      make(map[batchKey]*PendingBatch),
 		batchWindow:  batchWindow,
-		cleanupTimer: 10 * time.Second,
+		cleanupTimer: cleanupInterval,
 		flushFunc:    flushFunc,
 		stopCleanup:  make(chan struct{}),
 	}
@@ -179,7 +186,7 @@ func (cb *ChangeBatcher) formatBatchMessage(batch *PendingBatch) string {
 	}
 
 	// Join with commas and "and" for last item
-	if len(parts) == 2 {
+	if len(parts) == twoItems {
 		return fmt.Sprintf("✅ %s%s and %s", actorPrefix, parts[0], parts[1])
 	}
 

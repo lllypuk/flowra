@@ -1,3 +1,4 @@
+//nolint:testpackage // Testing internal batcher implementation
 package service
 
 import (
@@ -14,7 +15,7 @@ import (
 func TestChangeBatcher_SingleChange(t *testing.T) {
 	var flushedContent string
 	var mu sync.Mutex
-	flushFunc := func(ctx context.Context, chatID domainu.UUID, content string, actorID domainu.UUID) error {
+	flushFunc := func(_ context.Context, _ domainu.UUID, content string, _ domainu.UUID) error {
 		mu.Lock()
 		flushedContent = content
 		mu.Unlock()
@@ -44,7 +45,7 @@ func TestChangeBatcher_SingleChange(t *testing.T) {
 func TestChangeBatcher_MultipleChanges(t *testing.T) {
 	var flushedContent string
 	var mu sync.Mutex
-	flushFunc := func(ctx context.Context, chatID domainu.UUID, content string, actorID domainu.UUID) error {
+	flushFunc := func(_ context.Context, _ domainu.UUID, content string, _ domainu.UUID) error {
 		mu.Lock()
 		flushedContent = content
 		mu.Unlock()
@@ -85,7 +86,7 @@ func TestChangeBatcher_MultipleChanges(t *testing.T) {
 func TestChangeBatcher_TwoChanges(t *testing.T) {
 	var flushedContent string
 	var mu sync.Mutex
-	flushFunc := func(ctx context.Context, chatID domainu.UUID, content string, actorID domainu.UUID) error {
+	flushFunc := func(_ context.Context, _ domainu.UUID, content string, _ domainu.UUID) error {
 		mu.Lock()
 		flushedContent = content
 		mu.Unlock()
@@ -121,7 +122,7 @@ func TestChangeBatcher_TwoChanges(t *testing.T) {
 func TestChangeBatcher_DifferentActors(t *testing.T) {
 	var flushedCount int
 	var mu sync.Mutex
-	flushFunc := func(ctx context.Context, chatID domainu.UUID, content string, actorID domainu.UUID) error {
+	flushFunc := func(_ context.Context, _ domainu.UUID, _ string, _ domainu.UUID) error {
 		mu.Lock()
 		flushedCount++
 		mu.Unlock()
@@ -156,7 +157,7 @@ func TestChangeBatcher_DifferentActors(t *testing.T) {
 func TestChangeBatcher_DifferentChats(t *testing.T) {
 	var flushedCount int
 	var mu sync.Mutex
-	flushFunc := func(ctx context.Context, chatID domainu.UUID, content string, actorID domainu.UUID) error {
+	flushFunc := func(_ context.Context, _ domainu.UUID, _ string, _ domainu.UUID) error {
 		mu.Lock()
 		flushedCount++
 		mu.Unlock()
@@ -191,7 +192,7 @@ func TestChangeBatcher_DifferentChats(t *testing.T) {
 func TestChangeBatcher_TimerReset(t *testing.T) {
 	var flushTime time.Time
 	var mu sync.Mutex
-	flushFunc := func(ctx context.Context, chatID domainu.UUID, content string, actorID domainu.UUID) error {
+	flushFunc := func(_ context.Context, _ domainu.UUID, _ string, _ domainu.UUID) error {
 		mu.Lock()
 		flushTime = time.Now()
 		mu.Unlock()
@@ -233,7 +234,7 @@ func TestChangeBatcher_TimerReset(t *testing.T) {
 func TestChangeBatcher_RemoveAssignee(t *testing.T) {
 	var flushedContent string
 	var mu sync.Mutex
-	flushFunc := func(ctx context.Context, chatID domainu.UUID, content string, actorID domainu.UUID) error {
+	flushFunc := func(_ context.Context, _ domainu.UUID, content string, _ domainu.UUID) error {
 		mu.Lock()
 		flushedContent = content
 		mu.Unlock()
@@ -263,7 +264,7 @@ func TestChangeBatcher_RemoveAssignee(t *testing.T) {
 func TestChangeBatcher_RemoveDueDate(t *testing.T) {
 	var flushedContent string
 	var mu sync.Mutex
-	flushFunc := func(ctx context.Context, chatID domainu.UUID, content string, actorID domainu.UUID) error {
+	flushFunc := func(_ context.Context, _ domainu.UUID, content string, _ domainu.UUID) error {
 		mu.Lock()
 		flushedContent = content
 		mu.Unlock()
@@ -293,7 +294,7 @@ func TestChangeBatcher_RemoveDueDate(t *testing.T) {
 func TestChangeBatcher_NoActorName(t *testing.T) {
 	var flushedContent string
 	var mu sync.Mutex
-	flushFunc := func(ctx context.Context, chatID domainu.UUID, content string, actorID domainu.UUID) error {
+	flushFunc := func(_ context.Context, _ domainu.UUID, content string, _ domainu.UUID) error {
 		mu.Lock()
 		flushedContent = content
 		mu.Unlock()
@@ -323,7 +324,7 @@ func TestChangeBatcher_NoActorName(t *testing.T) {
 }
 
 func TestChangeBatcher_Close(t *testing.T) {
-	flushFunc := func(ctx context.Context, chatID domainu.UUID, content string, actorID domainu.UUID) error {
+	flushFunc := func(_ context.Context, _ domainu.UUID, _ string, _ domainu.UUID) error {
 		return nil
 	}
 

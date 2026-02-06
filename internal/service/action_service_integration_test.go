@@ -1,3 +1,4 @@
+//nolint:testpackage // Integration tests need access to internal types
 package service
 
 import (
@@ -17,7 +18,7 @@ func TestActionService_RapidChanges_Batched(t *testing.T) {
 	var mu sync.Mutex
 
 	// Mock flush function
-	flushFunc := func(ctx context.Context, chatID domainu.UUID, content string, actorID domainu.UUID) error {
+	flushFunc := func(_ context.Context, _ domainu.UUID, content string, _ domainu.UUID) error {
 		mu.Lock()
 		messageContent = content
 		callCount++
@@ -62,7 +63,7 @@ func TestActionService_DifferentActors_SeparateBatches(t *testing.T) {
 	var mu sync.Mutex
 
 	// Mock flush function
-	flushFunc := func(ctx context.Context, chatID domainu.UUID, content string, actorID domainu.UUID) error {
+	flushFunc := func(_ context.Context, _ domainu.UUID, _ string, _ domainu.UUID) error {
 		mu.Lock()
 		callCount++
 		mu.Unlock()
@@ -100,7 +101,7 @@ func TestActionService_DifferentChats_SeparateBatches(t *testing.T) {
 	var mu sync.Mutex
 
 	// Mock flush function
-	flushFunc := func(ctx context.Context, chatID domainu.UUID, content string, actorID domainu.UUID) error {
+	flushFunc := func(_ context.Context, _ domainu.UUID, _ string, _ domainu.UUID) error {
 		mu.Lock()
 		callCount++
 		mu.Unlock()
@@ -131,4 +132,3 @@ func TestActionService_DifferentChats_SeparateBatches(t *testing.T) {
 	// Should have been called twice (once per chat)
 	assert.Equal(t, 2, count)
 }
-

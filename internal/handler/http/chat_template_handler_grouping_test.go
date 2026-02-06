@@ -1,3 +1,4 @@
+//nolint:testpackage // Testing internal functions
 package httphandler
 
 import (
@@ -109,12 +110,12 @@ func TestApplyMessageGrouping_SystemAndBotMessagesTogether(t *testing.T) {
 func TestApplyMessageGrouping_MixedMessages(t *testing.T) {
 	now := time.Now()
 	messages := []MessageViewData{
-		{IsBotMessage: true, CreatedAt: now},                                      // Group 1 start
-		{IsBotMessage: true, CreatedAt: now.Add(1 * time.Second)},                 // Group 1 end
+		{IsBotMessage: true, CreatedAt: now},                                               // Group 1 start
+		{IsBotMessage: true, CreatedAt: now.Add(1 * time.Second)},                          // Group 1 end
 		{IsBotMessage: false, IsSystemMessage: false, CreatedAt: now.Add(2 * time.Second)}, // User message
-		{IsBotMessage: true, CreatedAt: now.Add(3 * time.Second)},                 // Group 2 start
-		{IsSystemMessage: true, CreatedAt: now.Add(4 * time.Second)},              // Group 2 middle
-		{IsBotMessage: true, CreatedAt: now.Add(5 * time.Second)},                 // Group 2 end
+		{IsBotMessage: true, CreatedAt: now.Add(3 * time.Second)},                          // Group 2 start
+		{IsSystemMessage: true, CreatedAt: now.Add(4 * time.Second)},                       // Group 2 middle
+		{IsBotMessage: true, CreatedAt: now.Add(5 * time.Second)},                          // Group 2 end
 		{IsBotMessage: false, IsSystemMessage: false, CreatedAt: now.Add(6 * time.Second)}, // User message
 	}
 
@@ -143,7 +144,7 @@ func TestApplyMessageGrouping_MixedMessages(t *testing.T) {
 	assert.False(t, messages[6].IsGroupEnd)
 }
 
-func TestApplyMessageGrouping_EmptySlice(t *testing.T) {
+func TestApplyMessageGrouping_EmptySlice(_ *testing.T) {
 	messages := []MessageViewData{}
 
 	// Should not panic

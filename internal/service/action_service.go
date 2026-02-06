@@ -29,7 +29,7 @@ func NewActionService(
 	}
 
 	// Initialize batcher with flush function
-	svc.batcher = NewChangeBatcher(2*time.Second, svc.flushBatchMessage)
+	svc.batcher = NewChangeBatcher(defaultBatchWindow, svc.flushBatchMessage)
 
 	return svc
 }
@@ -54,13 +54,13 @@ func (s *ActionService) ChangeStatus(
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
 	actorName := s.getActorDisplayName(ctx, actorID)
-	
+
 	// Add to batch instead of immediate execution
 	err := s.batcher.AddChange(ctx, actorID, chatID, actorName, ChangeTypeStatus, newStatus)
 	if err != nil {
 		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
 	}
-	
+
 	return &appcore.ActionResult{Success: true}, nil
 }
 
@@ -100,12 +100,12 @@ func (s *ActionService) SetPriority(
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
 	actorName := s.getActorDisplayName(ctx, actorID)
-	
+
 	err := s.batcher.AddChange(ctx, actorID, chatID, actorName, ChangeTypePriority, priority)
 	if err != nil {
 		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
 	}
-	
+
 	return &appcore.ActionResult{Success: true}, nil
 }
 
@@ -246,22 +246,6 @@ func (s *ActionService) Delete(
 		content = "✅ Chat deleted"
 	}
 	return s.executeAction(ctx, chatID, content, actorID)
-}
-
-// formatAction formats a message with or without actor name
-func (s *ActionService) formatAction(actorName, actionWithActor, actionWithoutActor string) string {
-	if actorName != "" {
-		return fmt.Sprintf("✅ %s %s", actorName, actionWithActor)
-	}
-	return fmt.Sprintf("✅ %s", actionWithoutActor)
-}
-
-// formatActionWithTarget formats a message with a target value
-func (s *ActionService) formatActionWithTarget(actorName, actionWithActor, actionWithoutActor, target string) string {
-	if actorName != "" {
-		return fmt.Sprintf("✅ %s %s %s", actorName, actionWithActor, target)
-	}
-	return fmt.Sprintf("✅ %s %s", actionWithoutActor, target)
 }
 
 // resolveUserDisplayName resolves user ID to display name
