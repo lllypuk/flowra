@@ -66,7 +66,7 @@ func (s *ActionService) ChangeStatus(
 		Type:     message.TypeSystem,
 		ActorID:  &actorID,
 	}
-	
+
 	if _, err := s.sendMessageUC.Execute(ctx, cmd); err != nil {
 		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
 	}
@@ -75,7 +75,7 @@ func (s *ActionService) ChangeStatus(
 	actorName := s.getActorDisplayName(ctx, actorID)
 	err := s.batcher.AddChange(ctx, actorID, chatID, actorName, ChangeTypeStatus, newStatus)
 	if err != nil {
-		s.logger.Warn("failed to batch status change message", "error", err)
+		s.logger.WarnContext(ctx, "failed to batch status change message", "error", err)
 	}
 
 	return &appcore.ActionResult{Success: true}, nil
@@ -113,7 +113,7 @@ func (s *ActionService) AssignUser(
 		Type:     message.TypeSystem,
 		ActorID:  &actorID,
 	}
-	
+
 	if _, err := s.sendMessageUC.Execute(ctx, cmd); err != nil {
 		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
 	}
@@ -122,7 +122,7 @@ func (s *ActionService) AssignUser(
 	actorName := s.getActorDisplayName(ctx, actorID)
 	err := s.batcher.AddChange(ctx, actorID, chatID, actorName, ChangeTypeAssignee, assigneeName)
 	if err != nil {
-		s.logger.Warn("failed to batch assignee change message", "error", err)
+		s.logger.WarnContext(ctx, "failed to batch assignee change message", "error", err)
 	}
 
 	return &appcore.ActionResult{Success: true}, nil
@@ -144,7 +144,7 @@ func (s *ActionService) SetPriority(
 		Type:     message.TypeSystem,
 		ActorID:  &actorID,
 	}
-	
+
 	if _, err := s.sendMessageUC.Execute(ctx, cmd); err != nil {
 		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
 	}
@@ -153,7 +153,7 @@ func (s *ActionService) SetPriority(
 	actorName := s.getActorDisplayName(ctx, actorID)
 	err := s.batcher.AddChange(ctx, actorID, chatID, actorName, ChangeTypePriority, priority)
 	if err != nil {
-		s.logger.Warn("failed to batch priority change message", "error", err)
+		s.logger.WarnContext(ctx, "failed to batch priority change message", "error", err)
 	}
 
 	return &appcore.ActionResult{Success: true}, nil
@@ -184,7 +184,7 @@ func (s *ActionService) SetDueDate(
 		Type:     message.TypeSystem,
 		ActorID:  &actorID,
 	}
-	
+
 	if _, err := s.sendMessageUC.Execute(ctx, cmd); err != nil {
 		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
 	}
@@ -193,7 +193,7 @@ func (s *ActionService) SetDueDate(
 	actorName := s.getActorDisplayName(ctx, actorID)
 	err := s.batcher.AddChange(ctx, actorID, chatID, actorName, ChangeTypeDueDate, formattedDate)
 	if err != nil {
-		s.logger.Warn("failed to batch due date change message", "error", err)
+		s.logger.WarnContext(ctx, "failed to batch due date change message", "error", err)
 	}
 
 	return &appcore.ActionResult{Success: true}, nil
@@ -312,18 +312,6 @@ func (s *ActionService) Delete(
 		content = "✅ Chat deleted"
 	}
 	return s.executeAction(ctx, chatID, content, actorID)
-}
-
-// resolveUserDisplayName resolves user ID to display name
-func (s *ActionService) resolveUserDisplayName(ctx context.Context, userID uuid.UUID) (string, error) {
-	usr, err := s.userRepo.GetByID(ctx, userID)
-	if err != nil {
-		return "", err
-	}
-	if usr.FullName != "" {
-		return usr.FullName, nil
-	}
-	return usr.Username, nil
 }
 
 // executeAction is the common implementation for all actions

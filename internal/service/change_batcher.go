@@ -91,7 +91,7 @@ func NewChangeBatcher(
 
 // AddChange adds a change to the batch or creates a new batch
 func (cb *ChangeBatcher) AddChange(
-	ctx context.Context,
+	_ context.Context,
 	actorID uuid.UUID,
 	chatID uuid.UUID,
 	actorName string,
@@ -162,7 +162,7 @@ func (cb *ChangeBatcher) flushBatch(ctx context.Context, key batchKey) {
 	if cb.flushFunc != nil {
 		if err := cb.flushFunc(ctx, batch.ChatID, content, batch.ActorID); err != nil {
 			if cb.logger != nil {
-				cb.logger.Error("failed to flush batch message",
+				cb.logger.ErrorContext(ctx, "failed to flush batch message",
 					"chat_id", batch.ChatID.String(),
 					"actor_id", batch.ActorID.String(),
 					"error", err.Error(),
