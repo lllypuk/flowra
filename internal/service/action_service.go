@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/lllypuk/flowra/internal/application/appcore"
@@ -16,6 +17,7 @@ type ActionService struct {
 	sendMessageUC *messageapp.SendMessageUseCase
 	userRepo      appcore.UserRepository
 	batcher       *ChangeBatcher
+	logger        *slog.Logger
 }
 
 // NewActionService creates a new ActionService
@@ -26,10 +28,12 @@ func NewActionService(
 	svc := &ActionService{
 		sendMessageUC: sendMessageUC,
 		userRepo:      userRepo,
+		logger:        slog.Default(),
 	}
 
-	// Initialize batcher with flush function
+	// Initialize batcher with flush function and logger
 	svc.batcher = NewChangeBatcher(defaultBatchWindow, svc.flushBatchMessage)
+	svc.batcher.logger = svc.logger
 
 	return svc
 }
@@ -46,88 +50,150 @@ func (s *ActionService) getActorDisplayName(ctx context.Context, actorID uuid.UU
 	return usr.FullName
 }
 
-// ChangeStatus creates a system message to change entity status
+// ChangeStatus executes status change via tag command and batches the human-readable message
 func (s *ActionService) ChangeStatus(
 	ctx context.Context,
 	chatID uuid.UUID,
 	newStatus string,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
-	actorName := s.getActorDisplayName(ctx, actorID)
+	// Execute the actual domain change via tag command
+	tagContent := fmt.Sprintf("#status %s", newStatus)
+	cmd := messageapp.SendMessageCommand{
+		ChatID:   chatID,
+		AuthorID: actorID,
+		Content:  tagContent,
+		Type:     message.TypeSystem,
+		ActorID:  &actorID,
+	}
+	
+	if _, err := s.sendMessageUC.Execute(ctx, cmd); err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	}
 
-	// Add to batch instead of immediate execution
+	// Add human-readable message to batch
+	actorName := s.getActorDisplayName(ctx, actorID)
 	err := s.batcher.AddChange(ctx, actorID, chatID, actorName, ChangeTypeStatus, newStatus)
 	if err != nil {
-		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+		s.logger.Warn("failed to batch status change message", "error", err)
 	}
 
 	return &appcore.ActionResult{Success: true}, nil
 }
 
-// AssignUser creates a system message to assign a user
+// AssignUser executes assignee change via tag command and batches the human-readable message
 func (s *ActionService) AssignUser(
 	ctx context.Context,
 	chatID uuid.UUID,
 	assigneeID *uuid.UUID,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
-	actorName := s.getActorDisplayName(ctx, actorID)
-
+	// Execute the actual domain change via tag command
+	var tagContent string
 	var assigneeName string
 	if assigneeID == nil {
-		assigneeName = "" // Empty means removed
+		tagContent = "#assignee @none"
+		assigneeName = ""
 	} else {
-		name, err := s.resolveUserDisplayName(ctx, *assigneeID)
+		usr, err := s.userRepo.GetByID(ctx, *assigneeID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve user: %w", err)
 		}
-		assigneeName = name
+		tagContent = fmt.Sprintf("#assignee @%s", usr.Username)
+		assigneeName = usr.FullName
+		if assigneeName == "" {
+			assigneeName = usr.Username
+		}
 	}
 
+	cmd := messageapp.SendMessageCommand{
+		ChatID:   chatID,
+		AuthorID: actorID,
+		Content:  tagContent,
+		Type:     message.TypeSystem,
+		ActorID:  &actorID,
+	}
+	
+	if _, err := s.sendMessageUC.Execute(ctx, cmd); err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	}
+
+	// Add human-readable message to batch
+	actorName := s.getActorDisplayName(ctx, actorID)
 	err := s.batcher.AddChange(ctx, actorID, chatID, actorName, ChangeTypeAssignee, assigneeName)
 	if err != nil {
-		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+		s.logger.Warn("failed to batch assignee change message", "error", err)
 	}
 
 	return &appcore.ActionResult{Success: true}, nil
 }
 
-// SetPriority creates a system message to change priority
+// SetPriority executes priority change via tag command and batches the human-readable message
 func (s *ActionService) SetPriority(
 	ctx context.Context,
 	chatID uuid.UUID,
 	priority string,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
-	actorName := s.getActorDisplayName(ctx, actorID)
+	// Execute the actual domain change via tag command
+	tagContent := fmt.Sprintf("#priority %s", priority)
+	cmd := messageapp.SendMessageCommand{
+		ChatID:   chatID,
+		AuthorID: actorID,
+		Content:  tagContent,
+		Type:     message.TypeSystem,
+		ActorID:  &actorID,
+	}
+	
+	if _, err := s.sendMessageUC.Execute(ctx, cmd); err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	}
 
+	// Add human-readable message to batch
+	actorName := s.getActorDisplayName(ctx, actorID)
 	err := s.batcher.AddChange(ctx, actorID, chatID, actorName, ChangeTypePriority, priority)
 	if err != nil {
-		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+		s.logger.Warn("failed to batch priority change message", "error", err)
 	}
 
 	return &appcore.ActionResult{Success: true}, nil
 }
 
-// SetDueDate creates a system message to set due date
+// SetDueDate executes due date change via tag command and batches the human-readable message
 func (s *ActionService) SetDueDate(
 	ctx context.Context,
 	chatID uuid.UUID,
 	dueDate *time.Time,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
-	actorName := s.getActorDisplayName(ctx, actorID)
-
+	// Execute the actual domain change via tag command
+	var tagContent string
 	var formattedDate string
 	if dueDate == nil {
-		formattedDate = "" // Empty means removed
+		tagContent = "#due none"
+		formattedDate = ""
 	} else {
+		tagContent = fmt.Sprintf("#due %s", dueDate.Format("2006-01-02"))
 		formattedDate = dueDate.Format("January 2, 2006")
 	}
 
+	cmd := messageapp.SendMessageCommand{
+		ChatID:   chatID,
+		AuthorID: actorID,
+		Content:  tagContent,
+		Type:     message.TypeSystem,
+		ActorID:  &actorID,
+	}
+	
+	if _, err := s.sendMessageUC.Execute(ctx, cmd); err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	}
+
+	// Add human-readable message to batch
+	actorName := s.getActorDisplayName(ctx, actorID)
 	err := s.batcher.AddChange(ctx, actorID, chatID, actorName, ChangeTypeDueDate, formattedDate)
 	if err != nil {
-		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+		s.logger.Warn("failed to batch due date change message", "error", err)
 	}
 
 	return &appcore.ActionResult{Success: true}, nil

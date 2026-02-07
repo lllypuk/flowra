@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -61,6 +62,7 @@ type ChangeBatcher struct {
 	flushFunc    func(ctx context.Context, chatID uuid.UUID, content string, actorID uuid.UUID) error
 	stopCleanup  chan struct{}
 	wg           sync.WaitGroup
+	logger       *slog.Logger
 }
 
 // NewChangeBatcher creates a new change batcher
@@ -121,21 +123,21 @@ func (cb *ChangeBatcher) AddChange(
 		}
 		cb.batches[key] = batch
 
-		// Schedule flush
+		// Schedule flush with background context to avoid cancellation
 		batch.timer = time.AfterFunc(cb.batchWindow, func() {
-			cb.flushBatch(ctx, key)
+			cb.flushBatch(context.Background(), key)
 		})
 	} else {
 		// Add to existing batch
 		batch.Changes = append(batch.Changes, change)
 		batch.LastTime = now
 
-		// Reset timer
+		// Reset timer with background context to avoid cancellation
 		if batch.timer != nil {
 			batch.timer.Stop()
 		}
 		batch.timer = time.AfterFunc(cb.batchWindow, func() {
-			cb.flushBatch(ctx, key)
+			cb.flushBatch(context.Background(), key)
 		})
 	}
 
@@ -158,7 +160,15 @@ func (cb *ChangeBatcher) flushBatch(ctx context.Context, key batchKey) {
 
 	// Send message
 	if cb.flushFunc != nil {
-		_ = cb.flushFunc(ctx, batch.ChatID, content, batch.ActorID)
+		if err := cb.flushFunc(ctx, batch.ChatID, content, batch.ActorID); err != nil {
+			if cb.logger != nil {
+				cb.logger.Error("failed to flush batch message",
+					"chat_id", batch.ChatID.String(),
+					"actor_id", batch.ActorID.String(),
+					"error", err.Error(),
+				)
+			}
+		}
 	}
 }
 

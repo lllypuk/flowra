@@ -812,7 +812,7 @@ func (c *Container) setupHTTPHandlers() {
 	// === 5. Chat Service (Real) ===
 	c.ChatService = c.createChatService()
 	c.ChatHandler = httphandler.NewChatHandlerWithHub(c.ChatService, c.Hub)
-	c.ChatActionHandler = httphandler.NewChatActionHandler(c.ActionService)
+	// Note: ChatActionHandler initialized after ActionService (step 14)
 	c.Logger.Debug("chat service and handlers initialized (real)")
 
 	// === 6. Auth Service ===
@@ -885,6 +885,8 @@ func (c *Container) setupHTTPHandlers() {
 
 	// === 14. Action Service ===
 	c.ActionService = service.NewActionService(c.SendMessageUC, c.UserRepo)
+	c.ChatActionHandler = httphandler.NewChatActionHandler(c.ActionService)
+	c.Logger.Debug("action service and chat action handler initialized")
 	c.Logger.Debug("action service initialized")
 
 	// Initialize TaskHandler with full service

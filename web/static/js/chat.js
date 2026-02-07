@@ -396,11 +396,18 @@ document.body.addEventListener('htmx:wsAfterMessage', function(evt) {
 // ============================================================
 
 /**
+ * Track presence state by user ID
+ */
+const presenceState = new Map();
+
+/**
  * Update presence indicator for a user
  * @param {string} userId - User ID
  * @param {boolean} isOnline - Whether user is online
  */
 function updateUserPresence(userId, isOnline) {
+    presenceState.set(userId, isOnline);
+    
     // Update all presence dots for this user
     var presenceDots = document.querySelectorAll('[data-user-id="' + userId + '"] .presence-dot');
     presenceDots.forEach(function(dot) {
@@ -413,7 +420,6 @@ function updateUserPresence(userId, isOnline) {
         }
     });
     
-    // Update online count
     updateOnlineCount();
 }
 
@@ -421,8 +427,13 @@ function updateUserPresence(userId, isOnline) {
  * Update the online user count display
  */
 function updateOnlineCount() {
-    var onlineDots = document.querySelectorAll('.presence-dot.online');
-    var onlineCount = onlineDots.length;
+    // Count unique online users from presence state
+    let onlineCount = 0;
+    presenceState.forEach(function(isOnline) {
+        if (isOnline) {
+            onlineCount++;
+        }
+    });
     
     // Update modal count
     var modalCountEl = document.querySelector('.online-count');
