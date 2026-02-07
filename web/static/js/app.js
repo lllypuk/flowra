@@ -10,8 +10,9 @@
     var config = {
         flashAutoHideDelay: 5000,
         toastAutoHideDelay: 5000,
-        wsReconnectDelay: 3000,
-        wsMaxReconnectAttempts: 5,
+        wsReconnectBaseDelay: 1000,
+        wsReconnectMaxDelay: 30000,
+        wsMaxReconnectAttempts: 10,
         typingIndicatorDelay: 300,
         typingIndicatorHideDelay: 3000
     };
@@ -19,6 +20,7 @@
     // ===== State =====
     var state = {
         wsReconnectAttempts: 0,
+        wsReconnectTimeoutId: null,
         undoStack: [],
         formStates: new Map()
     };
@@ -441,31 +443,120 @@
         });
     }
 
+    // ===== WebSocket Connection Status =====
+    var wsStatus = {
+        element: null,
+        dot: null,
+        state: 'disconnected',
+
+        init: function() {
+            this.element = document.getElementById('ws-status');
+            if (!this.element) return;
+
+            this.dot = this.element.querySelector('.status-dot');
+            if (!this.dot) return;
+
+            // Click to reconnect when disconnected
+            this.element.addEventListener('click', function() {
+                if (wsStatus.state === 'disconnected') {
+                    wsStatus.reconnect();
+                }
+            });
+        },
+
+        setState: function(newState, message) {
+            this.state = newState;
+            if (!this.dot || !this.element) return;
+
+            this.dot.className = 'status-dot ' + newState;
+            this.element.title = message;
+        },
+
+        setConnected: function() {
+            this.setState('connected', 'Real-time updates active');
+        },
+
+        setConnecting: function(attempt, maxAttempts) {
+            this.setState('connecting', 'Reconnecting... (attempt ' + attempt + '/' + maxAttempts + ')');
+        },
+
+        setDisconnected: function() {
+            this.setState('disconnected', 'Offline - click to reconnect');
+        },
+
+        reconnect: function() {
+            // Reset reconnection counter and trigger reconnect
+            state.wsReconnectAttempts = 0;
+            if (state.wsReconnectTimeoutId) {
+                clearTimeout(state.wsReconnectTimeoutId);
+                state.wsReconnectTimeoutId = null;
+            }
+            scheduleReconnect();
+        }
+    };
+
+    // ===== WebSocket Reconnection with Exponential Backoff =====
+    function calculateReconnectDelay() {
+        var exponential = Math.min(
+            config.wsReconnectBaseDelay * Math.pow(2, state.wsReconnectAttempts),
+            config.wsReconnectMaxDelay
+        );
+        var jitter = Math.random() * 1000;
+        return exponential + jitter;
+    }
+
+    function scheduleReconnect() {
+        if (state.wsReconnectAttempts >= config.wsMaxReconnectAttempts) {
+            wsStatus.setDisconnected();
+            showToast('Connection lost. Click status indicator to retry.', 'error');
+            return;
+        }
+
+        state.wsReconnectAttempts++;
+        var delay = calculateReconnectDelay();
+
+        wsStatus.setConnecting(state.wsReconnectAttempts, config.wsMaxReconnectAttempts);
+        console.log('WS reconnect attempt ' + state.wsReconnectAttempts + ' in ' + Math.round(delay) + 'ms');
+
+        state.wsReconnectTimeoutId = setTimeout(function() {
+            doReconnect();
+        }, delay);
+    }
+
+    function doReconnect() {
+        // Find HTMX WebSocket element and trigger reconnect
+        var wsElement = document.querySelector('[ws-connect]');
+        if (wsElement) {
+            htmx.trigger(wsElement, 'htmx:wsReconnect');
+        }
+    }
+
+    function resetReconnect() {
+        state.wsReconnectAttempts = 0;
+        if (state.wsReconnectTimeoutId) {
+            clearTimeout(state.wsReconnectTimeoutId);
+            state.wsReconnectTimeoutId = null;
+        }
+        wsStatus.setConnected();
+    }
+
     // ===== WebSocket Reconnection =====
     function setupWebSocketReconnection() {
-        document.body.addEventListener('htmx:wsError', function(evt) {
-            console.error('WebSocket error:', evt.detail);
-
-            if (state.wsReconnectAttempts < config.wsMaxReconnectAttempts) {
-                state.wsReconnectAttempts++;
-                showToast('Connection lost. Reconnecting...', 'warning');
-
-                setTimeout(function() {
-                    var wsElement = evt.detail.elt;
-                    if (wsElement && wsElement.hasAttribute('ws-connect')) {
-                        htmx.trigger(wsElement, 'reconnect');
-                    }
-                }, config.wsReconnectDelay);
-            } else {
-                showToast('Connection lost. Please refresh the page.', 'error');
-            }
-        });
-
         document.body.addEventListener('htmx:wsOpen', function() {
             if (state.wsReconnectAttempts > 0) {
                 showToast('Connection restored', 'success');
-                state.wsReconnectAttempts = 0;
             }
+            resetReconnect();
+        });
+
+        document.body.addEventListener('htmx:wsError', function(evt) {
+            console.error('WebSocket error:', evt.detail);
+            scheduleReconnect();
+        });
+
+        document.body.addEventListener('htmx:wsClose', function() {
+            console.log('WebSocket closed');
+            scheduleReconnect();
         });
     }
 
@@ -524,6 +615,7 @@
         setupKeyboardShortcuts();
         setupFormStatePreservation();
         setupWebSocketReconnection();
+        wsStatus.init();
     }
 
     // Run on DOMContentLoaded

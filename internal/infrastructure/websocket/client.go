@@ -282,6 +282,13 @@ func (c *Client) handleClientMessage(message []byte) {
 		c.hub.LeaveChat(c, msg.ChatID)
 		c.sendAck("unsubscribed", msg.ChatID)
 
+	case "chat.typing":
+		if msg.ChatID.IsZero() {
+			c.sendError("chat_id is required for chat.typing")
+			return
+		}
+		c.hub.BroadcastTyping(msg.ChatID, c.userID)
+
 	case "ping":
 		c.sendPong()
 

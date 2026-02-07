@@ -379,9 +379,94 @@ document.body.addEventListener('htmx:wsAfterMessage', function(evt) {
                 detail: msg.data,
                 bubbles: true
             }));
+        } else if (msg.type) {
+            // Dispatch event without data (for presence and typing)
+            document.body.dispatchEvent(new CustomEvent(msg.type, {
+                detail: msg,
+                bubbles: true
+            }));
         }
     } catch (e) {
         console.error('Failed to parse WebSocket message:', e);
+    }
+});
+
+// ============================================================
+// Presence handling
+// ============================================================
+
+/**
+ * Track presence state by user ID
+ */
+const presenceState = new Map();
+
+/**
+ * Update presence indicator for a user
+ * @param {string} userId - User ID
+ * @param {boolean} isOnline - Whether user is online
+ */
+function updateUserPresence(userId, isOnline) {
+    presenceState.set(userId, isOnline);
+    
+    // Update all presence dots for this user
+    var presenceDots = document.querySelectorAll('[data-user-id="' + userId + '"] .presence-dot');
+    presenceDots.forEach(function(dot) {
+        if (isOnline) {
+            dot.classList.add('online');
+            dot.classList.remove('offline');
+        } else {
+            dot.classList.add('offline');
+            dot.classList.remove('online');
+        }
+    });
+    
+    updateOnlineCount();
+}
+
+/**
+ * Update the online user count display
+ */
+function updateOnlineCount() {
+    // Count unique online users from presence state
+    let onlineCount = 0;
+    presenceState.forEach(function(isOnline) {
+        if (isOnline) {
+            onlineCount++;
+        }
+    });
+    
+    // Update modal count
+    var modalCountEl = document.querySelector('.online-count');
+    if (modalCountEl) {
+        modalCountEl.textContent = onlineCount + ' online';
+    }
+    
+    // Update header count
+    var headerCountEl = document.getElementById('chat-online-count');
+    if (headerCountEl) {
+        if (onlineCount > 0) {
+            headerCountEl.textContent = onlineCount + ' online';
+        } else {
+            headerCountEl.textContent = '';
+        }
+    }
+}
+
+/**
+ * Handle presence change events from WebSocket
+ */
+document.body.addEventListener('presence.changed', function(evt) {
+    if (evt.detail && evt.detail.user_id && typeof evt.detail.is_online === 'boolean') {
+        updateUserPresence(evt.detail.user_id, evt.detail.is_online);
+    }
+});
+
+/**
+ * Handle typing indicator events from WebSocket
+ */
+document.body.addEventListener('chat.typing', function(evt) {
+    if (evt.detail && evt.detail.user_id && evt.detail.chat_id) {
+        showTypingIndicator(evt.detail.chat_id, evt.detail.user_id);
     }
 });
 

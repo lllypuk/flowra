@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/lllypuk/flowra/internal/application/appcore"
@@ -11,10 +12,12 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// ActionService converts UI actions to chat messages with tags
+// ActionService converts UI actions to chat messages with human-readable content
 type ActionService struct {
 	sendMessageUC *messageapp.SendMessageUseCase
 	userRepo      appcore.UserRepository
+	batcher       *ChangeBatcher
+	logger        *slog.Logger
 }
 
 // NewActionService creates a new ActionService
@@ -22,69 +25,178 @@ func NewActionService(
 	sendMessageUC *messageapp.SendMessageUseCase,
 	userRepo appcore.UserRepository,
 ) *ActionService {
-	return &ActionService{
+	svc := &ActionService{
 		sendMessageUC: sendMessageUC,
 		userRepo:      userRepo,
+		logger:        slog.Default(),
 	}
+
+	// Initialize batcher with flush function and logger
+	svc.batcher = NewChangeBatcher(defaultBatchWindow, svc.flushBatchMessage)
+	svc.batcher.logger = svc.logger
+
+	return svc
 }
 
-// ChangeStatus creates a system message to change entity status
+// getActorDisplayName returns the display name for the actor
+func (s *ActionService) getActorDisplayName(ctx context.Context, actorID uuid.UUID) string {
+	if s.userRepo == nil {
+		return ""
+	}
+	usr, err := s.userRepo.GetByID(ctx, actorID)
+	if err != nil || usr == nil {
+		return ""
+	}
+	return usr.FullName
+}
+
+// ChangeStatus executes status change via tag command and batches the human-readable message
 func (s *ActionService) ChangeStatus(
 	ctx context.Context,
 	chatID uuid.UUID,
 	newStatus string,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
-	content := fmt.Sprintf("#status %s", newStatus)
-	return s.executeAction(ctx, chatID, content, actorID)
+	// Execute the actual domain change via tag command
+	tagContent := fmt.Sprintf("#status %s", newStatus)
+	cmd := messageapp.SendMessageCommand{
+		ChatID:   chatID,
+		AuthorID: actorID,
+		Content:  tagContent,
+		Type:     message.TypeSystem,
+		ActorID:  &actorID,
+	}
+
+	if _, err := s.sendMessageUC.Execute(ctx, cmd); err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	}
+
+	// Add human-readable message to batch
+	actorName := s.getActorDisplayName(ctx, actorID)
+	err := s.batcher.AddChange(ctx, actorID, chatID, actorName, ChangeTypeStatus, newStatus)
+	if err != nil {
+		s.logger.WarnContext(ctx, "failed to batch status change message", "error", err)
+	}
+
+	return &appcore.ActionResult{Success: true}, nil
 }
 
-// AssignUser creates a system message to assign a user
+// AssignUser executes assignee change via tag command and batches the human-readable message
 func (s *ActionService) AssignUser(
 	ctx context.Context,
 	chatID uuid.UUID,
 	assigneeID *uuid.UUID,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
-	var content string
+	// Execute the actual domain change via tag command
+	var tagContent string
+	var assigneeName string
 	if assigneeID == nil {
-		content = "#assignee @none"
+		tagContent = "#assignee @none"
+		assigneeName = ""
 	} else {
-		// Resolve userID to username
 		usr, err := s.userRepo.GetByID(ctx, *assigneeID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve user: %w", err)
 		}
-		content = fmt.Sprintf("#assignee @%s", usr.Username)
+		tagContent = fmt.Sprintf("#assignee @%s", usr.Username)
+		assigneeName = usr.FullName
+		if assigneeName == "" {
+			assigneeName = usr.Username
+		}
 	}
-	return s.executeAction(ctx, chatID, content, actorID)
+
+	cmd := messageapp.SendMessageCommand{
+		ChatID:   chatID,
+		AuthorID: actorID,
+		Content:  tagContent,
+		Type:     message.TypeSystem,
+		ActorID:  &actorID,
+	}
+
+	if _, err := s.sendMessageUC.Execute(ctx, cmd); err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	}
+
+	// Add human-readable message to batch
+	actorName := s.getActorDisplayName(ctx, actorID)
+	err := s.batcher.AddChange(ctx, actorID, chatID, actorName, ChangeTypeAssignee, assigneeName)
+	if err != nil {
+		s.logger.WarnContext(ctx, "failed to batch assignee change message", "error", err)
+	}
+
+	return &appcore.ActionResult{Success: true}, nil
 }
 
-// SetPriority creates a system message to change priority
+// SetPriority executes priority change via tag command and batches the human-readable message
 func (s *ActionService) SetPriority(
 	ctx context.Context,
 	chatID uuid.UUID,
 	priority string,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
-	content := fmt.Sprintf("#priority %s", priority)
-	return s.executeAction(ctx, chatID, content, actorID)
+	// Execute the actual domain change via tag command
+	tagContent := fmt.Sprintf("#priority %s", priority)
+	cmd := messageapp.SendMessageCommand{
+		ChatID:   chatID,
+		AuthorID: actorID,
+		Content:  tagContent,
+		Type:     message.TypeSystem,
+		ActorID:  &actorID,
+	}
+
+	if _, err := s.sendMessageUC.Execute(ctx, cmd); err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	}
+
+	// Add human-readable message to batch
+	actorName := s.getActorDisplayName(ctx, actorID)
+	err := s.batcher.AddChange(ctx, actorID, chatID, actorName, ChangeTypePriority, priority)
+	if err != nil {
+		s.logger.WarnContext(ctx, "failed to batch priority change message", "error", err)
+	}
+
+	return &appcore.ActionResult{Success: true}, nil
 }
 
-// SetDueDate creates a system message to set due date
+// SetDueDate executes due date change via tag command and batches the human-readable message
 func (s *ActionService) SetDueDate(
 	ctx context.Context,
 	chatID uuid.UUID,
 	dueDate *time.Time,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
-	var content string
+	// Execute the actual domain change via tag command
+	var tagContent string
+	var formattedDate string
 	if dueDate == nil {
-		content = "#due"
+		tagContent = "#due none"
+		formattedDate = ""
 	} else {
-		content = fmt.Sprintf("#due %s", dueDate.Format("2006-01-02"))
+		tagContent = fmt.Sprintf("#due %s", dueDate.Format("2006-01-02"))
+		formattedDate = dueDate.Format("January 2, 2006")
 	}
-	return s.executeAction(ctx, chatID, content, actorID)
+
+	cmd := messageapp.SendMessageCommand{
+		ChatID:   chatID,
+		AuthorID: actorID,
+		Content:  tagContent,
+		Type:     message.TypeSystem,
+		ActorID:  &actorID,
+	}
+
+	if _, err := s.sendMessageUC.Execute(ctx, cmd); err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	}
+
+	// Add human-readable message to batch
+	actorName := s.getActorDisplayName(ctx, actorID)
+	err := s.batcher.AddChange(ctx, actorID, chatID, actorName, ChangeTypeDueDate, formattedDate)
+	if err != nil {
+		s.logger.WarnContext(ctx, "failed to batch due date change message", "error", err)
+	}
+
+	return &appcore.ActionResult{Success: true}, nil
 }
 
 // InviteUser creates a system message to add a participant
@@ -94,11 +206,21 @@ func (s *ActionService) InviteUser(
 	userID uuid.UUID,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
+	actorName := s.getActorDisplayName(ctx, actorID)
 	usr, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve user: %w", err)
 	}
-	content := fmt.Sprintf("#invite @%s", usr.Username)
+	inviteeName := usr.FullName
+	if inviteeName == "" {
+		inviteeName = usr.Username
+	}
+	var content string
+	if actorName != "" {
+		content = fmt.Sprintf("✅ %s invited %s to the chat", actorName, inviteeName)
+	} else {
+		content = fmt.Sprintf("✅ %s was invited to the chat", inviteeName)
+	}
 	return s.executeAction(ctx, chatID, content, actorID)
 }
 
@@ -109,11 +231,21 @@ func (s *ActionService) RemoveUser(
 	userID uuid.UUID,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
+	actorName := s.getActorDisplayName(ctx, actorID)
 	usr, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve user: %w", err)
 	}
-	content := fmt.Sprintf("#remove @%s", usr.Username)
+	removedName := usr.FullName
+	if removedName == "" {
+		removedName = usr.Username
+	}
+	var content string
+	if actorName != "" {
+		content = fmt.Sprintf("✅ %s removed %s from the chat", actorName, removedName)
+	} else {
+		content = fmt.Sprintf("✅ %s was removed from the chat", removedName)
+	}
 	return s.executeAction(ctx, chatID, content, actorID)
 }
 
@@ -124,7 +256,13 @@ func (s *ActionService) Rename(
 	newTitle string,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
-	content := fmt.Sprintf("#title %s", newTitle)
+	actorName := s.getActorDisplayName(ctx, actorID)
+	var content string
+	if actorName != "" {
+		content = fmt.Sprintf("✅ %s changed title to: %s", actorName, newTitle)
+	} else {
+		content = fmt.Sprintf("✅ Title changed to: %s", newTitle)
+	}
 	return s.executeAction(ctx, chatID, content, actorID)
 }
 
@@ -134,7 +272,14 @@ func (s *ActionService) Close(
 	chatID uuid.UUID,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
-	return s.executeAction(ctx, chatID, "#close", actorID)
+	actorName := s.getActorDisplayName(ctx, actorID)
+	var content string
+	if actorName != "" {
+		content = fmt.Sprintf("✅ %s closed the chat", actorName)
+	} else {
+		content = "✅ Chat closed"
+	}
+	return s.executeAction(ctx, chatID, content, actorID)
 }
 
 // Reopen creates a system message to reopen the chat
@@ -143,7 +288,14 @@ func (s *ActionService) Reopen(
 	chatID uuid.UUID,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
-	return s.executeAction(ctx, chatID, "#reopen", actorID)
+	actorName := s.getActorDisplayName(ctx, actorID)
+	var content string
+	if actorName != "" {
+		content = fmt.Sprintf("✅ %s reopened the chat", actorName)
+	} else {
+		content = "✅ Chat reopened"
+	}
+	return s.executeAction(ctx, chatID, content, actorID)
 }
 
 // Delete creates a system message to delete the chat
@@ -152,7 +304,14 @@ func (s *ActionService) Delete(
 	chatID uuid.UUID,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
-	return s.executeAction(ctx, chatID, "#delete", actorID)
+	actorName := s.getActorDisplayName(ctx, actorID)
+	var content string
+	if actorName != "" {
+		content = fmt.Sprintf("✅ %s deleted the chat", actorName)
+	} else {
+		content = "✅ Chat deleted"
+	}
+	return s.executeAction(ctx, chatID, content, actorID)
 }
 
 // executeAction is the common implementation for all actions
@@ -182,4 +341,22 @@ func (s *ActionService) executeAction(
 		MessageID: result.Value.ID(),
 		Success:   true,
 	}, nil
+}
+
+// flushBatchMessage is called by the batcher to send a combined message
+func (s *ActionService) flushBatchMessage(
+	ctx context.Context,
+	chatID uuid.UUID,
+	content string,
+	actorID uuid.UUID,
+) error {
+	_, err := s.executeAction(ctx, chatID, content, actorID)
+	return err
+}
+
+// Shutdown stops the batcher and cleans up resources
+func (s *ActionService) Shutdown() {
+	if s.batcher != nil {
+		s.batcher.Close()
+	}
 }

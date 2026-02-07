@@ -233,6 +233,23 @@ docs/                         # Documentation (9+ files)
 - Comprehensive linting rules in `.golangci.yml`
 - Security-first approach with RBAC and secure defaults
 
+### Message Types
+Messages have three types defined in `internal/domain/message/message.go`:
+- `TypeUser` - Regular user messages
+- `TypeSystem` - System-generated messages (from UI actions via ActionService)
+- `TypeBot` - Bot responses (from tag processing)
+
+System and bot messages are rendered compactly without avatar/header. Consecutive messages within 5 seconds are visually grouped.
+
+### Tag System
+The tag system (`internal/domain/tag/`) processes commands in messages:
+- **Parser** - Extracts tags like `#task "Title"`, `#status "Done"`
+- **Processor** - Validates tags against current entity context
+- **Executor** - Applies commands to domain aggregates
+- **Formatter** - Generates human-readable bot responses with actor names
+
+UI actions (sidebar status/priority/assignee changes) go through `ActionService` which creates human-readable system messages like "John changed status to In Progress".
+
 ## Documentation Structure
 
 - **API Documentation**: `docs/api/` - OpenAPI spec, Postman collection

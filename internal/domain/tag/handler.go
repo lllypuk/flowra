@@ -22,6 +22,7 @@ type Handler struct {
 	executor    *CommandExecutor
 	messageRepo MessageRepository
 	chatRepo    ChatRepository
+	userRepo    UserRepository
 }
 
 // NewHandler creates a new Handler
@@ -30,12 +31,14 @@ func NewHandler(
 	executor *CommandExecutor,
 	messageRepo MessageRepository,
 	chatRepo ChatRepository,
+	userRepo UserRepository,
 ) *Handler {
 	return &Handler{
 		processor:   processor,
 		executor:    executor,
 		messageRepo: messageRepo,
 		chatRepo:    chatRepo,
+		userRepo:    userRepo,
 	}
 }
 
@@ -82,8 +85,11 @@ func (h *Handler) HandleMessageWithTags(
 	// 5. add execution errors to result
 	result.Errors = append(result.Errors, executionErrors...)
 
-	// 6. generate and send bot response
-	if botResponse := result.GenerateBotResponse(); botResponse != "" {
+	// 6. look up actor info for human-readable messages
+	actorInfo := h.getActorInfo(ctx, domainUUID.FromGoogleUUID(authorID))
+
+	// 7. generate and send bot response
+	if botResponse := result.GenerateBotResponseWithActor(actorInfo); botResponse != "" {
 		if sendErr := h.sendBotResponse(ctx, chatID, botResponse); sendErr != nil {
 			// log but don't fail the entire process
 			// TODO: add proper logging
@@ -92,6 +98,23 @@ func (h *Handler) HandleMessageWithTags(
 	}
 
 	return nil
+}
+
+// getActorInfo looks up user information for the actor
+func (h *Handler) getActorInfo(ctx context.Context, userID domainUUID.UUID) ActorInfo {
+	if h.userRepo == nil {
+		return ActorInfo{}
+	}
+
+	user, err := h.userRepo.FindByID(ctx, userID)
+	if err != nil || user == nil {
+		return ActorInfo{ID: userID.String()}
+	}
+
+	return ActorInfo{
+		ID:          userID.String(),
+		DisplayName: user.DisplayName(),
+	}
 }
 
 // executeCommands executes all commands from processing result
@@ -124,13 +147,14 @@ func (h *Handler) executeCommands(
 func (h *Handler) sendBotResponse(ctx context.Context, chatID uuid.UUID, response string) error {
 	domainChatID := domainUUID.FromGoogleUUID(chatID)
 
-	// create system message from bot
-	// TODO: use actual bot user ID instead of empty
-	botMessage, err := message.NewMessage(
+	// create bot message with TypeBot
+	botMessage, err := message.NewMessageWithType(
 		domainChatID,
 		domainUUID.UUID("00000000-0000-0000-0000-000000000000"), // System bot ID
 		response,
 		domainUUID.UUID(""), // not a thread
+		message.TypeBot,
+		nil, // no actor for bot messages from tag processing
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create bot message: %w", err)

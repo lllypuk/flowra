@@ -1,30 +1,25 @@
 {{define "message"}}
-<article class="message {{if .IsSystemMessage}}system-message{{end}} {{if .IsBotMessage}}bot-message{{end}} {{if .IsDeleted}}deleted-message{{end}}"
+<article class="message {{if .IsSystemMessage}}system-message{{end}} {{if .IsBotMessage}}bot-message{{end}} {{if .IsDeleted}}deleted-message{{end}} {{if .IsGroupStart}}group-start{{end}} {{if .IsGroupEnd}}group-end{{end}}"
          id="message-{{.ID}}">
-    {{if not .IsSystemMessage}}
+    {{if and (not .IsSystemMessage) (not .IsBotMessage)}}
     <div class="message-avatar">
         {{if .Author.AvatarURL}}
         <img src="{{.Author.AvatarURL}}" alt="{{.Author.Username}}">
         {{else}}
-        <div class="avatar-placeholder {{if .IsBotMessage}}bot-avatar{{end}}">
-            {{if .IsBotMessage}}🤖{{else}}{{if .Author.Username}}{{initials .Author.Username}}{{else}}?{{end}}{{end}}
+        <div class="avatar-placeholder">
+            {{if .Author.Username}}{{initials .Author.Username}}{{else}}?{{end}}
         </div>
         {{end}}
     </div>
     {{end}}
 
     <div class="message-content">
-        {{if not .IsSystemMessage}}
+        {{if and (not .IsSystemMessage) (not .IsBotMessage)}}
         <header class="message-header">
             <strong>{{.Author.DisplayName}}</strong>
-            {{if not .IsBotMessage}}
             <small class="text-muted">
                 @{{.Author.Username}}
             </small>
-            {{end}}
-            {{if .IsBotMessage}}
-            <small class="text-muted bot-badge">Bot</small>
-            {{end}}
             <time datetime="{{.CreatedAt}}" class="text-muted">
                 {{.CreatedAt | formatTime}}
             </time>
@@ -383,23 +378,42 @@
     margin-bottom: 0;
 }
 
-/* Bot message styles */
+/* Bot message styles - compact inline display */
 .message.bot-message {
-    background: rgba(59, 130, 246, 0.05);
-    border-left: 3px solid rgba(59, 130, 246, 0.3);
-    padding-left: 0.75rem;
-    margin: 0 -0.5rem 0 -0.5rem;
-    padding-right: 0.5rem;
+    padding: 0.25rem 1rem;
+    background: transparent;
+    gap: 0.5rem;
 }
 
+.message.bot-message:hover {
+    background: transparent;
+    margin: 0;
+    padding: 0.25rem 1rem;
+}
+
+.message.bot-message .message-avatar {
+    display: none;
+}
+
+.message.bot-message .message-content {
+    font-size: 0.875rem;
+    color: var(--muted-color);
+}
+
+.message.bot-message .message-body {
+    line-height: 1.4;
+}
+
+/* Success/error icon styling for bot messages */
+.message.bot-message .message-body p {
+    margin: 0.125rem 0;
+}
+
+/* Keep bot badge for when avatar is shown */
 .message.bot-message .avatar-placeholder.bot-avatar {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     font-size: 1.125rem;
-}
-
-.message.bot-message .message-header strong {
-    color: #667eea;
 }
 
 .message.bot-message .bot-badge {
@@ -410,5 +424,30 @@
     font-weight: 500;
     font-size: 0.625rem;
     text-transform: uppercase;
+}
+
+/* Message grouping for consecutive bot/system messages */
+.message.bot-message.group-start {
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--muted-border-color);
+    margin-top: 0.5rem;
+}
+
+.message.bot-message.group-end {
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--muted-border-color);
+    margin-bottom: 0.5rem;
+}
+
+/* Middle messages in a group - compact spacing */
+.message.bot-message:not(.group-start):not(.group-end) {
+    padding-top: 0.125rem;
+    padding-bottom: 0.125rem;
+}
+
+/* Single bot message (both start and end) */
+.message.bot-message.group-start.group-end {
+    border-top: 1px solid var(--muted-border-color);
+    border-bottom: 1px solid var(--muted-border-color);
 }
 </style>
