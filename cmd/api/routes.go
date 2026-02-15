@@ -154,15 +154,18 @@ func registerMessageRoutes(r *httpserver.Router, c *Container) {
 	if c.MessageHandler != nil {
 		messages.POST("", c.MessageHandler.Send)
 		messages.GET("", c.MessageHandler.List)
-		messages.PUT("/:id", c.MessageHandler.Edit)
-		messages.DELETE("/:id", c.MessageHandler.Delete)
+		
+		// Direct message routes (without chat_id in path) for edit/delete
+		// These are authenticated but not workspace-scoped since message ID is unique
+		r.Auth().PUT("/messages/:id", c.MessageHandler.Edit)
+		r.Auth().DELETE("/messages/:id", c.MessageHandler.Delete)
 	} else {
 		// Placeholder endpoints when handler is not initialized
 		placeholder := createPlaceholderHandler("Message")
 		messages.POST("", placeholder)
 		messages.GET("", placeholder)
-		messages.PUT("/:id", placeholder)
-		messages.DELETE("/:id", placeholder)
+		r.Auth().PUT("/messages/:id", placeholder)
+		r.Auth().DELETE("/messages/:id", placeholder)
 	}
 }
 

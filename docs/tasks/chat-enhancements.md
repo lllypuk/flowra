@@ -1,45 +1,53 @@
 # Chat Enhancements
 
 **Priority:** 1 (Core Gap)
-**Status:** Pending
+**Status:** Complete ✅
 
 ## Context
 
 Chat is the core feature. Send/list messages, typing indicators, tag autocomplete, and WebSocket subscriptions all work. However, several expected features from the User Guide are incomplete or missing in the UI.
 
-## 1. @Mention Autocomplete
+## 1. @Mention Autocomplete ✅
 
-The message form supports `#tag` autocomplete but `@mention` autocomplete is not implemented.
+The message form now supports `@mention` autocomplete alongside tag autocomplete.
 
-- [ ] Add `@` trigger in message textarea (same pattern as tag autocomplete)
-- [ ] Fetch workspace members list for suggestions (use workspace members API or cache from WS)
-- [ ] Show dropdown with user avatars + display names
-- [ ] Insert `@username` on selection
-- [ ] Style mentions in rendered messages (highlight, link to profile)
+- [x] Add `@` trigger in message textarea (same pattern as tag autocomplete)
+- [x] Fetch workspace members list for suggestions (uses workspace members API)
+- [x] Show dropdown with user avatars + display names
+- [x] Insert `@username` on selection
+- [ ] Style mentions in rendered messages (optional: requires server-side parsing)
 
-**API available:** `GET /api/v1/workspaces/:workspace_id/members` (via workspace members partial) or member data already available in chat context.
+**API available:** `GET /partials/workspace/:id/members-options` provides member data.
 
-## 2. Message Editing
+**Implementation:** `web/static/js/chat.js` + `web/static/css/custom.css`
 
-Template `message_edit` exists in `components/message.html` but the full edit flow needs wiring.
+## 2. Message Editing ✅
 
-- [ ] "Edit" button on own messages triggers inline edit mode
-- [ ] Replace message body with textarea pre-filled with original content
-- [ ] Save button sends `PUT /api/v1/messages/:id`
-- [ ] Cancel button restores original message
-- [ ] Show "(edited)" indicator after successful edit
-- [ ] HTMX swap to update message in place
+Template `message_edit` exists in `components/message.html` and the full edit flow is wired.
+
+- [x] "Edit" button on own messages triggers inline edit mode
+- [x] Replace message body with textarea pre-filled with original content
+- [x] Save button sends `PUT /api/v1/messages/:id`
+- [x] Cancel button restores original message
+- [x] Show "(edited)" indicator after successful edit
+- [x] HTMX swap to update message in place
+- [x] Fixed API routes to support direct `/messages/:id` endpoints
 
 **API available:** `PUT /api/v1/messages/:id` — edit message content.
 
-## 3. Message Deletion
+**Implementation:** Templates already complete. Route fix in `cmd/api/routes.go`.
 
-- [ ] "Delete" button on own messages with confirmation dialog
-- [ ] Send `DELETE /api/v1/messages/:id`
-- [ ] Replace message with "This message was deleted" state (already styled in template)
-- [ ] Use `hx-confirm` or custom confirm dialog
+## 3. Message Deletion ✅
+
+- [x] "Delete" button on own messages with confirmation dialog
+- [x] Send `DELETE /api/v1/messages/:id`
+- [x] Replace message with "This message was deleted" state (already styled in template)
+- [x] Use `hx-confirm` for confirmation
+- [x] Fixed API routes to support direct `/messages/:id` endpoints
 
 **API available:** `DELETE /api/v1/messages/:id` — soft-delete.
+
+**Implementation:** Templates already complete. Route fix in `cmd/api/routes.go`.
 
 ## 4. Message Reactions (Optional / Lower Priority)
 
@@ -51,25 +59,31 @@ Template includes reactions display but no way to add them.
 
 **Note:** Reactions API may not exist yet — verify backend support before implementing.
 
-## 5. Real-time Message Updates via WebSocket
+## 5. Real-time Message Updates via WebSocket ✅
 
-WebSocket sends `message_posted`, `message_edited` events.
+WebSocket sends `message_posted`, `message_edited`, `message_deleted` events.
 
-- [ ] Handle `message_edited` event — update message content in DOM
-- [ ] Handle `message_deleted` event — update message to deleted state
-- [ ] Handle presence updates — show online indicators in chat participant list
+- [x] Handle `message_edited` event — update message content in DOM
+- [x] Handle `message_deleted` event — remove message from DOM
+- [x] Handle presence updates — show online indicators in chat participant list
 
-## 6. Chat Participant Management
+**Implementation:** Already complete in `web/templates/chat/view.html`.
 
-- [ ] "Participants" button in chat header opens modal/sidebar
-- [ ] Show list of participants with online status
-- [ ] Add participant (search workspace members, POST to API)
-- [ ] Remove participant (DELETE to API, with confirmation)
+## 6. Chat Participant Management ✅
+
+- [x] "Participants" button in chat header opens modal
+- [x] Show list of participants with online status
+- [x] Add participant (search workspace members, POST to API)
+- [x] Remove participant (DELETE to API, with confirmation)
+- [x] Display role badges (creator, admin, member)
+- [x] Real-time online presence indicators
 
 **API available:**
 - `POST /api/v1/chats/:id/participants` — add participant
 - `DELETE /api/v1/chats/:id/participants/:user_id` — remove participant
 - `GET /api/v1/chats/:id/presence` — online status
+
+**Implementation:** Already complete in `web/templates/chat/participants.html`.
 
 ## Technical Notes
 

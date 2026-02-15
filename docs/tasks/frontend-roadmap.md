@@ -7,8 +7,8 @@ Backend is fully production-ready with 70+ API endpoints. Frontend needs to catc
 ## Task Index
 
 ### Priority 1 — Core Gaps (blocking RC)
-- [user-profile.md](user-profile.md) — User profile & settings page
-- [chat-enhancements.md](chat-enhancements.md) — Mention autocomplete, message editing, reactions
+- [x] [user-profile.md](user-profile.md) — User profile & settings page ✅
+- [x] [chat-enhancements.md](chat-enhancements.md) — Mention autocomplete, message editing, reactions ✅
 - [notification-improvements.md](notification-improvements.md) — Real-time updates, better UX
 
 ### Priority 2 — Feature Completeness
