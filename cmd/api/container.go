@@ -26,6 +26,7 @@ import (
 	"github.com/lllypuk/flowra/internal/infrastructure/auth"
 	"github.com/lllypuk/flowra/internal/infrastructure/eventbus"
 	"github.com/lllypuk/flowra/internal/infrastructure/eventstore"
+	"github.com/lllypuk/flowra/internal/infrastructure/filestorage"
 	"github.com/lllypuk/flowra/internal/infrastructure/healthcheck"
 	"github.com/lllypuk/flowra/internal/infrastructure/httpserver"
 	"github.com/lllypuk/flowra/internal/infrastructure/keycloak"
@@ -140,6 +141,7 @@ type Container struct {
 	ChatHandler         *httphandler.ChatHandler
 	ChatActionHandler   *httphandler.ChatActionHandler
 	MessageHandler      *httphandler.MessageHandler
+	FileHandler         *httphandler.FileHandler
 	TaskHandler         *httphandler.TaskHandler
 	NotificationHandler *httphandler.NotificationHandler
 	UserHandler         *httphandler.UserHandler
@@ -883,6 +885,15 @@ func (c *Container) setupHTTPHandlers() {
 	)
 	c.MessageHandler = httphandler.NewMessageHandler(c.MessageService)
 	c.Logger.Debug("message service and handler initialized (real)")
+
+	// === File Handler ===
+	fileStorage, fileErr := filestorage.NewLocalStorage("uploads")
+	if fileErr != nil {
+		c.Logger.Warn("failed to initialize file storage", "error", fileErr)
+	} else {
+		c.FileHandler = httphandler.NewFileHandler(fileStorage)
+		c.Logger.Debug("file handler initialized")
+	}
 
 	// === 14. Action Service ===
 	c.ActionService = service.NewActionService(c.SendMessageUC, c.UserRepo)

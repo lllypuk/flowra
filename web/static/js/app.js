@@ -1039,6 +1039,43 @@
         wsStatus.init();
     }
 
+    // ===== Image Lightbox =====
+    window.openLightbox = function(event, url, fileName) {
+        event.preventDefault();
+        var overlay = document.createElement('div');
+        overlay.className = 'lightbox-overlay';
+        overlay.onclick = function(e) {
+            if (e.target === overlay) overlay.remove();
+        };
+
+        var img = document.createElement('img');
+        img.src = url;
+        img.alt = fileName;
+        overlay.appendChild(img);
+
+        var closeBtn = document.createElement('button');
+        closeBtn.className = 'lightbox-close';
+        closeBtn.innerHTML = '&times;';
+        closeBtn.onclick = function() { overlay.remove(); };
+        overlay.appendChild(closeBtn);
+
+        var label = document.createElement('div');
+        label.className = 'lightbox-filename';
+        label.textContent = fileName;
+        overlay.appendChild(label);
+
+        document.body.appendChild(overlay);
+
+        // Close on Escape key
+        var escHandler = function(e) {
+            if (e.key === 'Escape') {
+                overlay.remove();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+    };
+
     // Run on DOMContentLoaded
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);

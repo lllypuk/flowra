@@ -2,6 +2,7 @@ package httphandler
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -98,6 +99,7 @@ type MessageViewData struct {
 	Author          MessageAuthorData
 	Tags            []MessageTagData
 	Reactions       []MessageReactionData
+	Attachments     []AttachmentViewData
 }
 
 // MessageAuthorData represents message author data for templates.
@@ -120,6 +122,16 @@ type MessageReactionData struct {
 	Count      int
 	HasReacted bool
 	Users      []string
+}
+
+// AttachmentViewData represents attachment data for templates.
+type AttachmentViewData struct {
+	FileID   string
+	FileName string
+	FileSize int64
+	MimeType string
+	URL      string
+	IsImage  bool
 }
 
 // ParticipantViewData represents participant data for templates.
@@ -962,6 +974,19 @@ func (h *ChatTemplateHandler) convertMessageToView(msg *message.Message, current
 	// Parse tags and get display content
 	parsed := parseMessageContent(msg.Content())
 
+	// Convert attachments to view data
+	attachments := make([]AttachmentViewData, 0)
+	for _, a := range msg.Attachments() {
+		attachments = append(attachments, AttachmentViewData{
+			FileID:   a.FileID().String(),
+			FileName: a.FileName(),
+			FileSize: a.FileSize(),
+			MimeType: a.MimeType(),
+			URL:      fmt.Sprintf("/api/v1/files/%s/%s", a.FileID().String(), a.FileName()),
+			IsImage:  strings.HasPrefix(a.MimeType(), "image/"),
+		})
+	}
+
 	return MessageViewData{
 		ID:              msg.ID().String(),
 		ChatID:          msg.ChatID().String(),
@@ -978,8 +1003,9 @@ func (h *ChatTemplateHandler) convertMessageToView(msg *message.Message, current
 			DisplayName: displayName,
 			AvatarURL:   "",
 		},
-		Tags:      parsed.Tags,
-		Reactions: reactions,
+		Tags:        parsed.Tags,
+		Reactions:   reactions,
+		Attachments: attachments,
 	}
 }
 

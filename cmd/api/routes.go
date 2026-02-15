@@ -77,6 +77,7 @@ func SetupRoutes(c *Container) *httpserver.Router {
 	registerWorkspaceRoutes(router, c)
 	registerChatRoutes(router, c)
 	registerMessageRoutes(router, c)
+	registerFileRoutes(router, c)
 	registerTaskRoutes(router, c)
 	registerNotificationRoutes(router, c)
 	registerUserRoutes(router, c)
@@ -166,6 +167,13 @@ func registerMessageRoutes(r *httpserver.Router, c *Container) {
 		messages.GET("", placeholder)
 		r.Auth().PUT("/messages/:id", placeholder)
 		r.Auth().DELETE("/messages/:id", placeholder)
+	}
+}
+
+// registerFileRoutes registers file upload/download routes.
+func registerFileRoutes(r *httpserver.Router, c *Container) {
+	if c.FileHandler != nil {
+		c.FileHandler.RegisterRoutes(r)
 	}
 }
 

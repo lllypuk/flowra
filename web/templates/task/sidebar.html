@@ -137,6 +137,48 @@
 
         <hr>
 
+        <!-- Attachments -->
+        <div class="field">
+            <label>Attachments</label>
+            <div class="task-attachments"
+                 id="task-attachments-{{.Task.ID}}"
+                 ondragover="event.preventDefault(); this.classList.add('drag-over')"
+                 ondragleave="this.classList.remove('drag-over')"
+                 ondrop="handleTaskFileDrop(event, '{{.Task.ID}}')">
+                {{if .Task.Attachments}}
+                {{range .Task.Attachments}}
+                <div class="task-attachment-item" id="task-att-{{.FileID}}">
+                    {{if .IsImage}}
+                    <a href="{{.URL}}" target="_blank" onclick="openLightbox(event, '{{.URL}}', '{{.FileName}}')">
+                        <img src="{{.URL}}" alt="{{.FileName}}" class="task-att-thumb">
+                    </a>
+                    {{else}}
+                    <span class="attachment-file-icon">📄</span>
+                    {{end}}
+                    <a href="{{.URL}}" class="task-att-name" download="{{.FileName}}">{{.FileName}}</a>
+                    <span class="task-att-size">{{.FileSize | formatFileSize}}</span>
+                    <button type="button" class="task-att-remove"
+                            onclick="removeTaskAttachment('{{.FileID}}', '{{.FileName}}')"
+                            title="Remove">&times;</button>
+                </div>
+                {{end}}
+                {{end}}
+                <div class="task-att-upload">
+                    <input type="file" id="task-file-input-{{.Task.ID}}"
+                           class="file-input-hidden" multiple
+                           accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip"
+                           onchange="handleTaskFileUpload(this, '{{.Task.ID}}')">
+                    <button type="button" class="small outline"
+                            onclick="document.getElementById('task-file-input-{{.Task.ID}}').click()">
+                        📎 Add File
+                    </button>
+                    <span class="task-att-hint">or drag & drop</span>
+                </div>
+            </div>
+        </div>
+
+        <hr>
+
         <!-- Activity Timeline -->
         <div class="field">
             <label>Activity</label>
@@ -185,6 +227,60 @@ document.body.addEventListener('htmx:responseError', function(evt) {
         }
     }
 });
+
+// Task file upload
+function handleTaskFileUpload(input, taskId) {
+    if (!input.files || input.files.length === 0) return;
+    for (var i = 0; i < input.files.length; i++) {
+        uploadTaskFile(input.files[i], taskId);
+    }
+    input.value = '';
+}
+
+function handleTaskFileDrop(event, taskId) {
+    event.preventDefault();
+    event.currentTarget.classList.remove('drag-over');
+    var files = event.dataTransfer.files;
+    for (var i = 0; i < files.length; i++) {
+        uploadTaskFile(files[i], taskId);
+    }
+}
+
+function uploadTaskFile(file, taskId) {
+    if (file.size > 10 * 1024 * 1024) {
+        showToast('File "' + file.name + '" exceeds 10 MB limit', 'error');
+        return;
+    }
+    var formData = new FormData();
+    formData.append('file', file);
+
+    fetch('/api/v1/files/upload', {
+        method: 'POST',
+        body: formData
+    }).then(function(resp) {
+        if (!resp.ok) throw new Error('Upload failed');
+        return resp.json();
+    }).then(function(result) {
+        if (result.data) {
+            showToast('File uploaded: ' + file.name, 'success');
+            // Refresh sidebar to show the new attachment
+            htmx.ajax('GET', '/partials/tasks/' + taskId + '/sidebar', {
+                target: '#task-sidebar-' + taskId,
+                swap: 'outerHTML'
+            });
+        }
+    }).catch(function(err) {
+        console.error('Task file upload error:', err);
+        showToast('Failed to upload ' + file.name, 'error');
+    });
+}
+
+function removeTaskAttachment(fileId, fileName) {
+    if (!confirm('Remove attachment "' + fileName + '"?')) return;
+    // For now just remove the element visually
+    var el = document.getElementById('task-att-' + fileId);
+    if (el) el.remove();
+}
 </script>
 
 <style>
@@ -321,6 +417,98 @@ document.body.addEventListener('htmx:responseError', function(evt) {
 .activity-timeline {
     max-height: 300px;
     overflow-y: auto;
+}
+
+/* Task Attachments */
+.task-attachments {
+    border: 2px dashed var(--muted-border-color);
+    border-radius: 6px;
+    padding: 0.75rem;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+.task-attachments.drag-over {
+    border-color: var(--primary);
+    background: var(--primary-focus);
+}
+
+.task-attachment-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0;
+    border-bottom: 1px solid var(--muted-border-color);
+}
+
+.task-attachment-item:last-of-type {
+    border-bottom: none;
+}
+
+.task-att-thumb {
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.task-att-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.8125rem;
+    text-decoration: none;
+    color: var(--primary);
+}
+
+.task-att-name:hover {
+    text-decoration: underline;
+}
+
+.task-att-size {
+    font-size: 0.6875rem;
+    color: var(--muted-color);
+    flex-shrink: 0;
+}
+
+.task-att-remove {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--muted-color);
+    font-size: 1rem;
+    padding: 0;
+    width: auto;
+    margin: 0;
+    flex-shrink: 0;
+}
+
+.task-att-remove:hover {
+    color: var(--flowra-danger, #ef4444);
+}
+
+.task-att-upload {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.task-att-upload button {
+    margin-bottom: 0;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.task-att-hint {
+    font-size: 0.6875rem;
+    color: var(--muted-color);
+}
+
+.file-input-hidden {
+    display: none;
 }
 
 /* Edit form transitions */

@@ -37,6 +37,28 @@
         <div class="message-body">
             {{.Content | safeHTML}}
         </div>
+
+        {{if .Attachments}}
+        <div class="message-attachments">
+            {{range .Attachments}}
+            {{if .IsImage}}
+            <div class="attachment-image">
+                <a href="{{.URL}}" target="_blank" class="lightbox-trigger" onclick="openLightbox(event, '{{.URL}}', '{{.FileName}}')">
+                    <img src="{{.URL}}" alt="{{.FileName}}" loading="lazy">
+                </a>
+            </div>
+            {{else}}
+            <a href="{{.URL}}" class="attachment-file" download="{{.FileName}}">
+                <span class="attachment-file-icon">📄</span>
+                <span class="attachment-info">
+                    <span class="attachment-file-name">{{.FileName}}</span>
+                    <span class="attachment-file-size">{{.FileSize | formatFileSize}}</span>
+                </span>
+            </a>
+            {{end}}
+            {{end}}
+        </div>
+        {{end}}
         {{end}}
 
         {{if and (not (empty .Tags)) (not .IsDeleted)}}
@@ -431,6 +453,140 @@
     padding-top: 0.5rem;
     border-top: 1px solid var(--muted-border-color);
     margin-top: 0.5rem;
+}
+
+/* Attachment styles */
+.message-attachments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.attachment-image {
+    max-width: 300px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--muted-border-color);
+    cursor: pointer;
+}
+
+.attachment-image img {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 200px;
+    object-fit: cover;
+    transition: opacity 0.15s ease;
+}
+
+.attachment-image:hover img {
+    opacity: 0.9;
+}
+
+.attachment-file {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--secondary-focus);
+    border: 1px solid var(--muted-border-color);
+    border-radius: 6px;
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.15s ease;
+    max-width: 250px;
+}
+
+.attachment-file:hover {
+    background: var(--primary-focus);
+    border-color: var(--primary);
+}
+
+.attachment-file .attachment-file-icon {
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.attachment-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.attachment-file-name {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.attachment-file-size {
+    font-size: 0.6875rem;
+    color: var(--muted-color);
+}
+
+/* Lightbox overlay */
+.lightbox-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: zoom-out;
+    animation: lightboxFadeIn 0.2s ease;
+}
+
+.lightbox-overlay img {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 4px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+}
+
+.lightbox-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lightbox-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.lightbox-filename {
+    position: absolute;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.875rem;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+}
+
+@keyframes lightboxFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 .message.bot-message.group-end {

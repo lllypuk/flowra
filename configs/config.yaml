@@ -60,3 +60,7 @@ websocket:
   write_buffer_size: 1024
   ping_interval: 30s
   pong_timeout: 60s
+
+uploads:
+  dir: "uploads"
+  max_file_size: 10485760  # 10 MB

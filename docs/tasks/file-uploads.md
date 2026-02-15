@@ -1,11 +1,11 @@
 # File Uploads & Attachments
 
 **Priority:** 3 (Quality of Life)
-**Status:** Pending
+**Status:** Complete ✅
 
 ## Context
 
-No file upload functionality exists in the frontend or backend. Messages and tasks currently support text only. This is a significant feature that requires both backend and frontend work.
+File upload functionality for messages and tasks. Includes backend file storage, upload/download API, and frontend UI with image preview, lightbox, drag-and-drop, and clipboard paste.
 
 ## Scope Assessment
 
@@ -20,30 +20,30 @@ No file upload functionality exists in the frontend or backend. Messages and tas
 ## Deliverables (Frontend)
 
 ### Message Attachments
-- [ ] File attachment button in message form (paperclip icon)
-- [ ] File picker dialog (accept common types: images, docs, PDFs)
-- [ ] Upload progress indicator
-- [ ] Preview attached files before sending
-- [ ] Remove attachment before sending
-- [ ] Display attachments in sent messages (image preview, file icon + name for others)
-- [ ] Click to download/open attachment
+- [x] File attachment button in message form (paperclip icon)
+- [x] File picker dialog (accept common types: images, docs, PDFs)
+- [x] Upload progress indicator
+- [x] Preview attached files before sending
+- [x] Remove attachment before sending
+- [x] Display attachments in sent messages (image preview, file icon + name for others)
+- [x] Click to download/open attachment
 
 ### Task Attachments
-- [ ] File upload area in task sidebar
-- [ ] Drag-and-drop support
-- [ ] List of attached files with download links
-- [ ] Remove attachment (with confirmation)
+- [x] File upload area in task sidebar
+- [x] Drag-and-drop support
+- [x] List of attached files with download links
+- [x] Remove attachment (with confirmation)
 
 ### Image Handling
-- [ ] Inline image preview in messages (thumbnail with click-to-expand)
-- [ ] Lightbox for full-size image viewing
-- [ ] Image paste from clipboard
+- [x] Inline image preview in messages (thumbnail with click-to-expand)
+- [x] Lightbox for full-size image viewing
+- [x] Image paste from clipboard
 
 ## Prerequisites
 
-- [ ] Backend file upload API must be implemented first
-- [ ] File storage configuration must be decided
-- [ ] Max file size limits defined
+- [x] Backend file upload API must be implemented first
+- [x] File storage configuration must be decided
+- [x] Max file size limits defined
 
 ## Technical Notes
 

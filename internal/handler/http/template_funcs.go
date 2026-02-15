@@ -71,6 +71,9 @@ func TemplateFuncs() template.FuncMap {
 		"mul": mul,
 		"div": div,
 		"mod": mod,
+
+		// File helpers
+		"formatFileSize": formatFileSize,
 	}
 }
 
@@ -450,4 +453,22 @@ func renderMarkdown(s string) string {
 
 	// Wrap in paragraph
 	return "<p>" + result + "</p>"
+}
+
+func formatFileSize(size int64) string {
+	const (
+		kb = 1024
+		mb = 1024 * kb
+		gb = 1024 * mb
+	)
+	switch {
+	case size >= gb:
+		return fmt.Sprintf("%.1f GB", float64(size)/float64(gb))
+	case size >= mb:
+		return fmt.Sprintf("%.1f MB", float64(size)/float64(mb))
+	case size >= kb:
+		return fmt.Sprintf("%.1f KB", float64(size)/float64(kb))
+	default:
+		return fmt.Sprintf("%d B", size)
+	}
 }
