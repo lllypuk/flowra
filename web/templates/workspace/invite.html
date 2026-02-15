@@ -11,27 +11,36 @@
         </header>
 
         <form
-            hx-post="/api/v1/workspaces/{{.WorkspaceID}}/members"
+            id="invite-member-form"
+            hx-post="/partials/workspace/{{.WorkspaceID}}/invite"
             hx-target="#members-list"
             hx-swap="innerHTML"
-            hx-on::after-request="if(event.detail.successful) document.getElementById('modal-container').innerHTML = ''"
+            hx-on::after-request="if(event.detail.successful) { window.showToast('Member invited successfully', 'success'); document.getElementById('modal-container').innerHTML = ''; htmx.trigger('#members-list', 'refreshMembers'); }"
         >
-            <label for="email">
-                Email Address
+            <label for="user-search">
+                Search User
                 <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    placeholder="colleague@company.com"
-                    required
-                    autofocus
+                    type="text"
+                    id="user-search"
+                    name="search"
+                    placeholder="Type username or email..."
+                    autocomplete="off"
+                    hx-get="/partials/users/search"
+                    hx-trigger="keyup changed delay:300ms"
+                    hx-target="#user-search-results"
+                    hx-swap="innerHTML"
                 />
+                <small class="text-muted">Search by username or email address</small>
             </label>
+
+            <div id="user-search-results" class="user-search-results"></div>
+
+            <input type="hidden" id="selected-user-id" name="user_id" required />
 
             <label for="role">
                 Role
                 <select id="role" name="role">
-                    <option value="member">Member</option>
+                    <option value="member" selected>Member</option>
                     <option value="admin">Admin</option>
                 </select>
             </label>
@@ -44,9 +53,91 @@
                 >
                     Cancel
                 </button>
-                <button type="submit">Send Invitation</button>
+                <button type="submit" id="invite-submit-btn" disabled>Invite Member</button>
             </footer>
         </form>
     </article>
 </dialog>
+
+<style>
+    .user-search-results {
+        margin: 1rem 0;
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid var(--muted-border-color);
+        border-radius: 4px;
+        display: none;
+    }
+
+    .user-search-results:not(:empty) {
+        display: block;
+    }
+
+    .user-search-item {
+        padding: 0.75rem;
+        cursor: pointer;
+        border-bottom: 1px solid var(--muted-border-color);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .user-search-item:last-child {
+        border-bottom: none;
+    }
+
+    .user-search-item:hover {
+        background: var(--primary-focus);
+    }
+
+    .user-search-item.selected {
+        background: var(--primary);
+        color: var(--primary-inverse);
+    }
+
+    .user-search-item .avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--primary);
+        color: var(--primary-inverse);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 0.875rem;
+    }
+
+    .user-search-item .user-info {
+        flex: 1;
+    }
+
+    .user-search-item .user-info strong {
+        display: block;
+    }
+
+    .user-search-item .user-info small {
+        color: inherit;
+        opacity: 0.8;
+    }
+</style>
+
+<script>
+(function() {
+    if (window.__inviteFormLoaded) return;
+    window.__inviteFormLoaded = true;
+
+    window.selectUser = function(userId, username, displayName) {
+        document.getElementById('selected-user-id').value = userId;
+        document.getElementById('user-search').value = displayName || username;
+        document.getElementById('invite-submit-btn').disabled = false;
+        document.getElementById('user-search-results').innerHTML = '';
+        
+        document.querySelectorAll('.user-search-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+        event.target.closest('.user-search-item')?.classList.add('selected');
+    };
+})();
+</script>
 {{end}}

@@ -285,6 +285,10 @@ func registerPageRoutes(e *echo.Echo, c *Container) {
 	partials.GET("/workspace/:id/members-options", c.TemplateHandler.WorkspaceMembersOptionsPartial)
 	partials.PUT("/workspace/:id/members/:user_id/role", c.TemplateHandler.UpdateMemberRolePartial)
 	partials.GET("/workspace/:id/invite-form", c.TemplateHandler.WorkspaceInviteForm)
+	partials.POST("/workspace/:id/invite", c.TemplateHandler.WorkspaceInvite)
+	partials.GET("/workspace/:id/transfer-form", c.TemplateHandler.WorkspaceTransferForm)
+	partials.POST("/workspace/:id/transfer", c.TemplateHandler.WorkspaceTransfer)
+	partials.GET("/users/search", c.TemplateHandler.UserSearchPartial)
 
 	// Notification pages and partials
 	if c.NotificationTemplateHandler != nil {

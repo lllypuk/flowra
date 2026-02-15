@@ -23,7 +23,8 @@ import (
 
 // Template handler constants.
 const (
-	defaultPageLimit = 100
+	defaultPageLimit           = 100
+	maxAdminMembersForTransfer = 100
 )
 
 // TemplateRenderer implements echo.Renderer for HTML template rendering.
@@ -995,9 +996,9 @@ func (h *TemplateHandler) UpdateMemberRolePartial(c echo.Context) error {
 	roleStr := c.FormValue("role")
 	var role workspace.Role
 	switch roleStr {
-	case "admin":
+	case roleAdmin:
 		role = workspace.RoleAdmin
-	case "member":
+	case roleMember:
 		role = workspace.RoleMember
 	default:
 		return c.String(http.StatusBadRequest, "Invalid role")
@@ -1064,10 +1065,8 @@ func (h *TemplateHandler) WorkspaceSettings(c echo.Context) error {
 		return h.NotFound(c)
 	}
 
-	// Only owner can access settings
-	if member.Role().String() != "owner" {
-		return c.Redirect(http.StatusFound, "/workspaces/"+workspaceID.String())
-	}
+	// Only owner can access settings (allow any member to access to see leave option)
+	memberRole := member.Role().String()
 
 	memberCount, _ := h.workspaceService.GetMemberCount(c.Request().Context(), workspaceID)
 
@@ -1079,7 +1078,8 @@ func (h *TemplateHandler) WorkspaceSettings(c echo.Context) error {
 			MemberCount: memberCount,
 			CreatedAt:   ws.CreatedAt(),
 		},
-		"UserRole": member.Role().String(),
+		"UserRole":      memberRole,
+		"CurrentUserID": user.ID,
 	}
 
 	return h.render(c, "workspace/settings.html", "Settings - "+ws.Name(), data)
@@ -1092,6 +1092,214 @@ func (h *TemplateHandler) WorkspaceInviteForm(c echo.Context) error {
 		"WorkspaceID": workspaceID,
 	}
 	return h.RenderPartial(c, "workspace/invite-form", data)
+}
+
+// UserSearchPartial handles user search for invite functionality.
+func (h *TemplateHandler) UserSearchPartial(c echo.Context) error {
+	query := c.QueryParam("search")
+
+	// For now, return empty results since we don't have a user search service
+	// In a real implementation, this would search users by username/email
+	data := map[string]any{
+		"Users": []UserSearchResult{},
+		"Query": query,
+	}
+
+	// If query is empty, return empty state
+	if query == "" {
+		return h.RenderPartial(c, "user_search_results", data)
+	}
+
+	// TODO: Implement actual user search when user service is available
+	// For now, this is a placeholder that returns empty results
+	return h.RenderPartial(c, "user_search_results", data)
+}
+
+// WorkspaceInvite handles inviting a user to workspace via HTMX.
+func (h *TemplateHandler) WorkspaceInvite(c echo.Context) error {
+	user := h.getUserView(c)
+	if user == nil {
+		return c.String(http.StatusUnauthorized, "Unauthorized")
+	}
+
+	if h.memberService == nil {
+		return c.String(http.StatusServiceUnavailable, "Service unavailable")
+	}
+
+	workspaceID, err := uuid.ParseUUID(c.Param("id"))
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid workspace ID")
+	}
+
+	userIDToAdd, err := uuid.ParseUUID(c.FormValue("user_id"))
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid user ID")
+	}
+
+	currentUserID, err := uuid.ParseUUID(user.ID)
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid current user ID")
+	}
+
+	// Verify current user has admin privileges
+	member, err := h.memberService.GetMember(c.Request().Context(), workspaceID, currentUserID)
+	if err != nil {
+		return c.String(http.StatusForbidden, "Not a member of this workspace")
+	}
+
+	memberRole := member.Role().String()
+	if memberRole != roleAdmin && memberRole != roleOwner {
+		return c.String(http.StatusForbidden, "Only admins can invite members")
+	}
+
+	// Parse role
+	roleStr := c.FormValue("role")
+	var role workspace.Role
+	switch roleStr {
+	case roleAdmin:
+		role = workspace.RoleAdmin
+	case roleMember:
+		role = workspace.RoleMember
+	default:
+		role = workspace.RoleMember
+	}
+
+	// Add member
+	_, err = h.memberService.AddMember(c.Request().Context(), workspaceID, userIDToAdd, role)
+	if err != nil {
+		h.logger.Error("failed to add member", slog.String("error", err.Error()))
+		return c.String(http.StatusInternalServerError, "Failed to add member: "+err.Error())
+	}
+
+	// Return updated members list
+	return h.WorkspaceMembersPartial(c)
+}
+
+// WorkspaceTransferForm returns the transfer ownership form partial.
+func (h *TemplateHandler) WorkspaceTransferForm(c echo.Context) error {
+	user := h.getUserView(c)
+	if user == nil {
+		return c.String(http.StatusUnauthorized, "Unauthorized")
+	}
+
+	if h.memberService == nil {
+		return c.String(http.StatusServiceUnavailable, "Service unavailable")
+	}
+
+	workspaceID, err := uuid.ParseUUID(c.Param("id"))
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid workspace ID")
+	}
+
+	currentUserID, err := uuid.ParseUUID(user.ID)
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid user ID")
+	}
+
+	// Verify current user is owner
+	isOwner, _ := h.memberService.IsOwner(c.Request().Context(), workspaceID, currentUserID)
+	if !isOwner {
+		return c.String(http.StatusForbidden, "Only owner can transfer ownership")
+	}
+
+	// Get all admin members (excluding current user)
+	members, _, err := h.memberService.ListMembers(c.Request().Context(), workspaceID, 0, maxAdminMembersForTransfer)
+	if err != nil {
+		return c.String(http.StatusInternalServerError, "Failed to load members")
+	}
+
+	adminMembers := []MemberViewData{}
+	for _, m := range members {
+		if m.Role().String() == "admin" && m.UserID().String() != user.ID {
+			adminMembers = append(adminMembers, MemberViewData{
+				UserID:      m.UserID().String(),
+				Username:    "user" + m.UserID().String()[:8],
+				DisplayName: "User " + m.UserID().String()[:8],
+			})
+		}
+	}
+
+	data := map[string]any{
+		"WorkspaceID":  c.Param("id"),
+		"AdminMembers": adminMembers,
+	}
+
+	return h.RenderPartial(c, "workspace/transfer-form", data)
+}
+
+// WorkspaceTransfer handles transferring workspace ownership.
+func (h *TemplateHandler) WorkspaceTransfer(c echo.Context) error {
+	user := h.getUserView(c)
+	if user == nil {
+		return c.String(http.StatusUnauthorized, "Unauthorized")
+	}
+
+	if h.memberService == nil {
+		return c.String(http.StatusServiceUnavailable, "Service unavailable")
+	}
+
+	workspaceID, err := uuid.ParseUUID(c.Param("id"))
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid workspace ID")
+	}
+
+	newOwnerID, err := uuid.ParseUUID(c.FormValue("new_owner_id"))
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid new owner ID")
+	}
+
+	currentUserID, err := uuid.ParseUUID(user.ID)
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid user ID")
+	}
+
+	// Verify confirmation
+	confirmation := c.FormValue("confirmation")
+	if confirmation != "TRANSFER" {
+		return c.String(http.StatusBadRequest, "Confirmation text does not match")
+	}
+
+	// Verify current user is owner
+	isOwner, _ := h.memberService.IsOwner(c.Request().Context(), workspaceID, currentUserID)
+	if !isOwner {
+		return c.String(http.StatusForbidden, "Only owner can transfer ownership")
+	}
+
+	// Verify new owner is an admin
+	newOwnerMember, err := h.memberService.GetMember(c.Request().Context(), workspaceID, newOwnerID)
+	if err != nil {
+		return c.String(http.StatusBadRequest, "New owner is not a member of this workspace")
+	}
+
+	if newOwnerMember.Role().String() != "admin" {
+		return c.String(http.StatusBadRequest, "New owner must be an admin")
+	}
+
+	// Transfer ownership: promote new owner, demote current owner
+	_, err = h.memberService.UpdateMemberRole(c.Request().Context(), workspaceID, newOwnerID, workspace.RoleOwner)
+	if err != nil {
+		h.logger.Error("failed to promote new owner", slog.String("error", err.Error()))
+		return c.String(http.StatusInternalServerError, "Failed to transfer ownership")
+	}
+
+	_, err = h.memberService.UpdateMemberRole(c.Request().Context(), workspaceID, currentUserID, workspace.RoleAdmin)
+	if err != nil {
+		h.logger.Error("failed to demote current owner", slog.String("error", err.Error()))
+		// Try to rollback
+		_, _ = h.memberService.UpdateMemberRole(c.Request().Context(), workspaceID, newOwnerID, workspace.RoleAdmin)
+		return c.String(http.StatusInternalServerError, "Failed to transfer ownership")
+	}
+
+	return c.NoContent(http.StatusOK)
+}
+
+// UserSearchResult represents a user in search results.
+type UserSearchResult struct {
+	ID          string
+	Username    string
+	DisplayName string
+	AvatarURL   string
+	Email       string
 }
 
 // WorkspaceViewData represents workspace data for templates.

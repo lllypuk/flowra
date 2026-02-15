@@ -12,7 +12,7 @@ Backend is fully production-ready with 70+ API endpoints. Frontend needs to catc
 - [x] [notification-improvements.md](notification-improvements.md) — Real-time updates, better UX ✅
 
 ### Priority 2 — Feature Completeness
-- [workspace-settings.md](workspace-settings.md) — Full workspace admin UI
+- [x] [workspace-settings.md](workspace-settings.md) — Full workspace admin UI ✅
 - [board-enhancements.md](board-enhancements.md) — Task search, filters, bulk operations
 - [task-detail-improvements.md](task-detail-improvements.md) — Inline editing polish, activity timeline
 

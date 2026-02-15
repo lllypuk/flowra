@@ -43,10 +43,12 @@
         <button hx-delete="/api/v1/workspaces/{{$.WorkspaceID}}/members/{{.Member.UserID}}"
                 hx-target="#member-{{.Member.UserID}}"
                 hx-swap="outerHTML swap:1s"
-                hx-confirm="Remove {{.Member.Username}} from workspace?"
+                hx-confirm="Remove {{.Member.DisplayName}} (@{{.Member.Username}}) from workspace? They will lose access to all chats and tasks."
                 class="outline secondary small">
             Remove
         </button>
+        {{else if eq .Member.UserID $.CurrentUserID}}
+        <span class="text-muted"><small>You</small></span>
         {{end}}
     </td>
     {{end}}

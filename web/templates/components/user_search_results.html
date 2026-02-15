@@ -1,0 +1,27 @@
+{{define "user_search_results"}}
+{{if .Users}}
+    {{range .Users}}
+    <div class="user-search-item" onclick="selectUser('{{.ID}}', '{{.Username}}', '{{.DisplayName}}')">
+        <div class="avatar">
+            {{if .AvatarURL}}
+            <img src="{{.AvatarURL}}" alt="{{.Username}}" />
+            {{else}}
+            {{initials .DisplayName}}
+            {{end}}
+        </div>
+        <div class="user-info">
+            <strong>{{.DisplayName}}</strong>
+            <small>@{{.Username}}</small>
+        </div>
+    </div>
+    {{end}}
+{{else}}
+    <div style="padding: 1rem; text-align: center; color: var(--muted-color);">
+        {{if .Query}}
+        No users found for "{{.Query}}"
+        {{else}}
+        Start typing to search for users
+        {{end}}
+    </div>
+{{end}}
+{{end}}
