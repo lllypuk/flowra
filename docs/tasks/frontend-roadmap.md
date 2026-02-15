@@ -14,7 +14,7 @@ Backend is fully production-ready with 70+ API endpoints. Frontend needs to catc
 ### Priority 2 — Feature Completeness
 - [x] [workspace-settings.md](workspace-settings.md) — Full workspace admin UI ✅
 - [x] [board-enhancements.md](board-enhancements.md) — Task search, filters, bulk operations ✅
-- [task-detail-improvements.md](task-detail-improvements.md) — Inline editing polish, activity timeline
+- [x] [task-detail-improvements.md](task-detail-improvements.md) — Inline editing polish, activity timeline ✅
 
 ### Priority 3 — Quality of Life
 - [dark-mode.md](dark-mode.md) — Dark mode toggle UI

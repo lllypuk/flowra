@@ -2,8 +2,10 @@ package httphandler
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -51,6 +53,12 @@ type ChatBasicInfo struct {
 	Type        string
 }
 
+// UserLookupService resolves user IDs to display names for the activity timeline.
+type UserLookupService interface {
+	// GetDisplayName returns the display name for a user ID. Returns empty string if not found.
+	GetDisplayName(ctx context.Context, userID string) string
+}
+
 // TaskDetailMemberService is an alias for BoardMemberService to avoid interface duplication.
 // We use the same interface since task details need the same member operations as the board.
 type TaskDetailMemberService = BoardMemberService
@@ -78,6 +86,7 @@ type TaskDetailViewData struct {
 	DueDate      *time.Time
 	IsOverdue    bool
 	IsDueSoon    bool
+	IsDueToday   bool
 	OverdueDays  int
 	DaysUntilDue int
 	CreatedAt    time.Time
@@ -113,6 +122,7 @@ type TaskDetailTemplateHandler struct {
 	eventService    TaskEventService
 	memberService   TaskDetailMemberService
 	chatInfoService ChatBasicInfoService
+	userLookup      UserLookupService
 }
 
 // NewTaskDetailTemplateHandler creates a new task detail template handler.
@@ -123,6 +133,7 @@ func NewTaskDetailTemplateHandler(
 	eventService TaskEventService,
 	memberService TaskDetailMemberService,
 	chatInfoService ChatBasicInfoService,
+	userLookup UserLookupService,
 ) *TaskDetailTemplateHandler {
 	if logger == nil {
 		logger = slog.Default()
@@ -134,6 +145,7 @@ func NewTaskDetailTemplateHandler(
 		eventService:    eventService,
 		memberService:   memberService,
 		chatInfoService: chatInfoService,
+		userLookup:      userLookup,
 	}
 }
 
@@ -287,20 +299,32 @@ func (h *TaskDetailTemplateHandler) TaskActivityPartial(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Invalid task ID")
 	}
 
-	var activities []ActivityViewData
-
-	if h.eventService != nil {
-		events, eventsErr := h.eventService.GetEvents(c.Request().Context(), taskID)
-		if eventsErr == nil {
-			activities = h.convertEventsToActivities(events)
+	// Parse pagination: page parameter (1-based)
+	page := 1
+	if p := c.QueryParam("page"); p != "" {
+		if parsed, parseErr := strconv.Atoi(p); parseErr == nil && parsed > 0 {
+			page = parsed
 		}
 	}
 
+	var activities []ActivityViewData
+
+	activities, hasMore := h.loadPaginatedActivities(c.Request().Context(), taskID, page)
+
 	data := map[string]any{
 		"Activities": activities,
+		"TaskID":     taskID.String(),
+		"HasMore":    hasMore,
+		"NextPage":   page + 1,
 	}
 
-	return h.renderPartial(c, "task/activity", data)
+	// Use pagination-only template for subsequent pages to avoid nested wrappers
+	templateName := "task/activity"
+	if page > 1 {
+		templateName = "task/activity-page"
+	}
+
+	return h.renderPartial(c, templateName, data)
 }
 
 // TaskEditTitleForm returns the inline title edit form.
@@ -466,32 +490,46 @@ func (h *TaskDetailTemplateHandler) convertToDetailView(t *taskapp.ReadModel) Ta
 		view.AssigneeID = t.AssignedTo.String()
 	}
 
-	// Calculate overdue and due soon status
-	if t.DueDate != nil && t.Status != task.StatusDone {
-		now := time.Now()
-		dueDate := *t.DueDate
-
-		if dueDate.Before(now) {
-			view.IsOverdue = true
-			view.OverdueDays = int(now.Sub(dueDate).Hours() / hoursPerDay)
-		} else {
-			daysUntil := int(dueDate.Sub(now).Hours() / hoursPerDay)
-			view.DaysUntilDue = daysUntil
-			if daysUntil <= dueSoonDays {
-				view.IsDueSoon = true
-			}
-		}
-	}
+	h.calculateDueStatus(&view, t)
 
 	return view
 }
 
+// calculateDueStatus sets overdue/due-soon/due-today flags on the view data.
+func (h *TaskDetailTemplateHandler) calculateDueStatus(view *TaskDetailViewData, t *taskapp.ReadModel) {
+	if t.DueDate == nil || t.Status == task.StatusDone {
+		return
+	}
+
+	now := time.Now()
+	dueDate := *t.DueDate
+
+	if dueDate.Before(now) {
+		view.IsOverdue = true
+		view.OverdueDays = int(now.Sub(dueDate).Hours() / hoursPerDay)
+		return
+	}
+
+	daysUntil := int(dueDate.Sub(now).Hours() / hoursPerDay)
+	view.DaysUntilDue = daysUntil
+
+	switch {
+	case daysUntil == 0:
+		view.IsDueToday = true
+	case daysUntil <= dueSoonDays:
+		view.IsDueSoon = true
+	}
+}
+
 // convertEventsToActivities converts domain events to activity view data.
-func (h *TaskDetailTemplateHandler) convertEventsToActivities(events []event.DomainEvent) []ActivityViewData {
+func (h *TaskDetailTemplateHandler) convertEventsToActivities(
+	ctx context.Context,
+	events []event.DomainEvent,
+) []ActivityViewData {
 	activities := make([]ActivityViewData, 0, len(events))
 
 	for _, e := range events {
-		activity := h.convertEventToActivity(e)
+		activity := h.convertEventToActivity(ctx, e)
 		if activity != nil {
 			activities = append(activities, *activity)
 		}
@@ -502,56 +540,118 @@ func (h *TaskDetailTemplateHandler) convertEventsToActivities(events []event.Dom
 		activities[i], activities[j] = activities[j], activities[i]
 	}
 
-	// Limit to default activity limit
-	if len(activities) > defaultActivityLimit {
-		activities = activities[:defaultActivityLimit]
-	}
-
 	return activities
 }
 
+// loadPaginatedActivities loads and paginates activity items for a task.
+func (h *TaskDetailTemplateHandler) loadPaginatedActivities(
+	ctx context.Context,
+	taskID uuid.UUID,
+	page int,
+) ([]ActivityViewData, bool) {
+	if h.eventService == nil {
+		return nil, false
+	}
+
+	events, err := h.eventService.GetEvents(ctx, taskID)
+	if err != nil {
+		return nil, false
+	}
+
+	allActivities := h.convertEventsToActivities(ctx, events)
+
+	start := (page - 1) * defaultActivityLimit
+	if start >= len(allActivities) {
+		return nil, false
+	}
+
+	end := start + defaultActivityLimit
+	if end > len(allActivities) {
+		end = len(allActivities)
+	}
+
+	return allActivities[start:end], end < len(allActivities)
+}
+
 // convertEventToActivity converts a single domain event to activity view data.
-func (h *TaskDetailTemplateHandler) convertEventToActivity(e event.DomainEvent) *ActivityViewData {
+func (h *TaskDetailTemplateHandler) convertEventToActivity(ctx context.Context, e event.DomainEvent) *ActivityViewData {
 	metadata := e.Metadata()
+
+	username := h.resolveUsername(ctx, metadata.UserID)
 
 	activity := &ActivityViewData{
 		Actor: ActivityActorData{
 			ID:       metadata.UserID,
-			Username: "user", // TODO: Load from user service
+			Username: username,
 		},
 		CreatedAt: e.OccurredAt(),
 	}
 
-	switch e.EventType() {
-	case "task.created":
+	switch te := e.(type) {
+	case *task.Created:
 		activity.ActionText = "created this task"
-	case "task.status_changed":
+	case *task.StatusChanged:
 		activity.ActionText = "changed status"
 		activity.Details = true
-		// TODO: Extract old/new values from event data
-	case "task.priority_changed":
+		activity.OldValue = string(te.OldStatus)
+		activity.NewValue = string(te.NewStatus)
+	case *task.PriorityChanged:
 		activity.ActionText = "changed priority"
 		activity.Details = true
-	case "task.assigned":
-		activity.ActionText = "assigned this task"
-		activity.Details = true
-	case "task.unassigned":
-		activity.ActionText = "removed assignee"
-	case "task.due_date_set":
-		activity.ActionText = "set due date"
-		activity.Details = true
-	case "task.due_date_cleared":
-		activity.ActionText = "cleared due date"
-	case "task.title_updated":
+		activity.OldValue = string(te.OldPriority)
+		activity.NewValue = string(te.NewPriority)
+	case *task.AssigneeChanged:
+		if te.NewAssignee != nil {
+			activity.ActionText = "assigned this task"
+			activity.Details = true
+			activity.NewValue = h.resolveUsername(ctx, te.NewAssignee.String())
+			if te.OldAssignee != nil {
+				activity.OldValue = h.resolveUsername(ctx, te.OldAssignee.String())
+			}
+		} else {
+			activity.ActionText = "removed assignee"
+		}
+	case *task.DueDateChanged:
+		if te.NewDueDate != nil {
+			activity.ActionText = "set due date"
+			activity.Details = true
+			activity.NewValue = te.NewDueDate.Format("Jan 2, 2006")
+			if te.OldDueDate != nil {
+				activity.OldValue = te.OldDueDate.Format("Jan 2, 2006")
+			}
+		} else {
+			activity.ActionText = "cleared due date"
+		}
+	case *task.Updated:
 		activity.ActionText = "updated title"
-	case "task.description_updated":
-		activity.ActionText = "updated description"
+	case *task.Deleted:
+		activity.ActionText = "deleted this task"
 	default:
-		// Skip unknown event types
-		return nil
+		// Check by event type string for any events not matched by type assertion
+		switch e.EventType() {
+		case "task.title_updated":
+			activity.ActionText = "updated title"
+		case "task.description_updated":
+			activity.ActionText = "updated description"
+		default:
+			return nil
+		}
 	}
 
 	return activity
+}
+
+// resolveUsername resolves a user ID to a display name.
+func (h *TaskDetailTemplateHandler) resolveUsername(ctx context.Context, userID string) string {
+	if h.userLookup != nil && userID != "" {
+		if name := h.userLookup.GetDisplayName(ctx, userID); name != "" {
+			return name
+		}
+	}
+	if userID != "" && len(userID) > 8 {
+		return fmt.Sprintf("user-%s", userID[:8])
+	}
+	return "Unknown"
 }
 
 // getStatusOptions returns the available status options for dropdowns.

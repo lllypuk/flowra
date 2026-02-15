@@ -36,6 +36,7 @@
                 <select hx-put="/api/v1/tasks/{{.Task.ID}}/status"
                         hx-trigger="change"
                         hx-swap="none"
+                        hx-indicator="#status-save-indicator"
                         name="status"
                         class="status-select status-{{.Task.Status | lower}}">
                     {{range .Statuses}}
@@ -45,6 +46,7 @@
                     </option>
                     {{end}}
                 </select>
+                <span id="status-save-indicator" class="htmx-indicator save-indicator">Saving...</span>
             </div>
 
             <div class="field">
@@ -52,6 +54,7 @@
                 <select hx-put="/api/v1/tasks/{{.Task.ID}}/priority"
                         hx-trigger="change"
                         hx-swap="none"
+                        hx-indicator="#priority-save-indicator"
                         name="priority"
                         class="priority-select priority-{{.Task.Priority | lower}}">
                     {{range .Priorities}}
@@ -61,6 +64,7 @@
                     </option>
                     {{end}}
                 </select>
+                <span id="priority-save-indicator" class="htmx-indicator save-indicator">Saving...</span>
             </div>
         </div>
 
@@ -89,9 +93,11 @@
         </div>
 
         {{if .Task.DueDate}}
-        <div class="due-status {{if .Task.IsOverdue}}overdue{{else if .Task.IsDueSoon}}due-soon{{end}}">
+        <div class="due-status {{if .Task.IsOverdue}}overdue{{else if .Task.IsDueToday}}due-today{{else if .Task.IsDueSoon}}due-soon{{end}}">
             {{if .Task.IsOverdue}}
                 ⚠️ Overdue by {{.Task.OverdueDays}} days
+            {{else if .Task.IsDueToday}}
+                🔴 Due today
             {{else if .Task.IsDueSoon}}
                 ⏰ Due in {{.Task.DaysUntilDue}} days
             {{else}}
@@ -99,6 +105,16 @@
             {{end}}
         </div>
         {{end}}
+
+        <!-- Quick Date Buttons -->
+        <div class="quick-dates">
+            <button type="button" class="btn-quick-date small outline"
+                    onclick="setQuickDate('{{.Task.ID}}', 0)">Today</button>
+            <button type="button" class="btn-quick-date small outline"
+                    onclick="setQuickDate('{{.Task.ID}}', 1)">Tomorrow</button>
+            <button type="button" class="btn-quick-date small outline"
+                    onclick="setQuickDate('{{.Task.ID}}', 7)">Next Week</button>
+        </div>
 
         <hr>
 
@@ -141,8 +157,8 @@
         </a>
         <button hx-delete="/api/v1/tasks/{{.Task.ID}}"
                 hx-confirm="Delete this task? This cannot be undone."
-                hx-target="#task-sidebar-{{.Task.ID}}"
-                hx-swap="delete"
+                hx-swap="none"
+                hx-on::after-request="if(event.detail.successful) handleTaskDeleted('{{.Task.ID}}')"
                 class="btn secondary outline">
             Delete Task
         </button>
@@ -153,11 +169,20 @@
 // Handle real-time updates
 document.body.addEventListener('task.updated', function(evt) {
     if (evt.detail.task_id === '{{.Task.ID}}') {
-        // Refresh sidebar
         htmx.ajax('GET', '/partials/tasks/{{.Task.ID}}/sidebar', {
             target: '#task-sidebar-{{.Task.ID}}',
             swap: 'outerHTML'
         });
+    }
+});
+
+// Handle HTMX errors on task forms with flash messages
+document.body.addEventListener('htmx:responseError', function(evt) {
+    var target = evt.detail.target;
+    if (target && target.closest && target.closest('.task-sidebar-full')) {
+        if (typeof showToast === 'function') {
+            showToast('Failed to save changes. Please try again.', 'error');
+        }
     }
 });
 </script>
@@ -226,7 +251,7 @@ document.body.addEventListener('task.updated', function(evt) {
     padding: 0.5rem;
     border-radius: 4px;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background 0.2s, box-shadow 0.2s;
 }
 
 .editable-field:hover {
@@ -256,14 +281,70 @@ document.body.addEventListener('task.updated', function(evt) {
     color: var(--flowra-danger);
 }
 
+.due-status.due-today {
+    background: color-mix(in srgb, #e67e22 15%, white);
+    color: #d35400;
+    font-weight: 600;
+}
+
 .due-status.due-soon {
     background: color-mix(in srgb, var(--flowra-warning) 15%, white);
     color: var(--flowra-warning);
 }
 
+.quick-dates {
+    display: flex;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.btn-quick-date {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    width: auto;
+    margin-bottom: 0;
+}
+
+.save-indicator {
+    display: none;
+    font-size: 0.75rem;
+    color: var(--muted-color);
+    margin-top: 0.25rem;
+}
+
+.htmx-request .save-indicator,
+.htmx-request.save-indicator {
+    display: inline;
+}
+
 .activity-timeline {
     max-height: 300px;
     overflow-y: auto;
+}
+
+/* Edit form transitions */
+.edit-title-form,
+.edit-description-form {
+    animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-2px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Loading state for edit forms */
+.edit-title-form.htmx-request input,
+.edit-description-form.htmx-request textarea {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.edit-title-form.htmx-request button[type="submit"],
+.edit-description-form.htmx-request button[type="submit"] {
+    opacity: 0.6;
+    pointer-events: none;
 }
 </style>
 {{end}}

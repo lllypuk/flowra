@@ -16,6 +16,7 @@ import (
 	wsapp "github.com/lllypuk/flowra/internal/application/workspace"
 	"github.com/lllypuk/flowra/internal/config"
 	"github.com/lllypuk/flowra/internal/domain/chat"
+	"github.com/lllypuk/flowra/internal/domain/event"
 	"github.com/lllypuk/flowra/internal/domain/message"
 	notificationdomain "github.com/lllypuk/flowra/internal/domain/notification"
 	"github.com/lllypuk/flowra/internal/domain/tag"
@@ -1565,9 +1566,10 @@ func (c *Container) setupTaskDetailTemplateHandler() {
 		c.TemplateRenderer,
 		c.Logger,
 		taskService,
-		nil, // TaskEventService - TODO: implement for activity timeline
+		c.createTaskEventService(),
 		c.createBoardMemberService(),
 		chatInfoService,
+		c.createUserLookupService(),
 	)
 
 	c.Logger.Debug("task detail template handler initialized")
@@ -1584,6 +1586,47 @@ func (c *Container) createChatBasicInfoService() httphandler.ChatBasicInfoServic
 	return &chatBasicInfoServiceAdapter{
 		collection: c.MongoDB.Database(c.MongoDBName).Collection("chats_read_model"),
 	}
+}
+
+// createTaskEventService creates a service implementing TaskEventService using the EventStore.
+func (c *Container) createTaskEventService() httphandler.TaskEventService {
+	return &taskEventServiceAdapter{eventStore: c.EventStore}
+}
+
+// taskEventServiceAdapter adapts EventStore to TaskEventService.
+type taskEventServiceAdapter struct {
+	eventStore appcore.EventStore
+}
+
+// GetEvents implements TaskEventService.
+func (a *taskEventServiceAdapter) GetEvents(ctx context.Context, taskID uuid.UUID) ([]event.DomainEvent, error) {
+	return a.eventStore.LoadEvents(ctx, taskID.String())
+}
+
+// createUserLookupService creates a service implementing UserLookupService.
+func (c *Container) createUserLookupService() httphandler.UserLookupService {
+	return &userLookupAdapter{userRepo: c.UserRepo}
+}
+
+// userLookupAdapter adapts MongoUserRepository to UserLookupService.
+type userLookupAdapter struct {
+	userRepo *mongodb.MongoUserRepository
+}
+
+// GetDisplayName implements UserLookupService.
+func (a *userLookupAdapter) GetDisplayName(ctx context.Context, userID string) string {
+	id, err := uuid.ParseUUID(userID)
+	if err != nil {
+		return ""
+	}
+	u, err := a.userRepo.FindByID(ctx, id)
+	if err != nil {
+		return ""
+	}
+	if dn := u.DisplayName(); dn != "" {
+		return dn
+	}
+	return u.Username()
 }
 
 // createNotificationTemplateService creates a service implementing NotificationTemplateService.

@@ -646,6 +646,96 @@
         });
     }
 
+    // ===== Task Detail Helpers =====
+
+    /**
+     * Close the task sidebar panel.
+     */
+    function closeTaskSidebar() {
+        var sidebar = document.querySelector('.task-sidebar');
+        if (sidebar) {
+            sidebar.style.display = 'none';
+            var layout = document.querySelector('.chat-layout');
+            if (layout) {
+                layout.classList.remove('with-task-sidebar');
+            }
+        }
+    }
+    window.closeTaskSidebar = closeTaskSidebar;
+
+    /**
+     * Handle task deletion: close sidebar and remove board card.
+     * @param {string} taskId
+     */
+    function handleTaskDeleted(taskId) {
+        var card = document.getElementById('task-' + taskId);
+        if (card) {
+            card.remove();
+            document.querySelectorAll('.board-column').forEach(function(column) {
+                var count = column.querySelectorAll('.task-card').length;
+                var countEl = column.querySelector('.column-count');
+                if (countEl) countEl.textContent = count;
+            });
+        }
+        closeTaskSidebar();
+        if (typeof showToast === 'function') {
+            showToast('Task deleted', 'success');
+        }
+    }
+    window.handleTaskDeleted = handleTaskDeleted;
+
+    /**
+     * Handle keyboard shortcuts for inline title editing.
+     * Enter = save, Escape = cancel.
+     */
+    function handleEditKeydown(event, form) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            htmx.trigger(form, 'submit');
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            var cancelBtn = form.querySelector('button[type="button"]');
+            if (cancelBtn) cancelBtn.click();
+        }
+    }
+    window.handleEditKeydown = handleEditKeydown;
+
+    /**
+     * Handle keyboard shortcuts for inline description editing.
+     * Ctrl+Enter = save, Escape = cancel.
+     */
+    function handleDescriptionKeydown(event, form) {
+        if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+            event.preventDefault();
+            htmx.trigger(form, 'submit');
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            var cancelBtn = form.querySelector('button[type="button"]');
+            if (cancelBtn) cancelBtn.click();
+        }
+    }
+    window.handleDescriptionKeydown = handleDescriptionKeydown;
+
+    /**
+     * Set a quick due date relative to today.
+     * @param {string} taskId
+     * @param {number} daysFromNow
+     */
+    function setQuickDate(taskId, daysFromNow) {
+        var date = new Date();
+        date.setDate(date.getDate() + daysFromNow);
+        var formatted = date.toISOString().split('T')[0];
+        var sidebar = document.getElementById('task-sidebar-' + taskId);
+        var dateInput = sidebar
+            ? sidebar.querySelector('.date-input')
+            : document.querySelector('.date-input');
+        if (dateInput) {
+            dateInput.value = formatted;
+            htmx.trigger(dateInput, 'change');
+        }
+    }
+    window.setQuickDate = setQuickDate;
+
     // ===== Initialize =====
     function init() {
         setupFlashMessages();

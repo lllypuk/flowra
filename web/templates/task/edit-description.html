@@ -2,7 +2,9 @@
 <form hx-put="/api/v1/tasks/{{.Task.ID}}"
       hx-target="this"
       hx-swap="outerHTML"
-      class="edit-description-form">
+      hx-indicator="this"
+      class="edit-description-form"
+      onkeydown="handleDescriptionKeydown(event, this)">
     <textarea name="description"
               rows="4"
               maxlength="2000"
@@ -17,6 +19,7 @@
             Cancel
         </button>
     </div>
+    <small class="text-muted">Ctrl+Enter to save, Escape to cancel</small>
 </form>
 
 <style>

@@ -1,7 +1,7 @@
 # Task Detail Improvements
 
 **Priority:** 2 (Feature Completeness)
-**Status:** Pending
+**Status:** Complete
 
 ## Context
 
@@ -20,36 +20,38 @@ Task sidebar opens from board card click and provides status/priority/assignee/d
 ## Deliverables
 
 ### Inline Editing Polish
-- [ ] Title: click to edit, Enter to save, Escape to cancel
-- [ ] Description: click to edit, show markdown preview
-- [ ] Smooth transitions between view/edit modes
-- [ ] Loading state on save (disable inputs, show spinner)
-- [ ] Error handling with flash messages
+- [x] Title: click to edit, Enter to save, Escape to cancel
+- [x] Description: click to edit, show markdown preview
+- [x] Smooth transitions between view/edit modes
+- [x] Loading state on save (disable inputs, show spinner)
+- [x] Error handling with flash messages
 
 ### Activity Timeline
-- [ ] Render activity items from task events (status changes, assignments, etc.)
-- [ ] Show actor name, action description, timestamp
-- [ ] Relative timestamps ("2 hours ago")
-- [ ] Paginate old activity items
+- [x] Render activity items from task events (status changes, assignments, etc.)
+- [x] Show actor name, action description, timestamp
+- [x] Relative timestamps ("2 hours ago")
+- [x] Paginate old activity items
 
 ### Due Date Improvements
-- [ ] Calendar date picker (native `<input type="date">` or custom)
-- [ ] Visual warnings: overdue (red), due soon (yellow), due today (orange)
-- [ ] Quick date buttons: Today, Tomorrow, Next Week
-- [ ] Clear due date option
+- [x] Calendar date picker (native `<input type="date">` or custom)
+- [x] Visual warnings: overdue (red), due soon (yellow), due today (orange)
+- [x] Quick date buttons: Today, Tomorrow, Next Week
+- [x] Clear due date option
 
 ### Linked Chat
-- [ ] "Open Chat" button navigates to linked chat
+- [x] "Open Chat" button navigates to linked chat
 - [ ] Show last few messages preview in sidebar
 - [ ] Indicate if chat is active/closed
 
 ### Task Deletion
-- [ ] Delete button with confirmation dialog
-- [ ] After deletion, close sidebar and remove card from board
-- [ ] HTMX swap or JS removal
+- [x] Delete button with confirmation dialog
+- [x] After deletion, close sidebar and remove card from board
+- [x] HTMX swap or JS removal
 
 ## Technical Notes
 
 - Task sidebar templates: `task/sidebar.html`, `task/edit-title.html`, `task/edit-description.html`, `task/activity.html`
 - Sidebar opens/closes via JS, loaded via HTMX partial
 - Follow existing HTMX pattern for inline edits (hx-put, hx-swap)
+- Activity timeline uses EventStore to load domain events and type-asserts to extract old/new values
+- UserLookupService resolves actor IDs to display names for activity items
