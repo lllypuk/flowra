@@ -329,30 +329,37 @@ func (h *TemplateHandler) getUserView(c echo.Context) *UserView {
 		return nil
 	}
 
-	// Get user from context if available
-	user := c.Get("user")
-	if user == nil {
-		// Return minimal user view with just ID
-		return &UserView{
-			ID: userID.String(),
-		}
-	}
-
-	// Try to extract user details from context
-	// This assumes the auth middleware populates user details
-	if userMap, ok := user.(map[string]any); ok {
-		return &UserView{
-			ID:          getString(userMap, "id"),
-			Email:       getString(userMap, "email"),
-			Username:    getString(userMap, "username"),
-			DisplayName: getString(userMap, "display_name"),
-			AvatarURL:   getString(userMap, "avatar_url"),
-		}
-	}
-
-	return &UserView{
+	// Build user view from context, with fallbacks to ensure username is always populated
+	view := &UserView{
 		ID: userID.String(),
 	}
+
+	// Try to get user details from the "user" context map
+	if user := c.Get("user"); user != nil {
+		if userMap, ok := user.(map[string]any); ok {
+			view.Email = getString(userMap, "email")
+			view.Username = getString(userMap, "username")
+			view.DisplayName = getString(userMap, "display_name")
+			view.AvatarURL = getString(userMap, "avatar_url")
+		}
+	}
+
+	// Fall back to individual middleware context keys if username is still empty
+	if view.Username == "" {
+		view.Username = middleware.GetUsername(c)
+	}
+	if view.Email == "" {
+		view.Email = middleware.GetEmail(c)
+	}
+	if view.DisplayName == "" {
+		if view.Username != "" {
+			view.DisplayName = view.Username
+		} else if view.Email != "" {
+			view.DisplayName = view.Email
+		}
+	}
+
+	return view
 }
 
 // getFlash retrieves flash messages from the session.

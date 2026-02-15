@@ -616,7 +616,7 @@ function updateUserPresence(userId, isOnline) {
 /**
  * Update the online user count display
  */
-function updateOnlineCount() {
+window.updateOnlineCount = function updateOnlineCount() {
     // Count unique online users from presence state
     var onlineCount = 0;
     presenceState.forEach(function(isOnline) {
@@ -640,7 +640,7 @@ function updateOnlineCount() {
             headerCountEl.textContent = '';
         }
     }
-}
+};
 
 /**
  * Handle presence change events from WebSocket

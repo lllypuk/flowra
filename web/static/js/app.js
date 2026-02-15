@@ -686,7 +686,7 @@
             '<tr><td><kbd class="kbd">Esc</kbd></td><td>Close modal/dropdown</td></tr>' +
             '<tr><td><kbd class="kbd">?</kbd></td><td>Show this help</td></tr>' +
             '</table>' +
-            '<footer><button onclick="this.closest(\'dialog\').close()">Close</button></footer>' +
+            '<footer><button onclick="var d=this.closest(\'dialog\'); if(d) d.close()">Close</button></footer>' +
             '</article>';
 
         document.body.appendChild(dialog);

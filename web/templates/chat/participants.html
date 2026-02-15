@@ -9,12 +9,7 @@
             ></button>
             <h3>
                 Participants
-                <span class="online-count" 
-                      hx-get="/api/v1/chats/{{.ChatID}}/presence"
-                      hx-trigger="load"
-                      hx-swap="none"
-                      hx-on::after-request="updateOnlineCount()">
-                </span>
+                <span class="online-count"></span>
             </h3>
         </header>
 
@@ -107,23 +102,11 @@
 </dialog>
 
 <script>
-    // Load presence data on modal open
+    // Update online count from WebSocket presence state on modal open
     (function() {
-        var chatId = '{{.ChatID}}';
-        fetch('/api/v1/chats/' + chatId + '/presence')
-            .then(function(response) {
-                if (!response.ok) return;
-                return response.json();
-            })
-            .then(function(presenceData) {
-                if (!presenceData) return;
-                presenceData.forEach(function(p) {
-                    updateUserPresence(p.user_id, p.is_online);
-                });
-            })
-            .catch(function(err) {
-                console.error('Failed to load presence:', err);
-            });
+        if (typeof window.updateOnlineCount === 'function') {
+            window.updateOnlineCount();
+        }
     })();
 </script>
 

@@ -38,26 +38,18 @@ Issues discovered during testing of all frontend-roadmap.md deliverables.
 
 ## Priority: Medium
 
-### 8. JavaScript error: `updateOnlineCount is not defined`
-- **Symptom**: Console error on chat pages.
-- **Root cause**: A function call to `updateOnlineCount()` exists in JS code but the function is not defined.
-- **Fix**: Define the `updateOnlineCount` function or remove the call.
-- **Files**: `web/static/js/chat.js` or `web/static/js/app.js`
+### ~~8. JavaScript error: `updateOnlineCount is not defined`~~ ✅ FIXED
+- **Fix applied**: Exposed `updateOnlineCount` function on `window` in `web/static/js/chat.js` so it's accessible from HTML template inline handlers.
+- **Files changed**: `web/static/js/chat.js`
 
-### 9. JavaScript error: `Cannot read properties of undefined (reading 'close')`
-- **Symptom**: Console error, likely when trying to close a modal or dialog that doesn't exist.
-- **Root cause**: Code attempts to call `.close()` on an undefined element reference.
-- **Fix**: Add null check before calling `.close()`.
-- **Files**: `web/static/js/app.js` or `web/static/js/chat.js`
+### ~~9. JavaScript error: `Cannot read properties of undefined (reading 'close')`~~ ✅ FIXED
+- **Fix applied**: Added null check before calling `.close()` on `this.closest('dialog')` result in keyboard shortcuts help button (app.js).
+- **Files changed**: `web/static/js/app.js`
 
-### 10. Chat presence endpoint returns 404
-- **Symptom**: `GET /api/v1/chats/:id/presence` returns 404.
-- **Root cause**: The presence endpoint is not registered in routes, or the handler is not implemented.
-- **Fix**: Register the presence route or remove the client-side call if presence is handled via WebSocket only.
-- **Files**: `cmd/api/routes.go`, `web/static/js/chat.js`
+### ~~10. Chat presence endpoint returns 404~~ ✅ FIXED
+- **Fix applied**: Removed REST API calls to non-existent `/api/v1/chats/:id/presence` endpoint from `participants.html`. Replaced with a call to `window.updateOnlineCount()` which uses WebSocket-based presence state already tracked in chat.js.
+- **Files changed**: `web/templates/chat/participants.html`
 
-### 11. Navbar username disappears after re-login via SSO redirect
-- **Symptom**: After SSO redirect login (not first login), the username button in navbar is empty (no text). Shows up correctly on subsequent navigations.
-- **Root cause**: The `getUserView` may return incomplete data during the redirect callback before the full user context is established.
-- **Fix**: Ensure the auth callback handler fully populates user context before redirect.
-- **Files**: `internal/handler/http/auth_middleware.go`, `internal/handler/http/template_handler.go`
+### ~~11. Navbar username disappears after re-login via SSO redirect~~ ✅ FIXED
+- **Fix applied**: Enhanced `getUserView` in `template_handler.go` to fall back to individual middleware context keys (`middleware.GetUsername`, `middleware.GetEmail`) when the "user" context map is missing or has empty fields. Also ensures `DisplayName` is always populated by falling back to username or email.
+- **Files changed**: `internal/handler/http/template_handler.go`
