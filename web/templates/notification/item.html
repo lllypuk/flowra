@@ -1,6 +1,10 @@
 {{define "notification/item"}}
 <article class="notification-card {{if not .IsRead}}unread{{end}}"
-         id="notification-{{.ID}}">
+         id="notification-{{.ID}}"
+         {{if .Link}}
+         onclick="markNotificationRead('{{.ID}}', '{{.Link}}')"
+         style="cursor: pointer;"
+         {{end}}>
     <div class="notification-icon-type">
         {{if eq .Type "chat.mention"}}💬
         {{else if eq .Type "task.assigned"}}👤
@@ -19,15 +23,6 @@
             <time>{{.CreatedAt | timeAgo}}</time>
         </header>
         <p>{{.Message}}</p>
-        {{if .Link}}
-        <a href="{{.Link}}"
-           class="notification-link"
-           hx-get="{{.Link}}"
-           hx-push-url="true"
-           hx-target="body">
-            View details →
-        </a>
-        {{end}}
     </div>
 
     <div class="notification-actions">
@@ -35,7 +30,9 @@
         <button hx-put="/api/v1/notifications/{{.ID}}/read"
                 hx-target="#notification-{{.ID}}"
                 hx-swap="outerHTML"
+                hx-on::after-request="htmx.trigger(document.body, 'notification-update')"
                 class="small outline"
+                onclick="event.stopPropagation()"
                 title="Mark as read">
             ✓
         </button>
@@ -43,7 +40,9 @@
         <button hx-delete="/api/v1/notifications/{{.ID}}"
                 hx-target="#notification-{{.ID}}"
                 hx-swap="outerHTML swap:0.3s"
+                hx-on::after-request="htmx.trigger(document.body, 'notification-update')"
                 class="small outline secondary"
+                onclick="event.stopPropagation()"
                 title="Delete">
             ✕
         </button>

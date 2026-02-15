@@ -553,6 +553,37 @@ dialog::backdrop {
     .show-desktop { display: block !important; }
 }
 
+/* ===== Notification Badge Animation ===== */
+@keyframes badge-pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.notification-badge.badge-pulse {
+    animation: badge-pulse 0.6s ease-in-out;
+}
+
+/* ===== Notification Truncation ===== */
+.notification-message {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.4;
+}
+
+.notification-item .notification-message {
+    -webkit-line-clamp: 1;
+}
+
 /* ===== Print Styles ===== */
 @media print {
     .no-print {

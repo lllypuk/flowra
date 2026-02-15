@@ -154,7 +154,7 @@ func registerMessageRoutes(r *httpserver.Router, c *Container) {
 	if c.MessageHandler != nil {
 		messages.POST("", c.MessageHandler.Send)
 		messages.GET("", c.MessageHandler.List)
-		
+
 		// Direct message routes (without chat_id in path) for edit/delete
 		// These are authenticated but not workspace-scoped since message ID is unique
 		r.Auth().PUT("/messages/:id", c.MessageHandler.Edit)

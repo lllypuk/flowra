@@ -18,19 +18,19 @@ func TemplateFuncs() template.FuncMap {
 		"timeAgo":         timeAgo,
 
 		// String helpers
-		"truncate":  truncate,
-		"lower":     strings.ToLower,
-		"upper":     strings.ToUpper,
-		"title":     strings.Title, //nolint:staticcheck // Simple title case is fine for display
-		"contains":  strings.Contains,
-		"hasPrefix": strings.HasPrefix,
-		"hasSuffix": strings.HasSuffix,
-		"replace":   strings.ReplaceAll,
-		"trimSpace": strings.TrimSpace,
-		"join":      strings.Join,
-		"split":     strings.Split,
-		"pluralize":     pluralize,
-		"initials":      initials,
+		"truncate":       truncate,
+		"lower":          strings.ToLower,
+		"upper":          strings.ToUpper,
+		"title":          strings.Title, //nolint:staticcheck // Simple title case is fine for display
+		"contains":       strings.Contains,
+		"hasPrefix":      strings.HasPrefix,
+		"hasSuffix":      strings.HasSuffix,
+		"replace":        strings.ReplaceAll,
+		"trimSpace":      strings.TrimSpace,
+		"join":           strings.Join,
+		"split":          strings.Split,
+		"pluralize":      pluralize,
+		"initials":       initials,
 		"avatarInitials": avatarInitials,
 
 		// Conditional helpers
@@ -191,7 +191,7 @@ func avatarInitials(user any) string {
 		}
 		return initials(u.Username)
 	}
-	
+
 	// Handle pointer to UserResponse
 	if u, ok := user.(*UserResponse); ok && u != nil {
 		if u.DisplayName != "" {
@@ -199,7 +199,7 @@ func avatarInitials(user any) string {
 		}
 		return initials(u.Username)
 	}
-	
+
 	// Fallback: try to extract DisplayName and Username using reflection-like approach
 	// by type asserting to a map (common in template data)
 	if userMap, ok := user.(map[string]any); ok {
@@ -210,7 +210,7 @@ func avatarInitials(user any) string {
 			return initials(username)
 		}
 	}
-	
+
 	return "?"
 }
 

@@ -11,7 +11,7 @@
             {{if gt .Data.UnreadCount 0}}
             <button hx-put="/api/v1/notifications/mark-all-read"
                     hx-swap="none"
-                    hx-on::after-request="location.reload()"
+                    hx-on::after-request="htmx.trigger(document.body, 'notification-update'); htmx.trigger(document.getElementById('notifications-list'), 'reload-notifications');"
                     class="outline">
                 Mark all as read
             </button>
@@ -31,7 +31,7 @@
 
     <div id="notifications-list"
          hx-get="/partials/notifications/list"
-         hx-trigger="load"
+         hx-trigger="load, reload-notifications from:body"
          hx-swap="innerHTML"
          hx-vals='{"filter": "{{.Data.Filter}}"}'>
         {{template "loading" (dict "ID" "notifications-loading")}}

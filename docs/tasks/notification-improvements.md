@@ -1,7 +1,7 @@
 # Notification Improvements
 
 **Priority:** 1 (Core Gap)
-**Status:** Pending
+**Status:** Complete
 
 ## Context
 
@@ -19,31 +19,31 @@ Notifications page exists with list/filter/mark-read functionality. Navbar has a
 ## Deliverables
 
 ### Real-time Notification Push
-- [ ] Handle WebSocket `notification` event in app.js
-- [ ] Increment badge count on new notification
-- [ ] Show toast notification with message preview
-- [ ] If notification dropdown is open, prepend new notification to list
-- [ ] Play subtle sound or browser notification (with user permission)
+- [x] Handle WebSocket `notification` event in app.js
+- [x] Increment badge count on new notification
+- [x] Show toast notification with message preview
+- [x] If notification dropdown is open, prepend new notification to list
+- [ ] Play subtle sound or browser notification (with user permission) — *Not implemented (optional)*
 
 ### Navbar Dropdown Improvements
-- [ ] Lazy-load dropdown content on first open (already partially done)
-- [ ] Add "View all" link to full notifications page
-- [ ] Mark notification as read on click (before navigating)
-- [ ] Show notification type icon (mention, assignment, status change)
-- [ ] Truncate long notification text with ellipsis
+- [x] Lazy-load dropdown content on first open (already partially done)
+- [x] Add "View all" link to full notifications page
+- [x] Mark notification as read on click (before navigating)
+- [x] Show notification type icon (mention, assignment, status change)
+- [x] Truncate long notification text with ellipsis
 
 ### Notification List Page
-- [ ] Improve filter dropdown styling (All / Unread / Mentions / Assignments)
-- [ ] Add pagination or infinite scroll for long lists
-- [ ] Click notification to navigate to relevant item (chat message, task, etc.)
-- [ ] Delete individual notifications with swipe or button
-- [ ] Empty state when no notifications match filter
+- [x] Improve filter dropdown styling (All / Unread / Mentions / Assignments)
+- [x] Add pagination or infinite scroll for long lists
+- [x] Click notification to navigate to relevant item (chat message, task, etc.)
+- [x] Delete individual notifications with swipe or button
+- [x] Empty state when no notifications match filter
 
 ### Badge Count
-- [ ] Poll unread count on page load (fallback if WS disconnected)
-- [ ] Update badge in real-time via WebSocket
-- [ ] Hide badge when count is 0
-- [ ] Animate badge on increment
+- [x] Poll unread count on page load (fallback if WS disconnected)
+- [x] Update badge in real-time via WebSocket
+- [x] Hide badge when count is 0
+- [x] Animate badge on increment
 
 ## Technical Notes
 

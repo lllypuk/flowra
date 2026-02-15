@@ -8,7 +8,7 @@
     <ul role="listbox"
         id="notification-dropdown-list"
         hx-get="/partials/notifications?limit=10"
-        hx-trigger="toggle once"
+        hx-trigger="toggle once, reload-notifications from:body"
         hx-swap="innerHTML">
         <li class="loading">Loading...</li>
     </ul>
@@ -58,7 +58,7 @@
         {{if gt .UnreadCount 0}}
         <button hx-put="/api/v1/notifications/mark-all-read"
                 hx-swap="none"
-                hx-on::after-request="htmx.trigger(document.body, 'notification-update')"
+                hx-on::after-request="htmx.trigger(document.body, 'notification-update'); htmx.trigger(document.getElementById('notification-dropdown-list'), 'reload-notifications');"
                 class="small outline">
             Mark all read
         </button>
@@ -140,8 +140,7 @@
 
 {{define "notification/dropdown-item"}}
 <li class="notification-item {{if not .IsRead}}unread{{end}}"
-    hx-get="/notifications/{{.ID}}/redirect"
-    hx-push-url="true">
+    onclick="markNotificationRead('{{.ID}}', '{{if .Link}}{{.Link}}{{else}}/notifications{{end}}')">
     <div class="notification-icon-type">
         {{if eq .Type "chat.mention"}}💬
         {{else if eq .Type "task.assigned"}}👤
@@ -209,4 +208,29 @@
     flex-shrink: 0;
 }
 </style>
+
+<script>
+window.markNotificationRead = function(notificationId, targetUrl) {
+    // Mark as read via API
+    fetch('/api/v1/notifications/' + notificationId + '/read', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    }).then(function() {
+        // Update badge count
+        htmx.trigger(document.body, 'notification-update');
+        // Navigate to target
+        if (targetUrl) {
+            window.location.href = targetUrl;
+        }
+    }).catch(function(err) {
+        console.error('Failed to mark notification as read:', err);
+        // Navigate anyway
+        if (targetUrl) {
+            window.location.href = targetUrl;
+        }
+    });
+};
+</script>
 {{end}}
