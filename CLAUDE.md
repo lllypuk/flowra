@@ -146,7 +146,7 @@ internal/                     # Internal application code (296 files)
 ├── worker/                  # Background workers
 └── config/                  # Configuration loading
 
-web/                          # Frontend resources (53 files)
+web/                          # Frontend resources (~70 files)
 ├── templates/               # HTML templates
 │   ├── layout/             # Base layout (base, navbar, footer)
 │   ├── components/         # Reusable HTMX components
@@ -208,9 +208,9 @@ docs/                         # Documentation (9+ files)
 
 ## Development Notes
 
-- **Project Status**: February 2026 Release Candidate (~95% complete)
+- **Project Status**: February 2026 Release Candidate (~98% complete)
 - **Backend**: Fully production-ready with all layers implemented
-- **Frontend**: ~30% complete (framework ready, landing page, auth + workspace + chat + board + notifications UI done)
+- **Frontend**: ~85% complete (all Priority 1-3 roadmap tasks done: profiles, chat enhancements, notifications, workspace settings, board enhancements, task details, dark mode, global search, file uploads)
 
 ### Layer Implementation Status
 | Layer | Status | Files | Coverage |
@@ -221,7 +221,7 @@ docs/                         # Documentation (9+ files)
 | Handlers | Complete | 28 | 80%+ |
 | Middleware | Complete | 14 | 80%+ |
 | Services | Complete | 13 | 80%+ |
-| Frontend | In Progress | ~55 | - |
+| Frontend | Mostly Complete | ~70 | - |
 
 ### Key Implementation Details
 - 6 Event-Sourced Aggregates (Chat, Message, Task, User, Workspace, Notification)
