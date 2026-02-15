@@ -210,7 +210,7 @@ docs/                         # Documentation (9+ files)
 
 - **Project Status**: February 2026 Release Candidate (~95% complete)
 - **Backend**: Fully production-ready with all layers implemented
-- **Frontend**: ~25% complete (framework ready, auth + workspace + notifications UI done)
+- **Frontend**: ~30% complete (framework ready, landing page, auth + workspace + chat + board + notifications UI done)
 
 ### Layer Implementation Status
 | Layer | Status | Files | Coverage |
@@ -221,7 +221,7 @@ docs/                         # Documentation (9+ files)
 | Handlers | Complete | 28 | 80%+ |
 | Middleware | Complete | 14 | 80%+ |
 | Services | Complete | 13 | 80%+ |
-| Frontend | In Progress | ~54 | - |
+| Frontend | In Progress | ~55 | - |
 
 ### Key Implementation Details
 - 6 Event-Sourced Aggregates (Chat, Message, Task, User, Workspace, Notification)
@@ -249,6 +249,37 @@ The tag system (`internal/domain/tag/`) processes commands in messages:
 - **Formatter** - Generates human-readable bot responses with actor names
 
 UI actions (sidebar status/priority/assignee changes) go through `ActionService` which creates human-readable system messages like "John changed status to In Progress".
+
+### Frontend JavaScript Pattern
+
+All JS files that may be loaded via `hx-boost` navigation must follow the IIFE + guard pattern to prevent double-initialization:
+
+```javascript
+(function() {
+    if (window.__myJsLoaded) return;
+    window.__myJsLoaded = true;
+
+    // Functions called from templates must be on window:
+    window.myFunction = function() { ... };
+
+    // Internal functions stay private:
+    function helperFunction() { ... }
+})();
+```
+
+**Why:** When navigating between pages using `hx-boost`, HTMX swaps `<body>` content from the response, which can re-evaluate `<script>` tags. Without the guard, top-level `const`/`let` declarations cause `Identifier has already been declared` errors.
+
+**Files:**
+- `web/static/js/app.js` — Core HTMX handlers, toasts, keyboard shortcuts (already uses IIFE)
+- `web/static/js/chat.js` — Chat, typing indicators, tag autocomplete, presence (IIFE + guard)
+- `web/static/js/board.js` — Kanban drag-and-drop, real-time updates (uses guard flag)
+
+### Landing Page
+
+The landing page (`web/templates/home.html`) uses Google Fonts (Playfair Display + DM Sans) loaded via CDN. It is a standalone template (not using `base.html`) with embedded `<style>` for landing-specific design. Features:
+- Scroll-triggered reveal animations via IntersectionObserver
+- Responsive 3-column feature grid
+- Conditional content for authenticated/unauthenticated users
 
 ## Documentation Structure
 
