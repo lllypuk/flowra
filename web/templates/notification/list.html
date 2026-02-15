@@ -1,4 +1,4 @@
-{{define "notification/list"}}
+{{define "notification/list.html"}}
 {{template "base" .}}
 {{end}}
 
@@ -21,7 +21,7 @@
                     hx-target="body"
                     hx-push-url="true"
                     name="filter">
-                <option value="" {{if not .Data.Filter}}selected{{end}}>All</option>
+                <option value="" {{if eq .Data.Filter ""}}selected{{end}}>All</option>
                 <option value="unread" {{if eq .Data.Filter "unread"}}selected{{end}}>Unread</option>
                 <option value="mention" {{if eq .Data.Filter "mention"}}selected{{end}}>Mentions</option>
                 <option value="assignment" {{if eq .Data.Filter "assignment"}}selected{{end}}>Assignments</option>

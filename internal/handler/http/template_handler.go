@@ -530,16 +530,6 @@ func (h *TemplateHandler) UserSettings(c echo.Context) error {
 		return c.Redirect(http.StatusFound, "/login")
 	}
 
-	// Get full user details from the user map in context
-	userData := c.Get("user")
-	if userMap, ok := userData.(map[string]any); ok {
-		data := map[string]any{
-			"User": userMap,
-		}
-		return h.render(c, "user/settings.html", "Settings", data)
-	}
-
-	// Fallback to minimal user view
 	data := map[string]any{
 		"User": map[string]any{
 			"ID":          user.ID,
