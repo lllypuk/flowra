@@ -161,6 +161,7 @@ type ChatTemplateHandler struct {
 	chatService    ChatTemplateService
 	messageService MessageTemplateService
 	taskService    TaskQueryForChatService
+	userLookup     UserProfileLookup
 }
 
 // NewChatTemplateHandler creates a new chat template handler.
@@ -181,6 +182,11 @@ func NewChatTemplateHandler(
 		messageService: messageService,
 		taskService:    taskService,
 	}
+}
+
+// SetUserLookup sets the user lookup service for resolving participant profiles.
+func (h *ChatTemplateHandler) SetUserLookup(lookup UserProfileLookup) {
+	h.userLookup = lookup
 }
 
 // SetupChatRoutes registers chat-related page and partial routes.
@@ -916,10 +922,38 @@ func getAssigneeID(assignee *uuid.UUID) string {
 	return assignee.String()
 }
 
-func (h *ChatTemplateHandler) loadParticipants(_ context.Context, _ uuid.UUID) []ParticipantViewData {
-	// TODO: implement participant loading from chat service
-	// For now, return empty list
-	return []ParticipantViewData{}
+func (h *ChatTemplateHandler) loadParticipants(ctx context.Context, chatID uuid.UUID) []ParticipantViewData {
+	if h.chatService == nil {
+		return []ParticipantViewData{}
+	}
+
+	result, err := h.chatService.GetChat(ctx, chatapp.GetChatQuery{ChatID: chatID})
+	if err != nil || result == nil || result.Chat == nil {
+		h.logger.Error("failed to load participants", slog.String("chat_id", chatID.String()), slog.Any("error", err))
+		return []ParticipantViewData{}
+	}
+
+	participants := make([]ParticipantViewData, 0, len(result.Chat.Participants))
+	for _, p := range result.Chat.Participants {
+		pv := ParticipantViewData{
+			UserID:   p.UserID.String(),
+			Role:     string(p.Role),
+			JoinedAt: p.JoinedAt,
+		}
+		if h.userLookup != nil {
+			if u := h.userLookup.GetUser(ctx, p.UserID); u != nil {
+				pv.Username = u.Username
+				pv.DisplayName = u.DisplayName
+				pv.AvatarURL = u.AvatarURL
+			}
+		}
+		if pv.Username == "" {
+			pv.Username = "user" + p.UserID.String()[:8]
+			pv.DisplayName = "User " + p.UserID.String()[:8]
+		}
+		participants = append(participants, pv)
+	}
+	return participants
 }
 
 func (h *ChatTemplateHandler) convertMessageToView(msg *message.Message, currentUserID uuid.UUID) MessageViewData {

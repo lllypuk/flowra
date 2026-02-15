@@ -20,29 +20,21 @@ Issues discovered during testing of all frontend-roadmap.md deliverables.
 
 ## Priority: High
 
-### 4. Notification dropdown stuck on "Loading..."
-- **Symptom**: Clicking the notification bell opens dropdown but content stays as "Loading..." spinner indefinitely.
-- **Root cause**: The `<ul>` element has `hx-trigger="toggle once"` but the `toggle` event fires on the `<details>` element, not on child elements. The `<ul>` inside `<details>` never receives a `toggle` event, so HTMX never fires the request to `/partials/notifications?limit=10`.
-- **Fix**: Move `hx-get` and `hx-trigger` attributes to the `<details>` element, or use a different trigger like `hx-trigger="intersect once"` on the `<ul>`, or use JS to manually trigger on details toggle.
-- **Files**: `web/templates/layout/navbar.html:44-53`
+### ~~4. Notification dropdown stuck on "Loading..."~~ ✅ FIXED
+- **Fix applied**: Changed `hx-trigger="toggle once"` to `hx-trigger="intersect once"` on the `<ul>` element in `web/templates/layout/navbar.html:48`. The `toggle` event fires on `<details>`, not on its child `<ul>`, so HTMX never triggered the request. Using `intersect` triggers when the dropdown list becomes visible.
+- **Verified**: Build passes, no regressions.
 
-### 5. Participants modal shows "No participants yet" despite participant count showing "1"
-- **Symptom**: Chat header shows participant count "1", but clicking it opens a modal showing "No participants yet" with only a "Close" button.
-- **Root cause**: The participants partial endpoint likely returns empty data, or the HTMX request to load participants fails silently. The modal is also missing the "Add participant" search/invite functionality described in chat-enhancements.md.
-- **Fix**: Debug the `/partials/chats/:chat_id/participants` endpoint to ensure it returns participants. Add the participant add/remove UI.
-- **Files**: `internal/handler/http/chat_template_handler.go` (ParticipantsPartial), `web/templates/components/` (participants template)
+### ~~5. Participants modal shows "No participants yet" despite participant count showing "1"~~ ✅ FIXED
+- **Fix applied**: Implemented `loadParticipants()` in `chat_template_handler.go` to load real participant data from `ChatTemplateService.GetChat()`. Added `UserProfileLookup` interface and injected it into `ChatTemplateHandler` to resolve participant usernames and display names from the user repository.
+- **Files changed**: `internal/handler/http/chat_template_handler.go`, `cmd/api/container.go`
 
-### 6. User Profile page shows hardcoded mock data
-- **Symptom**: `/users/:id` page shows "User Name", "@usera9c9f2ad", "user@example.com" — all hardcoded.
-- **Root cause**: The `UserProfile` handler returns mock data with comment "For now, return a mock user profile — In a full implementation, this would fetch from UserService".
-- **Fix**: Replace mock data with actual user lookup from `UserService` or user repository.
-- **Files**: `internal/handler/http/template_handler.go:558-600`
+### ~~6. User Profile page shows hardcoded mock data~~ ✅ FIXED
+- **Fix applied**: Replaced mock data in `UserProfile` handler with real user lookup via `UserProfileLookup` service. Returns 404 if user is not found instead of showing fake data.
+- **Files changed**: `internal/handler/http/template_handler.go`
 
-### 7. Members page shows truncated user ID instead of real username
-- **Symptom**: The member row shows "User a9c9f2ad @usera9c9f2ad" instead of actual display name and username. Same issue appears in the board assignee filter dropdown ("usera9c9f2ad").
-- **Root cause**: The member data uses a generated/truncated user ID as display name and username instead of querying real user details from the user repository.
-- **Fix**: Ensure workspace member queries resolve actual user details (display name, username) from the user store.
-- **Files**: `internal/handler/http/template_handler.go` (WorkspaceMembers handler), `internal/handler/http/board_template_handler.go` (assignee filter)
+### ~~7. Members page shows truncated user ID instead of real username~~ ✅ FIXED
+- **Fix applied**: Added `resolveMemberView()` helper to `TemplateHandler` that resolves actual user details via `UserProfileLookup`. Updated `WorkspaceMembersPartial`, `WorkspaceMembersOptionsPartial`, and `TransferOwnershipForm` to use it. Also updated `boardMemberServiceAdapter` in `container.go` to resolve real usernames from the user repository.
+- **Files changed**: `internal/handler/http/template_handler.go`, `cmd/api/container.go`
 
 ## Priority: Medium
 

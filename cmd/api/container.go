@@ -810,6 +810,7 @@ func (c *Container) setupHTTPHandlers() {
 	// Inject services into template handler
 	if c.TemplateHandler != nil {
 		c.TemplateHandler.SetServices(c.WorkspaceService, c.MemberService)
+		c.TemplateHandler.SetUserLookup(c.createUserProfileLookup())
 	}
 
 	// === 5. Chat Service (Real) ===
@@ -1046,6 +1047,7 @@ func (c *Container) setupChatTemplateHandler() {
 		messageService,
 		taskService,
 	)
+	c.ChatTemplateHandler.SetUserLookup(c.createUserProfileLookup())
 
 	c.Logger.Debug("chat template handler initialized")
 }
@@ -1530,12 +1532,14 @@ func (a *fullTaskServiceAdapter) DeleteTask(_ context.Context, _ uuid.UUID, _ uu
 func (c *Container) createBoardMemberService() httphandler.BoardMemberService {
 	return &boardMemberServiceAdapter{
 		memberService: c.MemberService,
+		userRepo:      c.UserRepo,
 	}
 }
 
 // boardMemberServiceAdapter adapts MemberService to BoardMemberService.
 type boardMemberServiceAdapter struct {
 	memberService *service.MemberService
+	userRepo      *mongodb.MongoUserRepository
 }
 
 // ListWorkspaceMembers implements BoardMemberService.
@@ -1554,12 +1558,22 @@ func (a *boardMemberServiceAdapter) ListWorkspaceMembers(
 
 	result := make([]httphandler.MemberViewData, 0, len(members))
 	for _, m := range members {
-		result = append(result, httphandler.MemberViewData{
+		mv := httphandler.MemberViewData{
 			UserID:   m.UserID().String(),
-			Username: "user" + m.UserID().String()[:8], // TODO: get actual username
 			Role:     m.Role().String(),
 			JoinedAt: m.JoinedAt(),
-		})
+		}
+		if a.userRepo != nil {
+			if u, lookupErr := a.userRepo.FindByID(ctx, m.UserID()); lookupErr == nil && u != nil {
+				mv.Username = u.Username()
+				mv.DisplayName = u.DisplayName()
+			}
+		}
+		if mv.Username == "" {
+			mv.Username = "user" + m.UserID().String()[:8]
+			mv.DisplayName = "User " + m.UserID().String()[:8]
+		}
+		result = append(result, mv)
 	}
 	return result, nil
 }
@@ -1638,6 +1652,33 @@ func (a *userLookupAdapter) GetDisplayName(ctx context.Context, userID string) s
 		return dn
 	}
 	return u.Username()
+}
+
+// createUserProfileLookup creates a service implementing UserProfileLookup.
+func (c *Container) createUserProfileLookup() httphandler.UserProfileLookup {
+	return &userProfileLookupAdapter{userRepo: c.UserRepo}
+}
+
+// userProfileLookupAdapter adapts MongoUserRepository to UserProfileLookup.
+type userProfileLookupAdapter struct {
+	userRepo *mongodb.MongoUserRepository
+}
+
+// GetUser implements UserProfileLookup.
+func (a *userProfileLookupAdapter) GetUser(ctx context.Context, userID uuid.UUID) *httphandler.UserView {
+	u, err := a.userRepo.FindByID(ctx, userID)
+	if err != nil || u == nil {
+		return nil
+	}
+	return &httphandler.UserView{
+		ID:          u.ID().String(),
+		Username:    u.Username(),
+		DisplayName: u.DisplayName(),
+		Email:       u.Email(),
+		IsAdmin:     u.IsSystemAdmin(),
+		CreatedAt:   u.CreatedAt(),
+		UpdatedAt:   u.UpdatedAt(),
+	}
 }
 
 // createNotificationTemplateService creates a service implementing NotificationTemplateService.

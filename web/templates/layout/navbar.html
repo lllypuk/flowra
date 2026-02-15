@@ -45,7 +45,7 @@
                     id="notification-dropdown-list"
                     aria-label="Recent notifications"
                     hx-get="/partials/notifications?limit=10"
-                    hx-trigger="toggle once"
+                    hx-trigger="intersect once"
                     hx-swap="innerHTML">
                     <li class="loading" aria-busy="true">
                         <span class="spinner spinner-sm"></span>

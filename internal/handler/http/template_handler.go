@@ -241,6 +241,13 @@ type OAuthTokenResponse struct {
 	ExpiresIn    int
 }
 
+// UserProfileLookup resolves user IDs to user profile details.
+// Declared on the consumer side per project guidelines.
+type UserProfileLookup interface {
+	// GetUser returns user profile data by user ID. Returns nil if not found.
+	GetUser(ctx context.Context, userID uuid.UUID) *UserView
+}
+
 // TemplateHandler provides handlers for rendering HTML pages.
 type TemplateHandler struct {
 	renderer         *TemplateRenderer
@@ -248,6 +255,7 @@ type TemplateHandler struct {
 	workspaceService WorkspaceService
 	memberService    MemberService
 	oauthClient      OAuthClient
+	userLookup       UserProfileLookup
 }
 
 // NewTemplateHandler creates a new template handler.
@@ -278,6 +286,11 @@ func (h *TemplateHandler) SetServices(workspaceService WorkspaceService, memberS
 // SetOAuthClient sets the OAuth client for authentication.
 func (h *TemplateHandler) SetOAuthClient(client OAuthClient) {
 	h.oauthClient = client
+}
+
+// SetUserLookup sets the user lookup service for resolving user profiles.
+func (h *TemplateHandler) SetUserLookup(lookup UserProfileLookup) {
+	h.userLookup = lookup
 }
 
 // render is a helper to render a template with common page data.
@@ -561,19 +574,28 @@ func (h *TemplateHandler) UserProfile(c echo.Context) error {
 	// Check if viewing own profile
 	isCurrentUser := currentUser.ID == userID.String()
 
-	// For now, return a mock user profile
-	// In a full implementation, this would fetch from UserService
+	// Resolve user profile from user lookup service
+	var profileUser map[string]any
+	if h.userLookup != nil {
+		if u := h.userLookup.GetUser(c.Request().Context(), userID); u != nil {
+			profileUser = map[string]any{
+				"ID":          u.ID,
+				"Username":    u.Username,
+				"DisplayName": u.DisplayName,
+				"Email":       u.Email,
+				"AvatarURL":   u.AvatarURL,
+				"IsAdmin":     u.IsAdmin,
+				"CreatedAt":   u.CreatedAt,
+				"UpdatedAt":   u.UpdatedAt,
+			}
+		}
+	}
+	if profileUser == nil {
+		return h.NotFound(c)
+	}
+
 	data := map[string]any{
-		"User": map[string]any{
-			"ID":          userID.String(),
-			"Username":    "user" + userID.String()[:8],
-			"DisplayName": "User Name",
-			"Email":       "user@example.com",
-			"AvatarURL":   "",
-			"IsAdmin":     false,
-			"CreatedAt":   time.Now(),
-			"UpdatedAt":   time.Now(),
-		},
+		"User":          profileUser,
 		"IsCurrentUser": isCurrentUser,
 	}
 
@@ -868,14 +890,7 @@ func (h *TemplateHandler) WorkspaceMembersPartial(c echo.Context) error {
 	// Convert to view models
 	memberViews := make([]MemberViewData, 0, len(members))
 	for _, m := range members {
-		memberViews = append(memberViews, MemberViewData{
-			UserID:      m.UserID().String(),
-			Username:    "user" + m.UserID().String()[:8], // TODO: get actual username
-			DisplayName: "User " + m.UserID().String()[:8],
-			AvatarURL:   "",
-			Role:        m.Role().String(),
-			JoinedAt:    m.JoinedAt(),
-		})
+		memberViews = append(memberViews, h.resolveMemberView(c.Request().Context(), m))
 	}
 
 	data := map[string]any{
@@ -935,8 +950,11 @@ func (h *TemplateHandler) WorkspaceMembersOptionsPartial(c echo.Context) error {
 		if memberUserID == user.ID {
 			continue
 		}
-		// TODO: get actual username/display name from user service
-		displayName := "User " + memberUserID[:8]
+		mv := h.resolveMemberView(c.Request().Context(), m)
+		displayName := mv.DisplayName
+		if displayName == "" {
+			displayName = mv.Username
+		}
 		options.WriteString(fmt.Sprintf(`<option value="%s">%s</option>`, memberUserID, displayName))
 	}
 
@@ -1201,11 +1219,7 @@ func (h *TemplateHandler) WorkspaceTransferForm(c echo.Context) error {
 	adminMembers := []MemberViewData{}
 	for _, m := range members {
 		if m.Role().String() == "admin" && m.UserID().String() != user.ID {
-			adminMembers = append(adminMembers, MemberViewData{
-				UserID:      m.UserID().String(),
-				Username:    "user" + m.UserID().String()[:8],
-				DisplayName: "User " + m.UserID().String()[:8],
-			})
+			adminMembers = append(adminMembers, h.resolveMemberView(c.Request().Context(), m))
 		}
 	}
 
@@ -1310,4 +1324,24 @@ type MemberViewData struct {
 	AvatarURL   string
 	Role        string
 	JoinedAt    time.Time
+}
+
+// resolveMemberView converts a workspace Member to MemberViewData, resolving user details via userLookup.
+func (h *TemplateHandler) resolveMemberView(ctx context.Context, m *workspace.Member) MemberViewData {
+	mv := MemberViewData{
+		UserID:   m.UserID().String(),
+		Role:     m.Role().String(),
+		JoinedAt: m.JoinedAt(),
+	}
+	if h.userLookup != nil {
+		if u := h.userLookup.GetUser(ctx, m.UserID()); u != nil {
+			mv.Username = u.Username
+			mv.DisplayName = u.DisplayName
+			mv.AvatarURL = u.AvatarURL
+			return mv
+		}
+	}
+	mv.Username = "user" + m.UserID().String()[:8]
+	mv.DisplayName = "User " + m.UserID().String()[:8]
+	return mv
 }
