@@ -17,7 +17,7 @@ Backend is fully production-ready with 70+ API endpoints. Frontend needs to catc
 - [x] [task-detail-improvements.md](task-detail-improvements.md) — Inline editing polish, activity timeline ✅
 
 ### Priority 3 — Quality of Life
-- [dark-mode.md](dark-mode.md) — Dark mode toggle UI
+- [x] [dark-mode.md](dark-mode.md) — Dark mode toggle UI ✅
 - [global-search.md](global-search.md) — Workspace-wide search
 - [file-uploads.md](file-uploads.md) — Attachments for messages and tasks
 

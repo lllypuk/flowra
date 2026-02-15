@@ -700,32 +700,35 @@ dialog::backdrop {
     flex: 1;
 }
 
+/* ===== Theme Transition ===== */
+html {
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
 /* ===== Dark Mode Support ===== */
-@media (prefers-color-scheme: dark) {
-    :root {
-        --text-color: #f3f4f6;
-        --muted-color: #9ca3af;
-    }
+[data-theme="dark"] {
+    --text-color: #f3f4f6;
+    --muted-color: #9ca3af;
+}
 
-    .flash-success {
-        background-color: color-mix(in srgb, var(--flowra-success) 20%, black);
-    }
+[data-theme="dark"] .flash-success {
+    background-color: color-mix(in srgb, var(--flowra-success) 20%, black);
+}
 
-    .flash-error {
-        background-color: color-mix(in srgb, var(--flowra-danger) 20%, black);
-    }
+[data-theme="dark"] .flash-error {
+    background-color: color-mix(in srgb, var(--flowra-danger) 20%, black);
+}
 
-    .flash-info {
-        background-color: color-mix(in srgb, var(--flowra-info) 20%, black);
-    }
+[data-theme="dark"] .flash-info {
+    background-color: color-mix(in srgb, var(--flowra-info) 20%, black);
+}
 
-    .flash-warning {
-        background-color: color-mix(in srgb, var(--flowra-warning) 20%, black);
-    }
+[data-theme="dark"] .flash-warning {
+    background-color: color-mix(in srgb, var(--flowra-warning) 20%, black);
+}
 
-    .loading-overlay {
-        background: rgba(0, 0, 0, 0.8);
-    }
+[data-theme="dark"] .loading-overlay {
+    background: rgba(0, 0, 0, 0.8);
 }
 
 /* ===== Username Links ===== */
@@ -833,18 +836,16 @@ dialog::backdrop {
     color: white;
 }
 
-@media (prefers-color-scheme: dark) {
-    .mention-dropdown {
-        background: rgba(30, 30, 30, 0.98);
-    }
+[data-theme="dark"] .mention-dropdown {
+    background: rgba(30, 30, 30, 0.98);
+}
 
-    .mention-name {
-        color: #f3f4f6;
-    }
+[data-theme="dark"] .mention-name {
+    color: #f3f4f6;
+}
 
-    .mention-username {
-        color: #9ca3af;
-    }
+[data-theme="dark"] .mention-username {
+    color: #9ca3af;
 }
 
 

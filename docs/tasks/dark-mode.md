@@ -1,7 +1,7 @@
 # Dark Mode Toggle
 
 **Priority:** 3 (Quality of Life)
-**Status:** Pending
+**Status:** Complete
 
 ## Context
 
@@ -9,13 +9,13 @@ CSS already supports `prefers-color-scheme` via Pico CSS, and high-contrast mode
 
 ## Deliverables
 
-- [ ] Add dark/light mode toggle button in navbar (sun/moon icon)
-- [ ] Store preference in localStorage
-- [ ] Apply `data-theme="dark"` or `data-theme="light"` on `<html>` element (Pico CSS convention)
-- [ ] Default to OS preference if no stored choice
-- [ ] Smooth transition on toggle (CSS transition on background-color, color)
-- [ ] Persist across page navigations (read from localStorage on page load)
-- [ ] Update toggle icon to reflect current state
+- [x] Add dark/light mode toggle button in navbar (sun/moon icon)
+- [x] Store preference in localStorage
+- [x] Apply `data-theme="dark"` or `data-theme="light"` on `<html>` element (Pico CSS convention)
+- [x] Default to OS preference if no stored choice
+- [x] Smooth transition on toggle (CSS transition on background-color, color)
+- [x] Persist across page navigations (read from localStorage on page load)
+- [x] Update toggle icon to reflect current state
 
 ## Technical Notes
 

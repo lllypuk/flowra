@@ -1,6 +1,6 @@
 {{define "home.html"}}
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en">
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -517,6 +517,17 @@
                 }
             }
         </style>
+
+        <!-- Apply saved theme immediately to prevent flash -->
+        <script>
+            (function() {
+                var theme = localStorage.getItem('flowra-theme');
+                if (!theme) {
+                    theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                }
+                document.documentElement.setAttribute('data-theme', theme);
+            })();
+        </script>
     </head>
     <body hx-boost="true" class="landing-page">
         {{template "navbar" .}}

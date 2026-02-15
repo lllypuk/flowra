@@ -736,8 +736,43 @@
     }
     window.setQuickDate = setQuickDate;
 
+    // ===== Dark Mode Toggle =====
+    function getPreferredTheme() {
+        var stored = localStorage.getItem('flowra-theme');
+        if (stored) return stored;
+        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+
+    function applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        updateThemeIcons(theme);
+    }
+
+    function updateThemeIcons(theme) {
+        var icons = document.querySelectorAll('.theme-icon');
+        icons.forEach(function(icon) {
+            icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+        });
+    }
+
+    function toggleTheme() {
+        var current = document.documentElement.getAttribute('data-theme') || getPreferredTheme();
+        var next = current === 'dark' ? 'light' : 'dark';
+        localStorage.setItem('flowra-theme', next);
+        applyTheme(next);
+    }
+    window.toggleTheme = toggleTheme;
+
+    // Listen for OS theme changes when no manual preference is stored
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+        if (!localStorage.getItem('flowra-theme')) {
+            applyTheme(e.matches ? 'dark' : 'light');
+        }
+    });
+
     // ===== Initialize =====
     function init() {
+        applyTheme(getPreferredTheme());
         setupFlashMessages();
         setupHTMXHandlers();
         setupModalEscapeClose();
