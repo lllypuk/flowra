@@ -13,6 +13,7 @@ import (
 	messageapp "github.com/lllypuk/flowra/internal/application/message"
 	"github.com/lllypuk/flowra/internal/application/notification"
 	taskapp "github.com/lllypuk/flowra/internal/application/task"
+	userapp "github.com/lllypuk/flowra/internal/application/user"
 	wsapp "github.com/lllypuk/flowra/internal/application/workspace"
 	"github.com/lllypuk/flowra/internal/config"
 	"github.com/lllypuk/flowra/internal/domain/chat"
@@ -906,9 +907,8 @@ func (c *Container) setupHTTPHandlers() {
 	c.TaskHandler = httphandler.NewTaskHandler(c.createFullTaskService())
 	c.Logger.Debug("task handler initialized (real)")
 
-	// Note: NotificationHandler, UserHandler
-	// are left nil - routes.go will create placeholder endpoints for them.
-	// This is intentional until their use cases are fully implemented.
+	// === 15. User Handler ===
+	c.setupUserHandler()
 
 	c.Logger.Info("HTTP handlers initialized with REAL implementations")
 }
@@ -1901,6 +1901,41 @@ func (c *Container) ensureSystemBot(ctx context.Context) error {
 	)
 
 	return nil
+}
+
+// setupUserHandler initializes the UserHandler with use case adapters.
+func (c *Container) setupUserHandler() {
+	getUserUC := userapp.NewGetUserUseCase(c.UserRepo)
+	updateProfileUC := userapp.NewUpdateProfileUseCase(c.UserRepo)
+	getUserByUsernameUC := userapp.NewGetUserByUsernameUseCase(c.UserRepo)
+
+	adapter := &userServiceAdapter{
+		getUserUC:           getUserUC,
+		updateProfileUC:     updateProfileUC,
+		getUserByUsernameUC: getUserByUsernameUC,
+	}
+
+	c.UserHandler = httphandler.NewUserHandler(adapter)
+	c.Logger.Debug("user handler initialized (real)")
+}
+
+// userServiceAdapter implements httphandler.UserService by delegating to use cases.
+type userServiceAdapter struct {
+	getUserUC           *userapp.GetUserUseCase
+	updateProfileUC     *userapp.UpdateProfileUseCase
+	getUserByUsernameUC *userapp.GetUserByUsernameUseCase
+}
+
+func (a *userServiceAdapter) GetUser(ctx context.Context, query userapp.GetUserQuery) (userapp.Result, error) {
+	return a.getUserUC.Execute(ctx, query)
+}
+
+func (a *userServiceAdapter) GetUserByUsername(ctx context.Context, query userapp.GetUserByUsernameQuery) (userapp.Result, error) {
+	return a.getUserByUsernameUC.Execute(ctx, query)
+}
+
+func (a *userServiceAdapter) UpdateProfile(ctx context.Context, cmd userapp.UpdateProfileCommand) (userapp.Result, error) {
+	return a.updateProfileUC.Execute(ctx, cmd)
 }
 
 // Close gracefully closes all container resources.

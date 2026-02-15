@@ -162,8 +162,15 @@
     }
 
     // ===== Toast Notifications =====
+    var lastToast = { message: '', time: 0 };
+
     function showToast(message, type) {
         type = type || 'info';
+
+        // Deduplicate: skip if same message was shown within last 2 seconds
+        if (message === lastToast.message && Date.now() - lastToast.time < 2000) return;
+        lastToast.message = message;
+        lastToast.time = Date.now();
 
         // Create toast container if it doesn't exist
         var container = document.getElementById('toast-container');
@@ -555,13 +562,13 @@
 
         fetch(basePath + '/chats?limit=100')
             .then(function(r) { return r.ok ? r.json() : { chats: [] }; })
-            .then(function(data) { allData.chats = data.chats || []; })
+            .then(function(data) { allData.chats = (data.data && data.data.chats) || data.chats || []; })
             .catch(function() {})
             .finally(checkDone);
 
         fetch(basePath + '/tasks?per_page=100')
             .then(function(r) { return r.ok ? r.json() : { tasks: [] }; })
-            .then(function(data) { allData.tasks = data.tasks || []; })
+            .then(function(data) { allData.tasks = (data.data && data.data.tasks) || data.tasks || []; })
             .catch(function() {})
             .finally(checkDone);
     }
@@ -916,6 +923,17 @@
         }
     }
     window.closeTaskSidebar = closeTaskSidebar;
+
+    /**
+     * Close the task creation form dialog.
+     */
+    function closeTaskForm() {
+        var dialog = document.querySelector('dialog[open]');
+        if (dialog) {
+            dialog.close();
+        }
+    }
+    window.closeTaskForm = closeTaskForm;
 
     /**
      * Handle task deletion: close sidebar and remove board card.

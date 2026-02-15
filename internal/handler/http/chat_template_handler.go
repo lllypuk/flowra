@@ -294,7 +294,7 @@ func (h *ChatTemplateHandler) ChatView(c echo.Context) error {
 	// Load task data for task chats
 	if chatData.IsTaskChat {
 		data["Task"] = h.loadTaskViewData(c.Request().Context(), chatData)
-		data["Participants"] = h.loadParticipants(c.Request().Context(), chatID)
+		data["Participants"] = h.loadParticipants(c.Request().Context(), chatID, userID)
 	}
 
 	return h.render(c, "chat/layout.html", chatData.Title, data)
@@ -335,7 +335,7 @@ func (h *ChatTemplateHandler) ChatViewPartial(c echo.Context) error {
 
 	if chatData.IsTaskChat {
 		innerData["Task"] = h.loadTaskViewData(c.Request().Context(), chatData)
-		innerData["Participants"] = h.loadParticipants(c.Request().Context(), chatID)
+		innerData["Participants"] = h.loadParticipants(c.Request().Context(), chatID, userID)
 	}
 
 	// Wrap in "Data" to match template expectations (template uses .Data.Chat.ID)
@@ -597,7 +597,7 @@ func (h *ChatTemplateHandler) ParticipantsPartial(c echo.Context) error {
 		return c.String(http.StatusUnauthorized, "Invalid user")
 	}
 
-	participants := h.loadParticipants(c.Request().Context(), chatID)
+	participants := h.loadParticipants(c.Request().Context(), chatID, userID)
 
 	// Check if current user can manage participants
 	canManage := false
@@ -922,12 +922,16 @@ func getAssigneeID(assignee *uuid.UUID) string {
 	return assignee.String()
 }
 
-func (h *ChatTemplateHandler) loadParticipants(ctx context.Context, chatID uuid.UUID) []ParticipantViewData {
+func (h *ChatTemplateHandler) loadParticipants(ctx context.Context, chatID uuid.UUID, userID ...uuid.UUID) []ParticipantViewData {
 	if h.chatService == nil {
 		return []ParticipantViewData{}
 	}
 
-	result, err := h.chatService.GetChat(ctx, chatapp.GetChatQuery{ChatID: chatID})
+	query := chatapp.GetChatQuery{ChatID: chatID}
+	if len(userID) > 0 {
+		query.RequestedBy = userID[0]
+	}
+	result, err := h.chatService.GetChat(ctx, query)
 	if err != nil || result == nil || result.Chat == nil {
 		h.logger.Error("failed to load participants", slog.String("chat_id", chatID.String()), slog.Any("error", err))
 		return []ParticipantViewData{}
@@ -999,9 +1003,14 @@ func (h *ChatTemplateHandler) convertMessageToView(msg *message.Message, current
 		// Bot messages show as "Flowra Bot"
 		username = "FlowraBot"
 		displayName = "Flowra Bot"
-	} else {
-		// Use author ID as fallback for username/display name until user service is integrated
-		username = authorID[:8] // Use first 8 chars of ID as temporary username
+	} else if h.userLookup != nil {
+		if u := h.userLookup.GetUser(context.Background(), msg.AuthorID()); u != nil {
+			username = u.Username
+			displayName = u.DisplayName
+		}
+	}
+	if username == "" && !isBotMessage {
+		username = authorID[:8]
 		displayName = "User " + username
 	}
 

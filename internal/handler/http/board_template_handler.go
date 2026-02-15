@@ -353,6 +353,12 @@ func (h *BoardTemplateHandler) BoardColumnMore(c echo.Context) error {
 		totalCount, _ = h.taskService.CountTasks(c.Request().Context(), taskFilters)
 	}
 
+	// Apply search filter (post-fetch)
+	tasks = filterTasksBySearch(tasks, filters.Search)
+	if filters.Search != "" {
+		totalCount = len(tasks)
+	}
+
 	// Convert to view data
 	taskCards := h.convertTasksToCards(tasks, workspaceID.String())
 
@@ -421,6 +427,12 @@ func (h *BoardTemplateHandler) buildColumns(
 		if h.taskService != nil {
 			tasks, _ = h.taskService.ListTasks(ctx, taskFilters)
 			totalCount, _ = h.taskService.CountTasks(ctx, taskFilters)
+		}
+
+		// Apply search filter (post-fetch)
+		tasks = filterTasksBySearch(tasks, filters.Search)
+		if filters.Search != "" {
+			totalCount = len(tasks)
 		}
 
 		taskCards := h.convertTasksToCards(tasks, workspaceID.String())
@@ -496,6 +508,21 @@ func (h *BoardTemplateHandler) convertTasksToCards(
 		cards = append(cards, h.convertTaskToCard(t, workspaceID))
 	}
 	return cards
+}
+
+// filterTasksBySearch filters tasks by search term matching against title (case-insensitive).
+func filterTasksBySearch(tasks []*taskapp.ReadModel, search string) []*taskapp.ReadModel {
+	if search == "" {
+		return tasks
+	}
+	lowerSearch := strings.ToLower(search)
+	filtered := make([]*taskapp.ReadModel, 0, len(tasks))
+	for _, t := range tasks {
+		if strings.Contains(strings.ToLower(t.Title), lowerSearch) {
+			filtered = append(filtered, t)
+		}
+	}
+	return filtered
 }
 
 // convertTaskToCard converts a single task read model to view data.
@@ -588,9 +615,36 @@ func (h *BoardTemplateHandler) getUserView(c echo.Context) *UserView {
 		return nil
 	}
 
-	return &UserView{
+	view := &UserView{
 		ID: userID.String(),
 	}
+
+	// Try to get user details from the "user" context map
+	if user := c.Get("user"); user != nil {
+		if userMap, ok := user.(map[string]any); ok {
+			view.Email = getString(userMap, "email")
+			view.Username = getString(userMap, "username")
+			view.DisplayName = getString(userMap, "display_name")
+			view.AvatarURL = getString(userMap, "avatar_url")
+		}
+	}
+
+	// Fall back to individual middleware context keys
+	if view.Username == "" {
+		view.Username = middleware.GetUsername(c)
+	}
+	if view.Email == "" {
+		view.Email = middleware.GetEmail(c)
+	}
+	if view.DisplayName == "" {
+		if view.Username != "" {
+			view.DisplayName = view.Username
+		} else if view.Email != "" {
+			view.DisplayName = view.Email
+		}
+	}
+
+	return view
 }
 
 // render renders a full page with the base layout.

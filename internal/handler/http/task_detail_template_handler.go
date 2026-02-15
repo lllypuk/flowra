@@ -681,9 +681,34 @@ func (h *TaskDetailTemplateHandler) getUserView(c echo.Context) *UserView {
 		return nil
 	}
 
-	return &UserView{
+	view := &UserView{
 		ID: userID.String(),
 	}
+
+	if user := c.Get("user"); user != nil {
+		if userMap, ok := user.(map[string]any); ok {
+			view.Email = getString(userMap, "email")
+			view.Username = getString(userMap, "username")
+			view.DisplayName = getString(userMap, "display_name")
+			view.AvatarURL = getString(userMap, "avatar_url")
+		}
+	}
+
+	if view.Username == "" {
+		view.Username = middleware.GetUsername(c)
+	}
+	if view.Email == "" {
+		view.Email = middleware.GetEmail(c)
+	}
+	if view.DisplayName == "" {
+		if view.Username != "" {
+			view.DisplayName = view.Username
+		} else if view.Email != "" {
+			view.DisplayName = view.Email
+		}
+	}
+
+	return view
 }
 
 // renderPartial renders a template without the base layout.
