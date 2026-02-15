@@ -19,10 +19,10 @@
             <input type="hidden" name="workspace_id" value="{{.WorkspaceID}}" />
 
             <!-- Preserve current board filters so the refreshed columns respect them -->
-            <input type="hidden" name="filter_type" value="" />
-            <input type="hidden" name="filter_assignee" value="" />
-            <input type="hidden" name="filter_priority" value="" />
-            <input type="hidden" name="filter_search" value="" />
+            <input type="hidden" name="filter_type" id="create-filter-type" value="" />
+            <input type="hidden" name="filter_assignee" id="create-filter-assignee" value="" />
+            <input type="hidden" name="filter_priority" id="create-filter-priority" value="" />
+            <input type="hidden" name="filter_search" id="create-filter-search" value="" />
 
             <label for="title">
                 Title
@@ -38,13 +38,26 @@
             </label>
 
             <script>
-                // Focus title input when dialog opens
+                // Focus title input and populate filter fields
                 (function () {
                     var input = document.getElementById("title");
                     if (input) {
                         setTimeout(function () {
                             input.focus();
                         }, 0);
+                    }
+                    // Copy current board filters into hidden fields
+                    var filters = document.getElementById("board-filters");
+                    if (filters) {
+                        var sel;
+                        sel = filters.querySelector('[name="type"]');
+                        if (sel) document.getElementById("create-filter-type").value = sel.value;
+                        sel = filters.querySelector('[name="assignee"]');
+                        if (sel) document.getElementById("create-filter-assignee").value = sel.value;
+                        sel = filters.querySelector('[name="priority"]');
+                        if (sel) document.getElementById("create-filter-priority").value = sel.value;
+                        sel = filters.querySelector('[name="search"]');
+                        if (sel) document.getElementById("create-filter-search").value = sel.value;
                     }
                 })();
             </script>

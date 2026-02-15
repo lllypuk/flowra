@@ -1,9 +1,10 @@
 {{define "board/filters"}}
-<div class="board-filters">
+<div class="board-filters" id="board-filters">
     <select name="type"
             hx-get="/partials/workspace/{{.Workspace.ID}}/board"
             hx-target="#board-columns"
-            hx-include="[name='assignee'], [name='priority'], [name='search']">
+            hx-include="[name='assignee'], [name='priority'], [name='search']"
+            hx-on::after-request="updateFilterState()">
         <option value="">All Types</option>
         <option value="task" {{if eq .Filters.Type "task"}}selected{{end}}>Tasks</option>
         <option value="bug" {{if eq .Filters.Type "bug"}}selected{{end}}>Bugs</option>
@@ -13,7 +14,8 @@
     <select name="assignee"
             hx-get="/partials/workspace/{{.Workspace.ID}}/board"
             hx-target="#board-columns"
-            hx-include="[name='type'], [name='priority'], [name='search']">
+            hx-include="[name='type'], [name='priority'], [name='search']"
+            hx-on::after-request="updateFilterState()">
         <option value="">All Assignees</option>
         <option value="unassigned" {{if eq .Filters.Assignee "unassigned"}}selected{{end}}>
             Unassigned
@@ -31,7 +33,8 @@
     <select name="priority"
             hx-get="/partials/workspace/{{.Workspace.ID}}/board"
             hx-target="#board-columns"
-            hx-include="[name='type'], [name='assignee'], [name='search']">
+            hx-include="[name='type'], [name='assignee'], [name='search']"
+            hx-on::after-request="updateFilterState()">
         <option value="">All Priorities</option>
         <option value="critical" {{if eq .Filters.Priority "critical"}}selected{{end}}>Critical</option>
         <option value="high" {{if eq .Filters.Priority "high"}}selected{{end}}>High</option>
@@ -46,6 +49,40 @@
            hx-get="/partials/workspace/{{.Workspace.ID}}/board"
            hx-target="#board-columns"
            hx-trigger="input changed delay:300ms"
-           hx-include="[name='type'], [name='assignee'], [name='priority']">
+           hx-include="[name='type'], [name='assignee'], [name='priority']"
+           hx-on::after-request="updateFilterState()">
+
+    <!-- Active filter count badge + clear button -->
+    {{$activeCount := 0}}
+    {{if .Filters.Type}}{{$activeCount = 1}}{{end}}
+    {{if .Filters.Assignee}}{{$activeCount = add $activeCount 1}}{{end}}
+    {{if .Filters.Priority}}{{$activeCount = add $activeCount 1}}{{end}}
+    {{if .Filters.Search}}{{$activeCount = add $activeCount 1}}{{end}}
+
+    <span class="filter-badge" id="filter-badge"
+          {{if eq $activeCount 0}}hidden{{end}}>
+        <span class="filter-badge-count" id="filter-badge-count">{{$activeCount}}</span>
+        <button type="button"
+                class="filter-clear-btn"
+                title="Clear all filters"
+                onclick="clearBoardFilters()">✕</button>
+    </span>
+
+    <!-- View options -->
+    <div class="board-view-options">
+        <select name="sort" id="board-sort" onchange="sortBoardColumns(this.value)">
+            <option value="">Default order</option>
+            <option value="priority">By priority</option>
+            <option value="due_date">By due date</option>
+            <option value="created">By created date</option>
+        </select>
+        <button type="button"
+                class="view-toggle-btn outline small"
+                id="compact-toggle"
+                title="Toggle compact view"
+                onclick="toggleCompactView()">
+            ☰
+        </button>
+    </div>
 </div>
 {{end}}

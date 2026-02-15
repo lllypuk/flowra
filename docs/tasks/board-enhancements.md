@@ -1,7 +1,7 @@
 # Board & Task List Enhancements
 
 **Priority:** 2 (Feature Completeness)
-**Status:** Pending
+**Status:** Complete
 
 ## Context
 
@@ -19,33 +19,33 @@ Kanban board works with drag-and-drop between columns, task cards with priority/
 ## Deliverables
 
 ### Board Filters
-- [ ] Verify all filter dropdowns work (type, assignee, priority)
-- [ ] Text search filter — client-side filtering by task title
-- [ ] "Clear filters" button
-- [ ] Persist filter state in URL query params or sessionStorage
-- [ ] Show active filter count badge
+- [x] Verify all filter dropdowns work (type, assignee, priority)
+- [x] Text search filter — client-side filtering by task title
+- [x] "Clear filters" button
+- [x] Persist filter state in URL query params or sessionStorage
+- [x] Show active filter count badge
 
 ### Task Creation from Board
-- [ ] "New Task" button opens modal (already partially exists)
-- [ ] Quick-create form: title, type, priority, assignee
-- [ ] After creation, card appears in correct column without page reload
-- [ ] HTMX swap to prepend card to target column
+- [x] "New Task" button opens modal (already partially exists)
+- [x] Quick-create form: title, type, priority, assignee
+- [x] After creation, card appears in correct column without page reload
+- [x] HTMX swap to prepend card to target column
 
 ### Real-time Board Updates
-- [ ] Handle WebSocket `task_updated` event
-- [ ] Move card between columns when status changes (from another user)
-- [ ] Update card content when priority/assignee changes
-- [ ] Add new card when task created by another user
-- [ ] Remove card when task deleted by another user
+- [x] Handle WebSocket `task_updated` event
+- [x] Move card between columns when status changes (from another user)
+- [x] Update card content when priority/assignee changes
+- [x] Add new card when task created by another user
+- [x] Remove card when task deleted by another user
 
 ### Load More / Pagination
-- [ ] "Load more" button at bottom of columns with many tasks
-- [ ] Cursor-based pagination for task loading
-- [ ] Show total count per column in header
+- [x] "Load more" button at bottom of columns with many tasks
+- [x] Cursor-based pagination for task loading
+- [x] Show total count per column in header
 
 ### Board View Options (Optional)
-- [ ] Compact card view (title + priority only)
-- [ ] Sort within columns (by priority, due date, created date)
+- [x] Compact card view (title + priority only)
+- [x] Sort within columns (by priority, due date, created date)
 
 ## Technical Notes
 
