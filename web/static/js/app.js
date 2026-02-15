@@ -14,7 +14,8 @@
         wsReconnectMaxDelay: 30000,
         wsMaxReconnectAttempts: 10,
         typingIndicatorDelay: 300,
-        typingIndicatorHideDelay: 3000
+        typingIndicatorHideDelay: 3000,
+        searchDebounceDelay: 300
     };
 
     // ===== State =====
@@ -383,10 +384,8 @@
             // Ctrl+K or Cmd+K - Quick search
             if ((evt.ctrlKey || evt.metaKey) && evt.key === 'k') {
                 evt.preventDefault();
-                var searchInput = document.querySelector('[data-quick-search]');
-                if (searchInput) {
-                    searchInput.focus();
-                }
+                openGlobalSearch();
+                return;
             }
 
             // Ctrl+Enter or Cmd+Enter - Submit form
@@ -413,6 +412,261 @@
         if (!active) return false;
         var tagName = active.tagName.toLowerCase();
         return tagName === 'input' || tagName === 'textarea' || active.isContentEditable;
+    }
+
+    // ===== Global Search (Cmd+K) =====
+    var searchState = {
+        cache: {},
+        debounceTimer: null,
+        selectedIndex: -1,
+        results: []
+    };
+
+    function getWorkspaceIdFromUrl() {
+        var match = window.location.pathname.match(/\/workspaces\/([^/]+)/);
+        return match ? match[1] : null;
+    }
+
+    function openGlobalSearch() {
+        var existing = document.getElementById('global-search-dialog');
+        if (existing) {
+            existing.close();
+            return;
+        }
+
+        var workspaceId = getWorkspaceIdFromUrl();
+
+        var dialog = document.createElement('dialog');
+        dialog.id = 'global-search-dialog';
+        dialog.className = 'global-search-dialog';
+        dialog.innerHTML =
+            '<div class="search-container">' +
+                '<div class="search-input-wrapper">' +
+                    '<span class="search-icon" aria-hidden="true">🔍</span>' +
+                    '<input type="search" id="global-search-input" ' +
+                        'placeholder="Search chats and tasks..." ' +
+                        'autocomplete="off" aria-label="Search" />' +
+                    '<kbd class="kbd search-kbd">Esc</kbd>' +
+                '</div>' +
+                '<div id="global-search-results" class="search-results" role="listbox" aria-label="Search results">' +
+                    '<div class="search-hint">' +
+                        (workspaceId
+                            ? 'Type to search chats and tasks in this workspace'
+                            : 'Navigate to a workspace to search') +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+
+        document.body.appendChild(dialog);
+        dialog.showModal();
+
+        var input = document.getElementById('global-search-input');
+        input.focus();
+
+        // Reset state
+        searchState.selectedIndex = -1;
+        searchState.results = [];
+
+        input.addEventListener('input', function() {
+            var query = input.value.trim();
+            if (searchState.debounceTimer) {
+                clearTimeout(searchState.debounceTimer);
+            }
+            if (!query) {
+                renderSearchResults([], '', workspaceId);
+                return;
+            }
+            searchState.debounceTimer = setTimeout(function() {
+                performSearch(query, workspaceId);
+            }, config.searchDebounceDelay);
+        });
+
+        // Keyboard navigation
+        input.addEventListener('keydown', function(evt) {
+            var resultsEl = document.getElementById('global-search-results');
+            var items = resultsEl ? resultsEl.querySelectorAll('.search-result-item') : [];
+
+            if (evt.key === 'ArrowDown') {
+                evt.preventDefault();
+                searchState.selectedIndex = Math.min(searchState.selectedIndex + 1, items.length - 1);
+                updateSearchSelection(items);
+            } else if (evt.key === 'ArrowUp') {
+                evt.preventDefault();
+                searchState.selectedIndex = Math.max(searchState.selectedIndex - 1, 0);
+                updateSearchSelection(items);
+            } else if (evt.key === 'Enter' && searchState.selectedIndex >= 0 && items.length > 0) {
+                evt.preventDefault();
+                items[searchState.selectedIndex].click();
+            }
+        });
+
+        // Click on backdrop to close
+        dialog.addEventListener('click', function(evt) {
+            if (evt.target === dialog) {
+                dialog.close();
+            }
+        });
+
+        dialog.addEventListener('close', function() {
+            if (searchState.debounceTimer) {
+                clearTimeout(searchState.debounceTimer);
+            }
+            dialog.remove();
+        });
+    }
+
+    function performSearch(query, workspaceId) {
+        if (!workspaceId) {
+            renderSearchResults([], query, workspaceId);
+            return;
+        }
+
+        var lowerQuery = query.toLowerCase();
+        var cacheKey = workspaceId;
+
+        if (searchState.cache[cacheKey]) {
+            var filtered = filterResults(searchState.cache[cacheKey], lowerQuery);
+            renderSearchResults(filtered, query, workspaceId);
+            return;
+        }
+
+        // Show loading
+        var resultsEl = document.getElementById('global-search-results');
+        if (resultsEl) {
+            resultsEl.innerHTML = '<div class="search-loading" aria-busy="true">Searching...</div>';
+        }
+
+        var basePath = '/api/v1/workspaces/' + workspaceId;
+        var allData = { chats: [], tasks: [] };
+        var pending = 2;
+
+        function checkDone() {
+            pending--;
+            if (pending === 0) {
+                searchState.cache[cacheKey] = allData;
+                // Clear cache after 60 seconds
+                setTimeout(function() {
+                    delete searchState.cache[cacheKey];
+                }, 60000);
+                var filtered = filterResults(allData, lowerQuery);
+                renderSearchResults(filtered, query, workspaceId);
+            }
+        }
+
+        fetch(basePath + '/chats?limit=100')
+            .then(function(r) { return r.ok ? r.json() : { chats: [] }; })
+            .then(function(data) { allData.chats = data.chats || []; })
+            .catch(function() {})
+            .finally(checkDone);
+
+        fetch(basePath + '/tasks?per_page=100')
+            .then(function(r) { return r.ok ? r.json() : { tasks: [] }; })
+            .then(function(data) { allData.tasks = data.tasks || []; })
+            .catch(function() {})
+            .finally(checkDone);
+    }
+
+    function filterResults(data, lowerQuery) {
+        var results = [];
+
+        data.chats.forEach(function(chat) {
+            if (chat.name && chat.name.toLowerCase().indexOf(lowerQuery) !== -1) {
+                results.push({ type: 'chat', id: chat.id, name: chat.name, chatType: chat.type });
+            }
+        });
+
+        data.tasks.forEach(function(task) {
+            if (task.title && task.title.toLowerCase().indexOf(lowerQuery) !== -1) {
+                results.push({ type: 'task', id: task.id, name: task.title, status: task.status, priority: task.priority });
+            }
+        });
+
+        return results;
+    }
+
+    function renderSearchResults(results, query, workspaceId) {
+        var resultsEl = document.getElementById('global-search-results');
+        if (!resultsEl) return;
+
+        searchState.selectedIndex = -1;
+        searchState.results = results;
+
+        if (!query) {
+            resultsEl.innerHTML = '<div class="search-hint">' +
+                (workspaceId ? 'Type to search chats and tasks in this workspace' : 'Navigate to a workspace to search') +
+                '</div>';
+            return;
+        }
+
+        if (results.length === 0) {
+            resultsEl.innerHTML = '<div class="search-empty">No results for "<strong>' + escapeHtml(query) + '</strong>"</div>';
+            return;
+        }
+
+        var chats = results.filter(function(r) { return r.type === 'chat'; });
+        var tasks = results.filter(function(r) { return r.type === 'task'; });
+        var html = '';
+
+        if (chats.length > 0) {
+            html += '<div class="search-group"><div class="search-group-label">Chats</div>';
+            chats.forEach(function(chat) {
+                var icon = chat.chatType === 'direct' ? '💬' : '📢';
+                html += '<a class="search-result-item" role="option" ' +
+                    'href="/workspaces/' + workspaceId + '/chats/' + chat.id + '">' +
+                    '<span class="result-icon" aria-hidden="true">' + icon + '</span>' +
+                    '<span class="result-name">' + highlightMatch(escapeHtml(chat.name), query) + '</span>' +
+                    '<span class="result-meta">' + escapeHtml(chat.chatType || '') + '</span>' +
+                    '</a>';
+            });
+            html += '</div>';
+        }
+
+        if (tasks.length > 0) {
+            html += '<div class="search-group"><div class="search-group-label">Tasks</div>';
+            tasks.forEach(function(task) {
+                html += '<a class="search-result-item" role="option" ' +
+                    'href="/workspaces/' + workspaceId + '/board?task=' + task.id + '">' +
+                    '<span class="result-icon" aria-hidden="true">📋</span>' +
+                    '<span class="result-name">' + highlightMatch(escapeHtml(task.name), query) + '</span>' +
+                    '<span class="result-meta">' + escapeHtml(task.status || '') + '</span>' +
+                    '</a>';
+            });
+            html += '</div>';
+        }
+
+        resultsEl.innerHTML = html;
+
+        // Wire click to close dialog
+        resultsEl.querySelectorAll('.search-result-item').forEach(function(item) {
+            item.addEventListener('click', function() {
+                var dialog = document.getElementById('global-search-dialog');
+                if (dialog) dialog.close();
+            });
+        });
+    }
+
+    function updateSearchSelection(items) {
+        items.forEach(function(item, i) {
+            if (i === searchState.selectedIndex) {
+                item.classList.add('selected');
+                item.scrollIntoView({ block: 'nearest' });
+            } else {
+                item.classList.remove('selected');
+            }
+        });
+    }
+
+    function highlightMatch(text, query) {
+        if (!query) return text;
+        var escaped = escapeHtml(query).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        var regex = new RegExp('(' + escaped + ')', 'gi');
+        return text.replace(regex, '<mark>$1</mark>');
+    }
+
+    function escapeHtml(str) {
+        var div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
     }
 
     function showKeyboardShortcutsHelp() {

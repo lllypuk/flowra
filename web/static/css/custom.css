@@ -848,4 +848,138 @@ html {
     color: #9ca3af;
 }
 
+/* ===== Global Search Modal ===== */
+.global-search-dialog {
+    padding: 0;
+    border: none;
+    border-radius: 12px;
+    width: min(560px, 90vw);
+    max-height: min(480px, 70vh);
+    background: var(--pico-background-color, #fff);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+    position: fixed;
+    top: 15%;
+    margin: 0 auto;
+}
+
+.global-search-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.search-container {
+    display: flex;
+    flex-direction: column;
+    max-height: min(480px, 70vh);
+}
+
+.search-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--pico-muted-border-color, #e0e0e0);
+}
+
+.search-input-wrapper .search-icon {
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.search-input-wrapper input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 1rem;
+    padding: 0.25rem 0;
+    margin-bottom: 0;
+    box-shadow: none;
+}
+
+.search-input-wrapper input:focus {
+    box-shadow: none;
+    border: none;
+}
+
+.search-kbd {
+    font-size: 0.65rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    background: var(--pico-muted-border-color, #e0e0e0);
+    color: var(--pico-muted-color, #666);
+    flex-shrink: 0;
+}
+
+.search-results {
+    overflow-y: auto;
+    padding: 0.5rem;
+    flex: 1;
+}
+
+.search-hint,
+.search-empty,
+.search-loading {
+    padding: 2rem 1rem;
+    text-align: center;
+    color: var(--pico-muted-color, #666);
+    font-size: 0.9rem;
+}
+
+.search-group {
+    margin-bottom: 0.5rem;
+}
+
+.search-group-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--pico-muted-color, #888);
+    padding: 0.5rem 0.75rem 0.25rem;
+}
+
+.search-result-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    cursor: pointer;
+    text-decoration: none;
+    color: var(--pico-color, inherit);
+    transition: background-color 0.1s;
+}
+
+.search-result-item:hover,
+.search-result-item.selected {
+    background: var(--pico-secondary-focus, rgba(0, 102, 204, 0.08));
+}
+
+.search-result-item .result-icon {
+    font-size: 1rem;
+    flex-shrink: 0;
+    width: 1.5rem;
+    text-align: center;
+}
+
+.search-result-item .result-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.search-result-item .result-name mark {
+    background: var(--pico-primary-focus, rgba(0, 102, 204, 0.2));
+    color: inherit;
+    border-radius: 2px;
+    padding: 0 1px;
+}
+
+.search-result-item .result-meta {
+    font-size: 0.75rem;
+    color: var(--pico-muted-color, #888);
+    flex-shrink: 0;
+}
 

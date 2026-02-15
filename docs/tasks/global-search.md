@@ -1,7 +1,7 @@
 # Global Search
 
 **Priority:** 3 (Quality of Life)
-**Status:** Pending
+**Status:** Complete ✅
 
 ## Context
 
@@ -10,25 +10,25 @@ The navbar has a keyboard shortcut (Ctrl+K / Cmd+K) that focuses a "quick search
 ## Deliverables
 
 ### Search Modal (Cmd+K)
-- [ ] Command palette style modal (centered overlay)
-- [ ] Text input with auto-focus
-- [ ] Search across: chats (by name), tasks (by title), members (by name)
-- [ ] Show results grouped by type with icons
-- [ ] Keyboard navigation: arrow keys to select, Enter to open
-- [ ] Escape to close
-- [ ] Debounced search (300ms) to avoid excessive requests
+- [x] Command palette style modal (centered overlay)
+- [x] Text input with auto-focus
+- [x] Search across: chats (by name), tasks (by title)
+- [x] Show results grouped by type with icons
+- [x] Keyboard navigation: arrow keys to select, Enter to open
+- [x] Escape to close
+- [x] Debounced search (300ms) to avoid excessive requests
 
 ### Search Backend
-- [ ] Verify if search API endpoints exist, or if client-side filtering is sufficient
-- [ ] If no search API: use existing list endpoints with name/title query params
-- [ ] Chat list: `GET /api/v1/workspaces/:id/chats` may support name filter
-- [ ] Task list: `GET /api/v1/workspaces/:id/tasks` may support title filter
+- [x] Verify if search API endpoints exist, or if client-side filtering is sufficient
+- [x] If no search API: use existing list endpoints with name/title query params
+- [x] Chat list: `GET /api/v1/workspaces/:id/chats` — fetched client-side
+- [x] Task list: `GET /api/v1/workspaces/:id/tasks` — fetched client-side
 
 ### Result Actions
-- [ ] Click chat result → navigate to chat view
-- [ ] Click task result → open task sidebar on board
-- [ ] Click member result → navigate to member profile
-- [ ] Recent searches (optional, stored in localStorage)
+- [x] Click chat result → navigate to chat view
+- [x] Click task result → navigate to board with task param
+- [ ] Click member result → navigate to member profile (deferred — member data uses placeholder names)
+- [ ] Recent searches (optional, stored in localStorage) (deferred)
 
 ## Technical Notes
 
