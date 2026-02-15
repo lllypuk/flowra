@@ -29,8 +29,9 @@ func TemplateFuncs() template.FuncMap {
 		"trimSpace": strings.TrimSpace,
 		"join":      strings.Join,
 		"split":     strings.Split,
-		"pluralize": pluralize,
-		"initials":  initials,
+		"pluralize":     pluralize,
+		"initials":      initials,
+		"avatarInitials": avatarInitials,
 
 		// Conditional helpers
 		"eq":       eq,
@@ -179,6 +180,38 @@ func initials(name string) string {
 		result += string(parts[len(parts)-1][0])
 	}
 	return strings.ToUpper(result)
+}
+
+// avatarInitials extracts initials from a user object's display name or username.
+func avatarInitials(user any) string {
+	// Handle UserResponse type
+	if u, ok := user.(UserResponse); ok {
+		if u.DisplayName != "" {
+			return initials(u.DisplayName)
+		}
+		return initials(u.Username)
+	}
+	
+	// Handle pointer to UserResponse
+	if u, ok := user.(*UserResponse); ok && u != nil {
+		if u.DisplayName != "" {
+			return initials(u.DisplayName)
+		}
+		return initials(u.Username)
+	}
+	
+	// Fallback: try to extract DisplayName and Username using reflection-like approach
+	// by type asserting to a map (common in template data)
+	if userMap, ok := user.(map[string]any); ok {
+		if displayName, exists := userMap["DisplayName"].(string); exists && displayName != "" {
+			return initials(displayName)
+		}
+		if username, exists := userMap["Username"].(string); exists {
+			return initials(username)
+		}
+	}
+	
+	return "?"
 }
 
 // Conditional helpers

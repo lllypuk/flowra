@@ -13,7 +13,9 @@
             {{end}}
             <div>
                 <strong>{{.Member.DisplayName}}</strong>
-                <small class="text-muted">@{{.Member.Username}}</small>
+                <small class="text-muted">
+                    <a href="/users/{{.Member.UserID}}" class="username-link">@{{.Member.Username}}</a>
+                </small>
             </div>
         </div>
     </td>

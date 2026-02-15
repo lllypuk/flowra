@@ -261,6 +261,10 @@ func registerPageRoutes(e *echo.Echo, c *Container) {
 	e.GET("/logout", httphandler.RequireAuth(c.TemplateHandler.LogoutPage))
 	e.POST("/auth/logout", c.TemplateHandler.LogoutHandler)
 
+	// User pages (protected)
+	e.GET("/settings", httphandler.RequireAuth(c.TemplateHandler.UserSettings))
+	e.GET("/users/:id", httphandler.RequireAuth(c.TemplateHandler.UserProfile))
+
 	// Protected pages (require authentication)
 	// Workspace pages
 	workspaces := e.Group("/workspaces", httphandler.RequireAuth)

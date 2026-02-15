@@ -18,7 +18,7 @@
         <header class="message-header">
             <strong>{{.Author.DisplayName}}</strong>
             <small class="text-muted">
-                @{{.Author.Username}}
+                <a href="/users/{{.Author.UserID}}" class="username-link">@{{.Author.Username}}</a>
             </small>
             <time datetime="{{.CreatedAt}}" class="text-muted">
                 {{.CreatedAt | formatTime}}

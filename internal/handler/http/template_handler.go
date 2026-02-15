@@ -220,6 +220,9 @@ type UserView struct {
 	Username    string
 	DisplayName string
 	AvatarURL   string
+	IsAdmin     bool
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 // OAuthClient defines the interface for OAuth operations.
@@ -517,6 +520,73 @@ func (h *TemplateHandler) ServerError(c echo.Context, err error) error {
 			"message": "Something went wrong. Please try again later.",
 		},
 	})
+}
+
+// UserSettings renders the user settings page.
+func (h *TemplateHandler) UserSettings(c echo.Context) error {
+	user := h.getUserView(c)
+	if user == nil {
+		return c.Redirect(http.StatusFound, "/login")
+	}
+
+	// Get full user details from the user map in context
+	userData := c.Get("user")
+	if userMap, ok := userData.(map[string]any); ok {
+		data := map[string]any{
+			"User": userMap,
+		}
+		return h.render(c, "user/settings.html", "Settings", data)
+	}
+
+	// Fallback to minimal user view
+	data := map[string]any{
+		"User": map[string]any{
+			"ID":          user.ID,
+			"Username":    user.Username,
+			"DisplayName": user.DisplayName,
+			"Email":       user.Email,
+			"AvatarURL":   user.AvatarURL,
+			"IsAdmin":     false,
+			"CreatedAt":   time.Now(),
+			"UpdatedAt":   time.Now(),
+		},
+	}
+	return h.render(c, "user/settings.html", "Settings", data)
+}
+
+// UserProfile renders the user profile page for viewing another user.
+func (h *TemplateHandler) UserProfile(c echo.Context) error {
+	currentUser := h.getUserView(c)
+	if currentUser == nil {
+		return c.Redirect(http.StatusFound, "/login")
+	}
+
+	userIDStr := c.Param("id")
+	userID, err := uuid.ParseUUID(userIDStr)
+	if err != nil {
+		return h.NotFound(c)
+	}
+
+	// Check if viewing own profile
+	isCurrentUser := currentUser.ID == userID.String()
+
+	// For now, return a mock user profile
+	// In a full implementation, this would fetch from UserService
+	data := map[string]any{
+		"User": map[string]any{
+			"ID":          userID.String(),
+			"Username":    "user" + userID.String()[:8],
+			"DisplayName": "User Name",
+			"Email":       "user@example.com",
+			"AvatarURL":   "",
+			"IsAdmin":     false,
+			"CreatedAt":   time.Now(),
+			"UpdatedAt":   time.Now(),
+		},
+		"IsCurrentUser": isCurrentUser,
+	}
+
+	return h.render(c, "user/profile.html", "User Profile", data)
 }
 
 // SetupStaticRoutes registers routes for serving static files.
