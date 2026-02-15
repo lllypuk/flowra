@@ -2,6 +2,10 @@
  * Chat-specific JavaScript functionality
  * Provides typing indicators, tag autocomplete, and message utilities
  */
+(function() {
+    // Guard against double-initialization when loaded via hx-boost
+    if (window.__chatJsLoaded) return;
+    window.__chatJsLoaded = true;
 
 // ============================================================
 // Auto-resize textarea
@@ -11,17 +15,17 @@
  * Auto-resize textarea based on content
  * @param {HTMLTextAreaElement} textarea - The textarea element to resize
  */
-function autoResize(textarea) {
+window.autoResize = function autoResize(textarea) {
     if (!textarea) return;
 
     // Reset height to calculate proper scroll height
     textarea.style.height = 'auto';
 
     // Set height based on content, max 160px
-    const maxHeight = 160;
-    const newHeight = Math.min(textarea.scrollHeight, maxHeight);
+    var maxHeight = 160;
+    var newHeight = Math.min(textarea.scrollHeight, maxHeight);
     textarea.style.height = newHeight + 'px';
-}
+};
 
 // ============================================================
 // Scroll utilities
@@ -31,7 +35,7 @@ function autoResize(textarea) {
  * Scroll container to bottom
  * @param {string} elementId - ID of the element to scroll
  */
-function scrollToBottom(elementId) {
+window.scrollToBottom = function scrollToBottom(elementId) {
     var element = document.getElementById(elementId);
     if (element) {
         // Use smooth scrolling for better UX
@@ -40,18 +44,18 @@ function scrollToBottom(elementId) {
             behavior: 'smooth'
         });
     }
-}
+};
 
 /**
  * Scroll container to bottom instantly (no animation)
  * @param {string} elementId - ID of the element to scroll
  */
-function scrollToBottomInstant(elementId) {
+window.scrollToBottomInstant = function scrollToBottomInstant(elementId) {
     var element = document.getElementById(elementId);
     if (element) {
         element.scrollTop = element.scrollHeight;
     }
-}
+};
 
 // ============================================================
 // Typing indicator
@@ -64,7 +68,7 @@ var typingHideTimeouts = {};
  * Handle typing event - sends typing indicator via WebSocket
  * @param {string} chatId - The chat ID
  */
-function handleTyping(chatId) {
+window.handleTyping = function handleTyping(chatId) {
     // Clear existing timeout for this chat
     if (typingTimeouts[chatId]) {
         clearTimeout(typingTimeouts[chatId]);
@@ -74,7 +78,7 @@ function handleTyping(chatId) {
     typingTimeouts[chatId] = setTimeout(function() {
         sendTypingIndicator(chatId);
     }, 300);
-}
+};
 
 /**
  * Send typing indicator via WebSocket
@@ -101,7 +105,7 @@ function sendTypingIndicator(chatId) {
  * @param {string} username - The username who is typing
  * @param {string} chatId - The chat ID
  */
-function showTypingIndicator(username, chatId) {
+window.showTypingIndicator = function showTypingIndicator(username, chatId) {
     var indicator = document.getElementById('typing-indicator-' + chatId);
     var usersSpan = indicator ? indicator.querySelector('.typing-users, #typing-users') : null;
 
@@ -119,7 +123,7 @@ function showTypingIndicator(username, chatId) {
             indicator.classList.add('hidden');
         }, 3000);
     }
-}
+};
 
 // ============================================================
 // Tag autocomplete
@@ -199,7 +203,6 @@ function handleAutocompleteNavigationEvent(e) {
  */
 function positionDropdown(textarea, dropdown) {
     var rect = textarea.getBoundingClientRect();
-    var dropdownHeight = dropdown.offsetHeight || 250; // fallback to max-height
 
     // Position dropdown above the textarea
     dropdown.style.position = 'fixed';
@@ -339,7 +342,7 @@ function insertTag(textarea, tag) {
     textarea.focus();
 
     // Trigger resize
-    autoResize(textarea);
+    window.autoResize(textarea);
 }
 
 /**
@@ -398,7 +401,7 @@ document.body.addEventListener('htmx:wsAfterMessage', function(evt) {
 /**
  * Track presence state by user ID
  */
-const presenceState = new Map();
+var presenceState = new Map();
 
 /**
  * Update presence indicator for a user
@@ -407,7 +410,7 @@ const presenceState = new Map();
  */
 function updateUserPresence(userId, isOnline) {
     presenceState.set(userId, isOnline);
-    
+
     // Update all presence dots for this user
     var presenceDots = document.querySelectorAll('[data-user-id="' + userId + '"] .presence-dot');
     presenceDots.forEach(function(dot) {
@@ -419,7 +422,7 @@ function updateUserPresence(userId, isOnline) {
             dot.classList.remove('online');
         }
     });
-    
+
     updateOnlineCount();
 }
 
@@ -428,19 +431,19 @@ function updateUserPresence(userId, isOnline) {
  */
 function updateOnlineCount() {
     // Count unique online users from presence state
-    let onlineCount = 0;
+    var onlineCount = 0;
     presenceState.forEach(function(isOnline) {
         if (isOnline) {
             onlineCount++;
         }
     });
-    
+
     // Update modal count
     var modalCountEl = document.querySelector('.online-count');
     if (modalCountEl) {
         modalCountEl.textContent = onlineCount + ' online';
     }
-    
+
     // Update header count
     var headerCountEl = document.getElementById('chat-online-count');
     if (headerCountEl) {
@@ -466,7 +469,7 @@ document.body.addEventListener('presence.changed', function(evt) {
  */
 document.body.addEventListener('chat.typing', function(evt) {
     if (evt.detail && evt.detail.user_id && evt.detail.chat_id) {
-        showTypingIndicator(evt.detail.chat_id, evt.detail.user_id);
+        window.showTypingIndicator(evt.detail.chat_id, evt.detail.user_id);
     }
 });
 
@@ -483,7 +486,7 @@ function initChat() {
     // Auto-resize all textareas on page
     var textareas = document.querySelectorAll('.message-form textarea');
     textareas.forEach(function(textarea) {
-        autoResize(textarea);
+        window.autoResize(textarea);
     });
 }
 
@@ -504,6 +507,8 @@ document.body.addEventListener('htmx:afterSwap', function(evt) {
 document.body.addEventListener('htmx:afterSettle', function(evt) {
     var target = evt.detail.target;
     if (target && target.id && target.id.startsWith('messages-')) {
-        scrollToBottomInstant(target.id);
+        window.scrollToBottomInstant(target.id);
     }
 });
+
+})();
