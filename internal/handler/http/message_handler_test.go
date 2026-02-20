@@ -860,3 +860,124 @@ func TestMessageListPagination(t *testing.T) {
 		assert.Equal(t, stdhttp.StatusOK, rec.Code)
 	})
 }
+
+func TestMessageHandler_AddAttachment(t *testing.T) {
+	t.Run("successful add attachment", func(t *testing.T) {
+		e := echo.New()
+		userID := uuid.NewUUID()
+		chatID := uuid.NewUUID()
+		fileID := uuid.NewUUID()
+
+		mockService := httphandler.NewMockMessageService()
+		handler := httphandler.NewMessageHandler(mockService)
+
+		testMessage := createTestMessage(t, chatID, userID, "Message with attachment")
+		mockService.AddMessage(testMessage)
+
+		reqBody := `{"file_id":"` + fileID.String() + `","file_name":"doc.pdf","file_size":1024,"mime_type":"application/pdf"}`
+		req := httptest.NewRequest(stdhttp.MethodPost,
+			"/api/v1/messages/"+testMessage.ID().String()+"/attachments",
+			strings.NewReader(reqBody))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("id")
+		c.SetParamValues(testMessage.ID().String())
+
+		setupMessageAuthContext(c, userID)
+
+		err := handler.AddAttachment(c)
+		require.NoError(t, err)
+		assert.Equal(t, stdhttp.StatusOK, rec.Code)
+	})
+
+	t.Run("message not found", func(t *testing.T) {
+		e := echo.New()
+		userID := uuid.NewUUID()
+		fileID := uuid.NewUUID()
+		nonExistentID := uuid.NewUUID()
+
+		mockService := httphandler.NewMockMessageService()
+		handler := httphandler.NewMessageHandler(mockService)
+
+		reqBody := `{"file_id":"` + fileID.String() + `","file_name":"doc.pdf","file_size":1024,"mime_type":"application/pdf"}`
+		req := httptest.NewRequest(stdhttp.MethodPost,
+			"/api/v1/messages/"+nonExistentID.String()+"/attachments",
+			strings.NewReader(reqBody))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("id")
+		c.SetParamValues(nonExistentID.String())
+
+		setupMessageAuthContext(c, userID)
+
+		err := handler.AddAttachment(c)
+		require.NoError(t, err)
+		assert.Equal(t, stdhttp.StatusNotFound, rec.Code)
+	})
+
+	t.Run("invalid message ID", func(t *testing.T) {
+		e := echo.New()
+		userID := uuid.NewUUID()
+
+		mockService := httphandler.NewMockMessageService()
+		handler := httphandler.NewMessageHandler(mockService)
+
+		req := httptest.NewRequest(stdhttp.MethodPost, "/api/v1/messages/invalid/attachments", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("id")
+		c.SetParamValues("invalid")
+
+		setupMessageAuthContext(c, userID)
+
+		err := handler.AddAttachment(c)
+		require.NoError(t, err)
+		assert.Equal(t, stdhttp.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("missing auth", func(t *testing.T) {
+		e := echo.New()
+		messageID := uuid.NewUUID()
+
+		mockService := httphandler.NewMockMessageService()
+		handler := httphandler.NewMessageHandler(mockService)
+
+		req := httptest.NewRequest(stdhttp.MethodPost,
+			"/api/v1/messages/"+messageID.String()+"/attachments", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("id")
+		c.SetParamValues(messageID.String())
+
+		err := handler.AddAttachment(c)
+		require.NoError(t, err)
+		assert.Equal(t, stdhttp.StatusUnauthorized, rec.Code)
+	})
+
+	t.Run("invalid file ID", func(t *testing.T) {
+		e := echo.New()
+		userID := uuid.NewUUID()
+		messageID := uuid.NewUUID()
+
+		mockService := httphandler.NewMockMessageService()
+		handler := httphandler.NewMessageHandler(mockService)
+
+		reqBody := `{"file_id":"not-a-uuid","file_name":"doc.pdf","file_size":1024,"mime_type":"application/pdf"}`
+		req := httptest.NewRequest(stdhttp.MethodPost,
+			"/api/v1/messages/"+messageID.String()+"/attachments",
+			strings.NewReader(reqBody))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("id")
+		c.SetParamValues(messageID.String())
+
+		setupMessageAuthContext(c, userID)
+
+		err := handler.AddAttachment(c)
+		require.NoError(t, err)
+		assert.Equal(t, stdhttp.StatusBadRequest, rec.Code)
+	})
+}

@@ -280,6 +280,8 @@ func TestHub_BroadcastToChat(t *testing.T) {
 
 		hub.Register(client1)
 		hub.Register(client2)
+		time.Sleep(10 * time.Millisecond)
+
 		hub.JoinChat(client1, chatID)
 		hub.JoinChat(client2, chatID)
 		time.Sleep(10 * time.Millisecond)
@@ -307,6 +309,8 @@ func TestHub_BroadcastToChat(t *testing.T) {
 
 		hub.Register(client1)
 		hub.Register(client2)
+		time.Sleep(10 * time.Millisecond)
+
 		hub.JoinChat(client1, chatID)
 		hub.JoinChat(client2, otherChatID)
 		time.Sleep(10 * time.Millisecond)

@@ -160,6 +160,7 @@ func registerMessageRoutes(r *httpserver.Router, c *Container) {
 		// These are authenticated but not workspace-scoped since message ID is unique
 		r.Auth().PUT("/messages/:id", c.MessageHandler.Edit)
 		r.Auth().DELETE("/messages/:id", c.MessageHandler.Delete)
+		r.Auth().POST("/messages/:id/attachments", c.MessageHandler.AddAttachment)
 	} else {
 		// Placeholder endpoints when handler is not initialized
 		placeholder := createPlaceholderHandler("Message")

@@ -257,6 +257,8 @@
         var files = window.__pendingFiles[chatId] || [];
         if (files.length === 0) return;
 
+        var remaining = files.length;
+
         files.forEach(function(file) {
             var formData = new FormData();
             formData.append('file', file);
@@ -269,16 +271,28 @@
                 if (!resp.ok) throw new Error('Upload failed');
                 return resp.json();
             }).then(function(result) {
-                if (result.data) {
-                    // Reload the message to show attachment
-                    setTimeout(function() {
-                        htmx.ajax('GET', '/partials/messages/' + messageId, {
-                            target: '#message-' + messageId,
-                            swap: 'outerHTML'
-                        });
-                    }, 300);
+                if (result.data && result.data.file_id) {
+                    return fetch('/api/v1/messages/' + messageId + '/attachments', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            file_id: result.data.file_id,
+                            file_name: result.data.file_name,
+                            file_size: result.data.file_size,
+                            mime_type: result.data.mime_type
+                        })
+                    });
+                }
+            }).then(function() {
+                remaining--;
+                if (remaining <= 0) {
+                    htmx.ajax('GET', '/partials/messages/' + messageId, {
+                        target: '#message-' + messageId,
+                        swap: 'outerHTML'
+                    });
                 }
             }).catch(function(err) {
+                remaining--;
                 console.error('File upload error:', err);
                 showToast('Failed to upload ' + file.name, 'error');
             });

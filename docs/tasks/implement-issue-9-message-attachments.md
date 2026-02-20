@@ -1,6 +1,6 @@
 # Implementation: Issue 9 — Message Attachments Not Persisted
 
-## Status: Pending
+## Status: Complete
 
 ## Problem
 
@@ -206,9 +206,9 @@ After implementation, verify:
 
 ## Checklist
 
-- [ ] Add `AddAttachment` to `MessageService` interface in `message_handler.go`
-- [ ] Add `AddAttachment` handler method in `message_handler.go`
-- [ ] Register `POST /messages/:id/attachments` route in `routes.go`
-- [ ] Update `uploadPendingFiles` JS in `message_form.html`
-- [ ] Add handler tests for AddAttachment endpoint
+- [x] Add `AddAttachment` to `MessageService` interface in `message_handler.go`
+- [x] Add `AddAttachment` handler method in `message_handler.go`
+- [x] Register `POST /messages/:id/attachments` route in `routes.go`
+- [x] Update `uploadPendingFiles` JS in `message_form.html`
+- [x] Add handler tests for AddAttachment endpoint
 - [ ] Manual verification
