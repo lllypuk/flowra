@@ -144,7 +144,7 @@
                  id="task-attachments-{{.Task.ID}}"
                  ondragover="event.preventDefault(); this.classList.add('drag-over')"
                  ondragleave="this.classList.remove('drag-over')"
-                 ondrop="handleTaskFileDrop(event, '{{.Task.ID}}')">
+                 ondrop="handleTaskFileDrop(event, '{{.Task.ID}}', '{{.Task.ChatID}}')">
                 {{if .Task.Attachments}}
                 {{range .Task.Attachments}}
                 <div class="task-attachment-item" id="task-att-{{.FileID}}">
@@ -167,7 +167,7 @@
                     <input type="file" id="task-file-input-{{.Task.ID}}"
                            class="file-input-hidden" multiple
                            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip"
-                           onchange="handleTaskFileUpload(this, '{{.Task.ID}}')">
+                           onchange="handleTaskFileUpload(this, '{{.Task.ID}}', '{{.Task.ChatID}}')">
                     <button type="button" class="small outline"
                             onclick="document.getElementById('task-file-input-{{.Task.ID}}').click()">
                         📎 Add File
@@ -228,30 +228,31 @@ function setQuickDate(taskId, workspaceId, daysFromNow) {
 }
 
 // Task file upload
-function handleTaskFileUpload(input, taskId) {
+function handleTaskFileUpload(input, taskId, chatId) {
     if (!input.files || input.files.length === 0) return;
     for (var i = 0; i < input.files.length; i++) {
-        uploadTaskFile(input.files[i], taskId);
+        uploadTaskFile(input.files[i], taskId, chatId);
     }
     input.value = '';
 }
 
-function handleTaskFileDrop(event, taskId) {
+function handleTaskFileDrop(event, taskId, chatId) {
     event.preventDefault();
     event.currentTarget.classList.remove('drag-over');
     var files = event.dataTransfer.files;
     for (var i = 0; i < files.length; i++) {
-        uploadTaskFile(files[i], taskId);
+        uploadTaskFile(files[i], taskId, chatId);
     }
 }
 
-function uploadTaskFile(file, taskId) {
+function uploadTaskFile(file, taskId, chatId) {
     if (file.size > 10 * 1024 * 1024) {
         showToast('File "' + file.name + '" exceeds 10 MB limit', 'error');
         return;
     }
     var formData = new FormData();
     formData.append('file', file);
+    formData.append('chat_id', chatId);
 
     fetch('/api/v1/files/upload', {
         method: 'POST',

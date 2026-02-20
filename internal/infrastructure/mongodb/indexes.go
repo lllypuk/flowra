@@ -22,6 +22,7 @@ const (
 	CollectionNotifications = "notifications"
 	CollectionOutbox        = "outbox"
 	CollectionRepairQueue   = "repair_queue"
+	CollectionFileMetadata  = "file_metadata"
 )
 
 // IndexDefinition describes a MongoDB index to be created.
@@ -77,6 +78,7 @@ func GetAllIndexDefinitions() []IndexDefinition {
 	indexes = append(indexes, GetNotificationIndexes()...)
 	indexes = append(indexes, GetOutboxIndexes()...)
 	indexes = append(indexes, GetRepairQueueIndexes()...)
+	indexes = append(indexes, GetFileMetadataIndexes()...)
 
 	return indexes
 }
@@ -498,6 +500,18 @@ func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 	return CreateAllIndexes(ctx, db)
 }
 
+// GetFileMetadataIndexes returns index definitions for the file_metadata collection.
+func GetFileMetadataIndexes() []IndexDefinition {
+	return []IndexDefinition{
+		{
+			// Unique index for file ID lookup
+			Collection: CollectionFileMetadata,
+			Keys:       bson.D{{Key: "file_id", Value: 1}},
+			Options:    options.Index().SetUnique(true).SetName("idx_file_metadata_file_id_unique"),
+		},
+	}
+}
+
 // CreateCollectionIndexes creates indexes for a specific collection only.
 // Useful for targeted index creation or testing.
 func CreateCollectionIndexes(ctx context.Context, db *mongo.Database, collectionName string) error {
@@ -524,6 +538,8 @@ func CreateCollectionIndexes(ctx context.Context, db *mongo.Database, collection
 		indexes = GetOutboxIndexes()
 	case CollectionRepairQueue:
 		indexes = GetRepairQueueIndexes()
+	case CollectionFileMetadata:
+		indexes = GetFileMetadataIndexes()
 	default:
 		return fmt.Errorf("unknown collection: %s", collectionName)
 	}

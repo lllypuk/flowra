@@ -260,6 +260,7 @@
         files.forEach(function(file) {
             var formData = new FormData();
             formData.append('file', file);
+            formData.append('chat_id', chatId);
 
             fetch('/api/v1/files/upload', {
                 method: 'POST',

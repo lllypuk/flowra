@@ -1,6 +1,6 @@
 # Fix: Missing Authorization Check on File Downloads
 
-## Status: Pending
+## Status: Complete
 
 ## Severity: High
 
@@ -246,17 +246,17 @@ formData.append('chat_id', chatId);
 
 ## Checklist
 
-- [ ] Create `FileMetadata` struct (handler package or shared)
-- [ ] Create `file_metadata_repository.go` in `internal/infrastructure/repository/`
-- [ ] Add `file_metadata` index in `internal/infrastructure/mongodb/indexes.go`
-- [ ] Define `FileMetadataLookup` and `FileChatMembershipChecker` interfaces in handler
-- [ ] Update `FileHandler` struct to accept new dependencies
-- [ ] Update `Upload` to accept `chat_id`, verify membership, and save metadata
-- [ ] Update `Download` to look up metadata and verify membership
-- [ ] Update `NewFileHandler` constructor and wiring in `container.go`
-- [ ] Update frontend upload form to send `chat_id`
-- [ ] Handle migration: existing files without metadata (option: serve without auth check
+- [x] Create `FileMetadata` struct (handler package or shared)
+- [x] Create `file_metadata_repository.go` in `internal/infrastructure/repository/`
+- [x] Add `file_metadata` index in `internal/infrastructure/mongodb/indexes.go`
+- [x] Define `FileMetadataLookup` and `FileChatMembershipChecker` interfaces in handler
+- [x] Update `FileHandler` struct to accept new dependencies
+- [x] Update `Upload` to accept `chat_id`, verify membership, and save metadata
+- [x] Update `Download` to look up metadata and verify membership
+- [x] Update `NewFileHandler` constructor and wiring in `container.go`
+- [x] Update frontend upload form to send `chat_id`
+- [x] Handle migration: existing files without metadata (option: serve without auth check
       for files uploaded before migration, or backfill metadata from message attachments)
-- [ ] Add integration tests for authorized and unauthorized download attempts
-- [ ] Run `go test ./...`
-- [ ] Run `golangci-lint run`
+- [x] Add integration tests for authorized and unauthorized download attempts
+- [x] Run `go test ./...`
+- [x] Run `golangci-lint run`

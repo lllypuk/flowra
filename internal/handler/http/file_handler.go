@@ -1,11 +1,13 @@
 package httphandler
 
 import (
+	"context"
 	"fmt"
 	"mime"
 	"net/http"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
@@ -30,15 +32,42 @@ type FileUploadResponse struct {
 	URL      string    `json:"url"`
 }
 
+// FileMetadataLookup retrieves file ownership metadata.
+type FileMetadataLookup interface {
+	Save(ctx context.Context, meta FileMetadataEntry) error
+	FindByFileID(ctx context.Context, fileID uuid.UUID) (*FileMetadataEntry, error)
+}
+
+// FileMetadataEntry holds ownership information for an uploaded file.
+type FileMetadataEntry struct {
+	FileID     uuid.UUID
+	ChatID     uuid.UUID
+	UploaderID uuid.UUID
+	UploadedAt time.Time
+}
+
+// FileChatParticipantChecker verifies user is a participant of a chat.
+type FileChatParticipantChecker interface {
+	IsParticipant(ctx context.Context, chatID uuid.UUID, userID uuid.UUID) (bool, error)
+}
+
 // FileHandler handles file upload and download HTTP requests.
 type FileHandler struct {
-	storage *filestorage.LocalStorage
+	storage          *filestorage.LocalStorage
+	metadataRepo     FileMetadataLookup
+	participantCheck FileChatParticipantChecker
 }
 
 // NewFileHandler creates a new FileHandler.
-func NewFileHandler(storage *filestorage.LocalStorage) *FileHandler {
+func NewFileHandler(
+	storage *filestorage.LocalStorage,
+	metadataRepo FileMetadataLookup,
+	participantCheck FileChatParticipantChecker,
+) *FileHandler {
 	return &FileHandler{
-		storage: storage,
+		storage:          storage,
+		metadataRepo:     metadataRepo,
+		participantCheck: participantCheck,
 	}
 }
 
@@ -49,11 +78,30 @@ func (h *FileHandler) RegisterRoutes(r *httpserver.Router) {
 }
 
 // Upload handles POST /api/v1/files/upload.
-// Accepts multipart form with a "file" field.
+// Accepts multipart form with a "file" field and a "chat_id" field.
 func (h *FileHandler) Upload(c echo.Context) error {
 	userID := middleware.GetUserID(c)
 	if userID.IsZero() {
 		return httpserver.RespondErrorWithCode(c, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
+	}
+
+	// Require chat_id for authorization
+	chatIDStr := c.FormValue("chat_id")
+	if chatIDStr == "" {
+		return httpserver.RespondErrorWithCode(
+			c, http.StatusBadRequest, "MISSING_CHAT_ID", "chat_id is required")
+	}
+	chatID, chatParseErr := uuid.ParseUUID(chatIDStr)
+	if chatParseErr != nil {
+		return httpserver.RespondErrorWithCode(
+			c, http.StatusBadRequest, "INVALID_CHAT_ID", "invalid chat ID format")
+	}
+
+	// Verify user is a participant of this chat
+	isMember, memberErr := h.participantCheck.IsParticipant(c.Request().Context(), chatID, userID)
+	if memberErr != nil || !isMember {
+		return httpserver.RespondErrorWithCode(
+			c, http.StatusForbidden, "FORBIDDEN", "you are not a participant of this chat")
 	}
 
 	// Limit request body size
@@ -107,6 +155,14 @@ func (h *FileHandler) Upload(c echo.Context) error {
 			c, http.StatusInternalServerError, "STORAGE_ERROR", "failed to save file")
 	}
 
+	// Save file metadata for authorization
+	_ = h.metadataRepo.Save(c.Request().Context(), FileMetadataEntry{
+		FileID:     fileID,
+		ChatID:     chatID,
+		UploaderID: userID,
+		UploadedAt: time.Now().UTC(),
+	})
+
 	resp := FileUploadResponse{
 		FileID:   fileID,
 		FileName: file.Filename,
@@ -119,7 +175,7 @@ func (h *FileHandler) Upload(c echo.Context) error {
 }
 
 // Download handles GET /api/v1/files/:file_id/:file_name.
-// Serves the file with appropriate content type.
+// Serves the file with appropriate content type after verifying authorization.
 func (h *FileHandler) Download(c echo.Context) error {
 	userID := middleware.GetUserID(c)
 	if userID.IsZero() {
@@ -139,6 +195,24 @@ func (h *FileHandler) Download(c echo.Context) error {
 			c, http.StatusBadRequest, "INVALID_FILE_NAME", "file name is required")
 	}
 
+	// Authorization: verify user has access to the file's chat
+	meta, metaErr := h.metadataRepo.FindByFileID(c.Request().Context(), fileID)
+	if metaErr != nil {
+		// Files without metadata (uploaded before migration) are served without auth check
+		return h.serveFile(c, fileID, fileName)
+	}
+
+	isMember, memberErr := h.participantCheck.IsParticipant(c.Request().Context(), meta.ChatID, userID)
+	if memberErr != nil || !isMember {
+		return httpserver.RespondErrorWithCode(
+			c, http.StatusForbidden, "FORBIDDEN", "you do not have access to this file")
+	}
+
+	return h.serveFile(c, fileID, fileName)
+}
+
+// serveFile serves a file from storage with appropriate headers.
+func (h *FileHandler) serveFile(c echo.Context, fileID uuid.UUID, fileName string) error {
 	// Check if file exists
 	if !h.storage.Exists(fileID, fileName) {
 		return httpserver.RespondErrorWithCode(

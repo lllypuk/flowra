@@ -1605,7 +1605,15 @@ func (c *Container) setupMessageHandler() {
 	if fileErr != nil {
 		c.Logger.Warn("failed to initialize file storage", "error", fileErr)
 	} else {
-		c.FileHandler = httphandler.NewFileHandler(fileStorage)
+		fileMetadataRepo := mongodb.NewMongoFileMetadataRepository(
+			c.MongoDB.Database(c.MongoDBName).Collection("file_metadata"),
+			mongodb.WithFileMetadataRepoLogger(c.Logger),
+		)
+		c.FileHandler = httphandler.NewFileHandler(
+			fileStorage,
+			&fileMetadataAdapter{repo: fileMetadataRepo},
+			&fileChatParticipantAdapter{chatQueryRepo: c.ChatQueryRepo},
+		)
 	}
 	c.Logger.Debug("message service and handler initialized (real)")
 }
@@ -2208,4 +2216,59 @@ func (a *oauthClientAdapter) ExchangeCode(
 		RefreshToken: resp.RefreshToken,
 		ExpiresIn:    resp.ExpiresIn,
 	}, nil
+}
+
+// fileMetadataAdapter adapts MongoFileMetadataRepository to httphandler.FileMetadataLookup.
+type fileMetadataAdapter struct {
+	repo *mongodb.MongoFileMetadataRepository
+}
+
+// Save implements httphandler.FileMetadataLookup.
+func (a *fileMetadataAdapter) Save(ctx context.Context, meta httphandler.FileMetadataEntry) error {
+	return a.repo.Save(ctx, mongodb.FileMetadata{
+		FileID:     meta.FileID,
+		ChatID:     meta.ChatID,
+		UploaderID: meta.UploaderID,
+		UploadedAt: meta.UploadedAt,
+	})
+}
+
+// FindByFileID implements httphandler.FileMetadataLookup.
+func (a *fileMetadataAdapter) FindByFileID(
+	ctx context.Context,
+	fileID uuid.UUID,
+) (*httphandler.FileMetadataEntry, error) {
+	meta, err := a.repo.FindByFileID(ctx, fileID)
+	if err != nil {
+		return nil, err
+	}
+	return &httphandler.FileMetadataEntry{
+		FileID:     meta.FileID,
+		ChatID:     meta.ChatID,
+		UploaderID: meta.UploaderID,
+		UploadedAt: meta.UploadedAt,
+	}, nil
+}
+
+// fileChatParticipantAdapter checks chat participation via the chat read model.
+type fileChatParticipantAdapter struct {
+	chatQueryRepo *mongodb.MongoChatReadModelRepository
+}
+
+// IsParticipant implements httphandler.FileChatParticipantChecker.
+func (a *fileChatParticipantAdapter) IsParticipant(
+	ctx context.Context,
+	chatID uuid.UUID,
+	userID uuid.UUID,
+) (bool, error) {
+	rm, err := a.chatQueryRepo.FindByID(ctx, chatID)
+	if err != nil {
+		return false, err
+	}
+	for _, p := range rm.Participants {
+		if p.UserID() == userID {
+			return true, nil
+		}
+	}
+	return false, nil
 }
