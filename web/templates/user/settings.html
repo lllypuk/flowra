@@ -1,0 +1,289 @@
+{{define "user/settings.html"}}
+<!doctype html>
+<html lang="en" data-theme="light">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>{{if .Title}}{{.Title}} - {{end}}Flowra</title>
+
+        <!-- Pico CSS -->
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"
+        />
+
+        <!-- Custom CSS -->
+        <link rel="stylesheet" href="/static/css/custom.css" />
+
+        <!-- HTMX -->
+        <script
+            src="https://unpkg.com/htmx.org@2.0.0"
+            crossorigin="anonymous"
+        ></script>
+    </head>
+    <body hx-boost="true">
+        {{template "navbar" .}}
+
+        <main class="container">
+            <div class="settings-page">
+                <header class="page-header">
+                    <h2>User Settings</h2>
+                </header>
+
+                <!-- Flash messages container -->
+                <div id="flash-container"></div>
+
+                <article>
+                    <header>
+                        <h3>Profile</h3>
+                    </header>
+
+                    <form
+                        id="profile-form"
+                        hx-put="/api/v1/users/me"
+                        hx-swap="none"
+                        hx-on::after-request="handleProfileUpdate(event)"
+                    >
+                        <!-- Avatar Display -->
+                        <div class="avatar-section">
+                            <label>Avatar</label>
+                            <div class="avatar-display">
+                                <div class="avatar-circle">
+                                    {{if .Data.User.AvatarURL}}
+                                        <img src="{{.Data.User.AvatarURL}}" alt="{{.Data.User.DisplayName}}" />
+                                    {{else}}
+                                        <span class="avatar-initials">{{avatarInitials .Data.User}}</span>
+                                    {{end}}
+                                </div>
+                            </div>
+                            <small class="text-muted">Avatar display (file upload coming soon)</small>
+                        </div>
+
+                        <!-- Username (read-only) -->
+                        <label for="username">
+                            Username
+                            <input
+                                type="text"
+                                id="username"
+                                name="username"
+                                value="{{.Data.User.Username}}"
+                                readonly
+                                disabled
+                            />
+                            <small class="text-muted">Username cannot be changed</small>
+                        </label>
+
+                        <!-- Display Name -->
+                        <label for="display_name">
+                            Display Name
+                            <input
+                                type="text"
+                                id="display_name"
+                                name="display_name"
+                                value="{{.Data.User.DisplayName}}"
+                                required
+                                minlength="1"
+                                maxlength="100"
+                            />
+                        </label>
+
+                        <!-- Email -->
+                        <label for="email">
+                            Email
+                            <input
+                                type="email"
+                                id="email"
+                                name="email"
+                                value="{{.Data.User.Email}}"
+                                required
+                            />
+                        </label>
+
+                        <button type="submit">Save Changes</button>
+                    </form>
+                </article>
+
+                <article>
+                    <header>
+                        <h3>Account Information</h3>
+                    </header>
+
+                    <dl class="info-grid">
+                        <dt>User ID</dt>
+                        <dd><code>{{.Data.User.ID}}</code></dd>
+
+                        <dt>Account Created</dt>
+                        <dd>{{formatDate .Data.User.CreatedAt}}</dd>
+
+                        <dt>Last Updated</dt>
+                        <dd>{{formatDate .Data.User.UpdatedAt}}</dd>
+
+                        {{if .Data.User.IsAdmin}}
+                        <dt>Role</dt>
+                        <dd><span class="badge">System Admin</span></dd>
+                        {{end}}
+                    </dl>
+                </article>
+            </div>
+        </main>
+
+        {{template "footer" .}}
+
+        <script src="/static/js/app.js"></script>
+
+        <script>
+        function handleProfileUpdate(event) {
+            var flashContainer = document.getElementById('flash-container');
+            
+            if (event.detail.successful) {
+                // Success - show success message and reload user data
+                flashContainer.innerHTML = '<div class="alert alert-success" role="alert">Profile updated successfully!</div>';
+                
+                // Update navbar user display if display name changed
+                var newDisplayName = document.getElementById('display_name').value;
+                var navbarUser = document.querySelector('nav details summary');
+                if (navbarUser) {
+                    navbarUser.textContent = newDisplayName;
+                }
+                
+                // Auto-dismiss after 3 seconds
+                setTimeout(function() {
+                    flashContainer.innerHTML = '';
+                }, 3000);
+            } else {
+                // Error - show error message
+                var errorMsg = 'Failed to update profile';
+                try {
+                    var response = JSON.parse(event.detail.xhr.responseText);
+                    if (response.error && response.error.message) {
+                        errorMsg = response.error.message;
+                    }
+                } catch (e) {
+                    // Keep default error message
+                }
+                
+                flashContainer.innerHTML = '<div class="alert alert-error" role="alert">' + errorMsg + '</div>';
+                
+                // Auto-dismiss after 5 seconds
+                setTimeout(function() {
+                    flashContainer.innerHTML = '';
+                }, 5000);
+            }
+            
+            // Scroll to top to show flash message
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        </script>
+
+        <style>
+            .settings-page {
+                max-width: 800px;
+                margin: 2rem auto;
+            }
+
+            .settings-page .page-header {
+                margin-bottom: 1.5rem;
+            }
+
+            .settings-page .page-header h2 {
+                margin: 0;
+            }
+
+            .avatar-section {
+                margin-bottom: 1.5rem;
+            }
+
+            .avatar-display {
+                margin: 0.5rem 0;
+            }
+
+            .avatar-circle {
+                width: 80px;
+                height: 80px;
+                border-radius: 50%;
+                background: var(--primary);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                overflow: hidden;
+            }
+
+            .avatar-circle img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+
+            .avatar-initials {
+                font-size: 2rem;
+                font-weight: bold;
+                color: white;
+                text-transform: uppercase;
+            }
+
+            .info-grid {
+                display: grid;
+                grid-template-columns: 150px 1fr;
+                gap: 0.75rem 1.5rem;
+                margin: 0;
+            }
+
+            .info-grid dt {
+                font-weight: 600;
+                color: var(--muted-color);
+            }
+
+            .info-grid dd {
+                margin: 0;
+            }
+
+            .info-grid code {
+                font-size: 0.85rem;
+                background: var(--code-background-color);
+                padding: 0.25rem 0.5rem;
+                border-radius: 4px;
+            }
+
+            .badge {
+                display: inline-block;
+                padding: 0.25rem 0.75rem;
+                background: var(--primary);
+                color: white;
+                border-radius: 12px;
+                font-size: 0.85rem;
+                font-weight: 600;
+            }
+
+            .alert {
+                padding: 1rem;
+                border-radius: 4px;
+                margin-bottom: 1rem;
+            }
+
+            .alert-success {
+                background: var(--ins-color);
+                color: var(--contrast);
+                border: 1px solid var(--ins-color);
+            }
+
+            .alert-error {
+                background: var(--del-color);
+                color: var(--contrast);
+                border: 1px solid var(--del-color);
+            }
+
+            @media (max-width: 768px) {
+                .info-grid {
+                    grid-template-columns: 1fr;
+                    gap: 0.5rem;
+                }
+
+                .info-grid dt {
+                    font-weight: 600;
+                    margin-top: 0.5rem;
+                }
+            }
+        </style>
+    </body>
+</html>
+{{end}}

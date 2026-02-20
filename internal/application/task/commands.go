@@ -52,3 +52,20 @@ type UpdateTitleCommand struct {
 	Title     string
 	UpdatedBy uuid.UUID
 }
+
+// AddAttachmentCommand attaches a file to a task.
+type AddAttachmentCommand struct {
+	TaskID   uuid.UUID
+	FileID   uuid.UUID
+	FileName string
+	FileSize int64
+	MimeType string
+	AddedBy  uuid.UUID
+}
+
+// RemoveAttachmentCommand detaches a file from a task.
+type RemoveAttachmentCommand struct {
+	TaskID    uuid.UUID
+	FileID    uuid.UUID
+	RemovedBy uuid.UUID
+}

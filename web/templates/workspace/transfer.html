@@ -1,0 +1,60 @@
+{{define "workspace/transfer-form"}}
+<dialog open id="transfer-ownership-modal">
+    <article>
+        <header>
+            <button
+                aria-label="Close"
+                rel="prev"
+                onclick="document.getElementById('modal-container').innerHTML = ''"
+            ></button>
+            <h3>Transfer Workspace Ownership</h3>
+        </header>
+
+        <p class="text-muted">
+            Select an admin member to become the new workspace owner. You will become an admin after the transfer.
+        </p>
+
+        <form
+            hx-post="/partials/workspace/{{.WorkspaceID}}/transfer"
+            hx-swap="none"
+            hx-on::after-request="if(event.detail.successful) { window.showToast('Ownership transferred successfully', 'success'); window.location.href='/workspaces/{{.WorkspaceID}}'; } else { window.showToast('Failed to transfer ownership', 'error'); }"
+        >
+            <label for="new-owner">
+                New Owner (Admin Members Only)
+                <select id="new-owner" name="new_owner_id" required>
+                    <option value="">Select a member...</option>
+                    {{range .AdminMembers}}
+                    <option value="{{.UserID}}">{{.DisplayName}} (@{{.Username}})</option>
+                    {{end}}
+                </select>
+            </label>
+
+            <label for="confirm-text">
+                Type <strong>TRANSFER</strong> to confirm
+                <input
+                    type="text"
+                    id="confirm-text"
+                    name="confirmation"
+                    placeholder="Type TRANSFER to confirm"
+                    required
+                    pattern="TRANSFER"
+                    title="Please type TRANSFER to confirm"
+                />
+            </label>
+
+            <footer>
+                <button
+                    type="button"
+                    class="secondary"
+                    onclick="document.getElementById('modal-container').innerHTML = ''"
+                >
+                    Cancel
+                </button>
+                <button type="submit" class="contrast">
+                    Transfer Ownership
+                </button>
+            </footer>
+        </form>
+    </article>
+</dialog>
+{{end}}

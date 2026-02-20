@@ -5,7 +5,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// Attachment represents faylovoe attachment to soobscheniyu
+// Attachment represents a file attachment to a message.
 type Attachment struct {
 	fileID   uuid.UUID
 	fileName string
@@ -36,28 +36,28 @@ func NewAttachment(fileID uuid.UUID, fileName string, fileSize int64, mimeType s
 	}, nil
 }
 
-// FileID returns ID fayla
+// FileID returns the file ID.
 func (a Attachment) FileID() uuid.UUID {
 	return a.fileID
 }
 
-// FileName returns imya fayla
+// FileName returns the file name.
 func (a Attachment) FileName() string {
 	return a.fileName
 }
 
-// FileSize returns size fayla in baytah
+// FileSize returns the file size in bytes.
 func (a Attachment) FileSize() int64 {
 	return a.fileSize
 }
 
-// MimeType returns MIME type fayla
+// MimeType returns the MIME type of the file.
 func (a Attachment) MimeType() string {
 	return a.mimeType
 }
 
-// ReconstructAttachment reconstructs attachment from save.
-// Used by repositories for hydration obekta without validation business rules.
+// ReconstructAttachment reconstructs attachment from storage.
+// Used by repositories for object hydration without business rules validation.
 func ReconstructAttachment(fileID uuid.UUID, fileName string, fileSize int64, mimeType string) Attachment {
 	return Attachment{
 		fileID:   fileID,

@@ -14,7 +14,8 @@
         wsReconnectMaxDelay: 30000,
         wsMaxReconnectAttempts: 10,
         typingIndicatorDelay: 300,
-        typingIndicatorHideDelay: 3000
+        typingIndicatorHideDelay: 3000,
+        searchDebounceDelay: 300
     };
 
     // ===== State =====
@@ -161,8 +162,15 @@
     }
 
     // ===== Toast Notifications =====
+    var lastToast = { message: '', time: 0 };
+
     function showToast(message, type) {
         type = type || 'info';
+
+        // Deduplicate: skip if same message was shown within last 2 seconds
+        if (message === lastToast.message && Date.now() - lastToast.time < 2000) return;
+        lastToast.message = message;
+        lastToast.time = Date.now();
 
         // Create toast container if it doesn't exist
         var container = document.getElementById('toast-container');
@@ -383,10 +391,8 @@
             // Ctrl+K or Cmd+K - Quick search
             if ((evt.ctrlKey || evt.metaKey) && evt.key === 'k') {
                 evt.preventDefault();
-                var searchInput = document.querySelector('[data-quick-search]');
-                if (searchInput) {
-                    searchInput.focus();
-                }
+                openGlobalSearch();
+                return;
             }
 
             // Ctrl+Enter or Cmd+Enter - Submit form
@@ -415,6 +421,261 @@
         return tagName === 'input' || tagName === 'textarea' || active.isContentEditable;
     }
 
+    // ===== Global Search (Cmd+K) =====
+    var searchState = {
+        cache: {},
+        debounceTimer: null,
+        selectedIndex: -1,
+        results: []
+    };
+
+    function getWorkspaceIdFromUrl() {
+        var match = window.location.pathname.match(/\/workspaces\/([^/]+)/);
+        return match ? match[1] : null;
+    }
+
+    function openGlobalSearch() {
+        var existing = document.getElementById('global-search-dialog');
+        if (existing) {
+            existing.close();
+            return;
+        }
+
+        var workspaceId = getWorkspaceIdFromUrl();
+
+        var dialog = document.createElement('dialog');
+        dialog.id = 'global-search-dialog';
+        dialog.className = 'global-search-dialog';
+        dialog.innerHTML =
+            '<div class="search-container">' +
+                '<div class="search-input-wrapper">' +
+                    '<span class="search-icon" aria-hidden="true">🔍</span>' +
+                    '<input type="search" id="global-search-input" ' +
+                        'placeholder="Search chats and tasks..." ' +
+                        'autocomplete="off" aria-label="Search" />' +
+                    '<kbd class="kbd search-kbd">Esc</kbd>' +
+                '</div>' +
+                '<div id="global-search-results" class="search-results" role="listbox" aria-label="Search results">' +
+                    '<div class="search-hint">' +
+                        (workspaceId
+                            ? 'Type to search chats and tasks in this workspace'
+                            : 'Navigate to a workspace to search') +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+
+        document.body.appendChild(dialog);
+        dialog.showModal();
+
+        var input = document.getElementById('global-search-input');
+        input.focus();
+
+        // Reset state
+        searchState.selectedIndex = -1;
+        searchState.results = [];
+
+        input.addEventListener('input', function() {
+            var query = input.value.trim();
+            if (searchState.debounceTimer) {
+                clearTimeout(searchState.debounceTimer);
+            }
+            if (!query) {
+                renderSearchResults([], '', workspaceId);
+                return;
+            }
+            searchState.debounceTimer = setTimeout(function() {
+                performSearch(query, workspaceId);
+            }, config.searchDebounceDelay);
+        });
+
+        // Keyboard navigation
+        input.addEventListener('keydown', function(evt) {
+            var resultsEl = document.getElementById('global-search-results');
+            var items = resultsEl ? resultsEl.querySelectorAll('.search-result-item') : [];
+
+            if (evt.key === 'ArrowDown') {
+                evt.preventDefault();
+                searchState.selectedIndex = Math.min(searchState.selectedIndex + 1, items.length - 1);
+                updateSearchSelection(items);
+            } else if (evt.key === 'ArrowUp') {
+                evt.preventDefault();
+                searchState.selectedIndex = Math.max(searchState.selectedIndex - 1, 0);
+                updateSearchSelection(items);
+            } else if (evt.key === 'Enter' && searchState.selectedIndex >= 0 && items.length > 0) {
+                evt.preventDefault();
+                items[searchState.selectedIndex].click();
+            }
+        });
+
+        // Click on backdrop to close
+        dialog.addEventListener('click', function(evt) {
+            if (evt.target === dialog) {
+                dialog.close();
+            }
+        });
+
+        dialog.addEventListener('close', function() {
+            if (searchState.debounceTimer) {
+                clearTimeout(searchState.debounceTimer);
+            }
+            dialog.remove();
+        });
+    }
+
+    function performSearch(query, workspaceId) {
+        if (!workspaceId) {
+            renderSearchResults([], query, workspaceId);
+            return;
+        }
+
+        var lowerQuery = query.toLowerCase();
+        var cacheKey = workspaceId;
+
+        if (searchState.cache[cacheKey]) {
+            var filtered = filterResults(searchState.cache[cacheKey], lowerQuery);
+            renderSearchResults(filtered, query, workspaceId);
+            return;
+        }
+
+        // Show loading
+        var resultsEl = document.getElementById('global-search-results');
+        if (resultsEl) {
+            resultsEl.innerHTML = '<div class="search-loading" aria-busy="true">Searching...</div>';
+        }
+
+        var basePath = '/api/v1/workspaces/' + workspaceId;
+        var allData = { chats: [], tasks: [] };
+        var pending = 2;
+
+        function checkDone() {
+            pending--;
+            if (pending === 0) {
+                searchState.cache[cacheKey] = allData;
+                // Clear cache after 60 seconds
+                setTimeout(function() {
+                    delete searchState.cache[cacheKey];
+                }, 60000);
+                var filtered = filterResults(allData, lowerQuery);
+                renderSearchResults(filtered, query, workspaceId);
+            }
+        }
+
+        fetch(basePath + '/chats?limit=100')
+            .then(function(r) { return r.ok ? r.json() : { chats: [] }; })
+            .then(function(data) { allData.chats = (data.data && data.data.chats) || data.chats || []; })
+            .catch(function() {})
+            .finally(checkDone);
+
+        fetch(basePath + '/tasks?per_page=100')
+            .then(function(r) { return r.ok ? r.json() : { tasks: [] }; })
+            .then(function(data) { allData.tasks = (data.data && data.data.tasks) || data.tasks || []; })
+            .catch(function() {})
+            .finally(checkDone);
+    }
+
+    function filterResults(data, lowerQuery) {
+        var results = [];
+
+        data.chats.forEach(function(chat) {
+            if (chat.name && chat.name.toLowerCase().indexOf(lowerQuery) !== -1) {
+                results.push({ type: 'chat', id: chat.id, name: chat.name, chatType: chat.type });
+            }
+        });
+
+        data.tasks.forEach(function(task) {
+            if (task.title && task.title.toLowerCase().indexOf(lowerQuery) !== -1) {
+                results.push({ type: 'task', id: task.id, name: task.title, status: task.status, priority: task.priority });
+            }
+        });
+
+        return results;
+    }
+
+    function renderSearchResults(results, query, workspaceId) {
+        var resultsEl = document.getElementById('global-search-results');
+        if (!resultsEl) return;
+
+        searchState.selectedIndex = -1;
+        searchState.results = results;
+
+        if (!query) {
+            resultsEl.innerHTML = '<div class="search-hint">' +
+                (workspaceId ? 'Type to search chats and tasks in this workspace' : 'Navigate to a workspace to search') +
+                '</div>';
+            return;
+        }
+
+        if (results.length === 0) {
+            resultsEl.innerHTML = '<div class="search-empty">No results for "<strong>' + escapeHtml(query) + '</strong>"</div>';
+            return;
+        }
+
+        var chats = results.filter(function(r) { return r.type === 'chat'; });
+        var tasks = results.filter(function(r) { return r.type === 'task'; });
+        var html = '';
+
+        if (chats.length > 0) {
+            html += '<div class="search-group"><div class="search-group-label">Chats</div>';
+            chats.forEach(function(chat) {
+                var icon = chat.chatType === 'direct' ? '💬' : '📢';
+                html += '<a class="search-result-item" role="option" ' +
+                    'href="/workspaces/' + workspaceId + '/chats/' + chat.id + '">' +
+                    '<span class="result-icon" aria-hidden="true">' + icon + '</span>' +
+                    '<span class="result-name">' + highlightMatch(escapeHtml(chat.name), query) + '</span>' +
+                    '<span class="result-meta">' + escapeHtml(chat.chatType || '') + '</span>' +
+                    '</a>';
+            });
+            html += '</div>';
+        }
+
+        if (tasks.length > 0) {
+            html += '<div class="search-group"><div class="search-group-label">Tasks</div>';
+            tasks.forEach(function(task) {
+                html += '<a class="search-result-item" role="option" ' +
+                    'href="/workspaces/' + workspaceId + '/board?task=' + task.id + '">' +
+                    '<span class="result-icon" aria-hidden="true">📋</span>' +
+                    '<span class="result-name">' + highlightMatch(escapeHtml(task.name), query) + '</span>' +
+                    '<span class="result-meta">' + escapeHtml(task.status || '') + '</span>' +
+                    '</a>';
+            });
+            html += '</div>';
+        }
+
+        resultsEl.innerHTML = html;
+
+        // Wire click to close dialog
+        resultsEl.querySelectorAll('.search-result-item').forEach(function(item) {
+            item.addEventListener('click', function() {
+                var dialog = document.getElementById('global-search-dialog');
+                if (dialog) dialog.close();
+            });
+        });
+    }
+
+    function updateSearchSelection(items) {
+        items.forEach(function(item, i) {
+            if (i === searchState.selectedIndex) {
+                item.classList.add('selected');
+                item.scrollIntoView({ block: 'nearest' });
+            } else {
+                item.classList.remove('selected');
+            }
+        });
+    }
+
+    function highlightMatch(text, query) {
+        if (!query) return text;
+        var escaped = escapeHtml(query).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        var regex = new RegExp('(' + escaped + ')', 'gi');
+        return text.replace(regex, '<mark>$1</mark>');
+    }
+
+    function escapeHtml(str) {
+        var div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
     function showKeyboardShortcutsHelp() {
         var existingHelp = document.getElementById('keyboard-shortcuts-help');
         if (existingHelp) {
@@ -432,7 +693,7 @@
             '<tr><td><kbd class="kbd">Esc</kbd></td><td>Close modal/dropdown</td></tr>' +
             '<tr><td><kbd class="kbd">?</kbd></td><td>Show this help</td></tr>' +
             '</table>' +
-            '<footer><button onclick="this.closest(\'dialog\').close()">Close</button></footer>' +
+            '<footer><button onclick="var d=this.closest(\'dialog\'); if(d) d.close()">Close</button></footer>' +
             '</article>';
 
         document.body.appendChild(dialog);
@@ -605,8 +866,185 @@
     }
     window.showProgress = showProgress;
 
+    // ===== Notification Handlers =====
+    function setupNotificationHandlers() {
+        // Handle notification.new event from WebSocket
+        document.body.addEventListener('notification.new', function(evt) {
+            if (!evt.detail) return;
+
+            var notification = evt.detail;
+            
+            // Update badge count
+            htmx.trigger(document.body, 'notification-update');
+            
+            // Show toast notification
+            var message = notification.Message || notification.message || 'New notification';
+            if (message.length > 60) {
+                message = message.substring(0, 57) + '...';
+            }
+            showToast(message, 'info');
+            
+            // If dropdown is open, reload it to show new notification
+            var dropdown = document.querySelector('.notification-dropdown[open]');
+            if (dropdown) {
+                htmx.trigger(document.body, 'reload-notifications');
+            }
+            
+            // If on notifications page, reload the list
+            var notificationsList = document.getElementById('notifications-list');
+            if (notificationsList) {
+                htmx.trigger(notificationsList, 'reload-notifications');
+            }
+            
+            // Animate badge
+            var badge = document.getElementById('notification-badge');
+            if (badge && !badge.classList.contains('hidden')) {
+                badge.classList.add('badge-pulse');
+                setTimeout(function() {
+                    badge.classList.remove('badge-pulse');
+                }, 600);
+            }
+        });
+    }
+
+    // ===== Task Detail Helpers =====
+
+    /**
+     * Close the task sidebar panel.
+     */
+    function closeTaskSidebar() {
+        var sidebar = document.querySelector('.task-sidebar');
+        if (sidebar) {
+            sidebar.style.display = 'none';
+            var layout = document.querySelector('.chat-layout');
+            if (layout) {
+                layout.classList.remove('with-task-sidebar');
+            }
+        }
+    }
+    window.closeTaskSidebar = closeTaskSidebar;
+
+    /**
+     * Close the task creation form dialog.
+     */
+    function closeTaskForm() {
+        var dialog = document.querySelector('dialog[open]');
+        if (dialog) {
+            dialog.close();
+        }
+    }
+    window.closeTaskForm = closeTaskForm;
+
+    /**
+     * Handle task deletion: close sidebar and remove board card.
+     * @param {string} taskId
+     */
+    function handleTaskDeleted(taskId) {
+        var card = document.getElementById('task-' + taskId);
+        if (card) {
+            card.remove();
+            document.querySelectorAll('.board-column').forEach(function(column) {
+                var count = column.querySelectorAll('.task-card').length;
+                var countEl = column.querySelector('.column-count');
+                if (countEl) countEl.textContent = count;
+            });
+        }
+        closeTaskSidebar();
+        if (typeof showToast === 'function') {
+            showToast('Task deleted', 'success');
+        }
+    }
+    window.handleTaskDeleted = handleTaskDeleted;
+
+    /**
+     * Handle keyboard shortcuts for inline title editing.
+     * Enter = save, Escape = cancel.
+     */
+    function handleEditKeydown(event, form) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            htmx.trigger(form, 'submit');
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            var cancelBtn = form.querySelector('button[type="button"]');
+            if (cancelBtn) cancelBtn.click();
+        }
+    }
+    window.handleEditKeydown = handleEditKeydown;
+
+    /**
+     * Handle keyboard shortcuts for inline description editing.
+     * Ctrl+Enter = save, Escape = cancel.
+     */
+    function handleDescriptionKeydown(event, form) {
+        if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+            event.preventDefault();
+            htmx.trigger(form, 'submit');
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            var cancelBtn = form.querySelector('button[type="button"]');
+            if (cancelBtn) cancelBtn.click();
+        }
+    }
+    window.handleDescriptionKeydown = handleDescriptionKeydown;
+
+    /**
+     * Set a quick due date relative to today.
+     * @param {string} taskId
+     * @param {number} daysFromNow
+     */
+    function setQuickDate(taskId, daysFromNow) {
+        var date = new Date();
+        date.setDate(date.getDate() + daysFromNow);
+        var formatted = date.toISOString().split('T')[0];
+        var sidebar = document.getElementById('task-sidebar-' + taskId);
+        var dateInput = sidebar
+            ? sidebar.querySelector('.date-input')
+            : document.querySelector('.date-input');
+        if (dateInput) {
+            dateInput.value = formatted;
+            htmx.trigger(dateInput, 'change');
+        }
+    }
+    window.setQuickDate = setQuickDate;
+
+    // ===== Dark Mode Toggle =====
+    function getPreferredTheme() {
+        var stored = localStorage.getItem('flowra-theme');
+        if (stored) return stored;
+        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+
+    function applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        updateThemeIcons(theme);
+    }
+
+    function updateThemeIcons(theme) {
+        var icons = document.querySelectorAll('.theme-icon');
+        icons.forEach(function(icon) {
+            icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+        });
+    }
+
+    function toggleTheme() {
+        var current = document.documentElement.getAttribute('data-theme') || getPreferredTheme();
+        var next = current === 'dark' ? 'light' : 'dark';
+        localStorage.setItem('flowra-theme', next);
+        applyTheme(next);
+    }
+    window.toggleTheme = toggleTheme;
+
+    // Listen for OS theme changes when no manual preference is stored
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+        if (!localStorage.getItem('flowra-theme')) {
+            applyTheme(e.matches ? 'dark' : 'light');
+        }
+    });
+
     // ===== Initialize =====
     function init() {
+        applyTheme(getPreferredTheme());
         setupFlashMessages();
         setupHTMXHandlers();
         setupModalEscapeClose();
@@ -615,8 +1053,57 @@
         setupKeyboardShortcuts();
         setupFormStatePreservation();
         setupWebSocketReconnection();
+        setupNotificationHandlers();
         wsStatus.init();
     }
+
+    // ===== Image Lightbox =====
+    // Delegated lightbox handler — replaces inline onclick
+    document.addEventListener('click', function(event) {
+        var trigger = event.target.closest('.lightbox-trigger[data-lightbox-url]');
+        if (!trigger) return;
+        event.preventDefault();
+
+        var url = trigger.getAttribute('data-lightbox-url');
+        var fileName = trigger.getAttribute('data-lightbox-name');
+        openLightbox(event, url, fileName);
+    });
+
+    window.openLightbox = function(event, url, fileName) {
+        event.preventDefault();
+        var overlay = document.createElement('div');
+        overlay.className = 'lightbox-overlay';
+        overlay.onclick = function(e) {
+            if (e.target === overlay) overlay.remove();
+        };
+
+        var img = document.createElement('img');
+        img.src = url;
+        img.alt = fileName;
+        overlay.appendChild(img);
+
+        var closeBtn = document.createElement('button');
+        closeBtn.className = 'lightbox-close';
+        closeBtn.innerHTML = '&times;';
+        closeBtn.onclick = function() { overlay.remove(); };
+        overlay.appendChild(closeBtn);
+
+        var label = document.createElement('div');
+        label.className = 'lightbox-filename';
+        label.textContent = fileName;
+        overlay.appendChild(label);
+
+        document.body.appendChild(overlay);
+
+        // Close on Escape key
+        var escHandler = function(e) {
+            if (e.key === 'Escape') {
+                overlay.remove();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+    };
 
     // Run on DOMContentLoaded
     if (document.readyState === 'loading') {

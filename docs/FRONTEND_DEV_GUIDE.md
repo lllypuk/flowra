@@ -18,25 +18,49 @@ web/
 ├── templates/           # HTML templates
 │   ├── layout/         # Base layout templates
 │   │   ├── base.html   # Main HTML5 template
-│   │   ├── navbar.html # Navigation bar
+│   │   ├── navbar.html # Navigation bar (dark mode toggle, global search)
 │   │   └── footer.html # Footer
 │   ├── components/     # Reusable HTMX components
+│   │   ├── message.html         # Chat message rendering
+│   │   ├── message_form.html    # Message input + file upload
+│   │   ├── task_card.html       # Kanban task card
+│   │   ├── user_search_results.html  # User autocomplete results
+│   │   ├── user_select.html     # User picker component
+│   │   ├── date_picker.html     # Date picker
+│   │   └── member_row.html      # Workspace member row
 │   ├── auth/          # Authentication pages
-│   ├── workspace/     # Workspace pages
+│   ├── workspace/     # Workspace pages (list, settings, invite, transfer, members)
 │   ├── chat/          # Chat pages
+│   │   ├── view.html            # Main chat view
+│   │   ├── task-sidebar.html    # Task sidebar in chat (see note below)
+│   │   └── participants.html    # Participant list
 │   ├── board/         # Kanban board
+│   │   └── filters.html         # Board filter panel
 │   ├── task/          # Task detail views
-│   └── notification/  # Notification components
+│   │   ├── sidebar.html         # Task sidebar on board (see note below)
+│   │   ├── activity.html        # Activity timeline
+│   │   ├── create-form.html     # Task creation form
+│   │   ├── edit-title.html      # Inline title editing
+│   │   └── edit-description.html # Inline description editing
+│   ├── user/          # User pages
+│   │   ├── profile.html         # User profile view
+│   │   └── settings.html        # User settings
+│   ├── notification/  # Notification components
+│   └── home.html      # Landing page (standalone, no base.html)
 ├── static/             # Static assets
 │   ├── css/
-│   │   ├── custom.css  # Custom styles
+│   │   ├── custom.css  # Custom styles (includes dark mode vars)
 │   │   └── board.css   # Board-specific styles
 │   └── js/
-│       ├── app.js      # Core JavaScript
-│       ├── chat.js     # Chat functionality
-│       └── board.js    # Kanban drag-and-drop
+│       ├── app.js      # Core JavaScript (IIFE + guard pattern)
+│       ├── chat.js     # Chat: typing indicators, autocomplete, presence (IIFE + guard)
+│       └── board.js    # Kanban drag-and-drop, real-time updates (guard flag)
 └── embed.go            # Go embed for static files
 ```
+
+> **Task Sidebar Note:** There are two separate task sidebar templates that must be kept in sync:
+> - `web/templates/task/sidebar.html` — used by the board/task detail panel (loaded as HTMX partial)
+> - `web/templates/chat/task-sidebar.html` — used in the chat view right panel
 
 ## Adding a New Page
 
@@ -258,6 +282,10 @@ func TestMyPage_Renders(t *testing.T) {
 }
 ```
 
+### Dark Mode
+
+Dark mode is toggled via the `data-theme` attribute on `<html>`. Pico CSS handles the color switch automatically. Custom styles use CSS variables that respect both themes. The user's preference is persisted in `localStorage` and applied on page load via a script in `base.html`.
+
 ### Responsive Design
 
 ```css
@@ -390,12 +418,30 @@ htmx.logAll();
 
 ### Check WebSocket Connection
 
-```javascript
-// Find WebSocket elements
-document.querySelectorAll('[hx-ext="ws"]');
+HTMX v2 stores the WebSocket connection differently from v1:
 
-// Check connection state
-element.__htmx_ws.readyState // 0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED
+```javascript
+// ✅ HTMX v2 — correct path to the socket
+var el = document.querySelector('[hx-ext*="ws"]');
+var internalData = el['htmx-internal-data'];
+var wsWrapper = internalData && internalData.webSocket;
+var socket = wsWrapper && wsWrapper.socket;
+if (socket) {
+    console.log('readyState:', socket.readyState); // 0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED
+}
+
+// ❌ HTMX v1 — broken in v2
+element.__htmx_ws; // null in HTMX v2
+```
+
+WebSocket events dispatched on `document.body` contain a `data` field with PascalCase Go field names. Always handle both styles for robustness:
+
+```javascript
+document.body.addEventListener("chat.message.posted", function(evt) {
+    var msg = evt.detail;
+    var chatId = msg.ChatID || msg.chat_id;
+    var messageId = msg.aggregate_id || msg.message_id;
+});
 ```
 
 ### Template Rendering Issues
@@ -404,6 +450,60 @@ Check the server logs for template parsing errors:
 
 ```bash
 go run cmd/api/main.go 2>&1 | grep -i template
+```
+
+## JavaScript Patterns
+
+### IIFE + Guard for Script Files
+
+All JS files that may be loaded via `hx-boost` navigation must follow the IIFE + guard pattern to prevent double-initialization:
+
+```javascript
+(function() {
+    if (window.__myJsLoaded) return;
+    window.__myJsLoaded = true;
+
+    // Functions called from templates must be on window:
+    window.myFunction = function() { ... };
+
+    // Internal helpers stay private:
+    function helperFunction() { ... }
+})();
+```
+
+Without this guard, `hx-boost` navigation re-evaluates `<script>` tags and causes `Identifier has already been declared` errors for top-level `const`/`let` declarations.
+
+### Echo Handler Struct Tags
+
+Request structs must include **both** `json:` and `form:` tags. HTMX sends requests as `application/x-www-form-urlencoded`; without the `form:` tag, Echo's `Bind()` silently ignores form fields.
+
+```go
+// ✅ Supports both JSON API calls and HTMX form submissions
+var req struct {
+    Status string `json:"status" form:"status"`
+}
+
+// ❌ HTMX form data will not be bound (req.Status stays empty → 400)
+var req struct {
+    Status string `json:"status"`
+}
+```
+
+### File Upload Pattern
+
+File uploads use a two-step flow:
+
+1. POST file to `/api/v1/files/upload` → get file ID
+2. POST file ID to `/api/v1/messages/{id}/attachments` (or task equivalent)
+3. Re-fetch the message partial via `outerHTML` swap to display the attachment
+
+### Chat Action Route URLs
+
+Chat action routes are workspace-scoped. Always include `workspace_id`:
+
+```
+✅ POST /api/v1/workspaces/:workspace_id/chats/:id/actions/status
+❌ POST /api/v1/chats/:id/actions/status  (returns 404)
 ```
 
 ## Common Issues

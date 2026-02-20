@@ -7,10 +7,9 @@
     <div class="field">
         <label for="task-status">Status</label>
         <select id="task-status"
-                hx-post="/api/v1/chats/{{.Data.Chat.ID}}/actions/status"
+                hx-post="/api/v1/workspaces/{{.Data.Chat.WorkspaceID}}/chats/{{.Data.Chat.ID}}/actions/status"
                 hx-trigger="change"
                 hx-swap="none"
-                hx-vals='js:{"status": this.value}'
                 hx-indicator="#status-loading"
                 name="status">
             <option value="To Do" {{if eq .Data.Task.Status "To Do"}}selected{{end}}>To Do</option>
@@ -25,10 +24,9 @@
     <div class="field">
         <label for="task-assignee">Assignee</label>
         <select id="task-assignee"
-                hx-post="/api/v1/chats/{{.Data.Chat.ID}}/actions/assignee"
+                hx-post="/api/v1/workspaces/{{.Data.Chat.WorkspaceID}}/chats/{{.Data.Chat.ID}}/actions/assignee"
                 hx-trigger="change"
                 hx-swap="none"
-                hx-vals='js:{"assignee_id": this.value}'
                 hx-indicator="#assignee-loading"
                 name="assignee_id">
             <option value="">Unassigned</option>
@@ -46,10 +44,9 @@
     <div class="field">
         <label for="task-priority">Priority</label>
         <select id="task-priority"
-                hx-post="/api/v1/chats/{{.Data.Chat.ID}}/actions/priority"
+                hx-post="/api/v1/workspaces/{{.Data.Chat.WorkspaceID}}/chats/{{.Data.Chat.ID}}/actions/priority"
                 hx-trigger="change"
                 hx-swap="none"
-                hx-vals='js:{"priority": this.value}'
                 hx-indicator="#priority-loading"
                 name="priority">
             <option value="Low" {{if or (eq .Data.Task.Priority "low") (eq .Data.Task.Priority "Low")}}selected{{end}}>Low</option>
@@ -65,10 +62,9 @@
         <label for="task-due-date">Due Date</label>
         <input type="date"
                id="task-due-date"
-               hx-post="/api/v1/chats/{{.Data.Chat.ID}}/actions/due-date"
+               hx-post="/api/v1/workspaces/{{.Data.Chat.WorkspaceID}}/chats/{{.Data.Chat.ID}}/actions/due-date"
                hx-trigger="change delay:500ms"
                hx-swap="none"
-               hx-vals='js:{"due_date": this.value}'
                hx-indicator="#duedate-loading"
                name="due_date"
                value="{{if .Data.Task.DueDate}}{{.Data.Task.DueDate | formatDateInput}}{{end}}">
@@ -92,18 +88,6 @@
     </div>
     {{end}}
 
-    <hr>
-
-    <!-- Activity -->
-    <div class="task-activity">
-        <h4>Activity</h4>
-        <div id="task-activity"
-             hx-get="/partials/tasks/{{.Data.Task.ID}}/activity"
-             hx-trigger="load"
-             hx-swap="innerHTML">
-            {{template "loading" (dict "ID" "activity-loading")}}
-        </div>
-    </div>
 </div>
 {{else}}
 <div class="task-details"
@@ -142,45 +126,6 @@
 
 .task-details hr {
     margin: 1.5rem 0;
-}
-
-.task-activity h4 {
-    font-size: 0.875rem;
-    font-weight: 600;
-    margin-bottom: 0.75rem;
-    text-transform: uppercase;
-    color: var(--muted-color);
-}
-
-.task-activity-item {
-    display: flex;
-    gap: 0.5rem;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid var(--muted-border-color);
-    font-size: 0.875rem;
-}
-
-.task-activity-item:last-child {
-    border-bottom: none;
-}
-
-.task-activity-item .activity-icon {
-    flex-shrink: 0;
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--muted-color);
-}
-
-.task-activity-item .activity-content {
-    flex: 1;
-}
-
-.task-activity-item .activity-time {
-    color: var(--muted-color);
-    font-size: 0.75rem;
 }
 
 /* HTMX loading indicators */
@@ -309,14 +254,6 @@
                 }
             }
             
-            // Refresh activity feed
-            var activityDiv = document.getElementById('task-activity');
-            if (activityDiv) {
-                htmx.ajax('GET', '/partials/tasks/' + taskId + '/activity', {
-                    target: '#task-activity',
-                    swap: 'innerHTML'
-                });
-            }
         }
     });
     {{end}}

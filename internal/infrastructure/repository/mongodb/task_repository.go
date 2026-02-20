@@ -246,6 +246,18 @@ func (r *MongoTaskRepository) updateReadModel(ctx context.Context, task *taskdom
 		doc["due_date"] = nil
 	}
 
+	// Convert attachments
+	var attachmentDocs []taskAttachmentDocument
+	for _, a := range task.Attachments() {
+		attachmentDocs = append(attachmentDocs, taskAttachmentDocument{
+			FileID:   a.FileID().String(),
+			FileName: a.FileName(),
+			FileSize: a.FileSize(),
+			MimeType: a.MimeType(),
+		})
+	}
+	doc["attachments"] = attachmentDocs
+
 	filter := bson.M{"task_id": task.ID().String()}
 	update := bson.M{"$set": doc}
 	opts := options.UpdateOne().SetUpsert(true)
@@ -372,6 +384,9 @@ func (r *MongoTaskQueryRepository) applyFilters(filter bson.M, filters taskapp.F
 	if filters.CreatedBy != nil {
 		filter["created_by"] = filters.CreatedBy.String()
 	}
+	if filters.Search != "" {
+		filter["title"] = bson.M{"$regex": filters.Search, "$options": "i"}
+	}
 }
 
 // findMany performs search s paginatsiey
@@ -422,17 +437,26 @@ func (r *MongoTaskQueryRepository) findMany(
 
 // taskReadModelDocument struct dokumenta read model
 type taskReadModelDocument struct {
-	TaskID     string     `bson:"task_id"`
-	ChatID     string     `bson:"chat_id"`
-	Title      string     `bson:"title"`
-	EntityType string     `bson:"entity_type"`
-	Status     string     `bson:"status"`
-	Priority   string     `bson:"priority"`
-	AssignedTo *string    `bson:"assigned_to,omitempty"`
-	DueDate    *time.Time `bson:"due_date,omitempty"`
-	CreatedBy  string     `bson:"created_by"`
-	CreatedAt  time.Time  `bson:"created_at"`
-	Version    int        `bson:"version"`
+	TaskID      string                   `bson:"task_id"`
+	ChatID      string                   `bson:"chat_id"`
+	Title       string                   `bson:"title"`
+	EntityType  string                   `bson:"entity_type"`
+	Status      string                   `bson:"status"`
+	Priority    string                   `bson:"priority"`
+	AssignedTo  *string                  `bson:"assigned_to,omitempty"`
+	DueDate     *time.Time               `bson:"due_date,omitempty"`
+	CreatedBy   string                   `bson:"created_by"`
+	CreatedAt   time.Time                `bson:"created_at"`
+	Version     int                      `bson:"version"`
+	Attachments []taskAttachmentDocument `bson:"attachments,omitempty"`
+}
+
+// taskAttachmentDocument represents an attachment in the read model document.
+type taskAttachmentDocument struct {
+	FileID   string `bson:"file_id"`
+	FileName string `bson:"file_name"`
+	FileSize int64  `bson:"file_size"`
+	MimeType string `bson:"mime_type"`
 }
 
 // documentToReadModel preobrazuet dokument in ReadModel
@@ -460,6 +484,15 @@ func (r *MongoTaskQueryRepository) documentToReadModel(doc *taskReadModelDocumen
 
 	if doc.DueDate != nil {
 		rm.DueDate = doc.DueDate
+	}
+
+	for _, a := range doc.Attachments {
+		rm.Attachments = append(rm.Attachments, taskapp.AttachmentReadModel{
+			FileID:   uuid.UUID(a.FileID),
+			FileName: a.FileName,
+			FileSize: a.FileSize,
+			MimeType: a.MimeType,
+		})
 	}
 
 	return rm, nil

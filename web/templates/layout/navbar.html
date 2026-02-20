@@ -45,7 +45,7 @@
                     id="notification-dropdown-list"
                     aria-label="Recent notifications"
                     hx-get="/partials/notifications?limit=10"
-                    hx-trigger="toggle once"
+                    hx-trigger="intersect once"
                     hx-swap="innerHTML">
                     <li class="loading" aria-busy="true">
                         <span class="spinner spinner-sm"></span>
@@ -53,6 +53,15 @@
                     </li>
                 </ul>
             </details>
+        </li>
+        <li>
+            <!-- Theme toggle -->
+            <button class="theme-toggle"
+                    onclick="toggleTheme()"
+                    aria-label="Toggle dark mode"
+                    title="Toggle dark mode">
+                <span class="theme-icon" aria-hidden="true">🌙</span>
+            </button>
         </li>
         <li>
             <details class="dropdown" role="list" dir="rtl">
@@ -76,6 +85,11 @@
     <ul id="mobile-nav-menu" class="mobile-nav hide-desktop" role="menu" aria-hidden="true">
         <li role="menuitem"><a href="/workspaces">Workspaces</a></li>
         <li role="menuitem"><a href="/notifications">Notifications</a></li>
+        <li role="menuitem">
+            <a href="#" onclick="toggleTheme(); return false;">
+                <span class="theme-icon" aria-hidden="true">🌙</span> Toggle theme
+            </a>
+        </li>
         <li role="menuitem"><a href="/settings">Settings</a></li>
         <li role="menuitem">
             <a href="#"
@@ -203,6 +217,27 @@ nav[aria-label="Main navigation"] {
     min-width: 44px;
     min-height: 44px;
     display: none;
+}
+
+/* Theme toggle button */
+.theme-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2rem;
+    padding: 0.25rem 0.5rem;
+    margin: 0;
+    width: auto;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.25rem;
+    transition: background-color 0.2s;
+}
+
+.theme-toggle:hover {
+    background-color: var(--pico-secondary-focus);
 }
 
 @media (max-width: 768px) {

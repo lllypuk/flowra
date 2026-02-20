@@ -84,9 +84,12 @@
             // Wait a bit for WebSocket to connect
             setTimeout(function () {
                 for (var i = 0; i < wsElements.length; i++) {
-                    var ws = wsElements[i].__htmx_ws;
-                    if (ws && ws.readyState === WebSocket.OPEN) {
-                        ws.send(
+                    // HTMX v2 stores ws in htmx-internal-data.webSocket.socket
+                    var internalData = wsElements[i]['htmx-internal-data'];
+                    var wsWrapper = internalData && internalData.webSocket;
+                    var socket = wsWrapper && wsWrapper.socket;
+                    if (socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(
                             JSON.stringify({
                                 type: "subscribe",
                                 chat_id: chatId,
@@ -99,7 +102,7 @@
             }, 500);
             
             // Load initial presence data
-            fetch('/api/v1/chats/' + chatId + '/presence')
+            fetch('/api/v1/workspaces/{{.Data.Chat.WorkspaceID}}/chats/' + chatId + '/presence')
                 .then(function(response) {
                     if (!response.ok) return;
                     return response.json();
@@ -136,10 +139,16 @@
     });
 
     // Handle incoming WebSocket messages
+    // Note: evt.detail is msg.data from the WS payload; field names may be PascalCase (Go-style)
+    // from domain events (ChatID, aggregate_id) or snake_case from processed payloads.
     document.body.addEventListener("chat.message.posted", function (evt) {
         var msg = evt.detail;
-        if (msg.chat_id === "{{.Data.Chat.ID}}") {
-            htmx.ajax("GET", "/partials/messages/" + msg.message_id, {
+        var chatId = msg.ChatID || msg.chat_id;
+        var messageId = msg.aggregate_id || msg.message_id;
+        if (chatId === "{{.Data.Chat.ID}}" && messageId) {
+            // Skip if already in DOM (e.g. re-delivered event)
+            if (document.getElementById("message-" + messageId)) return;
+            htmx.ajax("GET", "/partials/messages/" + messageId, {
                 target: "#messages-{{.Data.Chat.ID}}",
                 swap: "beforeend",
             }).then(function () {
@@ -151,10 +160,11 @@
     // Handle message edited
     document.body.addEventListener("chat.message.edited", function (evt) {
         var msg = evt.detail;
-        var el = document.getElementById("message-" + msg.message_id);
+        var messageId = msg.aggregate_id || msg.message_id;
+        var el = messageId ? document.getElementById("message-" + messageId) : null;
         if (el) {
-            htmx.ajax("GET", "/partials/messages/" + msg.message_id, {
-                target: "#message-" + msg.message_id,
+            htmx.ajax("GET", "/partials/messages/" + messageId, {
+                target: "#message-" + messageId,
                 swap: "outerHTML",
             });
         }
@@ -163,7 +173,8 @@
     // Handle message deleted
     document.body.addEventListener("chat.message.deleted", function (evt) {
         var msg = evt.detail;
-        var el = document.getElementById("message-" + msg.message_id);
+        var messageId = msg.aggregate_id || msg.message_id;
+        var el = messageId ? document.getElementById("message-" + messageId) : null;
         if (el) {
             el.remove();
         }

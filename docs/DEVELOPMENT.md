@@ -230,8 +230,9 @@ git push origin feature/my-feature
 │   │   ├── http/         # REST API handlers
 │   │   └── websocket/    # WebSocket handler
 │   ├── infrastructure/   # External dependencies
-│   │   ├── repository/   # Data access
+│   │   ├── repository/   # Data access (MongoDB)
 │   │   ├── eventstore/   # Event persistence
+│   │   ├── filestorage/  # Local file storage (uploads/attachments)
 │   │   ├── httpserver/   # HTTP server utilities
 │   │   └── websocket/    # WebSocket infrastructure
 │   ├── middleware/       # HTTP middleware
@@ -695,4 +696,4 @@ Follow the project's interface design principles (see CLAUDE.md):
 
 ---
 
-*Last updated: January 2026*
+*Last updated: February 2026*

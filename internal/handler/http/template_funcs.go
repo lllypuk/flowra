@@ -15,22 +15,24 @@ func TemplateFuncs() template.FuncMap {
 		"formatDate":      formatDate,
 		"formatDateTime":  formatDateTime,
 		"formatDateInput": formatDateInput,
+		"isoDate":         isoDate,
 		"timeAgo":         timeAgo,
 
 		// String helpers
-		"truncate":  truncate,
-		"lower":     strings.ToLower,
-		"upper":     strings.ToUpper,
-		"title":     strings.Title, //nolint:staticcheck // Simple title case is fine for display
-		"contains":  strings.Contains,
-		"hasPrefix": strings.HasPrefix,
-		"hasSuffix": strings.HasSuffix,
-		"replace":   strings.ReplaceAll,
-		"trimSpace": strings.TrimSpace,
-		"join":      strings.Join,
-		"split":     strings.Split,
-		"pluralize": pluralize,
-		"initials":  initials,
+		"truncate":       truncate,
+		"lower":          strings.ToLower,
+		"upper":          strings.ToUpper,
+		"title":          strings.Title, //nolint:staticcheck // Simple title case is fine for display
+		"contains":       strings.Contains,
+		"hasPrefix":      strings.HasPrefix,
+		"hasSuffix":      strings.HasSuffix,
+		"replace":        strings.ReplaceAll,
+		"trimSpace":      strings.TrimSpace,
+		"join":           strings.Join,
+		"split":          strings.Split,
+		"pluralize":      pluralize,
+		"initials":       initials,
+		"avatarInitials": avatarInitials,
 
 		// Conditional helpers
 		"eq":       eq,
@@ -70,6 +72,9 @@ func TemplateFuncs() template.FuncMap {
 		"mul": mul,
 		"div": div,
 		"mod": mod,
+
+		// File helpers
+		"formatFileSize": formatFileSize,
 	}
 }
 
@@ -101,6 +106,13 @@ func formatDateInput(t time.Time) string {
 		return ""
 	}
 	return t.Format("2006-01-02")
+}
+
+func isoDate(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.UTC().Format(time.RFC3339)
 }
 
 // Time-related constants for timeAgo function.
@@ -179,6 +191,54 @@ func initials(name string) string {
 		result += string(parts[len(parts)-1][0])
 	}
 	return strings.ToUpper(result)
+}
+
+// avatarInitials extracts initials from a user object's display name or username.
+func avatarInitials(user any) string {
+	// Handle UserView type
+	if u, ok := user.(UserView); ok {
+		if u.DisplayName != "" {
+			return initials(u.DisplayName)
+		}
+		return initials(u.Username)
+	}
+
+	// Handle pointer to UserView
+	if u, ok := user.(*UserView); ok && u != nil {
+		if u.DisplayName != "" {
+			return initials(u.DisplayName)
+		}
+		return initials(u.Username)
+	}
+
+	// Handle UserResponse type
+	if u, ok := user.(UserResponse); ok {
+		if u.DisplayName != "" {
+			return initials(u.DisplayName)
+		}
+		return initials(u.Username)
+	}
+
+	// Handle pointer to UserResponse
+	if u, ok := user.(*UserResponse); ok && u != nil {
+		if u.DisplayName != "" {
+			return initials(u.DisplayName)
+		}
+		return initials(u.Username)
+	}
+
+	// Fallback: try to extract DisplayName and Username
+	// by type asserting to a map (common in template data)
+	if userMap, ok := user.(map[string]any); ok {
+		if displayName, exists := userMap["DisplayName"].(string); exists && displayName != "" {
+			return initials(displayName)
+		}
+		if username, exists := userMap["Username"].(string); exists {
+			return initials(username)
+		}
+	}
+
+	return "?"
 }
 
 // Conditional helpers
@@ -417,4 +477,22 @@ func renderMarkdown(s string) string {
 
 	// Wrap in paragraph
 	return "<p>" + result + "</p>"
+}
+
+func formatFileSize(size int64) string {
+	const (
+		kb = 1024
+		mb = 1024 * kb
+		gb = 1024 * mb
+	)
+	switch {
+	case size >= gb:
+		return fmt.Sprintf("%.1f GB", float64(size)/float64(gb))
+	case size >= mb:
+		return fmt.Sprintf("%.1f MB", float64(size)/float64(mb))
+	case size >= kb:
+		return fmt.Sprintf("%.1f KB", float64(size)/float64(kb))
+	default:
+		return fmt.Sprintf("%d B", size)
+	}
 }

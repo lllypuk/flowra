@@ -913,3 +913,280 @@ func TestMockTaskService(t *testing.T) {
 		assert.ErrorIs(t, err, taskapp.ErrTaskNotFound)
 	})
 }
+
+func TestTaskHandler_AddAttachment(t *testing.T) {
+	t.Run("successful add attachment", func(t *testing.T) {
+		e := echo.New()
+		userID := uuid.NewUUID()
+		workspaceID := uuid.NewUUID()
+		chatID := uuid.NewUUID()
+		fileID := uuid.NewUUID()
+
+		mockService := httphandler.NewMockTaskService()
+		testTask := createTestTaskReadModel(chatID, userID)
+		mockService.AddTask(testTask)
+
+		handler := httphandler.NewTaskHandler(mockService)
+
+		reqBody := `{
+			"file_id": "` + fileID.String() + `",
+			"file_name": "design.png",
+			"file_size": 2048,
+			"mime_type": "image/png"
+		}`
+		req := httptest.NewRequest(
+			stdhttp.MethodPost,
+			taskURL(workspaceID, testTask.ID)+"/attachments",
+			strings.NewReader(reqBody),
+		)
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("workspace_id", "task_id")
+		c.SetParamValues(workspaceID.String(), testTask.ID.String())
+
+		setupTaskAuthContext(c, userID)
+
+		err := handler.AddAttachment(c)
+		require.NoError(t, err)
+		assert.Equal(t, stdhttp.StatusOK, rec.Code)
+
+		var resp httpserver.Response
+		err = json.Unmarshal(rec.Body.Bytes(), &resp)
+		require.NoError(t, err)
+		assert.True(t, resp.Success)
+	})
+
+	t.Run("invalid task ID", func(t *testing.T) {
+		e := echo.New()
+		userID := uuid.NewUUID()
+		workspaceID := uuid.NewUUID()
+
+		mockService := httphandler.NewMockTaskService()
+		handler := httphandler.NewTaskHandler(mockService)
+
+		reqBody := `{"file_id": "` + uuid.NewUUID().String() +
+			`", "file_name": "f.txt", "file_size": 1, "mime_type": "text/plain"}`
+		req := httptest.NewRequest(
+			stdhttp.MethodPost,
+			"/api/v1/workspaces/"+workspaceID.String()+"/tasks/invalid/attachments",
+			strings.NewReader(reqBody),
+		)
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("workspace_id", "task_id")
+		c.SetParamValues(workspaceID.String(), "invalid")
+
+		setupTaskAuthContext(c, userID)
+
+		err := handler.AddAttachment(c)
+		require.NoError(t, err)
+		assert.Equal(t, stdhttp.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("invalid file ID", func(t *testing.T) {
+		e := echo.New()
+		userID := uuid.NewUUID()
+		workspaceID := uuid.NewUUID()
+		taskID := uuid.NewUUID()
+
+		mockService := httphandler.NewMockTaskService()
+		handler := httphandler.NewTaskHandler(mockService)
+
+		reqBody := `{"file_id": "not-a-uuid", "file_name": "f.txt", "file_size": 1, "mime_type": "text/plain"}`
+		req := httptest.NewRequest(stdhttp.MethodPost, taskURL(workspaceID, taskID)+"/attachments",
+			strings.NewReader(reqBody))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("workspace_id", "task_id")
+		c.SetParamValues(workspaceID.String(), taskID.String())
+
+		setupTaskAuthContext(c, userID)
+
+		err := handler.AddAttachment(c)
+		require.NoError(t, err)
+		assert.Equal(t, stdhttp.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("missing auth", func(t *testing.T) {
+		e := echo.New()
+		workspaceID := uuid.NewUUID()
+		taskID := uuid.NewUUID()
+
+		mockService := httphandler.NewMockTaskService()
+		handler := httphandler.NewTaskHandler(mockService)
+
+		reqBody := `{"file_id": "` + uuid.NewUUID().String() +
+			`", "file_name": "f.txt", "file_size": 1, "mime_type": "text/plain"}`
+		req := httptest.NewRequest(
+			stdhttp.MethodPost,
+			taskURL(workspaceID, taskID)+"/attachments",
+			strings.NewReader(reqBody),
+		)
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("workspace_id", "task_id")
+		c.SetParamValues(workspaceID.String(), taskID.String())
+
+		err := handler.AddAttachment(c)
+		require.NoError(t, err)
+		assert.Equal(t, stdhttp.StatusUnauthorized, rec.Code)
+	})
+
+	t.Run("task not found", func(t *testing.T) {
+		e := echo.New()
+		userID := uuid.NewUUID()
+		workspaceID := uuid.NewUUID()
+		taskID := uuid.NewUUID()
+		fileID := uuid.NewUUID()
+
+		mockService := httphandler.NewMockTaskService()
+		handler := httphandler.NewTaskHandler(mockService)
+
+		reqBody := `{"file_id": "` + fileID.String() + `", "file_name": "f.txt", "file_size": 1, "mime_type": "text/plain"}`
+		req := httptest.NewRequest(stdhttp.MethodPost, taskURL(workspaceID, taskID)+"/attachments",
+			strings.NewReader(reqBody))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("workspace_id", "task_id")
+		c.SetParamValues(workspaceID.String(), taskID.String())
+
+		setupTaskAuthContext(c, userID)
+
+		err := handler.AddAttachment(c)
+		require.NoError(t, err)
+		assert.Equal(t, stdhttp.StatusNotFound, rec.Code)
+	})
+}
+
+func TestTaskHandler_RemoveAttachment(t *testing.T) {
+	t.Run("successful remove attachment", func(t *testing.T) {
+		e := echo.New()
+		userID := uuid.NewUUID()
+		workspaceID := uuid.NewUUID()
+		chatID := uuid.NewUUID()
+		fileID := uuid.NewUUID()
+
+		mockService := httphandler.NewMockTaskService()
+		testTask := createTestTaskReadModel(chatID, userID)
+		mockService.AddTask(testTask)
+
+		handler := httphandler.NewTaskHandler(mockService)
+
+		req := httptest.NewRequest(
+			stdhttp.MethodDelete,
+			taskURL(workspaceID, testTask.ID)+"/attachments/"+fileID.String(),
+			nil,
+		)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("workspace_id", "task_id", "file_id")
+		c.SetParamValues(workspaceID.String(), testTask.ID.String(), fileID.String())
+
+		setupTaskAuthContext(c, userID)
+
+		err := handler.RemoveAttachment(c)
+		require.NoError(t, err)
+		assert.Equal(t, stdhttp.StatusOK, rec.Code)
+
+		var resp httpserver.Response
+		err = json.Unmarshal(rec.Body.Bytes(), &resp)
+		require.NoError(t, err)
+		assert.True(t, resp.Success)
+	})
+
+	t.Run("invalid task ID", func(t *testing.T) {
+		e := echo.New()
+		userID := uuid.NewUUID()
+		workspaceID := uuid.NewUUID()
+		fileID := uuid.NewUUID()
+
+		mockService := httphandler.NewMockTaskService()
+		handler := httphandler.NewTaskHandler(mockService)
+
+		req := httptest.NewRequest(stdhttp.MethodDelete,
+			"/api/v1/workspaces/"+workspaceID.String()+"/tasks/invalid/attachments/"+fileID.String(), nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("workspace_id", "task_id", "file_id")
+		c.SetParamValues(workspaceID.String(), "invalid", fileID.String())
+
+		setupTaskAuthContext(c, userID)
+
+		err := handler.RemoveAttachment(c)
+		require.NoError(t, err)
+		assert.Equal(t, stdhttp.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("invalid file ID", func(t *testing.T) {
+		e := echo.New()
+		userID := uuid.NewUUID()
+		workspaceID := uuid.NewUUID()
+		taskID := uuid.NewUUID()
+
+		mockService := httphandler.NewMockTaskService()
+		handler := httphandler.NewTaskHandler(mockService)
+
+		req := httptest.NewRequest(stdhttp.MethodDelete,
+			taskURL(workspaceID, taskID)+"/attachments/not-a-uuid", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("workspace_id", "task_id", "file_id")
+		c.SetParamValues(workspaceID.String(), taskID.String(), "not-a-uuid")
+
+		setupTaskAuthContext(c, userID)
+
+		err := handler.RemoveAttachment(c)
+		require.NoError(t, err)
+		assert.Equal(t, stdhttp.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("missing auth", func(t *testing.T) {
+		e := echo.New()
+		workspaceID := uuid.NewUUID()
+		taskID := uuid.NewUUID()
+		fileID := uuid.NewUUID()
+
+		mockService := httphandler.NewMockTaskService()
+		handler := httphandler.NewTaskHandler(mockService)
+
+		req := httptest.NewRequest(stdhttp.MethodDelete,
+			taskURL(workspaceID, taskID)+"/attachments/"+fileID.String(), nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("workspace_id", "task_id", "file_id")
+		c.SetParamValues(workspaceID.String(), taskID.String(), fileID.String())
+
+		err := handler.RemoveAttachment(c)
+		require.NoError(t, err)
+		assert.Equal(t, stdhttp.StatusUnauthorized, rec.Code)
+	})
+
+	t.Run("task not found", func(t *testing.T) {
+		e := echo.New()
+		userID := uuid.NewUUID()
+		workspaceID := uuid.NewUUID()
+		taskID := uuid.NewUUID()
+		fileID := uuid.NewUUID()
+
+		mockService := httphandler.NewMockTaskService()
+		handler := httphandler.NewTaskHandler(mockService)
+
+		req := httptest.NewRequest(stdhttp.MethodDelete,
+			taskURL(workspaceID, taskID)+"/attachments/"+fileID.String(), nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("workspace_id", "task_id", "file_id")
+		c.SetParamValues(workspaceID.String(), taskID.String(), fileID.String())
+
+		setupTaskAuthContext(c, userID)
+
+		err := handler.RemoveAttachment(c)
+		require.NoError(t, err)
+		assert.Equal(t, stdhttp.StatusNotFound, rec.Code)
+	})
+}

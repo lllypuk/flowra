@@ -1,0 +1,171 @@
+{{define "user/profile.html"}}
+<!doctype html>
+<html lang="en" data-theme="light">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>{{if .Title}}{{.Title}} - {{end}}Flowra</title>
+
+        <!-- Pico CSS -->
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"
+        />
+
+        <!-- Custom CSS -->
+        <link rel="stylesheet" href="/static/css/custom.css" />
+
+        <!-- HTMX -->
+        <script
+            src="https://unpkg.com/htmx.org@2.0.0"
+            crossorigin="anonymous"
+        ></script>
+    </head>
+    <body hx-boost="true">
+        {{template "navbar" .}}
+
+        <main class="container">
+            <div class="profile-page">
+                <article>
+                    <header class="profile-header">
+                        <div class="avatar-circle">
+                            {{if .Data.User.AvatarURL}}
+                                <img src="{{.Data.User.AvatarURL}}" alt="{{.Data.User.DisplayName}}" />
+                            {{else}}
+                                <span class="avatar-initials">{{avatarInitials .Data.User}}</span>
+                            {{end}}
+                        </div>
+                        <div class="profile-info">
+                            <h2>{{.Data.User.DisplayName}}</h2>
+                            <p class="username">@{{.Data.User.Username}}</p>
+                            {{if .Data.User.IsAdmin}}
+                                <span class="badge">System Admin</span>
+                            {{end}}
+                        </div>
+                    </header>
+
+                    <div class="profile-details">
+                        <dl class="info-grid">
+                            <dt>Email</dt>
+                            <dd>{{.Data.User.Email}}</dd>
+
+                            <dt>Member Since</dt>
+                            <dd>{{formatDate .Data.User.CreatedAt}}</dd>
+                        </dl>
+                    </div>
+
+                    {{if .Data.IsCurrentUser}}
+                    <footer>
+                        <a href="/settings" role="button" class="outline">Edit Profile</a>
+                    </footer>
+                    {{end}}
+                </article>
+            </div>
+        </main>
+
+        {{template "footer" .}}
+
+        <script src="/static/js/app.js"></script>
+
+        <style>
+            .profile-page {
+                max-width: 600px;
+                margin: 2rem auto;
+            }
+
+            .profile-header {
+                display: flex;
+                align-items: center;
+                gap: 1.5rem;
+                margin-bottom: 1.5rem;
+            }
+
+            .avatar-circle {
+                width: 100px;
+                height: 100px;
+                border-radius: 50%;
+                background: var(--primary);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                overflow: hidden;
+                flex-shrink: 0;
+            }
+
+            .avatar-circle img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+
+            .avatar-initials {
+                font-size: 2.5rem;
+                font-weight: bold;
+                color: white;
+                text-transform: uppercase;
+            }
+
+            .profile-info {
+                flex: 1;
+            }
+
+            .profile-info h2 {
+                margin: 0 0 0.25rem 0;
+            }
+
+            .profile-info .username {
+                color: var(--muted-color);
+                margin: 0 0 0.5rem 0;
+                font-size: 1rem;
+            }
+
+            .profile-details {
+                margin-top: 1.5rem;
+            }
+
+            .info-grid {
+                display: grid;
+                grid-template-columns: 150px 1fr;
+                gap: 0.75rem 1.5rem;
+                margin: 0;
+            }
+
+            .info-grid dt {
+                font-weight: 600;
+                color: var(--muted-color);
+            }
+
+            .info-grid dd {
+                margin: 0;
+            }
+
+            .badge {
+                display: inline-block;
+                padding: 0.25rem 0.75rem;
+                background: var(--primary);
+                color: white;
+                border-radius: 12px;
+                font-size: 0.85rem;
+                font-weight: 600;
+            }
+
+            @media (max-width: 768px) {
+                .profile-header {
+                    flex-direction: column;
+                    text-align: center;
+                }
+
+                .info-grid {
+                    grid-template-columns: 1fr;
+                    gap: 0.5rem;
+                }
+
+                .info-grid dt {
+                    font-weight: 600;
+                    margin-top: 0.5rem;
+                }
+            }
+        </style>
+    </body>
+</html>
+{{end}}

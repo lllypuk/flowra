@@ -282,6 +282,228 @@
   window.handleDragLeave = handleDragLeave;
   window.handleDrop = handleDrop;
 
+  // ===== Filter State Management =====
+
+  /**
+   * Persist current filter values into the URL query string.
+   */
+  function updateFilterState() {
+    var filters = document.getElementById("board-filters");
+    if (!filters) return;
+
+    var params = new URLSearchParams(window.location.search);
+    var names = ["type", "assignee", "priority", "search"];
+    var activeCount = 0;
+
+    names.forEach(function (name) {
+      var el = filters.querySelector('[name="' + name + '"]');
+      var val = el ? el.value : "";
+      if (val) {
+        params.set(name, val);
+        activeCount++;
+      } else {
+        params.delete(name);
+      }
+    });
+
+    var newURL =
+      window.location.pathname +
+      (params.toString() ? "?" + params.toString() : "");
+    window.history.replaceState(null, "", newURL);
+
+    // Update badge visibility and count
+    var badge = document.getElementById("filter-badge");
+    var countEl = document.getElementById("filter-badge-count");
+    if (badge) {
+      badge.hidden = activeCount === 0;
+    }
+    if (countEl) {
+      countEl.textContent = activeCount;
+    }
+  }
+  window.updateFilterState = updateFilterState;
+
+  /**
+   * Clear all board filters and reload columns.
+   */
+  function clearBoardFilters() {
+    var filters = document.getElementById("board-filters");
+    if (!filters) return;
+
+    // Reset all selects to first option and clear search
+    filters.querySelectorAll("select[name]").forEach(function (sel) {
+      if (
+        sel.name === "type" ||
+        sel.name === "assignee" ||
+        sel.name === "priority"
+      ) {
+        sel.value = "";
+      }
+    });
+    var searchInput = filters.querySelector('input[name="search"]');
+    if (searchInput) searchInput.value = "";
+
+    // Update URL
+    window.history.replaceState(null, "", window.location.pathname);
+
+    // Hide badge
+    var badge = document.getElementById("filter-badge");
+    if (badge) badge.hidden = true;
+
+    // Trigger a reload of board columns via the type select (arbitrary — any filter triggers full reload)
+    var typeSelect = filters.querySelector('select[name="type"]');
+    if (typeSelect) htmx.trigger(typeSelect, "change");
+  }
+  window.clearBoardFilters = clearBoardFilters;
+
+  /**
+   * Restore filter values from URL query params on page load.
+   */
+  function restoreFiltersFromURL() {
+    var params = new URLSearchParams(window.location.search);
+    var filters = document.getElementById("board-filters");
+    if (!filters || !params.toString()) return;
+
+    var names = ["type", "assignee", "priority", "search"];
+    names.forEach(function (name) {
+      var val = params.get(name);
+      if (val) {
+        var el = filters.querySelector('[name="' + name + '"]');
+        if (el) el.value = val;
+      }
+    });
+    updateFilterState();
+  }
+
+  // ===== Compact View =====
+
+  /**
+   * Toggle compact card view on the board.
+   */
+  function toggleCompactView() {
+    var board = document.querySelector(".board-columns");
+    if (!board) return;
+
+    var isCompact = board.classList.toggle("compact-view");
+    var btn = document.getElementById("compact-toggle");
+    if (btn) {
+      btn.classList.toggle("active", isCompact);
+      btn.title = isCompact ? "Switch to normal view" : "Toggle compact view";
+    }
+
+    // Persist preference
+    try {
+      sessionStorage.setItem("board-compact", isCompact ? "1" : "");
+    } catch (_) {
+      // sessionStorage unavailable
+    }
+  }
+  window.toggleCompactView = toggleCompactView;
+
+  /**
+   * Restore compact view preference.
+   */
+  function restoreCompactView() {
+    try {
+      if (sessionStorage.getItem("board-compact") === "1") {
+        var board = document.querySelector(".board-columns");
+        if (board) board.classList.add("compact-view");
+        var btn = document.getElementById("compact-toggle");
+        if (btn) {
+          btn.classList.add("active");
+          btn.title = "Switch to normal view";
+        }
+      }
+    } catch (_) {
+      // sessionStorage unavailable
+    }
+  }
+
+  // ===== Column Sorting =====
+
+  /**
+   * Sort task cards within each column by the given criterion.
+   * @param {string} criterion - "priority" | "due_date" | "created" | ""
+   */
+  function sortBoardColumns(criterion) {
+    if (!criterion) return;
+
+    var priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+
+    document.querySelectorAll(".column-cards").forEach(function (column) {
+      var cards = Array.prototype.slice.call(
+        column.querySelectorAll(".task-card"),
+      );
+
+      cards.sort(function (a, b) {
+        if (criterion === "priority") {
+          var pa =
+            priorityOrder[a.dataset.priority] !== undefined
+              ? priorityOrder[a.dataset.priority]
+              : 99;
+          var pb =
+            priorityOrder[b.dataset.priority] !== undefined
+              ? priorityOrder[b.dataset.priority]
+              : 99;
+          return pa - pb;
+        }
+
+        if (criterion === "due_date") {
+          var ta = a.dataset.dueDate || "";
+          var tb = b.dataset.dueDate || "";
+          // Cards without due date go last
+          if (!ta && !tb) return 0;
+          if (!ta) return 1;
+          if (!tb) return -1;
+          return ta < tb ? -1 : ta > tb ? 1 : 0;
+        }
+
+        if (criterion === "created") {
+          var ca = a.dataset.createdAt || "";
+          var cb = b.dataset.createdAt || "";
+          // Newest first
+          return ca < cb ? 1 : ca > cb ? -1 : 0;
+        }
+
+        return 0;
+      });
+
+      // Re-insert sorted cards (before load-more button if exists)
+      var loadMore = column.querySelector(".load-more");
+      cards.forEach(function (card) {
+        if (loadMore) {
+          column.insertBefore(card, loadMore);
+        } else {
+          column.appendChild(card);
+        }
+      });
+    });
+
+    // Persist preference
+    try {
+      sessionStorage.setItem("board-sort", criterion);
+    } catch (_) {
+      // sessionStorage unavailable
+    }
+  }
+  window.sortBoardColumns = sortBoardColumns;
+
+  /**
+   * Restore sort preference.
+   */
+  function restoreSortPreference() {
+    try {
+      var saved = sessionStorage.getItem("board-sort");
+      if (saved) {
+        var sortSelect = document.getElementById("board-sort");
+        if (sortSelect) sortSelect.value = saved;
+        sortBoardColumns(saved);
+      }
+    } catch (_) {
+      // sessionStorage unavailable
+    }
+  }
+
   /**
    * Handle real-time task updates via WebSocket
    */
@@ -355,6 +577,9 @@
    */
   document.addEventListener("DOMContentLoaded", function () {
     setupCardAccessibility(document);
+    restoreFiltersFromURL();
+    restoreCompactView();
+    restoreSortPreference();
   });
 
   /**
@@ -362,5 +587,14 @@
    */
   document.body.addEventListener("htmx:afterSwap", function (evt) {
     setupCardAccessibility(evt.detail.target);
+
+    // Re-apply sort preference if columns were reloaded
+    if (
+      evt.detail.target.id === "board-columns" ||
+      evt.detail.target.closest("#board-columns")
+    ) {
+      restoreSortPreference();
+      restoreCompactView();
+    }
   });
 })();

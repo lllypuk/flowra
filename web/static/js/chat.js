@@ -2,6 +2,10 @@
  * Chat-specific JavaScript functionality
  * Provides typing indicators, tag autocomplete, and message utilities
  */
+(function() {
+    // Guard against double-initialization when loaded via hx-boost
+    if (window.__chatJsLoaded) return;
+    window.__chatJsLoaded = true;
 
 // ============================================================
 // Auto-resize textarea
@@ -11,17 +15,17 @@
  * Auto-resize textarea based on content
  * @param {HTMLTextAreaElement} textarea - The textarea element to resize
  */
-function autoResize(textarea) {
+window.autoResize = function autoResize(textarea) {
     if (!textarea) return;
 
     // Reset height to calculate proper scroll height
     textarea.style.height = 'auto';
 
     // Set height based on content, max 160px
-    const maxHeight = 160;
-    const newHeight = Math.min(textarea.scrollHeight, maxHeight);
+    var maxHeight = 160;
+    var newHeight = Math.min(textarea.scrollHeight, maxHeight);
     textarea.style.height = newHeight + 'px';
-}
+};
 
 // ============================================================
 // Scroll utilities
@@ -31,7 +35,7 @@ function autoResize(textarea) {
  * Scroll container to bottom
  * @param {string} elementId - ID of the element to scroll
  */
-function scrollToBottom(elementId) {
+window.scrollToBottom = function scrollToBottom(elementId) {
     var element = document.getElementById(elementId);
     if (element) {
         // Use smooth scrolling for better UX
@@ -40,18 +44,18 @@ function scrollToBottom(elementId) {
             behavior: 'smooth'
         });
     }
-}
+};
 
 /**
  * Scroll container to bottom instantly (no animation)
  * @param {string} elementId - ID of the element to scroll
  */
-function scrollToBottomInstant(elementId) {
+window.scrollToBottomInstant = function scrollToBottomInstant(elementId) {
     var element = document.getElementById(elementId);
     if (element) {
         element.scrollTop = element.scrollHeight;
     }
-}
+};
 
 // ============================================================
 // Typing indicator
@@ -64,7 +68,7 @@ var typingHideTimeouts = {};
  * Handle typing event - sends typing indicator via WebSocket
  * @param {string} chatId - The chat ID
  */
-function handleTyping(chatId) {
+window.handleTyping = function handleTyping(chatId) {
     // Clear existing timeout for this chat
     if (typingTimeouts[chatId]) {
         clearTimeout(typingTimeouts[chatId]);
@@ -74,7 +78,7 @@ function handleTyping(chatId) {
     typingTimeouts[chatId] = setTimeout(function() {
         sendTypingIndicator(chatId);
     }, 300);
-}
+};
 
 /**
  * Send typing indicator via WebSocket
@@ -101,7 +105,7 @@ function sendTypingIndicator(chatId) {
  * @param {string} username - The username who is typing
  * @param {string} chatId - The chat ID
  */
-function showTypingIndicator(username, chatId) {
+window.showTypingIndicator = function showTypingIndicator(username, chatId) {
     var indicator = document.getElementById('typing-indicator-' + chatId);
     var usersSpan = indicator ? indicator.querySelector('.typing-users, #typing-users') : null;
 
@@ -119,28 +123,77 @@ function showTypingIndicator(username, chatId) {
             indicator.classList.add('hidden');
         }, 3000);
     }
-}
+};
 
 // ============================================================
-// Tag autocomplete
+// Tag and Mention autocomplete
 // ============================================================
 
 var activeAutocompleteInput = null;
+var workspaceMembers = []; // Cache for workspace members
+var currentWorkspaceId = null;
 
 /**
- * Initialize tag autocomplete on all message inputs
+ * Load workspace members for mention autocomplete
+ * @param {string} workspaceId - The workspace ID
+ */
+function loadWorkspaceMembers(workspaceId) {
+    if (currentWorkspaceId === workspaceId && workspaceMembers.length > 0) {
+        return; // Already loaded
+    }
+
+    currentWorkspaceId = workspaceId;
+    
+    fetch('/partials/workspace/' + workspaceId + '/members-options')
+        .then(function(response) {
+            if (!response.ok) throw new Error('Failed to fetch members');
+            return response.text();
+        })
+        .then(function(html) {
+            // Parse HTML to extract member data from <option> elements
+            var parser = new DOMParser();
+            var doc = parser.parseFromString(html, 'text/html');
+            var options = doc.querySelectorAll('option');
+            
+            workspaceMembers = [];
+            options.forEach(function(option) {
+                if (option.value) {
+                    workspaceMembers.push({
+                        id: option.value,
+                        username: option.dataset.username || option.textContent.trim(),
+                        displayName: option.textContent.trim()
+                    });
+                }
+            });
+        })
+        .catch(function(err) {
+            console.error('Failed to load workspace members:', err);
+        });
+}
+
+/**
+ * Initialize tag and mention autocomplete on all message inputs
  */
 function initTagAutocomplete() {
     var inputs = document.querySelectorAll('.message-form textarea');
 
     inputs.forEach(function(input) {
         // Remove existing listeners to prevent duplicates
-        input.removeEventListener('input', handleTagAutocompleteEvent);
+        input.removeEventListener('input', handleAutocompleteEvent);
         input.removeEventListener('keydown', handleAutocompleteNavigationEvent);
 
         // Add listeners
-        input.addEventListener('input', handleTagAutocompleteEvent);
+        input.addEventListener('input', handleAutocompleteEvent);
         input.addEventListener('keydown', handleAutocompleteNavigationEvent);
+        
+        // Extract workspace ID from form action or page
+        var form = input.closest('form');
+        if (form && form.action) {
+            var match = form.action.match(/workspaces\/([a-f0-9-]+)/);
+            if (match && match[1]) {
+                loadWorkspaceMembers(match[1]);
+            }
+        }
     });
 
     // Close dropdown when clicking outside
@@ -156,7 +209,7 @@ function initTagAutocomplete() {
         container.addEventListener('scroll', function() {
             if (activeAutocompleteInput) {
                 var wrapper = activeAutocompleteInput.closest('.message-input-wrapper');
-                var dropdown = wrapper ? wrapper.querySelector('.autocomplete-dropdown') : null;
+                var dropdown = wrapper ? wrapper.querySelector('.autocomplete-dropdown, .mention-dropdown') : null;
                 if (dropdown && !dropdown.classList.contains('hidden')) {
                     positionDropdown(activeAutocompleteInput, dropdown);
                 }
@@ -168,7 +221,7 @@ function initTagAutocomplete() {
     window.addEventListener('resize', function() {
         if (activeAutocompleteInput) {
             var wrapper = activeAutocompleteInput.closest('.message-input-wrapper');
-            var dropdown = wrapper ? wrapper.querySelector('.autocomplete-dropdown') : null;
+            var dropdown = wrapper ? wrapper.querySelector('.autocomplete-dropdown, .mention-dropdown') : null;
             if (dropdown && !dropdown.classList.contains('hidden')) {
                 positionDropdown(activeAutocompleteInput, dropdown);
             }
@@ -177,11 +230,11 @@ function initTagAutocomplete() {
 }
 
 /**
- * Event handler for tag autocomplete
+ * Event handler for autocomplete (tags and mentions)
  * @param {Event} e - Input event
  */
-function handleTagAutocompleteEvent(e) {
-    handleTagAutocomplete(e.target);
+function handleAutocompleteEvent(e) {
+    handleAutocomplete(e.target);
 }
 
 /**
@@ -199,7 +252,6 @@ function handleAutocompleteNavigationEvent(e) {
  */
 function positionDropdown(textarea, dropdown) {
     var rect = textarea.getBoundingClientRect();
-    var dropdownHeight = dropdown.offsetHeight || 250; // fallback to max-height
 
     // Position dropdown above the textarea
     dropdown.style.position = 'fixed';
@@ -210,56 +262,157 @@ function positionDropdown(textarea, dropdown) {
 }
 
 /**
- * Handle tag autocomplete on input
+ * Handle tag and mention autocomplete on input
  * @param {HTMLTextAreaElement} textarea - The textarea element
  */
-function handleTagAutocomplete(textarea) {
+function handleAutocomplete(textarea) {
     var value = textarea.value;
     var cursorPos = textarea.selectionStart;
     var textBeforeCursor = value.substring(0, cursorPos);
 
-    // Check if user just typed # (start of tag)
+    // Check if user typed @ (mention) or # (tag)
+    var mentionMatch = textBeforeCursor.match(/@(\w*)$/);
     var hashMatch = textBeforeCursor.match(/#(\w*)$/);
 
-    // Find the dropdown for this textarea
     var wrapper = textarea.closest('.message-input-wrapper');
-    var dropdown = wrapper ? wrapper.querySelector('.autocomplete-dropdown') : null;
+    
+    // Handle mention autocomplete
+    if (mentionMatch) {
+        handleMentionAutocomplete(textarea, wrapper, mentionMatch[1]);
+    } else if (hashMatch) {
+        handleTagAutocompleteInternal(textarea, wrapper, hashMatch[1]);
+    } else {
+        // Close all dropdowns
+        closeAllAutocompleteDropdowns();
+    }
+}
+
+/**
+ * Handle mention autocomplete
+ * @param {HTMLTextAreaElement} textarea - The textarea element
+ * @param {HTMLElement} wrapper - The wrapper element
+ * @param {string} filter - The filter text
+ */
+function handleMentionAutocomplete(textarea, wrapper, filter) {
+    if (!wrapper) return;
+    
+    activeAutocompleteInput = textarea;
+    var filterLower = filter.toLowerCase();
+    
+    // Create or get mention dropdown
+    var dropdown = wrapper.querySelector('.mention-dropdown');
+    if (!dropdown) {
+        dropdown = createMentionDropdown();
+        wrapper.appendChild(dropdown);
+    }
+    
+    // Clear existing items
+    var ul = dropdown.querySelector('ul');
+    ul.innerHTML = '';
+    
+    // Filter and add members
+    var hasVisible = false;
+    workspaceMembers.forEach(function(member) {
+        var username = member.username.toLowerCase();
+        var displayName = member.displayName.toLowerCase();
+        
+        if (filterLower === '' || username.includes(filterLower) || displayName.includes(filterLower)) {
+            var li = document.createElement('li');
+            li.dataset.username = member.username;
+            li.dataset.userId = member.id;
+            li.tabIndex = 0;
+            
+            var avatar = document.createElement('div');
+            avatar.className = 'mention-avatar';
+            avatar.textContent = member.displayName.charAt(0).toUpperCase();
+            
+            var info = document.createElement('div');
+            info.className = 'mention-info';
+            
+            var name = document.createElement('div');
+            name.className = 'mention-name';
+            name.textContent = member.displayName;
+            
+            var usernameSpan = document.createElement('div');
+            usernameSpan.className = 'mention-username';
+            usernameSpan.textContent = '@' + member.username;
+            
+            info.appendChild(name);
+            info.appendChild(usernameSpan);
+            li.appendChild(avatar);
+            li.appendChild(info);
+            ul.appendChild(li);
+            
+            hasVisible = true;
+        }
+    });
+    
+    if (hasVisible) {
+        dropdown.classList.remove('hidden');
+        positionDropdown(textarea, dropdown);
+        
+        // Set first item as active
+        var firstItem = ul.querySelector('li');
+        if (firstItem) {
+            firstItem.classList.add('active');
+        }
+    } else {
+        dropdown.classList.add('hidden');
+        activeAutocompleteInput = null;
+    }
+}
+
+/**
+ * Create mention dropdown element
+ * @returns {HTMLElement} The dropdown element
+ */
+function createMentionDropdown() {
+    var dropdown = document.createElement('div');
+    dropdown.className = 'mention-dropdown autocomplete-dropdown hidden';
+    var ul = document.createElement('ul');
+    dropdown.appendChild(ul);
+    return dropdown;
+}
+
+/**
+ * Handle tag autocomplete (internal)
+ * @param {HTMLTextAreaElement} textarea - The textarea element
+ * @param {HTMLElement} wrapper - The wrapper element
+ * @param {string} filter - The filter text
+ */
+function handleTagAutocompleteInternal(textarea, wrapper, filter) {
+    var dropdown = wrapper ? wrapper.querySelector('.autocomplete-dropdown:not(.mention-dropdown)') : null;
 
     if (!dropdown) return;
 
-    if (hashMatch) {
-        activeAutocompleteInput = textarea;
-        var filter = hashMatch[1].toLowerCase();
-        var items = dropdown.querySelectorAll('li');
-        var hasVisible = false;
+    activeAutocompleteInput = textarea;
+    var filterLower = filter.toLowerCase();
+    var items = dropdown.querySelectorAll('li');
+    var hasVisible = false;
 
-        items.forEach(function(item) {
-            var tag = (item.dataset.tag || '').toLowerCase();
-            var label = item.textContent.toLowerCase();
+    items.forEach(function(item) {
+        var tag = (item.dataset.tag || '').toLowerCase();
+        var label = item.textContent.toLowerCase();
 
-            if (tag.includes(filter) || label.includes(filter) || filter === '') {
-                item.style.display = '';
-                hasVisible = true;
-            } else {
-                item.style.display = 'none';
-            }
-        });
-
-        if (hasVisible) {
-            dropdown.classList.remove('hidden');
-            // Position dropdown
-            positionDropdown(textarea, dropdown);
-            // Reset active state
-            items.forEach(function(item) {
-                item.classList.remove('active');
-            });
-            // Set first visible item as active
-            var firstVisible = dropdown.querySelector('li:not([style*="display: none"])');
-            if (firstVisible) {
-                firstVisible.classList.add('active');
-            }
+        if (tag.includes(filterLower) || label.includes(filterLower) || filterLower === '') {
+            item.style.display = '';
+            hasVisible = true;
         } else {
-            dropdown.classList.add('hidden');
+            item.style.display = 'none';
+        }
+    });
+
+    if (hasVisible) {
+        dropdown.classList.remove('hidden');
+        positionDropdown(textarea, dropdown);
+        // Reset active state
+        items.forEach(function(item) {
+            item.classList.remove('active');
+        });
+        // Set first visible item as active
+        var firstVisible = dropdown.querySelector('li:not([style*="display: none"])');
+        if (firstVisible) {
+            firstVisible.classList.add('active');
         }
     } else {
         dropdown.classList.add('hidden');
@@ -273,7 +426,7 @@ function handleTagAutocomplete(textarea) {
  */
 function handleAutocompleteNavigation(e) {
     var wrapper = e.target.closest('.message-input-wrapper');
-    var dropdown = wrapper ? wrapper.querySelector('.autocomplete-dropdown') : null;
+    var dropdown = wrapper ? wrapper.querySelector('.autocomplete-dropdown:not(.hidden), .mention-dropdown:not(.hidden)') : null;
 
     if (!dropdown || dropdown.classList.contains('hidden')) return;
 
@@ -282,6 +435,7 @@ function handleAutocompleteNavigation(e) {
 
     var active = dropdown.querySelector('li.active');
     var index = items.indexOf(active);
+    var isMentionDropdown = dropdown.classList.contains('mention-dropdown');
 
     switch (e.key) {
         case 'ArrowDown':
@@ -304,7 +458,11 @@ function handleAutocompleteNavigation(e) {
         case 'Tab':
             if (active && !dropdown.classList.contains('hidden')) {
                 e.preventDefault();
-                insertTag(e.target, active.dataset.tag);
+                if (isMentionDropdown) {
+                    insertMention(e.target, active.dataset.username);
+                } else {
+                    insertTag(e.target, active.dataset.tag);
+                }
                 dropdown.classList.add('hidden');
                 activeAutocompleteInput = null;
             }
@@ -339,14 +497,38 @@ function insertTag(textarea, tag) {
     textarea.focus();
 
     // Trigger resize
-    autoResize(textarea);
+    window.autoResize(textarea);
+}
+
+/**
+ * Insert selected mention into textarea
+ * @param {HTMLTextAreaElement} textarea - The textarea element
+ * @param {string} username - The username to mention
+ */
+function insertMention(textarea, username) {
+    var value = textarea.value;
+    var cursorPos = textarea.selectionStart;
+    var textBeforeCursor = value.substring(0, cursorPos);
+    var textAfterCursor = value.substring(cursorPos);
+
+    // Replace the partial @ input with the full mention
+    var newText = textBeforeCursor.replace(/@\w*$/, '@' + username + ' ') + textAfterCursor;
+    textarea.value = newText;
+
+    // Move cursor after the mention
+    var newCursorPos = textBeforeCursor.replace(/@\w*$/, '@' + username + ' ').length;
+    textarea.setSelectionRange(newCursorPos, newCursorPos);
+    textarea.focus();
+
+    // Trigger resize
+    window.autoResize(textarea);
 }
 
 /**
  * Close all autocomplete dropdowns
  */
 function closeAllAutocompleteDropdowns() {
-    var dropdowns = document.querySelectorAll('.autocomplete-dropdown');
+    var dropdowns = document.querySelectorAll('.autocomplete-dropdown, .mention-dropdown');
     dropdowns.forEach(function(dropdown) {
         dropdown.classList.add('hidden');
     });
@@ -355,10 +537,18 @@ function closeAllAutocompleteDropdowns() {
 
 // Add click handlers for autocomplete items
 document.addEventListener('click', function(e) {
-    var item = e.target.closest('.autocomplete-dropdown li');
+    var item = e.target.closest('.autocomplete-dropdown li, .mention-dropdown li');
     if (item && activeAutocompleteInput) {
-        insertTag(activeAutocompleteInput, item.dataset.tag);
-        item.closest('.autocomplete-dropdown').classList.add('hidden');
+        var dropdown = item.closest('.autocomplete-dropdown, .mention-dropdown');
+        var isMentionDropdown = dropdown && dropdown.classList.contains('mention-dropdown');
+        
+        if (isMentionDropdown) {
+            insertMention(activeAutocompleteInput, item.dataset.username);
+        } else {
+            insertTag(activeAutocompleteInput, item.dataset.tag);
+        }
+        
+        dropdown.classList.add('hidden');
         activeAutocompleteInput = null;
     }
 });
@@ -398,7 +588,7 @@ document.body.addEventListener('htmx:wsAfterMessage', function(evt) {
 /**
  * Track presence state by user ID
  */
-const presenceState = new Map();
+var presenceState = new Map();
 
 /**
  * Update presence indicator for a user
@@ -407,7 +597,7 @@ const presenceState = new Map();
  */
 function updateUserPresence(userId, isOnline) {
     presenceState.set(userId, isOnline);
-    
+
     // Update all presence dots for this user
     var presenceDots = document.querySelectorAll('[data-user-id="' + userId + '"] .presence-dot');
     presenceDots.forEach(function(dot) {
@@ -419,28 +609,28 @@ function updateUserPresence(userId, isOnline) {
             dot.classList.remove('online');
         }
     });
-    
+
     updateOnlineCount();
 }
 
 /**
  * Update the online user count display
  */
-function updateOnlineCount() {
+window.updateOnlineCount = function updateOnlineCount() {
     // Count unique online users from presence state
-    let onlineCount = 0;
+    var onlineCount = 0;
     presenceState.forEach(function(isOnline) {
         if (isOnline) {
             onlineCount++;
         }
     });
-    
+
     // Update modal count
     var modalCountEl = document.querySelector('.online-count');
     if (modalCountEl) {
         modalCountEl.textContent = onlineCount + ' online';
     }
-    
+
     // Update header count
     var headerCountEl = document.getElementById('chat-online-count');
     if (headerCountEl) {
@@ -450,7 +640,7 @@ function updateOnlineCount() {
             headerCountEl.textContent = '';
         }
     }
-}
+};
 
 /**
  * Handle presence change events from WebSocket
@@ -466,7 +656,7 @@ document.body.addEventListener('presence.changed', function(evt) {
  */
 document.body.addEventListener('chat.typing', function(evt) {
     if (evt.detail && evt.detail.user_id && evt.detail.chat_id) {
-        showTypingIndicator(evt.detail.chat_id, evt.detail.user_id);
+        window.showTypingIndicator(evt.detail.chat_id, evt.detail.user_id);
     }
 });
 
@@ -483,7 +673,7 @@ function initChat() {
     // Auto-resize all textareas on page
     var textareas = document.querySelectorAll('.message-form textarea');
     textareas.forEach(function(textarea) {
-        autoResize(textarea);
+        window.autoResize(textarea);
     });
 }
 
@@ -504,6 +694,8 @@ document.body.addEventListener('htmx:afterSwap', function(evt) {
 document.body.addEventListener('htmx:afterSettle', function(evt) {
     var target = evt.detail.target;
     if (target && target.id && target.id.startsWith('messages-')) {
-        scrollToBottomInstant(target.id);
+        window.scrollToBottomInstant(target.id);
     }
 });
+
+})();

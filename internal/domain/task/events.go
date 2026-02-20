@@ -10,14 +10,16 @@ import (
 
 // Event types
 const (
-	EventTypeTaskCreated     = "task.created"
-	EventTypeTaskUpdated     = "task.updated"
-	EventTypeTaskDeleted     = "task.deleted"
-	EventTypeStatusChanged   = "task.status_changed"
-	EventTypeAssigneeChanged = "task.assignee_changed"
-	EventTypePriorityChanged = "task.priority_changed"
-	EventTypeDueDateChanged  = "task.due_date_changed"
-	EventTypeCustomFieldSet  = "task.custom_field_set"
+	EventTypeTaskCreated       = "task.created"
+	EventTypeTaskUpdated       = "task.updated"
+	EventTypeTaskDeleted       = "task.deleted"
+	EventTypeStatusChanged     = "task.status_changed"
+	EventTypeAssigneeChanged   = "task.assignee_changed"
+	EventTypePriorityChanged   = "task.priority_changed"
+	EventTypeDueDateChanged    = "task.due_date_changed"
+	EventTypeCustomFieldSet    = "task.custom_field_set"
+	EventTypeAttachmentAdded   = "task.attachment.added"
+	EventTypeAttachmentRemoved = "task.attachment.removed"
 )
 
 // Created event creating tasks
@@ -295,5 +297,58 @@ func NewCustomFieldSet(
 		BaseEvent: event.NewBaseEvent(EventTypeCustomFieldSet, taskID.String(), "Task", 1, metadata),
 		Key:       key,
 		Value:     value,
+	}
+}
+
+// AttachmentAdded is raised when a file is attached to a task.
+type AttachmentAdded struct {
+	event.BaseEvent
+
+	FileID   uuid.UUID `json:"file_id"`
+	FileName string    `json:"file_name"`
+	FileSize int64     `json:"file_size"`
+	MimeType string    `json:"mime_type"`
+	AddedBy  uuid.UUID `json:"added_by"`
+}
+
+// NewAttachmentAdded creates a new AttachmentAdded event.
+func NewAttachmentAdded(
+	taskID uuid.UUID,
+	fileID uuid.UUID,
+	fileName string,
+	fileSize int64,
+	mimeType string,
+	addedBy uuid.UUID,
+	metadata event.Metadata,
+) *AttachmentAdded {
+	return &AttachmentAdded{
+		BaseEvent: event.NewBaseEvent(EventTypeAttachmentAdded, taskID.String(), "Task", 1, metadata),
+		FileID:    fileID,
+		FileName:  fileName,
+		FileSize:  fileSize,
+		MimeType:  mimeType,
+		AddedBy:   addedBy,
+	}
+}
+
+// AttachmentRemoved is raised when a file is detached from a task.
+type AttachmentRemoved struct {
+	event.BaseEvent
+
+	FileID    uuid.UUID `json:"file_id"`
+	RemovedBy uuid.UUID `json:"removed_by"`
+}
+
+// NewAttachmentRemoved creates a new AttachmentRemoved event.
+func NewAttachmentRemoved(
+	taskID uuid.UUID,
+	fileID uuid.UUID,
+	removedBy uuid.UUID,
+	metadata event.Metadata,
+) *AttachmentRemoved {
+	return &AttachmentRemoved{
+		BaseEvent: event.NewBaseEvent(EventTypeAttachmentRemoved, taskID.String(), "Task", 1, metadata),
+		FileID:    fileID,
+		RemovedBy: removedBy,
 	}
 }

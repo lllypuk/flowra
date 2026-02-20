@@ -42,6 +42,7 @@
     gap: 0.5rem;
     flex: 1;
     flex-wrap: wrap;
+    align-items: center;
 }
 
 .board-filters select,
@@ -55,6 +56,99 @@
     min-width: 200px;
     flex: 1;
     max-width: 300px;
+}
+
+/* Filter Badge & Clear Button */
+.filter-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: var(--primary);
+    color: white;
+    border-radius: 12px;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.filter-badge[hidden] {
+    display: none;
+}
+
+.filter-badge-count {
+    min-width: 1em;
+    text-align: center;
+}
+
+.filter-clear-btn {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 0 0.15rem;
+    font-size: 0.85rem;
+    line-height: 1;
+    opacity: 0.8;
+    margin: 0;
+    width: auto;
+}
+
+.filter-clear-btn:hover {
+    opacity: 1;
+}
+
+/* Board View Options */
+.board-view-options {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-left: auto;
+}
+
+.board-view-options select {
+    margin-bottom: 0;
+    width: auto;
+    min-width: 130px;
+    font-size: 0.85rem;
+    padding: 0.4rem 0.6rem;
+}
+
+.view-toggle-btn {
+    padding: 0.35rem 0.6rem !important;
+    font-size: 1rem !important;
+    line-height: 1 !important;
+    margin-bottom: 0 !important;
+}
+
+.view-toggle-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+
+/* Compact View Mode */
+.compact-view .task-card {
+    padding: 0.4rem 0.6rem;
+    margin-bottom: 0.25rem;
+}
+
+.compact-view .card-meta,
+.compact-view .card-priority {
+    display: none;
+}
+
+.compact-view .card-title {
+    margin-bottom: 0;
+    font-size: 0.85rem;
+}
+
+.compact-view .card-type {
+    width: 18px;
+    height: 18px;
+    font-size: 0.6rem;
+    top: 0.35rem;
+    right: 0.35rem;
 }
 
 /* Board Container */
@@ -362,6 +456,11 @@
     .board-filters input {
         width: 100%;
         max-width: none;
+    }
+
+    .board-view-options {
+        margin-left: 0;
+        justify-content: flex-end;
     }
 
     .board-column {

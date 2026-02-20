@@ -75,7 +75,7 @@ func (h *ChatActionHandler) ChangeStatus(c echo.Context) error {
 	}
 
 	var req struct {
-		Status string `json:"status"`
+		Status string `json:"status" form:"status"`
 	}
 	if bindErr := c.Bind(&req); bindErr != nil {
 		return httpserver.RespondErrorWithCode(c, http.StatusBadRequest, "INVALID_REQUEST", "invalid request body")
@@ -112,7 +112,7 @@ func (h *ChatActionHandler) ChangePriority(c echo.Context) error {
 	}
 
 	var req struct {
-		Priority string `json:"priority"`
+		Priority string `json:"priority" form:"priority"`
 	}
 	if bindErr := c.Bind(&req); bindErr != nil {
 		return httpserver.RespondErrorWithCode(c, http.StatusBadRequest, "INVALID_REQUEST", "invalid request body")
@@ -146,7 +146,7 @@ func (h *ChatActionHandler) ChangeAssignee(c echo.Context) error {
 	}
 
 	var req struct {
-		AssigneeID string `json:"assignee_id"`
+		AssigneeID string `json:"assignee_id" form:"assignee_id"`
 	}
 	if bindErr := c.Bind(&req); bindErr != nil {
 		return httpserver.RespondErrorWithCode(c, http.StatusBadRequest, "INVALID_REQUEST", "invalid request body")
@@ -190,7 +190,7 @@ func (h *ChatActionHandler) SetDueDate(c echo.Context) error {
 	}
 
 	var req struct {
-		DueDate string `json:"due_date"` // ISO 8601 date string or empty to clear
+		DueDate string `json:"due_date" form:"due_date"` // ISO 8601 date string or empty to clear
 	}
 	if bindErr := c.Bind(&req); bindErr != nil {
 		return httpserver.RespondErrorWithCode(c, http.StatusBadRequest, "INVALID_REQUEST", "invalid request body")
@@ -282,7 +282,7 @@ func (h *ChatActionHandler) Rename(c echo.Context) error {
 	}
 
 	var req struct {
-		Title string `json:"title"`
+		Title string `json:"title" form:"title"`
 	}
 	if bindErr := c.Bind(&req); bindErr != nil {
 		return httpserver.RespondErrorWithCode(c, http.StatusBadRequest, "INVALID_REQUEST", "invalid request body")

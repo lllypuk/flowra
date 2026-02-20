@@ -41,6 +41,9 @@ const (
 	DefaultOutboxMaxRetries      = 5
 	DefaultOutboxCleanupAge      = 7 * 24 * time.Hour // 7 days
 	DefaultOutboxCleanupInterval = 1 * time.Hour
+
+	DefaultUploadDir         = "uploads"
+	DefaultUploadMaxFileSize = 10 << 20 // 10 MB
 )
 
 // AppMode defines the application wiring mode.
@@ -69,6 +72,7 @@ type Config struct {
 	Log       LogConfig       `yaml:"log"`
 	WebSocket WebSocketConfig `yaml:"websocket"`
 	Outbox    OutboxConfig    `yaml:"outbox"`
+	Uploads   UploadConfig    `yaml:"uploads"`
 }
 
 // AppConfig holds application-level configuration.
@@ -197,6 +201,14 @@ type OutboxConfig struct {
 	CleanupInterval time.Duration `yaml:"cleanup_interval" env:"OUTBOX_CLEANUP_INTERVAL"`
 }
 
+// UploadConfig holds file upload configuration.
+//
+//nolint:golines // Struct tags require longer lines for readability
+type UploadConfig struct {
+	Dir         string `yaml:"dir" env:"UPLOADS_DIR"`
+	MaxFileSize int64  `yaml:"max_file_size" env:"UPLOADS_MAX_FILE_SIZE"`
+}
+
 // Configuration errors.
 var (
 	ErrConfigNotFound      = errors.New("configuration file not found")
@@ -271,6 +283,10 @@ func DefaultConfig() *Config {
 			MaxRetries:      DefaultOutboxMaxRetries,
 			CleanupAge:      DefaultOutboxCleanupAge,
 			CleanupInterval: DefaultOutboxCleanupInterval,
+		},
+		Uploads: UploadConfig{
+			Dir:         DefaultUploadDir,
+			MaxFileSize: DefaultUploadMaxFileSize,
 		},
 	}
 }

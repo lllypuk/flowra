@@ -77,6 +77,7 @@ func SetupRoutes(c *Container) *httpserver.Router {
 	registerWorkspaceRoutes(router, c)
 	registerChatRoutes(router, c)
 	registerMessageRoutes(router, c)
+	registerFileRoutes(router, c)
 	registerTaskRoutes(router, c)
 	registerNotificationRoutes(router, c)
 	registerUserRoutes(router, c)
@@ -154,15 +155,26 @@ func registerMessageRoutes(r *httpserver.Router, c *Container) {
 	if c.MessageHandler != nil {
 		messages.POST("", c.MessageHandler.Send)
 		messages.GET("", c.MessageHandler.List)
-		messages.PUT("/:id", c.MessageHandler.Edit)
-		messages.DELETE("/:id", c.MessageHandler.Delete)
+
+		// Direct message routes (without chat_id in path) for edit/delete
+		// These are authenticated but not workspace-scoped since message ID is unique
+		r.Auth().PUT("/messages/:id", c.MessageHandler.Edit)
+		r.Auth().DELETE("/messages/:id", c.MessageHandler.Delete)
+		r.Auth().POST("/messages/:id/attachments", c.MessageHandler.AddAttachment)
 	} else {
 		// Placeholder endpoints when handler is not initialized
 		placeholder := createPlaceholderHandler("Message")
 		messages.POST("", placeholder)
 		messages.GET("", placeholder)
-		messages.PUT("/:id", placeholder)
-		messages.DELETE("/:id", placeholder)
+		r.Auth().PUT("/messages/:id", placeholder)
+		r.Auth().DELETE("/messages/:id", placeholder)
+	}
+}
+
+// registerFileRoutes registers file upload/download routes.
+func registerFileRoutes(r *httpserver.Router, c *Container) {
+	if c.FileHandler != nil {
+		c.FileHandler.RegisterRoutes(r)
 	}
 }
 
@@ -179,6 +191,8 @@ func registerTaskRoutes(r *httpserver.Router, c *Container) {
 		tasks.PUT("/:task_id/priority", c.TaskHandler.ChangePriority)
 		tasks.PUT("/:task_id/due-date", c.TaskHandler.SetDueDate)
 		tasks.DELETE("/:task_id", c.TaskHandler.Delete)
+		tasks.POST("/:task_id/attachments", c.TaskHandler.AddAttachment)
+		tasks.DELETE("/:task_id/attachments/:file_id", c.TaskHandler.RemoveAttachment)
 	} else {
 		// Placeholder endpoints when handler is not initialized
 		placeholder := createPlaceholderHandler("Task")
@@ -190,6 +204,16 @@ func registerTaskRoutes(r *httpserver.Router, c *Container) {
 		tasks.PUT("/:task_id/priority", placeholder)
 		tasks.PUT("/:task_id/due-date", placeholder)
 		tasks.DELETE("/:task_id", placeholder)
+	}
+
+	// Task field changes routed through the chat message system.
+	// These endpoints create system messages in the task's associated chat
+	// instead of updating the task aggregate directly.
+	if c.TaskActionHandler != nil {
+		tasks.POST("/:task_id/actions/status", c.TaskActionHandler.ChangeStatus)
+		tasks.POST("/:task_id/actions/priority", c.TaskActionHandler.ChangePriority)
+		tasks.POST("/:task_id/actions/assignee", c.TaskActionHandler.ChangeAssignee)
+		tasks.POST("/:task_id/actions/due-date", c.TaskActionHandler.SetDueDate)
 	}
 }
 
@@ -261,6 +285,10 @@ func registerPageRoutes(e *echo.Echo, c *Container) {
 	e.GET("/logout", httphandler.RequireAuth(c.TemplateHandler.LogoutPage))
 	e.POST("/auth/logout", c.TemplateHandler.LogoutHandler)
 
+	// User pages (protected)
+	e.GET("/settings", httphandler.RequireAuth(c.TemplateHandler.UserSettings))
+	e.GET("/users/:id", httphandler.RequireAuth(c.TemplateHandler.UserProfile))
+
 	// Protected pages (require authentication)
 	// Workspace pages
 	workspaces := e.Group("/workspaces", httphandler.RequireAuth)
@@ -278,6 +306,10 @@ func registerPageRoutes(e *echo.Echo, c *Container) {
 	partials.GET("/workspace/:id/members-options", c.TemplateHandler.WorkspaceMembersOptionsPartial)
 	partials.PUT("/workspace/:id/members/:user_id/role", c.TemplateHandler.UpdateMemberRolePartial)
 	partials.GET("/workspace/:id/invite-form", c.TemplateHandler.WorkspaceInviteForm)
+	partials.POST("/workspace/:id/invite", c.TemplateHandler.WorkspaceInvite)
+	partials.GET("/workspace/:id/transfer-form", c.TemplateHandler.WorkspaceTransferForm)
+	partials.POST("/workspace/:id/transfer", c.TemplateHandler.WorkspaceTransfer)
+	partials.GET("/users/search", c.TemplateHandler.UserSearchPartial)
 
 	// Notification pages and partials
 	if c.NotificationTemplateHandler != nil {

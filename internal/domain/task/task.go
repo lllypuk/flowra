@@ -24,6 +24,7 @@ type Aggregate struct {
 	customFields map[string]string
 	createdAt    time.Time
 	createdBy    uuid.UUID
+	attachments  []Attachment
 
 	// Event Sourcing fields
 	version            int
@@ -245,6 +246,20 @@ func (a *Aggregate) applyChange(evt event.DomainEvent) {
 		} else {
 			a.customFields[e.Key] = e.Value
 		}
+
+	case *AttachmentAdded:
+		a.attachments = append(a.attachments, ReconstructAttachment(
+			e.FileID, e.FileName, e.FileSize, e.MimeType,
+		))
+
+	case *AttachmentRemoved:
+		filtered := make([]Attachment, 0, len(a.attachments))
+		for _, att := range a.attachments {
+			if att.FileID() != e.FileID {
+				filtered = append(filtered, att)
+			}
+		}
+		a.attachments = filtered
 	}
 
 	a.version++
@@ -321,3 +336,61 @@ func (a *Aggregate) CreatedAt() time.Time { return a.createdAt }
 
 // CreatedBy returns creator ID
 func (a *Aggregate) CreatedBy() uuid.UUID { return a.createdBy }
+
+// Attachments returns the task's file attachments.
+func (a *Aggregate) Attachments() []Attachment { return a.attachments }
+
+// AddAttachment attaches a file to the task.
+func (a *Aggregate) AddAttachment(
+	fileID uuid.UUID, fileName string, fileSize int64, mimeType string, addedBy uuid.UUID,
+) error {
+	if a.version == 0 {
+		return errs.ErrNotFound
+	}
+	// Idempotent: skip if already attached
+	for _, att := range a.attachments {
+		if att.FileID() == fileID {
+			return nil
+		}
+	}
+
+	evt := NewAttachmentAdded(
+		a.id, fileID, fileName, fileSize, mimeType, addedBy,
+		event.Metadata{
+			CorrelationID: uuid.NewUUID().String(),
+			CausationID:   uuid.NewUUID().String(),
+			UserID:        addedBy.String(),
+		},
+	)
+	a.apply(evt)
+	return nil
+}
+
+// RemoveAttachment detaches a file from the task.
+func (a *Aggregate) RemoveAttachment(fileID uuid.UUID, removedBy uuid.UUID) error {
+	if a.version == 0 {
+		return errs.ErrNotFound
+	}
+	// Idempotent: skip if not attached
+	found := false
+	for _, att := range a.attachments {
+		if att.FileID() == fileID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return nil
+	}
+
+	evt := NewAttachmentRemoved(
+		a.id, fileID, removedBy,
+		event.Metadata{
+			CorrelationID: uuid.NewUUID().String(),
+			CausationID:   uuid.NewUUID().String(),
+			UserID:        removedBy.String(),
+		},
+	)
+	a.apply(evt)
+	return nil
+}

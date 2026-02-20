@@ -100,6 +100,9 @@ type MessageService interface {
 
 	// GetMessage gets a message by ID.
 	GetMessage(ctx context.Context, messageID uuid.UUID) (*message.Message, error)
+
+	// AddAttachment adds an attachment to a message.
+	AddAttachment(ctx context.Context, cmd messageapp.AddAttachmentCommand) (messageapp.Result, error)
 }
 
 // MessageHandler handles message-related HTTP requests.
@@ -292,6 +295,68 @@ func (h *MessageHandler) Delete(c echo.Context) error {
 	}
 
 	return httpserver.RespondNoContent(c)
+}
+
+// AddAttachment handles POST /api/v1/messages/:id/attachments.
+func (h *MessageHandler) AddAttachment(c echo.Context) error {
+	userID := middleware.GetUserID(c)
+	if userID.IsZero() {
+		return httpserver.RespondErrorWithCode(
+			c, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
+	}
+
+	messageIDStr := c.Param("id")
+	messageID, parseErr := uuid.ParseUUID(messageIDStr)
+	if parseErr != nil {
+		return httpserver.RespondErrorWithCode(
+			c, http.StatusBadRequest, "INVALID_MESSAGE_ID", "invalid message ID format")
+	}
+
+	var req struct {
+		FileID   string `json:"file_id" form:"file_id"`
+		FileName string `json:"file_name" form:"file_name"`
+		FileSize int64  `json:"file_size" form:"file_size"`
+		MimeType string `json:"mime_type" form:"mime_type"`
+	}
+	if err := c.Bind(&req); err != nil {
+		return httpserver.RespondErrorWithCode(
+			c, http.StatusBadRequest, "INVALID_REQUEST", "invalid request body")
+	}
+
+	fileID, fileParseErr := uuid.ParseUUID(req.FileID)
+	if fileParseErr != nil {
+		return httpserver.RespondErrorWithCode(
+			c, http.StatusBadRequest, "INVALID_FILE_ID", "invalid file ID format")
+	}
+
+	cmd := messageapp.AddAttachmentCommand{
+		MessageID: messageID,
+		FileID:    fileID,
+		FileName:  req.FileName,
+		FileSize:  req.FileSize,
+		MimeType:  req.MimeType,
+		UserID:    userID,
+	}
+
+	_, err := h.messageService.AddAttachment(c.Request().Context(), cmd)
+	if err != nil {
+		switch {
+		case errors.Is(err, messageapp.ErrMessageNotFound):
+			return httpserver.RespondErrorWithCode(
+				c, http.StatusNotFound, "NOT_FOUND", "message not found")
+		case errors.Is(err, messageapp.ErrNotAuthor):
+			return httpserver.RespondErrorWithCode(
+				c, http.StatusForbidden, "FORBIDDEN", "only message author can add attachments")
+		case errors.Is(err, messageapp.ErrMessageDeleted):
+			return httpserver.RespondErrorWithCode(
+				c, http.StatusBadRequest, "MESSAGE_DELETED", "cannot attach to deleted message")
+		default:
+			return httpserver.RespondErrorWithCode(
+				c, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to add attachment")
+		}
+	}
+
+	return httpserver.RespondOK(c, map[string]string{"status": "attached"})
 }
 
 // Helper functions
@@ -497,4 +562,21 @@ func (m *MockMessageService) GetMessage(_ context.Context, messageID uuid.UUID) 
 		return nil, messageapp.ErrMessageNotFound
 	}
 	return msg, nil
+}
+
+// AddAttachment adds an attachment to a message in the mock service.
+func (m *MockMessageService) AddAttachment(
+	_ context.Context,
+	cmd messageapp.AddAttachmentCommand,
+) (messageapp.Result, error) {
+	msg, ok := m.messages[cmd.MessageID]
+	if !ok {
+		return messageapp.Result{}, messageapp.ErrMessageNotFound
+	}
+
+	if err := msg.AddAttachment(cmd.FileID, cmd.FileName, cmd.FileSize, cmd.MimeType); err != nil {
+		return messageapp.Result{}, err
+	}
+
+	return messageapp.Result{Value: msg}, nil
 }

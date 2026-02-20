@@ -23,7 +23,8 @@ import (
 
 // Template handler constants.
 const (
-	defaultPageLimit = 100
+	defaultPageLimit           = 100
+	maxAdminMembersForTransfer = 100
 )
 
 // TemplateRenderer implements echo.Renderer for HTML template rendering.
@@ -220,6 +221,9 @@ type UserView struct {
 	Username    string
 	DisplayName string
 	AvatarURL   string
+	IsAdmin     bool
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 // OAuthClient defines the interface for OAuth operations.
@@ -237,6 +241,13 @@ type OAuthTokenResponse struct {
 	ExpiresIn    int
 }
 
+// UserProfileLookup resolves user IDs to user profile details.
+// Declared on the consumer side per project guidelines.
+type UserProfileLookup interface {
+	// GetUser returns user profile data by user ID. Returns nil if not found.
+	GetUser(ctx context.Context, userID uuid.UUID) *UserView
+}
+
 // TemplateHandler provides handlers for rendering HTML pages.
 type TemplateHandler struct {
 	renderer         *TemplateRenderer
@@ -244,6 +255,7 @@ type TemplateHandler struct {
 	workspaceService WorkspaceService
 	memberService    MemberService
 	oauthClient      OAuthClient
+	userLookup       UserProfileLookup
 }
 
 // NewTemplateHandler creates a new template handler.
@@ -276,11 +288,16 @@ func (h *TemplateHandler) SetOAuthClient(client OAuthClient) {
 	h.oauthClient = client
 }
 
+// SetUserLookup sets the user lookup service for resolving user profiles.
+func (h *TemplateHandler) SetUserLookup(lookup UserProfileLookup) {
+	h.userLookup = lookup
+}
+
 // render is a helper to render a template with common page data.
 func (h *TemplateHandler) render(c echo.Context, templateName string, title string, data any) error {
 	pageData := PageData{
 		Title: title,
-		User:  h.getUserView(c),
+		User:  getUserView(c),
 		Flash: h.getFlash(c),
 		Data:  data,
 	}
@@ -306,36 +323,43 @@ func (h *TemplateHandler) RenderPartial(c echo.Context, templateName string, dat
 }
 
 // getUserView extracts user information from the context for templates.
-func (h *TemplateHandler) getUserView(c echo.Context) *UserView {
+func getUserView(c echo.Context) *UserView {
 	userID := middleware.GetUserID(c)
 	if userID.IsZero() {
 		return nil
 	}
 
-	// Get user from context if available
-	user := c.Get("user")
-	if user == nil {
-		// Return minimal user view with just ID
-		return &UserView{
-			ID: userID.String(),
-		}
-	}
-
-	// Try to extract user details from context
-	// This assumes the auth middleware populates user details
-	if userMap, ok := user.(map[string]any); ok {
-		return &UserView{
-			ID:          getString(userMap, "id"),
-			Email:       getString(userMap, "email"),
-			Username:    getString(userMap, "username"),
-			DisplayName: getString(userMap, "display_name"),
-			AvatarURL:   getString(userMap, "avatar_url"),
-		}
-	}
-
-	return &UserView{
+	// Build user view from context, with fallbacks to ensure username is always populated
+	view := &UserView{
 		ID: userID.String(),
 	}
+
+	// Try to get user details from the "user" context map
+	if user := c.Get("user"); user != nil {
+		if userMap, ok := user.(map[string]any); ok {
+			view.Email = getString(userMap, "email")
+			view.Username = getString(userMap, "username")
+			view.DisplayName = getString(userMap, "display_name")
+			view.AvatarURL = getString(userMap, "avatar_url")
+		}
+	}
+
+	// Fall back to individual middleware context keys if username is still empty
+	if view.Username == "" {
+		view.Username = middleware.GetUsername(c)
+	}
+	if view.Email == "" {
+		view.Email = middleware.GetEmail(c)
+	}
+	if view.DisplayName == "" {
+		if view.Username != "" {
+			view.DisplayName = view.Username
+		} else if view.Email != "" {
+			view.DisplayName = view.Email
+		}
+	}
+
+	return view
 }
 
 // getFlash retrieves flash messages from the session.
@@ -355,9 +379,12 @@ func getString(m map[string]any, key string) string {
 	return ""
 }
 
-// Home renders the home page.
+// Home redirects to workspaces if logged in, otherwise to login.
 func (h *TemplateHandler) Home(c echo.Context) error {
-	return h.render(c, "home.html", "Home", nil)
+	if getSessionCookie(c) != "" {
+		return c.Redirect(http.StatusFound, "/workspaces")
+	}
+	return c.Redirect(http.StatusFound, "/login")
 }
 
 // LoginPage renders the login page with OAuth auth URL.
@@ -473,7 +500,7 @@ func (h *TemplateHandler) renderCallback(c echo.Context, redirectURL, errorMsg s
 func (h *TemplateHandler) LogoutPage(c echo.Context) error {
 	data := map[string]any{
 		"Title": "Sign Out",
-		"User":  h.getUserView(c),
+		"User":  getUserView(c),
 	}
 	return h.renderer.Render(c.Response().Writer, "auth/logout.html", data, c)
 }
@@ -500,7 +527,7 @@ func (h *TemplateHandler) LogoutHandler(c echo.Context) error {
 func (h *TemplateHandler) NotFound(c echo.Context) error {
 	return c.Render(http.StatusNotFound, "layout/base.html", PageData{
 		Title: "Page Not Found",
-		User:  h.getUserView(c),
+		User:  getUserView(c),
 		Data: map[string]string{
 			"message": "The page you're looking for doesn't exist.",
 		},
@@ -512,11 +539,77 @@ func (h *TemplateHandler) ServerError(c echo.Context, err error) error {
 	h.logger.Error("server error", slog.String("error", err.Error()))
 	return c.Render(http.StatusInternalServerError, "layout/base.html", PageData{
 		Title: "Server Error",
-		User:  h.getUserView(c),
+		User:  getUserView(c),
 		Data: map[string]string{
 			"message": "Something went wrong. Please try again later.",
 		},
 	})
+}
+
+// UserSettings renders the user settings page.
+func (h *TemplateHandler) UserSettings(c echo.Context) error {
+	user := getUserView(c)
+	if user == nil {
+		return c.Redirect(http.StatusFound, "/login")
+	}
+
+	data := map[string]any{
+		"User": map[string]any{
+			"ID":          user.ID,
+			"Username":    user.Username,
+			"DisplayName": user.DisplayName,
+			"Email":       user.Email,
+			"AvatarURL":   user.AvatarURL,
+			"IsAdmin":     false,
+			"CreatedAt":   time.Now(),
+			"UpdatedAt":   time.Now(),
+		},
+	}
+	return h.render(c, "user/settings.html", "Settings", data)
+}
+
+// UserProfile renders the user profile page for viewing another user.
+func (h *TemplateHandler) UserProfile(c echo.Context) error {
+	currentUser := getUserView(c)
+	if currentUser == nil {
+		return c.Redirect(http.StatusFound, "/login")
+	}
+
+	userIDStr := c.Param("id")
+	userID, err := uuid.ParseUUID(userIDStr)
+	if err != nil {
+		return h.NotFound(c)
+	}
+
+	// Check if viewing own profile
+	isCurrentUser := currentUser.ID == userID.String()
+
+	// Resolve user profile from user lookup service
+	var profileUser map[string]any
+	if h.userLookup != nil {
+		if u := h.userLookup.GetUser(c.Request().Context(), userID); u != nil {
+			profileUser = map[string]any{
+				"ID":          u.ID,
+				"Username":    u.Username,
+				"DisplayName": u.DisplayName,
+				"Email":       u.Email,
+				"AvatarURL":   u.AvatarURL,
+				"IsAdmin":     u.IsAdmin,
+				"CreatedAt":   u.CreatedAt,
+				"UpdatedAt":   u.UpdatedAt,
+			}
+		}
+	}
+	if profileUser == nil {
+		return h.NotFound(c)
+	}
+
+	data := map[string]any{
+		"User":          profileUser,
+		"IsCurrentUser": isCurrentUser,
+	}
+
+	return h.render(c, "user/profile.html", "User Profile", data)
 }
 
 // SetupStaticRoutes registers routes for serving static files.
@@ -567,7 +660,7 @@ func (h *TemplateHandler) WorkspaceList(c echo.Context) error {
 
 // WorkspaceListPartial returns the workspace list as HTML partial for HTMX.
 func (h *TemplateHandler) WorkspaceListPartial(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
@@ -610,7 +703,7 @@ func (h *TemplateHandler) WorkspaceListPartial(c echo.Context) error {
 
 // WorkspaceView renders a single workspace page.
 func (h *TemplateHandler) WorkspaceView(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.Redirect(http.StatusFound, "/login")
 	}
@@ -665,7 +758,7 @@ func (h *TemplateHandler) WorkspaceCreateForm(c echo.Context) error {
 
 // WorkspaceCreate handles POST /partials/workspace/create and returns HTML partial.
 func (h *TemplateHandler) WorkspaceCreate(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		//nolint:canonicalheader // HTMX uses non-canonical header names
 		c.Response().Header().Set("HX-Retarget", "#modal-container")
@@ -717,7 +810,7 @@ func (h *TemplateHandler) WorkspaceCreate(c echo.Context) error {
 
 // WorkspaceMembers renders the workspace members page.
 func (h *TemplateHandler) WorkspaceMembers(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.Redirect(http.StatusFound, "/login")
 	}
@@ -766,7 +859,7 @@ func (h *TemplateHandler) WorkspaceMembers(c echo.Context) error {
 
 // WorkspaceMembersPartial returns the workspace members list as HTML partial.
 func (h *TemplateHandler) WorkspaceMembersPartial(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
@@ -807,14 +900,7 @@ func (h *TemplateHandler) WorkspaceMembersPartial(c echo.Context) error {
 	// Convert to view models
 	memberViews := make([]MemberViewData, 0, len(members))
 	for _, m := range members {
-		memberViews = append(memberViews, MemberViewData{
-			UserID:      m.UserID().String(),
-			Username:    "user" + m.UserID().String()[:8], // TODO: get actual username
-			DisplayName: "User " + m.UserID().String()[:8],
-			AvatarURL:   "",
-			Role:        m.Role().String(),
-			JoinedAt:    m.JoinedAt(),
-		})
+		memberViews = append(memberViews, h.resolveMemberView(c.Request().Context(), m))
 	}
 
 	data := map[string]any{
@@ -834,7 +920,7 @@ func (h *TemplateHandler) WorkspaceMembersPartial(c echo.Context) error {
 // WorkspaceMembersOptionsPartial returns workspace members as <option> elements for select dropdowns.
 // This is used by the chat creation form to populate the participants select.
 func (h *TemplateHandler) WorkspaceMembersOptionsPartial(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
@@ -874,8 +960,11 @@ func (h *TemplateHandler) WorkspaceMembersOptionsPartial(c echo.Context) error {
 		if memberUserID == user.ID {
 			continue
 		}
-		// TODO: get actual username/display name from user service
-		displayName := "User " + memberUserID[:8]
+		mv := h.resolveMemberView(c.Request().Context(), m)
+		displayName := mv.DisplayName
+		if displayName == "" {
+			displayName = mv.Username
+		}
 		options.WriteString(fmt.Sprintf(`<option value="%s">%s</option>`, memberUserID, displayName))
 	}
 
@@ -885,7 +974,7 @@ func (h *TemplateHandler) WorkspaceMembersOptionsPartial(c echo.Context) error {
 
 // UpdateMemberRolePartial handles role update for HTMX and returns the updated member row.
 func (h *TemplateHandler) UpdateMemberRolePartial(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
@@ -925,9 +1014,9 @@ func (h *TemplateHandler) UpdateMemberRolePartial(c echo.Context) error {
 	roleStr := c.FormValue("role")
 	var role workspace.Role
 	switch roleStr {
-	case "admin":
+	case roleAdmin:
 		role = workspace.RoleAdmin
-	case "member":
+	case roleMember:
 		role = workspace.RoleMember
 	default:
 		return c.String(http.StatusBadRequest, "Invalid role")
@@ -964,7 +1053,7 @@ func (h *TemplateHandler) UpdateMemberRolePartial(c echo.Context) error {
 
 // WorkspaceSettings renders the workspace settings page.
 func (h *TemplateHandler) WorkspaceSettings(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.Redirect(http.StatusFound, "/login")
 	}
@@ -994,10 +1083,8 @@ func (h *TemplateHandler) WorkspaceSettings(c echo.Context) error {
 		return h.NotFound(c)
 	}
 
-	// Only owner can access settings
-	if member.Role().String() != "owner" {
-		return c.Redirect(http.StatusFound, "/workspaces/"+workspaceID.String())
-	}
+	// Only owner can access settings (allow any member to access to see leave option)
+	memberRole := member.Role().String()
 
 	memberCount, _ := h.workspaceService.GetMemberCount(c.Request().Context(), workspaceID)
 
@@ -1009,7 +1096,8 @@ func (h *TemplateHandler) WorkspaceSettings(c echo.Context) error {
 			MemberCount: memberCount,
 			CreatedAt:   ws.CreatedAt(),
 		},
-		"UserRole": member.Role().String(),
+		"UserRole":      memberRole,
+		"CurrentUserID": user.ID,
 	}
 
 	return h.render(c, "workspace/settings.html", "Settings - "+ws.Name(), data)
@@ -1022,6 +1110,210 @@ func (h *TemplateHandler) WorkspaceInviteForm(c echo.Context) error {
 		"WorkspaceID": workspaceID,
 	}
 	return h.RenderPartial(c, "workspace/invite-form", data)
+}
+
+// UserSearchPartial handles user search for invite functionality.
+func (h *TemplateHandler) UserSearchPartial(c echo.Context) error {
+	query := c.QueryParam("search")
+
+	// For now, return empty results since we don't have a user search service
+	// In a real implementation, this would search users by username/email
+	data := map[string]any{
+		"Users": []UserSearchResult{},
+		"Query": query,
+	}
+
+	// If query is empty, return empty state
+	if query == "" {
+		return h.RenderPartial(c, "user_search_results", data)
+	}
+
+	// TODO: Implement actual user search when user service is available
+	// For now, this is a placeholder that returns empty results
+	return h.RenderPartial(c, "user_search_results", data)
+}
+
+// WorkspaceInvite handles inviting a user to workspace via HTMX.
+func (h *TemplateHandler) WorkspaceInvite(c echo.Context) error {
+	user := getUserView(c)
+	if user == nil {
+		return c.String(http.StatusUnauthorized, "Unauthorized")
+	}
+
+	if h.memberService == nil {
+		return c.String(http.StatusServiceUnavailable, "Service unavailable")
+	}
+
+	workspaceID, err := uuid.ParseUUID(c.Param("id"))
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid workspace ID")
+	}
+
+	userIDToAdd, err := uuid.ParseUUID(c.FormValue("user_id"))
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid user ID")
+	}
+
+	currentUserID, err := uuid.ParseUUID(user.ID)
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid current user ID")
+	}
+
+	// Verify current user has admin privileges
+	member, err := h.memberService.GetMember(c.Request().Context(), workspaceID, currentUserID)
+	if err != nil {
+		return c.String(http.StatusForbidden, "Not a member of this workspace")
+	}
+
+	memberRole := member.Role().String()
+	if memberRole != roleAdmin && memberRole != roleOwner {
+		return c.String(http.StatusForbidden, "Only admins can invite members")
+	}
+
+	// Parse role
+	roleStr := c.FormValue("role")
+	var role workspace.Role
+	switch roleStr {
+	case roleAdmin:
+		role = workspace.RoleAdmin
+	case roleMember:
+		role = workspace.RoleMember
+	default:
+		role = workspace.RoleMember
+	}
+
+	// Add member
+	_, err = h.memberService.AddMember(c.Request().Context(), workspaceID, userIDToAdd, role)
+	if err != nil {
+		h.logger.Error("failed to add member", slog.String("error", err.Error()))
+		return c.String(http.StatusInternalServerError, "Failed to add member: "+err.Error())
+	}
+
+	// Return updated members list
+	return h.WorkspaceMembersPartial(c)
+}
+
+// WorkspaceTransferForm returns the transfer ownership form partial.
+func (h *TemplateHandler) WorkspaceTransferForm(c echo.Context) error {
+	user := getUserView(c)
+	if user == nil {
+		return c.String(http.StatusUnauthorized, "Unauthorized")
+	}
+
+	if h.memberService == nil {
+		return c.String(http.StatusServiceUnavailable, "Service unavailable")
+	}
+
+	workspaceID, err := uuid.ParseUUID(c.Param("id"))
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid workspace ID")
+	}
+
+	currentUserID, err := uuid.ParseUUID(user.ID)
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid user ID")
+	}
+
+	// Verify current user is owner
+	isOwner, _ := h.memberService.IsOwner(c.Request().Context(), workspaceID, currentUserID)
+	if !isOwner {
+		return c.String(http.StatusForbidden, "Only owner can transfer ownership")
+	}
+
+	// Get all admin members (excluding current user)
+	members, _, err := h.memberService.ListMembers(c.Request().Context(), workspaceID, 0, maxAdminMembersForTransfer)
+	if err != nil {
+		return c.String(http.StatusInternalServerError, "Failed to load members")
+	}
+
+	adminMembers := []MemberViewData{}
+	for _, m := range members {
+		if m.Role().String() == "admin" && m.UserID().String() != user.ID {
+			adminMembers = append(adminMembers, h.resolveMemberView(c.Request().Context(), m))
+		}
+	}
+
+	data := map[string]any{
+		"WorkspaceID":  c.Param("id"),
+		"AdminMembers": adminMembers,
+	}
+
+	return h.RenderPartial(c, "workspace/transfer-form", data)
+}
+
+// WorkspaceTransfer handles transferring workspace ownership.
+func (h *TemplateHandler) WorkspaceTransfer(c echo.Context) error {
+	user := getUserView(c)
+	if user == nil {
+		return c.String(http.StatusUnauthorized, "Unauthorized")
+	}
+
+	if h.memberService == nil {
+		return c.String(http.StatusServiceUnavailable, "Service unavailable")
+	}
+
+	workspaceID, err := uuid.ParseUUID(c.Param("id"))
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid workspace ID")
+	}
+
+	newOwnerID, err := uuid.ParseUUID(c.FormValue("new_owner_id"))
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid new owner ID")
+	}
+
+	currentUserID, err := uuid.ParseUUID(user.ID)
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Invalid user ID")
+	}
+
+	// Verify confirmation
+	confirmation := c.FormValue("confirmation")
+	if confirmation != "TRANSFER" {
+		return c.String(http.StatusBadRequest, "Confirmation text does not match")
+	}
+
+	// Verify current user is owner
+	isOwner, _ := h.memberService.IsOwner(c.Request().Context(), workspaceID, currentUserID)
+	if !isOwner {
+		return c.String(http.StatusForbidden, "Only owner can transfer ownership")
+	}
+
+	// Verify new owner is an admin
+	newOwnerMember, err := h.memberService.GetMember(c.Request().Context(), workspaceID, newOwnerID)
+	if err != nil {
+		return c.String(http.StatusBadRequest, "New owner is not a member of this workspace")
+	}
+
+	if newOwnerMember.Role().String() != "admin" {
+		return c.String(http.StatusBadRequest, "New owner must be an admin")
+	}
+
+	// Transfer ownership: promote new owner, demote current owner
+	_, err = h.memberService.UpdateMemberRole(c.Request().Context(), workspaceID, newOwnerID, workspace.RoleOwner)
+	if err != nil {
+		h.logger.Error("failed to promote new owner", slog.String("error", err.Error()))
+		return c.String(http.StatusInternalServerError, "Failed to transfer ownership")
+	}
+
+	_, err = h.memberService.UpdateMemberRole(c.Request().Context(), workspaceID, currentUserID, workspace.RoleAdmin)
+	if err != nil {
+		h.logger.Error("failed to demote current owner", slog.String("error", err.Error()))
+		// Try to rollback
+		_, _ = h.memberService.UpdateMemberRole(c.Request().Context(), workspaceID, newOwnerID, workspace.RoleAdmin)
+		return c.String(http.StatusInternalServerError, "Failed to transfer ownership")
+	}
+
+	return c.NoContent(http.StatusOK)
+}
+
+// UserSearchResult represents a user in search results.
+type UserSearchResult struct {
+	ID          string
+	Username    string
+	DisplayName string
+	AvatarURL   string
+	Email       string
 }
 
 // WorkspaceViewData represents workspace data for templates.
@@ -1042,4 +1334,24 @@ type MemberViewData struct {
 	AvatarURL   string
 	Role        string
 	JoinedAt    time.Time
+}
+
+// resolveMemberView converts a workspace Member to MemberViewData, resolving user details via userLookup.
+func (h *TemplateHandler) resolveMemberView(ctx context.Context, m *workspace.Member) MemberViewData {
+	mv := MemberViewData{
+		UserID:   m.UserID().String(),
+		Role:     m.Role().String(),
+		JoinedAt: m.JoinedAt(),
+	}
+	if h.userLookup != nil {
+		if u := h.userLookup.GetUser(ctx, m.UserID()); u != nil {
+			mv.Username = u.Username
+			mv.DisplayName = u.DisplayName
+			mv.AvatarURL = u.AvatarURL
+			return mv
+		}
+	}
+	mv.Username = "user" + m.UserID().String()[:8]
+	mv.DisplayName = "User " + m.UserID().String()[:8]
+	return mv
 }

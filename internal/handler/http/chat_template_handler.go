@@ -2,6 +2,7 @@ package httphandler
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -98,6 +99,7 @@ type MessageViewData struct {
 	Author          MessageAuthorData
 	Tags            []MessageTagData
 	Reactions       []MessageReactionData
+	Attachments     []AttachmentViewData
 }
 
 // MessageAuthorData represents message author data for templates.
@@ -120,6 +122,16 @@ type MessageReactionData struct {
 	Count      int
 	HasReacted bool
 	Users      []string
+}
+
+// AttachmentViewData represents attachment data for templates.
+type AttachmentViewData struct {
+	FileID   string
+	FileName string
+	FileSize int64
+	MimeType string
+	URL      string
+	IsImage  bool
 }
 
 // ParticipantViewData represents participant data for templates.
@@ -149,6 +161,7 @@ type ChatTemplateHandler struct {
 	chatService    ChatTemplateService
 	messageService MessageTemplateService
 	taskService    TaskQueryForChatService
+	userLookup     UserProfileLookup
 }
 
 // NewChatTemplateHandler creates a new chat template handler.
@@ -169,6 +182,11 @@ func NewChatTemplateHandler(
 		messageService: messageService,
 		taskService:    taskService,
 	}
+}
+
+// SetUserLookup sets the user lookup service for resolving participant profiles.
+func (h *ChatTemplateHandler) SetUserLookup(lookup UserProfileLookup) {
+	h.userLookup = lookup
 }
 
 // SetupChatRoutes registers chat-related page and partial routes.
@@ -276,7 +294,7 @@ func (h *ChatTemplateHandler) ChatView(c echo.Context) error {
 	// Load task data for task chats
 	if chatData.IsTaskChat {
 		data["Task"] = h.loadTaskViewData(c.Request().Context(), chatData)
-		data["Participants"] = h.loadParticipants(c.Request().Context(), chatID)
+		data["Participants"] = h.loadParticipants(c.Request().Context(), chatID, userID)
 	}
 
 	return h.render(c, "chat/layout.html", chatData.Title, data)
@@ -317,7 +335,7 @@ func (h *ChatTemplateHandler) ChatViewPartial(c echo.Context) error {
 
 	if chatData.IsTaskChat {
 		innerData["Task"] = h.loadTaskViewData(c.Request().Context(), chatData)
-		innerData["Participants"] = h.loadParticipants(c.Request().Context(), chatID)
+		innerData["Participants"] = h.loadParticipants(c.Request().Context(), chatID, userID)
 	}
 
 	// Wrap in "Data" to match template expectations (template uses .Data.Chat.ID)
@@ -579,7 +597,7 @@ func (h *ChatTemplateHandler) ParticipantsPartial(c echo.Context) error {
 		return c.String(http.StatusUnauthorized, "Invalid user")
 	}
 
-	participants := h.loadParticipants(c.Request().Context(), chatID)
+	participants := h.loadParticipants(c.Request().Context(), chatID, userID)
 
 	// Check if current user can manage participants
 	canManage := false
@@ -904,10 +922,51 @@ func getAssigneeID(assignee *uuid.UUID) string {
 	return assignee.String()
 }
 
-func (h *ChatTemplateHandler) loadParticipants(_ context.Context, _ uuid.UUID) []ParticipantViewData {
-	// TODO: implement participant loading from chat service
-	// For now, return empty list
-	return []ParticipantViewData{}
+func (h *ChatTemplateHandler) loadParticipants(
+	ctx context.Context,
+	chatID uuid.UUID,
+	userID ...uuid.UUID,
+) []ParticipantViewData {
+	if h.chatService == nil {
+		return []ParticipantViewData{}
+	}
+
+	query := chatapp.GetChatQuery{ChatID: chatID}
+	if len(userID) > 0 {
+		query.RequestedBy = userID[0]
+	}
+	result, err := h.chatService.GetChat(ctx, query)
+	if err != nil || result == nil || result.Chat == nil {
+		h.logger.ErrorContext(
+			ctx,
+			"failed to load participants",
+			slog.String("chat_id", chatID.String()),
+			slog.Any("error", err),
+		)
+		return []ParticipantViewData{}
+	}
+
+	participants := make([]ParticipantViewData, 0, len(result.Chat.Participants))
+	for _, p := range result.Chat.Participants {
+		pv := ParticipantViewData{
+			UserID:   p.UserID.String(),
+			Role:     string(p.Role),
+			JoinedAt: p.JoinedAt,
+		}
+		if h.userLookup != nil {
+			if u := h.userLookup.GetUser(ctx, p.UserID); u != nil {
+				pv.Username = u.Username
+				pv.DisplayName = u.DisplayName
+				pv.AvatarURL = u.AvatarURL
+			}
+		}
+		if pv.Username == "" {
+			pv.Username = "user" + p.UserID.String()[:8]
+			pv.DisplayName = "User " + p.UserID.String()[:8]
+		}
+		participants = append(participants, pv)
+	}
+	return participants
 }
 
 func (h *ChatTemplateHandler) convertMessageToView(msg *message.Message, currentUserID uuid.UUID) MessageViewData {
@@ -953,14 +1012,32 @@ func (h *ChatTemplateHandler) convertMessageToView(msg *message.Message, current
 		// Bot messages show as "Flowra Bot"
 		username = "FlowraBot"
 		displayName = "Flowra Bot"
-	} else {
-		// Use author ID as fallback for username/display name until user service is integrated
-		username = authorID[:8] // Use first 8 chars of ID as temporary username
+	} else if h.userLookup != nil {
+		if u := h.userLookup.GetUser(context.Background(), msg.AuthorID()); u != nil {
+			username = u.Username
+			displayName = u.DisplayName
+		}
+	}
+	if username == "" && !isBotMessage {
+		username = authorID[:8]
 		displayName = "User " + username
 	}
 
 	// Parse tags and get display content
 	parsed := parseMessageContent(msg.Content())
+
+	// Convert attachments to view data
+	attachments := make([]AttachmentViewData, 0)
+	for _, a := range msg.Attachments() {
+		attachments = append(attachments, AttachmentViewData{
+			FileID:   a.FileID().String(),
+			FileName: a.FileName(),
+			FileSize: a.FileSize(),
+			MimeType: a.MimeType(),
+			URL:      fmt.Sprintf("/api/v1/files/%s/%s", a.FileID().String(), a.FileName()),
+			IsImage:  strings.HasPrefix(a.MimeType(), "image/"),
+		})
+	}
 
 	return MessageViewData{
 		ID:              msg.ID().String(),
@@ -978,8 +1055,9 @@ func (h *ChatTemplateHandler) convertMessageToView(msg *message.Message, current
 			DisplayName: displayName,
 			AvatarURL:   "",
 		},
-		Tags:      parsed.Tags,
-		Reactions: reactions,
+		Tags:        parsed.Tags,
+		Reactions:   reactions,
+		Attachments: attachments,
 	}
 }
 

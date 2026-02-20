@@ -13,9 +13,11 @@ import (
 	messageapp "github.com/lllypuk/flowra/internal/application/message"
 	"github.com/lllypuk/flowra/internal/application/notification"
 	taskapp "github.com/lllypuk/flowra/internal/application/task"
+	userapp "github.com/lllypuk/flowra/internal/application/user"
 	wsapp "github.com/lllypuk/flowra/internal/application/workspace"
 	"github.com/lllypuk/flowra/internal/config"
 	"github.com/lllypuk/flowra/internal/domain/chat"
+	"github.com/lllypuk/flowra/internal/domain/event"
 	"github.com/lllypuk/flowra/internal/domain/message"
 	notificationdomain "github.com/lllypuk/flowra/internal/domain/notification"
 	"github.com/lllypuk/flowra/internal/domain/tag"
@@ -25,6 +27,7 @@ import (
 	"github.com/lllypuk/flowra/internal/infrastructure/auth"
 	"github.com/lllypuk/flowra/internal/infrastructure/eventbus"
 	"github.com/lllypuk/flowra/internal/infrastructure/eventstore"
+	"github.com/lllypuk/flowra/internal/infrastructure/filestorage"
 	"github.com/lllypuk/flowra/internal/infrastructure/healthcheck"
 	"github.com/lllypuk/flowra/internal/infrastructure/httpserver"
 	"github.com/lllypuk/flowra/internal/infrastructure/keycloak"
@@ -139,7 +142,9 @@ type Container struct {
 	ChatHandler         *httphandler.ChatHandler
 	ChatActionHandler   *httphandler.ChatActionHandler
 	MessageHandler      *httphandler.MessageHandler
+	FileHandler         *httphandler.FileHandler
 	TaskHandler         *httphandler.TaskHandler
+	TaskActionHandler   *httphandler.TaskActionHandler
 	NotificationHandler *httphandler.NotificationHandler
 	UserHandler         *httphandler.UserHandler
 	WSHandler           *wshandler.Handler
@@ -807,6 +812,7 @@ func (c *Container) setupHTTPHandlers() {
 	// Inject services into template handler
 	if c.TemplateHandler != nil {
 		c.TemplateHandler.SetServices(c.WorkspaceService, c.MemberService)
+		c.TemplateHandler.SetUserLookup(c.createUserProfileLookup())
 	}
 
 	// === 5. Chat Service (Real) ===
@@ -870,32 +876,26 @@ func (c *Container) setupHTTPHandlers() {
 	c.setupTaskDetailTemplateHandler()
 
 	// === 13. Message Service and Handler ===
-	c.MessageService = service.NewMessageService(
-		service.WithSendMessageUseCase(c.SendMessageUC),
-		service.WithListMessagesUseCase(c.ListMessagesUC),
-		service.WithEditMessageUseCase(c.EditMessageUC),
-		service.WithDeleteMessageUseCase(c.DeleteMessageUC),
-		service.WithGetMessageUseCase(c.GetMessageUC),
-		service.WithAddReactionUseCase(c.AddReactionUC),
-		service.WithRemoveReactionUseCase(c.RemoveReactionUC),
-		service.WithAddAttachmentUseCase(c.AddAttachmentUC),
-	)
-	c.MessageHandler = httphandler.NewMessageHandler(c.MessageService)
-	c.Logger.Debug("message service and handler initialized (real)")
+	c.setupMessageHandler()
 
 	// === 14. Action Service ===
 	c.ActionService = service.NewActionService(c.SendMessageUC, c.UserRepo)
 	c.ChatActionHandler = httphandler.NewChatActionHandler(c.ActionService)
 	c.Logger.Debug("action service and chat action handler initialized")
-	c.Logger.Debug("action service initialized")
 
 	// Initialize TaskHandler with full service
 	c.TaskHandler = httphandler.NewTaskHandler(c.createFullTaskService())
 	c.Logger.Debug("task handler initialized (real)")
 
-	// Note: NotificationHandler, UserHandler
-	// are left nil - routes.go will create placeholder endpoints for them.
-	// This is intentional until their use cases are fully implemented.
+	// Initialize TaskActionHandler — routes sidebar changes through chat message system
+	c.TaskActionHandler = httphandler.NewTaskActionHandler(
+		c.createTaskActionService(),
+		c.ActionService,
+	)
+	c.Logger.Debug("task action handler initialized")
+
+	// === 15. User Handler ===
+	c.setupUserHandler()
 
 	c.Logger.Info("HTTP handlers initialized with REAL implementations")
 }
@@ -1034,6 +1034,7 @@ func (c *Container) setupChatTemplateHandler() {
 		messageService,
 		taskService,
 	)
+	c.ChatTemplateHandler.SetUserLookup(c.createUserProfileLookup())
 
 	c.Logger.Debug("chat template handler initialized")
 }
@@ -1514,16 +1515,36 @@ func (a *fullTaskServiceAdapter) DeleteTask(_ context.Context, _ uuid.UUID, _ uu
 	return errors.New("delete task not yet implemented")
 }
 
+// AddAttachment implements httphandler.TaskService.
+func (a *fullTaskServiceAdapter) AddAttachment(
+	ctx context.Context,
+	cmd taskapp.AddAttachmentCommand,
+) (taskapp.TaskResult, error) {
+	uc := taskapp.NewAddAttachmentUseCase(a.taskRepo)
+	return uc.Execute(ctx, cmd)
+}
+
+// RemoveAttachment implements httphandler.TaskService.
+func (a *fullTaskServiceAdapter) RemoveAttachment(
+	ctx context.Context,
+	cmd taskapp.RemoveAttachmentCommand,
+) (taskapp.TaskResult, error) {
+	uc := taskapp.NewRemoveAttachmentUseCase(a.taskRepo)
+	return uc.Execute(ctx, cmd)
+}
+
 // createBoardMemberService creates a service implementing BoardMemberService.
 func (c *Container) createBoardMemberService() httphandler.BoardMemberService {
 	return &boardMemberServiceAdapter{
 		memberService: c.MemberService,
+		userRepo:      c.UserRepo,
 	}
 }
 
 // boardMemberServiceAdapter adapts MemberService to BoardMemberService.
 type boardMemberServiceAdapter struct {
 	memberService *service.MemberService
+	userRepo      *mongodb.MongoUserRepository
 }
 
 // ListWorkspaceMembers implements BoardMemberService.
@@ -1542,12 +1563,22 @@ func (a *boardMemberServiceAdapter) ListWorkspaceMembers(
 
 	result := make([]httphandler.MemberViewData, 0, len(members))
 	for _, m := range members {
-		result = append(result, httphandler.MemberViewData{
+		mv := httphandler.MemberViewData{
 			UserID:   m.UserID().String(),
-			Username: "user" + m.UserID().String()[:8], // TODO: get actual username
 			Role:     m.Role().String(),
 			JoinedAt: m.JoinedAt(),
-		})
+		}
+		if a.userRepo != nil {
+			if u, lookupErr := a.userRepo.FindByID(ctx, m.UserID()); lookupErr == nil && u != nil {
+				mv.Username = u.Username()
+				mv.DisplayName = u.DisplayName()
+			}
+		}
+		if mv.Username == "" {
+			mv.Username = "user" + m.UserID().String()[:8]
+			mv.DisplayName = "User " + m.UserID().String()[:8]
+		}
+		result = append(result, mv)
 	}
 	return result, nil
 }
@@ -1565,12 +1596,49 @@ func (c *Container) setupTaskDetailTemplateHandler() {
 		c.TemplateRenderer,
 		c.Logger,
 		taskService,
-		nil, // TaskEventService - TODO: implement for activity timeline
+		c.createTaskEventService(),
 		c.createBoardMemberService(),
 		chatInfoService,
+		c.createUserLookupService(),
 	)
 
 	c.Logger.Debug("task detail template handler initialized")
+}
+
+// setupMessageHandler initializes the message service and handler.
+func (c *Container) setupMessageHandler() {
+	c.MessageService = service.NewMessageService(
+		service.WithSendMessageUseCase(c.SendMessageUC),
+		service.WithListMessagesUseCase(c.ListMessagesUC),
+		service.WithEditMessageUseCase(c.EditMessageUC),
+		service.WithDeleteMessageUseCase(c.DeleteMessageUC),
+		service.WithGetMessageUseCase(c.GetMessageUC),
+		service.WithAddReactionUseCase(c.AddReactionUC),
+		service.WithRemoveReactionUseCase(c.RemoveReactionUC),
+		service.WithAddAttachmentUseCase(c.AddAttachmentUC),
+	)
+	c.MessageHandler = httphandler.NewMessageHandler(c.MessageService)
+
+	uploadDir := c.Config.Uploads.Dir
+	if uploadDir == "" {
+		uploadDir = "uploads"
+	}
+	fileStorage, fileErr := filestorage.NewLocalStorage(uploadDir)
+	if fileErr != nil {
+		c.Logger.Warn("failed to initialize file storage", "error", fileErr)
+	} else {
+		fileMetadataRepo := mongodb.NewMongoFileMetadataRepository(
+			c.MongoDB.Database(c.MongoDBName).Collection("file_metadata"),
+			mongodb.WithFileMetadataRepoLogger(c.Logger),
+		)
+		c.FileHandler = httphandler.NewFileHandler(
+			fileStorage,
+			&fileMetadataAdapter{repo: fileMetadataRepo},
+			&fileChatParticipantAdapter{chatQueryRepo: c.ChatQueryRepo},
+			httphandler.WithMaxFileSize(c.Config.Uploads.MaxFileSize),
+		)
+	}
+	c.Logger.Debug("message service and handler initialized (real)")
 }
 
 // createTaskDetailService creates a service implementing TaskDetailService.
@@ -1579,10 +1647,84 @@ func (c *Container) createTaskDetailService() httphandler.TaskDetailService {
 	return c.createBoardTaskService()
 }
 
+// createTaskActionService creates a service implementing TaskActionTaskService.
+// Reuses boardTaskServiceAdapter since it already provides GetTask by task_id.
+func (c *Container) createTaskActionService() httphandler.TaskActionTaskService {
+	return c.createBoardTaskService()
+}
+
 // createChatBasicInfoService creates a service implementing ChatBasicInfoService.
 func (c *Container) createChatBasicInfoService() httphandler.ChatBasicInfoService {
 	return &chatBasicInfoServiceAdapter{
 		collection: c.MongoDB.Database(c.MongoDBName).Collection("chats_read_model"),
+	}
+}
+
+// createTaskEventService creates a service implementing TaskEventService using the EventStore.
+func (c *Container) createTaskEventService() httphandler.TaskEventService {
+	return &taskEventServiceAdapter{eventStore: c.EventStore}
+}
+
+// taskEventServiceAdapter adapts EventStore to TaskEventService.
+type taskEventServiceAdapter struct {
+	eventStore appcore.EventStore
+}
+
+// GetEvents implements TaskEventService.
+func (a *taskEventServiceAdapter) GetEvents(ctx context.Context, taskID uuid.UUID) ([]event.DomainEvent, error) {
+	return a.eventStore.LoadEvents(ctx, taskID.String())
+}
+
+// createUserLookupService creates a service implementing UserLookupService.
+func (c *Container) createUserLookupService() httphandler.UserLookupService {
+	return &userLookupAdapter{userRepo: c.UserRepo}
+}
+
+// userLookupAdapter adapts MongoUserRepository to UserLookupService.
+type userLookupAdapter struct {
+	userRepo *mongodb.MongoUserRepository
+}
+
+// GetDisplayName implements UserLookupService.
+func (a *userLookupAdapter) GetDisplayName(ctx context.Context, userID string) string {
+	id, err := uuid.ParseUUID(userID)
+	if err != nil {
+		return ""
+	}
+	u, err := a.userRepo.FindByID(ctx, id)
+	if err != nil {
+		return ""
+	}
+	if dn := u.DisplayName(); dn != "" {
+		return dn
+	}
+	return u.Username()
+}
+
+// createUserProfileLookup creates a service implementing UserProfileLookup.
+func (c *Container) createUserProfileLookup() httphandler.UserProfileLookup {
+	return &userProfileLookupAdapter{userRepo: c.UserRepo}
+}
+
+// userProfileLookupAdapter adapts MongoUserRepository to UserProfileLookup.
+type userProfileLookupAdapter struct {
+	userRepo *mongodb.MongoUserRepository
+}
+
+// GetUser implements UserProfileLookup.
+func (a *userProfileLookupAdapter) GetUser(ctx context.Context, userID uuid.UUID) *httphandler.UserView {
+	u, err := a.userRepo.FindByID(ctx, userID)
+	if err != nil || u == nil {
+		return nil
+	}
+	return &httphandler.UserView{
+		ID:          u.ID().String(),
+		Username:    u.Username(),
+		DisplayName: u.DisplayName(),
+		Email:       u.Email(),
+		IsAdmin:     u.IsSystemAdmin(),
+		CreatedAt:   u.CreatedAt(),
+		UpdatedAt:   u.UpdatedAt(),
 	}
 }
 
@@ -1739,6 +1881,17 @@ func (r *userResolver) ResolveUser(ctx context.Context, externalID, username, em
 			slog.String("external_id", externalID),
 			slog.String("error", saveErr.Error()),
 		)
+		// If save failed due to duplicate username, try finding existing user by username.
+		// This can happen when the same user exists with a different external ID
+		// (e.g. after DB reset or migration from another auth provider).
+		if existingByUsername, findErr := r.userRepo.FindByUsername(ctx, username); findErr == nil {
+			r.logger.InfoContext(ctx, "found existing user by username after save conflict",
+				slog.String("external_id", externalID),
+				slog.String("username", username),
+				slog.String("existing_user_id", existingByUsername.ID().String()),
+			)
+			return existingByUsername.ID(), nil
+		}
 		return uuid.UUID(""), saveErr
 	}
 
@@ -1806,6 +1959,47 @@ func (c *Container) ensureSystemBot(ctx context.Context) error {
 	)
 
 	return nil
+}
+
+// setupUserHandler initializes the UserHandler with use case adapters.
+func (c *Container) setupUserHandler() {
+	getUserUC := userapp.NewGetUserUseCase(c.UserRepo)
+	updateProfileUC := userapp.NewUpdateProfileUseCase(c.UserRepo)
+	getUserByUsernameUC := userapp.NewGetUserByUsernameUseCase(c.UserRepo)
+
+	adapter := &userServiceAdapter{
+		getUserUC:           getUserUC,
+		updateProfileUC:     updateProfileUC,
+		getUserByUsernameUC: getUserByUsernameUC,
+	}
+
+	c.UserHandler = httphandler.NewUserHandler(adapter)
+	c.Logger.Debug("user handler initialized (real)")
+}
+
+// userServiceAdapter implements httphandler.UserService by delegating to use cases.
+type userServiceAdapter struct {
+	getUserUC           *userapp.GetUserUseCase
+	updateProfileUC     *userapp.UpdateProfileUseCase
+	getUserByUsernameUC *userapp.GetUserByUsernameUseCase
+}
+
+func (a *userServiceAdapter) GetUser(ctx context.Context, query userapp.GetUserQuery) (userapp.Result, error) {
+	return a.getUserUC.Execute(ctx, query)
+}
+
+func (a *userServiceAdapter) GetUserByUsername(
+	ctx context.Context,
+	query userapp.GetUserByUsernameQuery,
+) (userapp.Result, error) {
+	return a.getUserByUsernameUC.Execute(ctx, query)
+}
+
+func (a *userServiceAdapter) UpdateProfile(
+	ctx context.Context,
+	cmd userapp.UpdateProfileCommand,
+) (userapp.Result, error) {
+	return a.updateProfileUC.Execute(ctx, cmd)
 }
 
 // Close gracefully closes all container resources.
@@ -2045,4 +2239,59 @@ func (a *oauthClientAdapter) ExchangeCode(
 		RefreshToken: resp.RefreshToken,
 		ExpiresIn:    resp.ExpiresIn,
 	}, nil
+}
+
+// fileMetadataAdapter adapts MongoFileMetadataRepository to httphandler.FileMetadataLookup.
+type fileMetadataAdapter struct {
+	repo *mongodb.MongoFileMetadataRepository
+}
+
+// Save implements httphandler.FileMetadataLookup.
+func (a *fileMetadataAdapter) Save(ctx context.Context, meta httphandler.FileMetadataEntry) error {
+	return a.repo.Save(ctx, mongodb.FileMetadata{
+		FileID:     meta.FileID,
+		ChatID:     meta.ChatID,
+		UploaderID: meta.UploaderID,
+		UploadedAt: meta.UploadedAt,
+	})
+}
+
+// FindByFileID implements httphandler.FileMetadataLookup.
+func (a *fileMetadataAdapter) FindByFileID(
+	ctx context.Context,
+	fileID uuid.UUID,
+) (*httphandler.FileMetadataEntry, error) {
+	meta, err := a.repo.FindByFileID(ctx, fileID)
+	if err != nil {
+		return nil, err
+	}
+	return &httphandler.FileMetadataEntry{
+		FileID:     meta.FileID,
+		ChatID:     meta.ChatID,
+		UploaderID: meta.UploaderID,
+		UploadedAt: meta.UploadedAt,
+	}, nil
+}
+
+// fileChatParticipantAdapter checks chat participation via the chat read model.
+type fileChatParticipantAdapter struct {
+	chatQueryRepo *mongodb.MongoChatReadModelRepository
+}
+
+// IsParticipant implements httphandler.FileChatParticipantChecker.
+func (a *fileChatParticipantAdapter) IsParticipant(
+	ctx context.Context,
+	chatID uuid.UUID,
+	userID uuid.UUID,
+) (bool, error) {
+	rm, err := a.chatQueryRepo.FindByID(ctx, chatID)
+	if err != nil {
+		return false, err
+	}
+	for _, p := range rm.Participants {
+		if p.UserID() == userID {
+			return true, nil
+		}
+	}
+	return false, nil
 }

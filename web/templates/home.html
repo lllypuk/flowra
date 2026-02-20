@@ -1,6 +1,6 @@
 {{define "home.html"}}
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en">
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -18,6 +18,11 @@
         <!-- Board CSS - always loaded to support hx-boost navigation -->
         <link rel="stylesheet" href="/static/css/board.css" />
 
+        <!-- Typography -->
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet" />
+
         <!-- HTMX -->
         <script
             src="https://unpkg.com/htmx.org@2.0.0"
@@ -26,62 +31,627 @@
 
         <!-- HTMX WebSocket Extension -->
         <script src="https://unpkg.com/htmx-ext-ws@2.0.0/ws.js"></script>
+
+        <style>
+            /* ===== Landing Page Overrides ===== */
+            .landing-page {
+                --lp-ink: #0f172a;
+                --lp-muted: #64748b;
+                --lp-accent: #0058b9;
+                --lp-accent-light: #dbeafe;
+                --lp-accent-glow: rgba(0, 88, 185, 0.12);
+                --lp-surface: #f8fafc;
+                --lp-card: #ffffff;
+                --lp-border: #e2e8f0;
+                --lp-radius: 16px;
+                --lp-font: 'DM Sans', system-ui, sans-serif;
+                --lp-display: 'Playfair Display', Georgia, serif;
+
+                font-family: var(--lp-font);
+                color: var(--lp-ink);
+                overflow-x: hidden;
+            }
+
+            /* ===== Hero Section ===== */
+            .landing-hero {
+                position: relative;
+                padding: 6rem 1rem 5rem;
+                text-align: center;
+                background: var(--lp-surface);
+                overflow: hidden;
+            }
+
+            .landing-hero::before {
+                content: '';
+                position: absolute;
+                top: -40%;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 800px;
+                height: 800px;
+                background: radial-gradient(
+                    circle,
+                    var(--lp-accent-glow) 0%,
+                    transparent 70%
+                );
+                pointer-events: none;
+                z-index: 0;
+            }
+
+            /* Decorative grid pattern */
+            .landing-hero::after {
+                content: '';
+                position: absolute;
+                inset: 0;
+                background-image:
+                    linear-gradient(var(--lp-border) 1px, transparent 1px),
+                    linear-gradient(90deg, var(--lp-border) 1px, transparent 1px);
+                background-size: 64px 64px;
+                opacity: 0.35;
+                mask-image: radial-gradient(ellipse 60% 70% at 50% 30%, black 20%, transparent 70%);
+                -webkit-mask-image: radial-gradient(ellipse 60% 70% at 50% 30%, black 20%, transparent 70%);
+                pointer-events: none;
+                z-index: 0;
+            }
+
+            .landing-hero > * {
+                position: relative;
+                z-index: 1;
+            }
+
+            .hero-eyebrow {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 0.35rem 1rem;
+                font-size: 0.8rem;
+                font-weight: 600;
+                letter-spacing: 0.06em;
+                text-transform: uppercase;
+                color: var(--lp-accent);
+                background: var(--lp-accent-light);
+                border-radius: 100px;
+                margin-bottom: 1.75rem;
+                animation: fadeSlideUp 0.6s ease-out both;
+            }
+
+            .hero-eyebrow::before {
+                content: '';
+                display: inline-block;
+                width: 6px;
+                height: 6px;
+                background: var(--lp-accent);
+                border-radius: 50%;
+                animation: heroPulse 2s ease-in-out infinite;
+            }
+
+            .landing-hero h1 {
+                font-family: var(--lp-display);
+                font-size: clamp(2.8rem, 6vw, 4.5rem);
+                font-weight: 800;
+                line-height: 1.08;
+                letter-spacing: -0.025em;
+                color: var(--lp-ink);
+                margin: 0 auto 1.25rem;
+                max-width: 680px;
+                animation: fadeSlideUp 0.6s ease-out 0.1s both;
+            }
+
+            .landing-hero h1 em {
+                font-style: normal;
+                background: linear-gradient(135deg, var(--lp-accent), #3b82f6);
+                background-clip: text;
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+
+            .hero-subtitle {
+                font-size: 1.2rem;
+                line-height: 1.6;
+                color: var(--lp-muted);
+                max-width: 520px;
+                margin: 0 auto 2.5rem;
+                font-weight: 400;
+                animation: fadeSlideUp 0.6s ease-out 0.2s both;
+            }
+
+            .hero-actions {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 1rem;
+                flex-wrap: wrap;
+                animation: fadeSlideUp 0.6s ease-out 0.3s both;
+            }
+
+            .btn-primary-landing {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 0.85rem 2rem;
+                font-family: var(--lp-font);
+                font-size: 1rem;
+                font-weight: 600;
+                color: #fff;
+                background: var(--lp-accent);
+                border: none;
+                border-radius: 12px;
+                cursor: pointer;
+                text-decoration: none;
+                transition: all 0.25s ease;
+                box-shadow: 0 1px 3px rgba(0, 88, 185, 0.2), 0 4px 12px rgba(0, 88, 185, 0.15);
+            }
+
+            .btn-primary-landing:hover {
+                background: #004a9e;
+                transform: translateY(-1px);
+                box-shadow: 0 2px 6px rgba(0, 88, 185, 0.25), 0 8px 24px rgba(0, 88, 185, 0.2);
+                color: #fff;
+            }
+
+            .btn-primary-landing svg {
+                width: 18px;
+                height: 18px;
+                transition: transform 0.25s ease;
+            }
+
+            .btn-primary-landing:hover svg {
+                transform: translateX(3px);
+            }
+
+            .btn-ghost-landing {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 0.85rem 1.75rem;
+                font-family: var(--lp-font);
+                font-size: 1rem;
+                font-weight: 500;
+                color: var(--lp-ink);
+                background: transparent;
+                border: 1.5px solid var(--lp-border);
+                border-radius: 12px;
+                cursor: pointer;
+                text-decoration: none;
+                transition: all 0.25s ease;
+            }
+
+            .btn-ghost-landing:hover {
+                border-color: var(--lp-accent);
+                color: var(--lp-accent);
+                background: var(--lp-accent-light);
+            }
+
+            /* ===== Social Proof Strip ===== */
+            .social-proof {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0.75rem;
+                margin-top: 2.5rem;
+                animation: fadeSlideUp 0.6s ease-out 0.45s both;
+            }
+
+            .avatar-stack {
+                display: flex;
+            }
+
+            .avatar-stack .av {
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                border: 2px solid #fff;
+                background: var(--lp-accent-light);
+                color: var(--lp-accent);
+                font-size: 0.65rem;
+                font-weight: 700;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin-left: -8px;
+            }
+
+            .avatar-stack .av:first-child {
+                margin-left: 0;
+            }
+
+            .social-proof-text {
+                font-size: 0.85rem;
+                color: var(--lp-muted);
+            }
+
+            .social-proof-text strong {
+                color: var(--lp-ink);
+            }
+
+            /* ===== Features Section ===== */
+            .landing-features {
+                padding: 5rem 1rem;
+                background: #fff;
+            }
+
+            .landing-features .section-inner {
+                max-width: 1080px;
+                margin: 0 auto;
+            }
+
+            .section-header {
+                text-align: center;
+                margin-bottom: 3.5rem;
+            }
+
+            .section-header h2 {
+                font-family: var(--lp-display);
+                font-size: clamp(1.8rem, 3.5vw, 2.5rem);
+                font-weight: 700;
+                color: var(--lp-ink);
+                margin-bottom: 0.75rem;
+                letter-spacing: -0.02em;
+            }
+
+            .section-header p {
+                font-size: 1.05rem;
+                color: var(--lp-muted);
+                max-width: 480px;
+                margin: 0 auto;
+            }
+
+            .features-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 1.5rem;
+            }
+
+            .feature-card {
+                position: relative;
+                padding: 2rem;
+                background: var(--lp-card);
+                border: 1px solid var(--lp-border);
+                border-radius: var(--lp-radius);
+                transition: all 0.3s ease;
+                overflow: hidden;
+            }
+
+            .feature-card::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 3px;
+                background: linear-gradient(90deg, var(--lp-accent), #60a5fa);
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            }
+
+            .feature-card:hover {
+                border-color: transparent;
+                box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 4px rgba(0, 0, 0, 0.04);
+                transform: translateY(-3px);
+            }
+
+            .feature-card:hover::before {
+                opacity: 1;
+            }
+
+            .feature-icon {
+                width: 48px;
+                height: 48px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 12px;
+                margin-bottom: 1.25rem;
+                font-size: 1.5rem;
+            }
+
+            .feature-icon--chat {
+                background: #dbeafe;
+                color: #2563eb;
+            }
+
+            .feature-icon--task {
+                background: #d1fae5;
+                color: #059669;
+            }
+
+            .feature-icon--workspace {
+                background: #fef3c7;
+                color: #d97706;
+            }
+
+            .feature-card h3 {
+                font-family: var(--lp-font);
+                font-size: 1.15rem;
+                font-weight: 700;
+                color: var(--lp-ink);
+                margin-bottom: 0.6rem;
+            }
+
+            .feature-card p {
+                font-size: 0.95rem;
+                line-height: 1.6;
+                color: var(--lp-muted);
+                margin: 0;
+            }
+
+            .feature-tag {
+                display: inline-block;
+                margin-top: 1rem;
+                padding: 0.2rem 0.6rem;
+                font-size: 0.7rem;
+                font-weight: 600;
+                letter-spacing: 0.04em;
+                text-transform: uppercase;
+                border-radius: 6px;
+                background: var(--lp-surface);
+                color: var(--lp-muted);
+            }
+
+            /* ===== Bottom CTA ===== */
+            .landing-cta {
+                padding: 4rem 1rem;
+                text-align: center;
+                background: var(--lp-surface);
+                position: relative;
+            }
+
+            .cta-card {
+                max-width: 640px;
+                margin: 0 auto;
+                padding: 3rem 2.5rem;
+                background: var(--lp-card);
+                border: 1px solid var(--lp-border);
+                border-radius: var(--lp-radius);
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
+            }
+
+            .cta-card h2 {
+                font-family: var(--lp-display);
+                font-size: 1.75rem;
+                font-weight: 700;
+                margin-bottom: 0.75rem;
+                color: var(--lp-ink);
+            }
+
+            .cta-card p {
+                color: var(--lp-muted);
+                margin-bottom: 1.75rem;
+                font-size: 1rem;
+            }
+
+            /* ===== Footer Override ===== */
+            .landing-page footer {
+                background: #fff;
+                border-top: 1px solid var(--lp-border);
+            }
+
+            .landing-page footer p {
+                color: var(--lp-muted);
+                font-size: 0.85rem;
+            }
+
+            /* ===== Animations ===== */
+            @keyframes fadeSlideUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(20px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            @keyframes heroPulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.4; }
+            }
+
+            /* Scroll-triggered reveal */
+            .reveal {
+                opacity: 0;
+                transform: translateY(24px);
+                transition: opacity 0.7s ease, transform 0.7s ease;
+            }
+
+            .reveal.visible {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+            .reveal:nth-child(1) { transition-delay: 0s; }
+            .reveal:nth-child(2) { transition-delay: 0.1s; }
+            .reveal:nth-child(3) { transition-delay: 0.2s; }
+
+            /* ===== Responsive ===== */
+            @media (max-width: 768px) {
+                .landing-hero {
+                    padding: 4rem 1rem 3.5rem;
+                }
+
+                .features-grid {
+                    grid-template-columns: 1fr;
+                    gap: 1rem;
+                }
+
+                .cta-card {
+                    padding: 2rem 1.5rem;
+                }
+
+                .hero-actions {
+                    flex-direction: column;
+                }
+
+                .btn-primary-landing,
+                .btn-ghost-landing {
+                    width: 100%;
+                    justify-content: center;
+                }
+            }
+
+            @media (min-width: 769px) and (max-width: 1024px) {
+                .features-grid {
+                    grid-template-columns: repeat(2, 1fr);
+                }
+
+                .feature-card:last-child {
+                    grid-column: 1 / -1;
+                    max-width: 50%;
+                    margin: 0 auto;
+                }
+            }
+
+            /* ===== Reduced Motion ===== */
+            @media (prefers-reduced-motion: reduce) {
+                .reveal {
+                    opacity: 1;
+                    transform: none;
+                    transition: none;
+                }
+                .hero-eyebrow::before {
+                    animation: none;
+                }
+                [style*="animation"] {
+                    animation: none !important;
+                }
+            }
+        </style>
+
+        <!-- Apply saved theme immediately to prevent flash -->
+        <script>
+            (function() {
+                var theme = localStorage.getItem('flowra-theme');
+                if (!theme) {
+                    theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                }
+                document.documentElement.setAttribute('data-theme', theme);
+            })();
+        </script>
     </head>
-    <body hx-boost="true">
+    <body hx-boost="true" class="landing-page">
         {{template "navbar" .}}
 
-        <main class="container">
+        <main>
             {{template "flash" .}}
 
-            <article class="text-center" style="padding: 4rem 1rem">
-                <hgroup>
-                    <h1>Welcome to Flowra</h1>
-                    <p>
-                        A modern chat platform with integrated task management
-                    </p>
-                </hgroup>
+            <!-- Hero -->
+            <section class="landing-hero">
+                <span class="hero-eyebrow">Chat-first project management</span>
 
-                {{if .User}}
-                <p>
-                    <a href="/workspaces" role="button">Go to Workspaces</a>
-                </p>
-                {{else}}
-                <p>
-                    <a href="/login" role="button">Get Started</a>
-                </p>
-                {{end}}
+                <h1>Where conversations<br>become <em>action</em></h1>
 
-                <section style="margin-top: 3rem">
-                    <div class="grid">
-                        <article>
-                            <h3>Real-time Chat</h3>
-                            <p>
-                                Stay connected with your team through instant
-                                messaging with WebSocket support.
-                            </p>
-                        </article>
-                        <article>
-                            <h3>Task Management</h3>
-                            <p>
-                                Create tasks directly from chat messages and
-                                track them on a Kanban board.
-                            </p>
-                        </article>
-                        <article>
-                            <h3>Workspaces</h3>
-                            <p>
-                                Organize your projects into workspaces with team
-                                members and permissions.
-                            </p>
-                        </article>
+                <p class="hero-subtitle">
+                    Turn team discussions into tracked tasks instantly.
+                    Real-time chat, Kanban boards, and smart commands &mdash; all in one place.
+                </p>
+
+                <div class="hero-actions">
+                    {{if .User}}
+                    <a href="/workspaces" class="btn-primary-landing">
+                        Go to Workspaces
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
+                    </a>
+                    {{else}}
+                    <a href="/login" class="btn-primary-landing">
+                        Get Started Free
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
+                    </a>
+                    <a href="#features" class="btn-ghost-landing">See how it works</a>
+                    {{end}}
+                </div>
+
+                <div class="social-proof">
+                    <div class="avatar-stack">
+                        <span class="av">JD</span>
+                        <span class="av">AK</span>
+                        <span class="av">MR</span>
+                        <span class="av">+</span>
                     </div>
-                </section>
-            </article>
+                    <span class="social-proof-text">Trusted by <strong>teams</strong> who ship fast</span>
+                </div>
+            </section>
+
+            <!-- Features -->
+            <section id="features" class="landing-features">
+                <div class="section-inner">
+                    <div class="section-header">
+                        <h2>Everything your team needs</h2>
+                        <p>A unified workspace where chat and tasks live together, not in separate tabs.</p>
+                    </div>
+
+                    <div class="features-grid">
+                        <div class="feature-card reveal">
+                            <div class="feature-icon feature-icon--chat">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" /></svg>
+                            </div>
+                            <h3>Real-time Chat</h3>
+                            <p>Instant messaging with WebSocket support. Typing indicators, presence tracking, and message threading keep everyone in sync.</p>
+                            <span class="feature-tag">WebSocket</span>
+                        </div>
+
+                        <div class="feature-card reveal">
+                            <div class="feature-icon feature-icon--task">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+                            </div>
+                            <h3>Task Management</h3>
+                            <p>Create tasks from chat with <code>#task</code> commands. Drag-and-drop Kanban board, priorities, assignees, and due dates built in.</p>
+                            <span class="feature-tag">Kanban</span>
+                        </div>
+
+                        <div class="feature-card reveal">
+                            <div class="feature-icon feature-icon--workspace">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" /></svg>
+                            </div>
+                            <h3>Workspaces</h3>
+                            <p>Organize projects into dedicated spaces with team members, roles, and permissions. SSO integration with Keycloak included.</p>
+                            <span class="feature-tag">SSO Ready</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Bottom CTA -->
+            <section class="landing-cta">
+                <div class="cta-card reveal">
+                    {{if .User}}
+                    <h2>Welcome back!</h2>
+                    <p>Jump into your workspaces and pick up where you left off.</p>
+                    <a href="/workspaces" class="btn-primary-landing">
+                        Open Workspaces
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
+                    </a>
+                    {{else}}
+                    <h2>Ready to streamline your workflow?</h2>
+                    <p>Set up your first workspace in under a minute. No credit card required.</p>
+                    <a href="/login" class="btn-primary-landing">
+                        Start for Free
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
+                    </a>
+                    {{end}}
+                </div>
+            </section>
         </main>
 
         {{template "footer" .}}
 
         <script src="/static/js/app.js"></script>
+        <script>
+        // Scroll-triggered reveal for feature cards
+        (function() {
+            var observer = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                    }
+                });
+            }, { threshold: 0.15 });
+
+            document.querySelectorAll('.reveal').forEach(function(el) {
+                observer.observe(el);
+            });
+        })();
+        </script>
     </body>
 </html>
 {{end}}

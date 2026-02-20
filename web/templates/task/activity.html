@@ -4,8 +4,40 @@
         {{range .Activities}}
             {{template "components/activity_item" .}}
         {{end}}
+        {{if .HasMore}}
+        <button class="load-more-activity small outline"
+                hx-get="/partials/tasks/{{.TaskID}}/activity?page={{.NextPage}}"
+                hx-target="this"
+                hx-swap="outerHTML"
+                hx-on::before-request="this.disabled=true">
+            Load older activity
+        </button>
+        {{end}}
     {{else}}
         <p class="text-muted text-center">No activity yet</p>
     {{end}}
 </div>
+
+<style>
+.load-more-activity {
+    width: 100%;
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+}
+</style>
+{{end}}
+
+{{define "task/activity-page"}}
+{{range .Activities}}
+    {{template "components/activity_item" .}}
+{{end}}
+{{if .HasMore}}
+<button class="load-more-activity small outline"
+        hx-get="/partials/tasks/{{.TaskID}}/activity?page={{.NextPage}}"
+        hx-target="this"
+        hx-swap="outerHTML"
+        hx-on::before-request="this.disabled=true">
+    Load older activity
+</button>
+{{end}}
 {{end}}

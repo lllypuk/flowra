@@ -4,6 +4,8 @@
          data-task-id="{{.ID}}"
          data-priority="{{.Priority | lower}}"
          data-type="{{.Type | lower}}"
+         data-created-at="{{.CreatedAt | isoDate}}"
+         {{if .DueDate}}data-due-date="{{.DueDate | isoDate}}"{{end}}
          draggable="true"
          ondragstart="handleDragStart(event)"
          ondragend="handleDragEnd(event)"

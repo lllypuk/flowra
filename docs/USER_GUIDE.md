@@ -37,10 +37,14 @@ Flowra chat supports:
 
 - **Markdown formatting** - Use `**bold**`, `*italic*`, and `` `code` ``
 - **Tags** - Type `#` to see available commands:
-  - `#createTask` - Create a new task from your message
-  - `#bug` - Mark as a bug report
-  - `#epic` - Create an epic
-- **Mentions** - Use `@username` to notify team members
+  - `#task "Title"` - Create a new task from your message
+  - `#bug "Title"` - Mark as a bug report
+  - `#epic "Title"` - Create an epic
+  - `#status "Value"`, `#assignee @user`, `#priority "High"` - Manage existing tasks
+- **Mentions** - Use `@username` to notify team members (autocomplete available)
+- **Tag autocomplete** - Type `#` to see tag suggestions
+- **File attachments** - Attach files using the paperclip button
+- **Typing indicators** - See when others are typing
 - **Real-time updates** - Messages appear instantly for all participants
 
 **Keyboard Shortcuts:**
@@ -74,6 +78,42 @@ Click any task card to open the sidebar:
 - **Due date** - Pick a date from the calendar
 - **Description** - Add detailed information
 - **Activity** - View the full history of changes
+
+### File Attachments
+
+Attach files to messages and tasks:
+
+- Click the **paperclip icon** in the message input to attach a file
+- Supported file types: images, documents, archives
+- Task attachments can be added from the task detail sidebar
+- Files download securely with your session token
+
+### Dark Mode
+
+Toggle dark mode using the **moon/sun icon** in the navigation bar. Your preference is saved locally.
+
+### Global Search
+
+Press `Ctrl+K` (or `Cmd+K`) or click the search bar in the navigation to search across the workspace:
+
+- Searches tasks, messages, and members
+- Results update as you type
+
+### User Profile & Settings
+
+Click your avatar in the navigation bar to access:
+
+- **Profile** - View and update your display name and avatar
+- **Settings** - Account preferences
+
+### Workspace Settings
+
+Workspace admins can access settings via the workspace menu:
+
+- **Members** - View and manage workspace members
+- **Invite** - Generate invite links for new members
+- **Transfer** - Transfer workspace ownership to another member
+- **General** - Rename or delete the workspace
 
 ### Notifications
 
@@ -132,7 +172,7 @@ If you encounter any issues:
 1. Check this user guide
 2. Press `?` for keyboard shortcuts
 3. Contact your workspace administrator
-4. Report issues at https://github.com/anthropics/claude-code/issues
+4. Report issues at https://github.com/lllypuk/flowra/issues
 
 ## Browser Support
 

@@ -2,7 +2,9 @@
 <form hx-put="/api/v1/tasks/{{.Task.ID}}"
       hx-target="this"
       hx-swap="outerHTML"
-      class="edit-title-form">
+      hx-indicator="this"
+      class="edit-title-form"
+      onkeydown="handleEditKeydown(event, this)">
     <input type="text"
            name="title"
            value="{{.Task.Title}}"

@@ -104,22 +104,24 @@
                 <div class="members-page">
                     <header class="page-header">
                         <h2>Members</h2>
-                        {{if or (eq .Data.UserRole "owner") (eq .Data.UserRole
-                        "admin")}}
-                        <button
-                            hx-get="/partials/workspace/{{.Data.Workspace.ID}}/invite-form"
-                            hx-target="#modal-container"
-                            hx-swap="innerHTML"
-                        >
-                            + Invite Member
-                        </button>
-                        {{end}}
+                        <div class="header-actions">
+                            {{if or (eq .Data.UserRole "owner") (eq .Data.UserRole
+                            "admin")}}
+                            <button
+                                hx-get="/partials/workspace/{{.Data.Workspace.ID}}/invite-form"
+                                hx-target="#modal-container"
+                                hx-swap="innerHTML"
+                            >
+                                + Invite Member
+                            </button>
+                            {{end}}
+                        </div>
                     </header>
 
                     <div
                         id="members-list"
                         hx-get="/partials/workspace/{{.Data.Workspace.ID}}/members"
-                        hx-trigger="load"
+                        hx-trigger="load, refreshMembers from:body"
                         hx-swap="innerHTML"
                     >
                         {{template "loading" (dict "ID" "members-loading")}}

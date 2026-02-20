@@ -1,6 +1,6 @@
 {{define "base"}}
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en">
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -36,6 +36,16 @@
 
         <!-- HTMX WebSocket Extension -->
         <script src="https://unpkg.com/htmx-ext-ws@2.0.0/ws.js" defer></script>
+        <!-- Apply saved theme immediately to prevent flash -->
+        <script>
+            (function() {
+                var theme = localStorage.getItem('flowra-theme');
+                if (!theme) {
+                    theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                }
+                document.documentElement.setAttribute('data-theme', theme);
+            })();
+        </script>
     </head>
     <body hx-boost="true">
         <!-- Skip Links for Accessibility -->
