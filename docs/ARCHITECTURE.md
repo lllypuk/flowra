@@ -103,6 +103,15 @@ Flowra is a **Chat System with Task Management** designed for team collaboration
 │  │ • Read models    │  │ • Rate limiting  │  │ • JWT tokens     │          │
 │  └──────────────────┘  └──────────────────┘  └──────────────────┘          │
 │                                                                             │
+│  ┌──────────────────┐                                                       │
+│  │   File Storage   │                                                       │
+│  │    (Local FS)    │                                                       │
+│  │                  │                                                       │
+│  │ • Message files  │                                                       │
+│  │ • Task files     │                                                       │
+│  │ • Metadata in DB │                                                       │
+│  └──────────────────┘                                                       │
+│                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -312,7 +321,7 @@ func (r *MongoChatRepository) Save(ctx context.Context, chat *chat.Chat) error {
 | **User** | System user | Global |
 | **Workspace** | Organizational unit | Global |
 | **Participant** | Chat member with role | Chat |
-| **Attachment** | File attached to message | Message |
+| **Attachment** | File attached to message or task | Message, Task |
 
 ### Domain Events
 
@@ -999,4 +1008,4 @@ Backend validates JWT from query parameter, extracts user ID, and registers the 
 
 ---
 
-*Last updated: January 2026*
+*Last updated: February 2026*
