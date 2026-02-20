@@ -1834,6 +1834,17 @@ func (r *userResolver) ResolveUser(ctx context.Context, externalID, username, em
 			slog.String("external_id", externalID),
 			slog.String("error", saveErr.Error()),
 		)
+		// If save failed due to duplicate username, try finding existing user by username.
+		// This can happen when the same user exists with a different external ID
+		// (e.g. after DB reset or migration from another auth provider).
+		if existingByUsername, findErr := r.userRepo.FindByUsername(ctx, username); findErr == nil {
+			r.logger.InfoContext(ctx, "found existing user by username after save conflict",
+				slog.String("external_id", externalID),
+				slog.String("username", username),
+				slog.String("existing_user_id", existingByUsername.ID().String()),
+			)
+			return existingByUsername.ID(), nil
+		}
 		return uuid.UUID(""), saveErr
 	}
 
