@@ -379,9 +379,12 @@ func getString(m map[string]any, key string) string {
 	return ""
 }
 
-// Home renders the home page.
+// Home redirects to workspaces if logged in, otherwise to login.
 func (h *TemplateHandler) Home(c echo.Context) error {
-	return h.render(c, "home.html", "Home", nil)
+	if getSessionCookie(c) != "" {
+		return c.Redirect(http.StatusFound, "/workspaces")
+	}
+	return c.Redirect(http.StatusFound, "/login")
 }
 
 // LoginPage renders the login page with OAuth auth URL.
