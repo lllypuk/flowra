@@ -43,7 +43,7 @@
             {{range .Attachments}}
             {{if .IsImage}}
             <div class="attachment-image">
-                <a href="{{.URL}}" target="_blank" class="lightbox-trigger" onclick="openLightbox(event, '{{.URL}}', '{{.FileName}}')">
+                <a href="{{.URL}}" target="_blank" class="lightbox-trigger" data-lightbox-url="{{.URL}}" data-lightbox-name="{{.FileName}}">
                     <img src="{{.URL}}" alt="{{.FileName}}" loading="lazy">
                 </a>
             </div>

@@ -1058,6 +1058,17 @@
     }
 
     // ===== Image Lightbox =====
+    // Delegated lightbox handler — replaces inline onclick
+    document.addEventListener('click', function(event) {
+        var trigger = event.target.closest('.lightbox-trigger[data-lightbox-url]');
+        if (!trigger) return;
+        event.preventDefault();
+
+        var url = trigger.getAttribute('data-lightbox-url');
+        var fileName = trigger.getAttribute('data-lightbox-name');
+        openLightbox(event, url, fileName);
+    });
+
     window.openLightbox = function(event, url, fileName) {
         event.preventDefault();
         var overlay = document.createElement('div');

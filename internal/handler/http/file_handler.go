@@ -148,8 +148,11 @@ func (h *FileHandler) Upload(c echo.Context) error {
 	}
 	defer src.Close()
 
+	// Sanitize filename: strip dangerous characters
+	safeName := sanitizeFileName(file.Filename)
+
 	// Save to storage
-	fileID, saveErr := h.storage.Save(src, file.Filename)
+	fileID, saveErr := h.storage.Save(src, safeName)
 	if saveErr != nil {
 		return httpserver.RespondErrorWithCode(
 			c, http.StatusInternalServerError, "STORAGE_ERROR", "failed to save file")
@@ -165,10 +168,10 @@ func (h *FileHandler) Upload(c echo.Context) error {
 
 	resp := FileUploadResponse{
 		FileID:   fileID,
-		FileName: file.Filename,
+		FileName: safeName,
 		FileSize: file.Size,
 		MimeType: mimeType,
-		URL:      fmt.Sprintf("/api/v1/files/%s/%s", fileID.String(), file.Filename),
+		URL:      fmt.Sprintf("/api/v1/files/%s/%s", fileID.String(), safeName),
 	}
 
 	return httpserver.RespondCreated(c, resp)
@@ -239,6 +242,21 @@ func (h *FileHandler) serveFile(c echo.Context, fileID uuid.UUID, fileName strin
 	}
 
 	return c.File(filePath)
+}
+
+// sanitizeFileName strips dangerous characters from the filename for defense-in-depth.
+func sanitizeFileName(name string) string {
+	safe := filepath.Base(name)
+	safe = strings.Map(func(r rune) rune {
+		if r < 32 || r == '\'' || r == '"' || r == '`' || r == '<' || r == '>' {
+			return '_'
+		}
+		return r
+	}, safe)
+	if safe == "" || safe == "." {
+		safe = "unnamed"
+	}
+	return safe
 }
 
 func isAllowedMIME(mimeType string) bool {

@@ -149,7 +149,7 @@
                 {{range .Task.Attachments}}
                 <div class="task-attachment-item" id="task-att-{{.FileID}}">
                     {{if .IsImage}}
-                    <a href="{{.URL}}" target="_blank" onclick="openLightbox(event, '{{.URL}}', '{{.FileName}}')">
+                    <a href="{{.URL}}" target="_blank" class="lightbox-trigger" data-lightbox-url="{{.URL}}" data-lightbox-name="{{.FileName}}">
                         <img src="{{.URL}}" alt="{{.FileName}}" class="task-att-thumb">
                     </a>
                     {{else}}

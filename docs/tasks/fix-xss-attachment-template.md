@@ -1,6 +1,6 @@
 # Fix: XSS Vulnerability in Message Attachment Template
 
-## Status: Pending
+## Status: Done
 
 ## Severity: High
 
@@ -116,10 +116,10 @@ same `data-*` attribute pattern.
 
 ## Checklist
 
-- [ ] Replace `onclick="openLightbox(...)"` with `data-lightbox-url` and `data-lightbox-name`
+- [x] Replace `onclick="openLightbox(...)"` with `data-lightbox-url` and `data-lightbox-name`
       attributes in `message.html`
-- [ ] Add delegated click handler in `app.js` for `.lightbox-trigger[data-lightbox-url]`
-- [ ] Sanitize file names on upload in `file_handler.go` (strip quotes, angle brackets, control chars)
-- [ ] Check `task/sidebar.html` for same pattern and fix if present
+- [x] Add delegated click handler in `app.js` for `.lightbox-trigger[data-lightbox-url]`
+- [x] Sanitize file names on upload in `file_handler.go` (strip quotes, angle brackets, control chars)
+- [x] Check `task/sidebar.html` for same pattern and fix if present
 - [ ] Verify lightbox still works after changes (manual test: upload image, click thumbnail)
-- [ ] Run `golangci-lint run`
+- [x] Run `golangci-lint run`
