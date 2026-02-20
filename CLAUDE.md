@@ -250,6 +250,91 @@ The tag system (`internal/domain/tag/`) processes commands in messages:
 
 UI actions (sidebar status/priority/assignee changes) go through `ActionService` which creates human-readable system messages like "John changed status to In Progress".
 
+### HTMX v2 WebSocket API
+
+HTMX v2 stores the WebSocket connection differently from v1. When accessing the socket programmatically:
+
+```javascript
+// ✅ HTMX v2 — correct path to the WebSocket socket
+var el = document.querySelector('[hx-ext*="ws"]');
+var internalData = el['htmx-internal-data'];
+var wsWrapper = internalData && internalData.webSocket;
+var socket = wsWrapper && wsWrapper.socket;
+if (socket && socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({ type: "subscribe", chat_id: chatId }));
+}
+
+// ❌ HTMX v1 (broken in v2)
+var ws = el.__htmx_ws; // null in HTMX v2
+```
+
+### WebSocket Message Payload Field Names
+
+The broadcaster sends domain events as WebSocket messages. The `data` field contains the raw Go domain event payload with **PascalCase field names**:
+
+```json
+{
+  "type": "chat.message.posted",
+  "chat_id": "...",
+  "data": {
+    "aggregate_id": "<message UUID>",
+    "ChatID": "<chat UUID>",
+    "AuthorID": "...",
+    "Content": "..."
+  }
+}
+```
+
+When handling `chat.message.posted` (and similar), account for both naming styles:
+
+```javascript
+document.body.addEventListener("chat.message.posted", function (evt) {
+    var msg = evt.detail; // = data field from WS message
+    var chatId = msg.ChatID || msg.chat_id;
+    var messageId = msg.aggregate_id || msg.message_id;
+    // ...
+});
+```
+
+### Echo Handler Struct Tags
+
+All request structs in HTTP handlers must include **both** `json:` and `form:` tags. HTMX sends requests as `application/x-www-form-urlencoded`; without the `form:` tag, Echo's `Bind()` silently ignores form fields.
+
+```go
+// ✅ CORRECT: supports both JSON API calls and HTMX form submissions
+var req struct {
+    Status string `json:"status" form:"status"`
+}
+
+// ❌ WRONG: HTMX form data will not be bound (req.Status stays empty → 400)
+var req struct {
+    Status string `json:"status"`
+}
+```
+
+### Task Sidebar Templates
+
+There are **two separate** task sidebar templates:
+
+- `web/templates/task/sidebar.html` — used by the board/task detail panel (loaded as HTMX partial)
+- `web/templates/chat/task-sidebar.html` — used in the chat view right panel
+
+Both must be kept in sync when making changes to sidebar behavior (field actions, removing sections, etc.).
+
+### Chat Action Route URLs
+
+Chat action routes are **workspace-scoped**. Always include `workspace_id`:
+
+```
+✅ POST /api/v1/workspaces/:workspace_id/chats/:id/actions/status
+❌ POST /api/v1/chats/:id/actions/status  (returns 404)
+```
+
+Similarly for presence and other chat sub-resources:
+```
+✅ GET /api/v1/workspaces/:workspace_id/chats/:id/presence
+```
+
 ### Frontend JavaScript Pattern
 
 All JS files that may be loaded via `hx-boost` navigation must follow the IIFE + guard pattern to prevent double-initialization:
