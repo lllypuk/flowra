@@ -118,17 +118,14 @@
                 if (response.data && response.data.id) {
                     const messageId = response.data.id;
 
-                    // Upload pending files before clearing the preview
+                    // Upload pending files — the attachment flow will re-render the
+                    // message via outerHTML swap once all files are attached.
                     uploadPendingFiles(chatId, messageId);
                     clearAttachmentPreview(chatId);
 
-                    // Load the new message HTML
-                    htmx.ajax("GET", "/partials/messages/" + messageId, {
-                        target: "#messages-" + chatId,
-                        swap: "beforeend",
-                    }).then(function () {
-                        scrollToBottom("messages-" + chatId);
-                    });
+                    // Do NOT fetch the message HTML here. The WebSocket event
+                    // chat.message.posted will deliver it to all clients (including
+                    // the sender), so we avoid a duplicate insertion.
                 }
             } catch (e) {
                 console.error("Failed to parse message response:", e);

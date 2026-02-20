@@ -596,15 +596,37 @@ func (h *TaskDetailTemplateHandler) loadPaginatedActivities(
 	return allActivities[start:end], end < len(allActivities)
 }
 
+// extractActorID returns the actor user ID from an event, preferring event-specific
+// ChangedBy/CreatedBy fields over metadata (which may not have UserID set).
+func extractActorID(e event.DomainEvent) string {
+	switch te := e.(type) {
+	case *task.Created:
+		return te.CreatedBy.String()
+	case *task.StatusChanged:
+		return te.ChangedBy.String()
+	case *task.PriorityChanged:
+		return te.ChangedBy.String()
+	case *task.AssigneeChanged:
+		return te.ChangedBy.String()
+	case *task.DueDateChanged:
+		return te.ChangedBy.String()
+	case *task.AttachmentAdded:
+		return te.AddedBy.String()
+	case *task.AttachmentRemoved:
+		return te.RemovedBy.String()
+	}
+	// Fall back to metadata
+	return e.Metadata().UserID
+}
+
 // convertEventToActivity converts a single domain event to activity view data.
 func (h *TaskDetailTemplateHandler) convertEventToActivity(ctx context.Context, e event.DomainEvent) *ActivityViewData {
-	metadata := e.Metadata()
-
-	username := h.resolveUsername(ctx, metadata.UserID)
+	actorID := extractActorID(e)
+	username := h.resolveUsername(ctx, actorID)
 
 	activity := &ActivityViewData{
 		Actor: ActivityActorData{
-			ID:       metadata.UserID,
+			ID:       actorID,
 			Username: username,
 		},
 		CreatedAt: e.OccurredAt(),

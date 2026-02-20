@@ -146,6 +146,8 @@
         var chatId = msg.ChatID || msg.chat_id;
         var messageId = msg.aggregate_id || msg.message_id;
         if (chatId === "{{.Data.Chat.ID}}" && messageId) {
+            // Skip if already in DOM (e.g. re-delivered event)
+            if (document.getElementById("message-" + messageId)) return;
             htmx.ajax("GET", "/partials/messages/" + messageId, {
                 target: "#messages-{{.Data.Chat.ID}}",
                 swap: "beforeend",
