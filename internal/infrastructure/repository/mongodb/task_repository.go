@@ -372,6 +372,9 @@ func (r *MongoTaskQueryRepository) applyFilters(filter bson.M, filters taskapp.F
 	if filters.CreatedBy != nil {
 		filter["created_by"] = filters.CreatedBy.String()
 	}
+	if filters.Search != "" {
+		filter["title"] = bson.M{"$regex": filters.Search, "$options": "i"}
+	}
 }
 
 // findMany performs search s paginatsiey

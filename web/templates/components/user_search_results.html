@@ -1,7 +1,7 @@
 {{define "user_search_results"}}
 {{if .Users}}
     {{range .Users}}
-    <div class="user-search-item" onclick="selectUser('{{.ID}}', '{{.Username}}', '{{.DisplayName}}')">
+    <div class="user-search-item" onclick="selectUser(this, '{{.ID}}', '{{.Username}}', '{{.DisplayName}}')">
         <div class="avatar">
             {{if .AvatarURL}}
             <img src="{{.AvatarURL}}" alt="{{.Username}}" />

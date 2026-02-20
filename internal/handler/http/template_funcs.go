@@ -15,6 +15,7 @@ func TemplateFuncs() template.FuncMap {
 		"formatDate":      formatDate,
 		"formatDateTime":  formatDateTime,
 		"formatDateInput": formatDateInput,
+		"isoDate":         isoDate,
 		"timeAgo":         timeAgo,
 
 		// String helpers
@@ -107,6 +108,13 @@ func formatDateInput(t time.Time) string {
 	return t.Format("2006-01-02")
 }
 
+func isoDate(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.UTC().Format(time.RFC3339)
+}
+
 // Time-related constants for timeAgo function.
 const (
 	hoursPerDay  = 24
@@ -187,6 +195,22 @@ func initials(name string) string {
 
 // avatarInitials extracts initials from a user object's display name or username.
 func avatarInitials(user any) string {
+	// Handle UserView type
+	if u, ok := user.(UserView); ok {
+		if u.DisplayName != "" {
+			return initials(u.DisplayName)
+		}
+		return initials(u.Username)
+	}
+
+	// Handle pointer to UserView
+	if u, ok := user.(*UserView); ok && u != nil {
+		if u.DisplayName != "" {
+			return initials(u.DisplayName)
+		}
+		return initials(u.Username)
+	}
+
 	// Handle UserResponse type
 	if u, ok := user.(UserResponse); ok {
 		if u.DisplayName != "" {
@@ -203,7 +227,7 @@ func avatarInitials(user any) string {
 		return initials(u.Username)
 	}
 
-	// Fallback: try to extract DisplayName and Username using reflection-like approach
+	// Fallback: try to extract DisplayName and Username
 	// by type asserting to a map (common in template data)
 	if userMap, ok := user.(map[string]any); ok {
 		if displayName, exists := userMap["DisplayName"].(string); exists && displayName != "" {

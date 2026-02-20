@@ -449,21 +449,20 @@
         }
 
         if (criterion === "due_date") {
-          var da = a.querySelector(".card-due");
-          var db = b.querySelector(".card-due");
-          var ta = da ? da.textContent.trim() : "";
-          var tb = db ? db.textContent.trim() : "";
+          var ta = a.dataset.dueDate || "";
+          var tb = b.dataset.dueDate || "";
           // Cards without due date go last
           if (!ta && !tb) return 0;
           if (!ta) return 1;
           if (!tb) return -1;
-          return new Date(ta) - new Date(tb);
+          return ta < tb ? -1 : ta > tb ? 1 : 0;
         }
 
         if (criterion === "created") {
-          // Use DOM order (cards are already ordered by creation from server)
-          // Reverse it so newest appear first
-          return cards.indexOf(b) - cards.indexOf(a);
+          var ca = a.dataset.createdAt || "";
+          var cb = b.dataset.createdAt || "";
+          // Newest first
+          return ca < cb ? 1 : ca > cb ? -1 : 0;
         }
 
         return 0;

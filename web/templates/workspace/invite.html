@@ -127,16 +127,17 @@
     if (window.__inviteFormLoaded) return;
     window.__inviteFormLoaded = true;
 
-    window.selectUser = function(userId, username, displayName) {
+    window.selectUser = function(el, userId, username, displayName) {
         document.getElementById('selected-user-id').value = userId;
         document.getElementById('user-search').value = displayName || username;
         document.getElementById('invite-submit-btn').disabled = false;
-        document.getElementById('user-search-results').innerHTML = '';
-        
+
         document.querySelectorAll('.user-search-item').forEach(item => {
             item.classList.remove('selected');
         });
-        event.target.closest('.user-search-item')?.classList.add('selected');
+        el.closest('.user-search-item')?.classList.add('selected');
+
+        document.getElementById('user-search-results').innerHTML = '';
     };
 })();
 </script>

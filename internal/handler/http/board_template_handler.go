@@ -113,6 +113,7 @@ type TaskCardViewData struct {
 	Status      string
 	Assignee    *TaskAssigneeData
 	DueDate     *time.Time
+	CreatedAt   time.Time
 	IsOverdue   bool
 }
 
@@ -352,12 +353,6 @@ func (h *BoardTemplateHandler) BoardColumnMore(c echo.Context) error {
 		totalCount, _ = h.taskService.CountTasks(c.Request().Context(), taskFilters)
 	}
 
-	// Apply search filter (post-fetch)
-	tasks = filterTasksBySearch(tasks, filters.Search)
-	if filters.Search != "" {
-		totalCount = len(tasks)
-	}
-
 	// Convert to view data
 	taskCards := h.convertTasksToCards(tasks, workspaceID.String())
 
@@ -428,12 +423,6 @@ func (h *BoardTemplateHandler) buildColumns(
 			totalCount, _ = h.taskService.CountTasks(ctx, taskFilters)
 		}
 
-		// Apply search filter (post-fetch)
-		tasks = filterTasksBySearch(tasks, filters.Search)
-		if filters.Search != "" {
-			totalCount = len(tasks)
-		}
-
 		taskCards := h.convertTasksToCards(tasks, workspaceID.String())
 
 		columns = append(columns, ColumnViewData{
@@ -492,7 +481,9 @@ func (h *BoardTemplateHandler) buildTaskFilters(
 		}
 	}
 
-	// TODO: Add search filter when supported by repository
+	if filters.Search != "" {
+		taskFilters.Search = filters.Search
+	}
 
 	return taskFilters
 }
@@ -509,21 +500,6 @@ func (h *BoardTemplateHandler) convertTasksToCards(
 	return cards
 }
 
-// filterTasksBySearch filters tasks by search term matching against title (case-insensitive).
-func filterTasksBySearch(tasks []*taskapp.ReadModel, search string) []*taskapp.ReadModel {
-	if search == "" {
-		return tasks
-	}
-	lowerSearch := strings.ToLower(search)
-	filtered := make([]*taskapp.ReadModel, 0, len(tasks))
-	for _, t := range tasks {
-		if strings.Contains(strings.ToLower(t.Title), lowerSearch) {
-			filtered = append(filtered, t)
-		}
-	}
-	return filtered
-}
-
 // convertTaskToCard converts a single task read model to view data.
 func (h *BoardTemplateHandler) convertTaskToCard(
 	t *taskapp.ReadModel,
@@ -538,6 +514,7 @@ func (h *BoardTemplateHandler) convertTaskToCard(
 		Priority:    string(t.Priority),
 		Status:      string(t.Status),
 		DueDate:     t.DueDate,
+		CreatedAt:   t.CreatedAt,
 	}
 
 	// Check if overdue

@@ -58,6 +58,7 @@ type Filters struct {
 	Priority   *taskdomain.Priority
 	EntityType *taskdomain.EntityType
 	CreatedBy  *uuid.UUID
+	Search     string
 	Offset     int
 	Limit      int
 }

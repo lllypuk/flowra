@@ -111,7 +111,6 @@
             // Reset form
             event.target.reset();
             autoResize(event.target.querySelector("textarea"));
-            clearAttachmentPreview(chatId);
 
             // Get message ID from response
             try {
@@ -119,8 +118,9 @@
                 if (response.data && response.data.id) {
                     const messageId = response.data.id;
 
-                    // Upload pending files for this message
+                    // Upload pending files before clearing the preview
                     uploadPendingFiles(chatId, messageId);
+                    clearAttachmentPreview(chatId);
 
                     // Load the new message HTML
                     htmx.ajax("GET", "/partials/messages/" + messageId, {

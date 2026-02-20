@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"mime"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"time"
@@ -171,7 +172,7 @@ func (h *FileHandler) Upload(c echo.Context) error {
 		FileName: safeName,
 		FileSize: file.Size,
 		MimeType: mimeType,
-		URL:      fmt.Sprintf("/api/v1/files/%s/%s", fileID.String(), safeName),
+		URL:      fmt.Sprintf("/api/v1/files/%s/%s", fileID.String(), url.PathEscape(safeName)),
 	}
 
 	return httpserver.RespondCreated(c, resp)
