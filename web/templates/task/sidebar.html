@@ -261,14 +261,26 @@ function uploadTaskFile(file, taskId, chatId) {
         if (!resp.ok) throw new Error('Upload failed');
         return resp.json();
     }).then(function(result) {
-        if (result.data) {
-            showToast('File uploaded: ' + file.name, 'success');
-            // Refresh sidebar to show the new attachment
-            htmx.ajax('GET', '/partials/tasks/' + taskId + '/sidebar', {
-                target: '#task-sidebar-' + taskId,
-                swap: 'outerHTML'
+        if (result.data && result.data.file_id) {
+            var workspaceId = '{{.Task.WorkspaceID}}';
+            return fetch('/api/v1/workspaces/' + workspaceId + '/tasks/' + taskId + '/attachments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    file_id: result.data.file_id,
+                    file_name: result.data.file_name,
+                    file_size: result.data.file_size,
+                    mime_type: result.data.mime_type
+                })
             });
         }
+    }).then(function(resp) {
+        if (resp && !resp.ok) throw new Error('Attach failed');
+        showToast('File uploaded: ' + file.name, 'success');
+        htmx.ajax('GET', '/partials/tasks/' + taskId + '/sidebar', {
+            target: '#task-sidebar-' + taskId,
+            swap: 'outerHTML'
+        });
     }).catch(function(err) {
         console.error('Task file upload error:', err);
         showToast('Failed to upload ' + file.name, 'error');
@@ -277,9 +289,19 @@ function uploadTaskFile(file, taskId, chatId) {
 
 function removeTaskAttachment(fileId, fileName) {
     if (!confirm('Remove attachment "' + fileName + '"?')) return;
-    // For now just remove the element visually
-    var el = document.getElementById('task-att-' + fileId);
-    if (el) el.remove();
+    var workspaceId = '{{.Task.WorkspaceID}}';
+    var taskId = '{{.Task.ID}}';
+    fetch('/api/v1/workspaces/' + workspaceId + '/tasks/' + taskId + '/attachments/' + fileId, {
+        method: 'DELETE'
+    }).then(function(resp) {
+        if (!resp.ok) throw new Error('Remove failed');
+        var el = document.getElementById('task-att-' + fileId);
+        if (el) el.remove();
+        showToast('Attachment removed', 'success');
+    }).catch(function(err) {
+        console.error('Remove attachment error:', err);
+        showToast('Failed to remove attachment', 'error');
+    });
 }
 </script>
 

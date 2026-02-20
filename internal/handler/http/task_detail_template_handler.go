@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -89,6 +91,17 @@ type TaskDetailViewData struct {
 	OverdueDays  int
 	DaysUntilDue int
 	CreatedAt    time.Time
+	Attachments  []TaskAttachmentViewData
+}
+
+// TaskAttachmentViewData represents an attachment in the task detail view.
+type TaskAttachmentViewData struct {
+	FileID   string
+	FileName string
+	FileSize int64
+	MimeType string
+	URL      string
+	IsImage  bool
 }
 
 // ActivityViewData represents a single activity item for the timeline.
@@ -489,6 +502,17 @@ func (h *TaskDetailTemplateHandler) convertToDetailView(t *taskapp.ReadModel) Ta
 		view.AssigneeID = t.AssignedTo.String()
 	}
 
+	for _, a := range t.Attachments {
+		view.Attachments = append(view.Attachments, TaskAttachmentViewData{
+			FileID:   a.FileID.String(),
+			FileName: a.FileName,
+			FileSize: a.FileSize,
+			MimeType: a.MimeType,
+			URL:      fmt.Sprintf("/api/v1/files/%s/%s", a.FileID.String(), url.PathEscape(a.FileName)),
+			IsImage:  strings.HasPrefix(a.MimeType, "image/"),
+		})
+	}
+
 	h.calculateDueStatus(&view, t)
 
 	return view
@@ -625,6 +649,12 @@ func (h *TaskDetailTemplateHandler) convertEventToActivity(ctx context.Context, 
 		activity.ActionText = "updated title"
 	case *task.Deleted:
 		activity.ActionText = "deleted this task"
+	case *task.AttachmentAdded:
+		activity.ActionText = "added attachment"
+		activity.Details = true
+		activity.NewValue = te.FileName
+	case *task.AttachmentRemoved:
+		activity.ActionText = "removed attachment"
 	default:
 		// Check by event type string for any events not matched by type assertion
 		switch e.EventType() {

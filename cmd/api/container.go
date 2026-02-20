@@ -1515,6 +1515,24 @@ func (a *fullTaskServiceAdapter) DeleteTask(_ context.Context, _ uuid.UUID, _ uu
 	return errors.New("delete task not yet implemented")
 }
 
+// AddAttachment implements httphandler.TaskService.
+func (a *fullTaskServiceAdapter) AddAttachment(
+	ctx context.Context,
+	cmd taskapp.AddAttachmentCommand,
+) (taskapp.TaskResult, error) {
+	uc := taskapp.NewAddAttachmentUseCase(a.taskRepo)
+	return uc.Execute(ctx, cmd)
+}
+
+// RemoveAttachment implements httphandler.TaskService.
+func (a *fullTaskServiceAdapter) RemoveAttachment(
+	ctx context.Context,
+	cmd taskapp.RemoveAttachmentCommand,
+) (taskapp.TaskResult, error) {
+	uc := taskapp.NewRemoveAttachmentUseCase(a.taskRepo)
+	return uc.Execute(ctx, cmd)
+}
+
 // createBoardMemberService creates a service implementing BoardMemberService.
 func (c *Container) createBoardMemberService() httphandler.BoardMemberService {
 	return &boardMemberServiceAdapter{
@@ -1601,7 +1619,11 @@ func (c *Container) setupMessageHandler() {
 	)
 	c.MessageHandler = httphandler.NewMessageHandler(c.MessageService)
 
-	fileStorage, fileErr := filestorage.NewLocalStorage("uploads")
+	uploadDir := c.Config.Uploads.Dir
+	if uploadDir == "" {
+		uploadDir = "uploads"
+	}
+	fileStorage, fileErr := filestorage.NewLocalStorage(uploadDir)
 	if fileErr != nil {
 		c.Logger.Warn("failed to initialize file storage", "error", fileErr)
 	} else {
@@ -1613,6 +1635,7 @@ func (c *Container) setupMessageHandler() {
 			fileStorage,
 			&fileMetadataAdapter{repo: fileMetadataRepo},
 			&fileChatParticipantAdapter{chatQueryRepo: c.ChatQueryRepo},
+			httphandler.WithMaxFileSize(c.Config.Uploads.MaxFileSize),
 		)
 	}
 	c.Logger.Debug("message service and handler initialized (real)")

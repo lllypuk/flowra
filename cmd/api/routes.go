@@ -190,6 +190,8 @@ func registerTaskRoutes(r *httpserver.Router, c *Container) {
 		tasks.PUT("/:task_id/priority", c.TaskHandler.ChangePriority)
 		tasks.PUT("/:task_id/due-date", c.TaskHandler.SetDueDate)
 		tasks.DELETE("/:task_id", c.TaskHandler.Delete)
+		tasks.POST("/:task_id/attachments", c.TaskHandler.AddAttachment)
+		tasks.DELETE("/:task_id/attachments/:file_id", c.TaskHandler.RemoveAttachment)
 	} else {
 		// Placeholder endpoints when handler is not initialized
 		placeholder := createPlaceholderHandler("Task")

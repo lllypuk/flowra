@@ -19,9 +19,9 @@ import (
 
 // File handler constants.
 const (
-	maxUploadSize   = 10 << 20 // 10 MB
-	maxUploadSizeMB = 10
-	mimeOctetStream = "application/octet-stream"
+	defaultMaxUploadSize = 10 << 20 // 10 MB
+	bytesPerMB           = 1 << 20  // 1 MB in bytes
+	mimeOctetStream      = "application/octet-stream"
 )
 
 // FileUploadResponse represents the response after uploading a file.
@@ -57,6 +57,7 @@ type FileHandler struct {
 	storage          *filestorage.LocalStorage
 	metadataRepo     FileMetadataLookup
 	participantCheck FileChatParticipantChecker
+	maxFileSize      int64
 }
 
 // NewFileHandler creates a new FileHandler.
@@ -64,11 +65,29 @@ func NewFileHandler(
 	storage *filestorage.LocalStorage,
 	metadataRepo FileMetadataLookup,
 	participantCheck FileChatParticipantChecker,
+	opts ...FileHandlerOption,
 ) *FileHandler {
-	return &FileHandler{
+	h := &FileHandler{
 		storage:          storage,
 		metadataRepo:     metadataRepo,
 		participantCheck: participantCheck,
+		maxFileSize:      defaultMaxUploadSize,
+	}
+	for _, opt := range opts {
+		opt(h)
+	}
+	return h
+}
+
+// FileHandlerOption configures a FileHandler.
+type FileHandlerOption func(*FileHandler)
+
+// WithMaxFileSize sets the maximum allowed upload file size in bytes.
+func WithMaxFileSize(size int64) FileHandlerOption {
+	return func(h *FileHandler) {
+		if size > 0 {
+			h.maxFileSize = size
+		}
 	}
 }
 
@@ -106,24 +125,24 @@ func (h *FileHandler) Upload(c echo.Context) error {
 	}
 
 	// Limit request body size
-	c.Request().Body = http.MaxBytesReader(c.Response(), c.Request().Body, maxUploadSize)
+	c.Request().Body = http.MaxBytesReader(c.Response(), c.Request().Body, h.maxFileSize)
 
 	file, err := c.FormFile("file")
 	if err != nil {
 		if strings.Contains(err.Error(), "http: request body too large") {
 			return httpserver.RespondErrorWithCode(
 				c, http.StatusRequestEntityTooLarge, "FILE_TOO_LARGE",
-				fmt.Sprintf("file size exceeds %d MB limit", maxUploadSizeMB))
+				fmt.Sprintf("file size exceeds %d MB limit", h.maxFileSize/bytesPerMB))
 		}
 		return httpserver.RespondErrorWithCode(
 			c, http.StatusBadRequest, "INVALID_FILE", "file is required")
 	}
 
 	// Validate file size
-	if file.Size > maxUploadSize {
+	if file.Size > h.maxFileSize {
 		return httpserver.RespondErrorWithCode(
 			c, http.StatusRequestEntityTooLarge, "FILE_TOO_LARGE",
-			fmt.Sprintf("file size exceeds %d MB limit", maxUploadSizeMB))
+			fmt.Sprintf("file size exceeds %d MB limit", h.maxFileSize/bytesPerMB))
 	}
 
 	// Detect MIME type

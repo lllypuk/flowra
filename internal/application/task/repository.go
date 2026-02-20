@@ -65,15 +65,24 @@ type Filters struct {
 
 // ReadModel represents denormalizovannoe view Task for zaprosov
 type ReadModel struct {
-	ID         uuid.UUID
-	ChatID     uuid.UUID
-	Title      string
-	EntityType taskdomain.EntityType
-	Status     taskdomain.Status
-	Priority   taskdomain.Priority
-	AssignedTo *uuid.UUID
-	DueDate    *time.Time
-	CreatedBy  uuid.UUID
-	CreatedAt  time.Time
-	Version    int
+	ID          uuid.UUID
+	ChatID      uuid.UUID
+	Title       string
+	EntityType  taskdomain.EntityType
+	Status      taskdomain.Status
+	Priority    taskdomain.Priority
+	AssignedTo  *uuid.UUID
+	DueDate     *time.Time
+	CreatedBy   uuid.UUID
+	CreatedAt   time.Time
+	Version     int
+	Attachments []AttachmentReadModel
+}
+
+// AttachmentReadModel represents an attachment in the task read model.
+type AttachmentReadModel struct {
+	FileID   uuid.UUID
+	FileName string
+	FileSize int64
+	MimeType string
 }

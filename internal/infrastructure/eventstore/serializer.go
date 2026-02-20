@@ -102,6 +102,8 @@ func (s *EventSerializer) SerializeMany(events []event.DomainEvent) ([]*EventDoc
 }
 
 // createEventByType creates empty event instance by event type.
+//
+//nolint:funlen // switch-case registry grows with event types
 func createEventByType(eventType string) (event.DomainEvent, error) {
 	switch eventType {
 	// Chat events
@@ -152,6 +154,10 @@ func createEventByType(eventType string) (event.DomainEvent, error) {
 		return &taskdomain.DueDateChanged{}, nil
 	case taskdomain.EventTypeCustomFieldSet:
 		return &taskdomain.CustomFieldSet{}, nil
+	case taskdomain.EventTypeAttachmentAdded:
+		return &taskdomain.AttachmentAdded{}, nil
+	case taskdomain.EventTypeAttachmentRemoved:
+		return &taskdomain.AttachmentRemoved{}, nil
 	default:
 		return nil, fmt.Errorf("unknown event type: %s", eventType)
 	}

@@ -201,7 +201,7 @@
                         <button
                             class="secondary outline"
                             hx-delete="/api/v1/workspaces/{{.Data.Workspace.ID}}"
-                            hx-confirm="Are you sure you want to delete '{{.Data.Workspace.Name}}'? This action cannot be undone. Type the workspace name to confirm."
+                            hx-confirm="Are you sure you want to delete '{{.Data.Workspace.Name}}'? This action cannot be undone and will permanently delete all chats, messages, and tasks."
                             hx-on::after-request="if(event.detail.successful) window.location.href='/workspaces'"
                         >
                             Delete Workspace

@@ -121,6 +121,12 @@ type TaskService interface {
 
 	// DeleteTask deletes a task.
 	DeleteTask(ctx context.Context, taskID uuid.UUID, deletedBy uuid.UUID) error
+
+	// AddAttachment adds an attachment to a task.
+	AddAttachment(ctx context.Context, cmd taskapp.AddAttachmentCommand) (taskapp.TaskResult, error)
+
+	// RemoveAttachment removes an attachment from a task.
+	RemoveAttachment(ctx context.Context, cmd taskapp.RemoveAttachmentCommand) (taskapp.TaskResult, error)
 }
 
 // TaskHandler handles task-related HTTP requests.
@@ -536,7 +542,85 @@ func (h *TaskHandler) Delete(c echo.Context) error {
 	return httpserver.RespondNoContent(c)
 }
 
-// Helper functions
+// AddAttachment handles POST /api/v1/workspaces/:workspace_id/tasks/:task_id/attachments.
+func (h *TaskHandler) AddAttachment(c echo.Context) error {
+	userID := middleware.GetUserID(c)
+	if userID.IsZero() {
+		return httpserver.RespondErrorWithCode(c, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
+	}
+
+	taskID, parseErr := uuid.ParseUUID(c.Param("task_id"))
+	if parseErr != nil {
+		return httpserver.RespondErrorWithCode(
+			c, http.StatusBadRequest, "INVALID_TASK_ID", "invalid task ID format")
+	}
+
+	var req struct {
+		FileID   string `json:"file_id" form:"file_id"`
+		FileName string `json:"file_name" form:"file_name"`
+		FileSize int64  `json:"file_size" form:"file_size"`
+		MimeType string `json:"mime_type" form:"mime_type"`
+	}
+	if err := c.Bind(&req); err != nil {
+		return httpserver.RespondErrorWithCode(
+			c, http.StatusBadRequest, "INVALID_REQUEST", "invalid request body")
+	}
+
+	fileID, fileParseErr := uuid.ParseUUID(req.FileID)
+	if fileParseErr != nil {
+		return httpserver.RespondErrorWithCode(
+			c, http.StatusBadRequest, "INVALID_FILE_ID", "invalid file ID format")
+	}
+
+	cmd := taskapp.AddAttachmentCommand{
+		TaskID:   taskID,
+		FileID:   fileID,
+		FileName: req.FileName,
+		FileSize: req.FileSize,
+		MimeType: req.MimeType,
+		AddedBy:  userID,
+	}
+
+	_, err := h.taskService.AddAttachment(c.Request().Context(), cmd)
+	if err != nil {
+		return httpserver.RespondError(c, err)
+	}
+
+	return httpserver.RespondOK(c, map[string]string{"status": "attached"})
+}
+
+// RemoveAttachment handles DELETE /api/v1/workspaces/:workspace_id/tasks/:task_id/attachments/:file_id.
+func (h *TaskHandler) RemoveAttachment(c echo.Context) error {
+	userID := middleware.GetUserID(c)
+	if userID.IsZero() {
+		return httpserver.RespondErrorWithCode(c, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
+	}
+
+	taskID, parseErr := uuid.ParseUUID(c.Param("task_id"))
+	if parseErr != nil {
+		return httpserver.RespondErrorWithCode(
+			c, http.StatusBadRequest, "INVALID_TASK_ID", "invalid task ID format")
+	}
+
+	fileID, fileParseErr := uuid.ParseUUID(c.Param("file_id"))
+	if fileParseErr != nil {
+		return httpserver.RespondErrorWithCode(
+			c, http.StatusBadRequest, "INVALID_FILE_ID", "invalid file ID format")
+	}
+
+	cmd := taskapp.RemoveAttachmentCommand{
+		TaskID:    taskID,
+		FileID:    fileID,
+		RemovedBy: userID,
+	}
+
+	_, err := h.taskService.RemoveAttachment(c.Request().Context(), cmd)
+	if err != nil {
+		return httpserver.RespondError(c, err)
+	}
+
+	return httpserver.RespondOK(c, map[string]string{"status": "removed"})
+}
 
 func validateCreateTaskRequest(req *CreateTaskRequest) error {
 	if req.Title == "" {
@@ -923,4 +1007,30 @@ func (m *MockTaskService) DeleteTask(_ context.Context, taskID uuid.UUID, _ uuid
 
 	delete(m.tasks, taskID)
 	return nil
+}
+
+// AddAttachment adds an attachment in the mock service.
+func (m *MockTaskService) AddAttachment(
+	_ context.Context,
+	cmd taskapp.AddAttachmentCommand,
+) (taskapp.TaskResult, error) {
+	t, ok := m.tasks[cmd.TaskID]
+	if !ok {
+		return taskapp.TaskResult{}, taskapp.ErrTaskNotFound
+	}
+	t.Version++
+	return taskapp.NewSuccessResult(cmd.TaskID, t.Version, nil), nil
+}
+
+// RemoveAttachment removes an attachment in the mock service.
+func (m *MockTaskService) RemoveAttachment(
+	_ context.Context,
+	cmd taskapp.RemoveAttachmentCommand,
+) (taskapp.TaskResult, error) {
+	t, ok := m.tasks[cmd.TaskID]
+	if !ok {
+		return taskapp.TaskResult{}, taskapp.ErrTaskNotFound
+	}
+	t.Version++
+	return taskapp.NewSuccessResult(cmd.TaskID, t.Version, nil), nil
 }
