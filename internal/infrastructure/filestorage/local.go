@@ -2,10 +2,12 @@
 package filestorage
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
@@ -33,10 +35,15 @@ func NewLocalStorage(baseDir string) (*LocalStorage, error) {
 // Save stores a file and returns the generated file ID.
 func (s *LocalStorage) Save(reader io.Reader, originalName string) (uuid.UUID, error) {
 	fileID := uuid.NewUUID()
-	ext := filepath.Ext(originalName)
+	ext := filepath.Ext(filepath.Base(originalName))
 	storedName := fileID.String() + ext
 
 	filePath := filepath.Join(s.baseDir, storedName)
+	cleanPath := filepath.Clean(filePath)
+	if !strings.HasPrefix(cleanPath, s.baseDir+string(filepath.Separator)) {
+		return "", errors.New("invalid file name: resolved path is outside base directory")
+	}
+	filePath = cleanPath
 
 	f, err := os.Create(filePath)
 	if err != nil {
@@ -53,23 +60,37 @@ func (s *LocalStorage) Save(reader io.Reader, originalName string) (uuid.UUID, e
 }
 
 // FilePath returns the full path to a stored file.
-func (s *LocalStorage) FilePath(fileID uuid.UUID, fileName string) string {
+// Returns an error if the resolved path escapes the base directory.
+func (s *LocalStorage) FilePath(fileID uuid.UUID, fileName string) (string, error) {
 	ext := filepath.Ext(fileName)
-	return filepath.Join(s.baseDir, fileID.String()+ext)
+	fullPath := filepath.Join(s.baseDir, fileID.String()+ext)
+	cleanPath := filepath.Clean(fullPath)
+
+	if !strings.HasPrefix(cleanPath, s.baseDir+string(filepath.Separator)) && cleanPath != s.baseDir {
+		return "", errors.New("path traversal detected: resolved path is outside base directory")
+	}
+
+	return cleanPath, nil
 }
 
 // Delete removes a stored file.
 func (s *LocalStorage) Delete(fileID uuid.UUID, fileName string) error {
-	path := s.FilePath(fileID, fileName)
-	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("failed to delete file: %w", err)
+	path, err := s.FilePath(fileID, fileName)
+	if err != nil {
+		return err
+	}
+	if removeErr := os.Remove(path); removeErr != nil && !os.IsNotExist(removeErr) {
+		return fmt.Errorf("failed to delete file: %w", removeErr)
 	}
 	return nil
 }
 
 // Exists checks if a file exists in storage.
 func (s *LocalStorage) Exists(fileID uuid.UUID, fileName string) bool {
-	path := s.FilePath(fileID, fileName)
-	_, err := os.Stat(path)
+	path, err := s.FilePath(fileID, fileName)
+	if err != nil {
+		return false
+	}
+	_, err = os.Stat(path)
 	return err == nil
 }

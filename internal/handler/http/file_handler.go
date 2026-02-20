@@ -133,8 +133,8 @@ func (h *FileHandler) Download(c echo.Context) error {
 			c, http.StatusBadRequest, "INVALID_FILE_ID", "invalid file ID format")
 	}
 
-	fileName := c.Param("file_name")
-	if fileName == "" {
+	fileName := filepath.Base(c.Param("file_name"))
+	if fileName == "" || fileName == "." {
 		return httpserver.RespondErrorWithCode(
 			c, http.StatusBadRequest, "INVALID_FILE_NAME", "file name is required")
 	}
@@ -145,7 +145,11 @@ func (h *FileHandler) Download(c echo.Context) error {
 			c, http.StatusNotFound, "FILE_NOT_FOUND", "file not found")
 	}
 
-	filePath := h.storage.FilePath(fileID, fileName)
+	filePath, pathErr := h.storage.FilePath(fileID, fileName)
+	if pathErr != nil {
+		return httpserver.RespondErrorWithCode(
+			c, http.StatusBadRequest, "INVALID_PATH", "invalid file path")
+	}
 
 	// Detect content type
 	contentType := mime.TypeByExtension(filepath.Ext(fileName))

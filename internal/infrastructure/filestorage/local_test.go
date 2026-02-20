@@ -67,7 +67,8 @@ func TestLocalStorage_Save(t *testing.T) {
 		fileID, err := storage.Save(strings.NewReader(content), "data.txt")
 		require.NoError(t, err)
 
-		path := storage.FilePath(fileID, "data.txt")
+		path, pathErr := storage.FilePath(fileID, "data.txt")
+		require.NoError(t, pathErr)
 		data, readErr := os.ReadFile(path)
 		require.NoError(t, readErr)
 		assert.Equal(t, content, string(data))
@@ -79,8 +80,18 @@ func TestLocalStorage_Save(t *testing.T) {
 		fileID, err := storage.Save(strings.NewReader("img"), "photo.png")
 		require.NoError(t, err)
 
-		path := storage.FilePath(fileID, "photo.png")
+		path, pathErr := storage.FilePath(fileID, "photo.png")
+		require.NoError(t, pathErr)
 		assert.Equal(t, ".png", filepath.Ext(path))
+	})
+
+	t.Run("strips directory components from original name", func(t *testing.T) {
+		storage := newTestStorage(t)
+
+		fileID, err := storage.Save(strings.NewReader("data"), "../../etc/passwd.txt")
+		require.NoError(t, err)
+
+		assert.True(t, storage.Exists(fileID, "passwd.txt"))
 	})
 
 	t.Run("generates unique IDs", func(t *testing.T) {
@@ -108,7 +119,8 @@ func TestLocalStorage_FilePath(t *testing.T) {
 		storage := newTestStorage(t)
 		fileID := uuid.UUID("test-id-123")
 
-		path := storage.FilePath(fileID, "report.pdf")
+		path, err := storage.FilePath(fileID, "report.pdf")
+		require.NoError(t, err)
 		assert.Contains(t, path, "test-id-123.pdf")
 	})
 
@@ -116,8 +128,54 @@ func TestLocalStorage_FilePath(t *testing.T) {
 		storage := newTestStorage(t)
 		fileID := uuid.UUID("abc")
 
-		path := storage.FilePath(fileID, "image.jpg")
+		path, err := storage.FilePath(fileID, "image.jpg")
+		require.NoError(t, err)
 		assert.True(t, strings.HasSuffix(path, "abc.jpg"))
+	})
+}
+
+func TestFilePath_PathTraversal(t *testing.T) {
+	t.Run("rejects traversal via malicious file name extension", func(t *testing.T) {
+		storage := newTestStorage(t)
+		fileID := uuid.UUID("../../etc/passwd")
+
+		_, err := storage.FilePath(fileID, "x.jpg")
+		assert.Error(t, err)
+	})
+}
+
+func TestFilePath_MaliciousFileName(t *testing.T) {
+	t.Run("rejects traversal via malicious fileID", func(t *testing.T) {
+		storage := newTestStorage(t)
+
+		// filepath.Ext only takes the last extension, so "../../../etc/passwd" has no ext.
+		// Test that a traversal attempt in fileID is caught.
+		_, err := storage.FilePath(uuid.UUID("../../../etc/passwd"), "x")
+		assert.Error(t, err)
+	})
+}
+
+func TestSave_MaliciousFileName(t *testing.T) {
+	t.Run("strips directory components and saves safely", func(t *testing.T) {
+		storage := newTestStorage(t)
+
+		fileID, err := storage.Save(strings.NewReader("content"), "../../etc/shadow.txt")
+		require.NoError(t, err)
+
+		// File was saved with the base name only
+		assert.True(t, storage.Exists(fileID, "shadow.txt"))
+	})
+}
+
+func TestFilePath_NormalCase(t *testing.T) {
+	t.Run("normal file path works correctly", func(t *testing.T) {
+		storage := newTestStorage(t)
+		fileID, err := storage.Save(strings.NewReader("ok"), "document.pdf")
+		require.NoError(t, err)
+
+		path, pathErr := storage.FilePath(fileID, "document.pdf")
+		require.NoError(t, pathErr)
+		assert.True(t, strings.HasSuffix(path, ".pdf"))
 	})
 }
 
