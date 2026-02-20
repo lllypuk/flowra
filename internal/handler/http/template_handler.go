@@ -297,7 +297,7 @@ func (h *TemplateHandler) SetUserLookup(lookup UserProfileLookup) {
 func (h *TemplateHandler) render(c echo.Context, templateName string, title string, data any) error {
 	pageData := PageData{
 		Title: title,
-		User:  h.getUserView(c),
+		User:  getUserView(c),
 		Flash: h.getFlash(c),
 		Data:  data,
 	}
@@ -323,7 +323,7 @@ func (h *TemplateHandler) RenderPartial(c echo.Context, templateName string, dat
 }
 
 // getUserView extracts user information from the context for templates.
-func (h *TemplateHandler) getUserView(c echo.Context) *UserView {
+func getUserView(c echo.Context) *UserView {
 	userID := middleware.GetUserID(c)
 	if userID.IsZero() {
 		return nil
@@ -497,7 +497,7 @@ func (h *TemplateHandler) renderCallback(c echo.Context, redirectURL, errorMsg s
 func (h *TemplateHandler) LogoutPage(c echo.Context) error {
 	data := map[string]any{
 		"Title": "Sign Out",
-		"User":  h.getUserView(c),
+		"User":  getUserView(c),
 	}
 	return h.renderer.Render(c.Response().Writer, "auth/logout.html", data, c)
 }
@@ -524,7 +524,7 @@ func (h *TemplateHandler) LogoutHandler(c echo.Context) error {
 func (h *TemplateHandler) NotFound(c echo.Context) error {
 	return c.Render(http.StatusNotFound, "layout/base.html", PageData{
 		Title: "Page Not Found",
-		User:  h.getUserView(c),
+		User:  getUserView(c),
 		Data: map[string]string{
 			"message": "The page you're looking for doesn't exist.",
 		},
@@ -536,7 +536,7 @@ func (h *TemplateHandler) ServerError(c echo.Context, err error) error {
 	h.logger.Error("server error", slog.String("error", err.Error()))
 	return c.Render(http.StatusInternalServerError, "layout/base.html", PageData{
 		Title: "Server Error",
-		User:  h.getUserView(c),
+		User:  getUserView(c),
 		Data: map[string]string{
 			"message": "Something went wrong. Please try again later.",
 		},
@@ -545,7 +545,7 @@ func (h *TemplateHandler) ServerError(c echo.Context, err error) error {
 
 // UserSettings renders the user settings page.
 func (h *TemplateHandler) UserSettings(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.Redirect(http.StatusFound, "/login")
 	}
@@ -567,7 +567,7 @@ func (h *TemplateHandler) UserSettings(c echo.Context) error {
 
 // UserProfile renders the user profile page for viewing another user.
 func (h *TemplateHandler) UserProfile(c echo.Context) error {
-	currentUser := h.getUserView(c)
+	currentUser := getUserView(c)
 	if currentUser == nil {
 		return c.Redirect(http.StatusFound, "/login")
 	}
@@ -657,7 +657,7 @@ func (h *TemplateHandler) WorkspaceList(c echo.Context) error {
 
 // WorkspaceListPartial returns the workspace list as HTML partial for HTMX.
 func (h *TemplateHandler) WorkspaceListPartial(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
@@ -700,7 +700,7 @@ func (h *TemplateHandler) WorkspaceListPartial(c echo.Context) error {
 
 // WorkspaceView renders a single workspace page.
 func (h *TemplateHandler) WorkspaceView(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.Redirect(http.StatusFound, "/login")
 	}
@@ -755,7 +755,7 @@ func (h *TemplateHandler) WorkspaceCreateForm(c echo.Context) error {
 
 // WorkspaceCreate handles POST /partials/workspace/create and returns HTML partial.
 func (h *TemplateHandler) WorkspaceCreate(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		//nolint:canonicalheader // HTMX uses non-canonical header names
 		c.Response().Header().Set("HX-Retarget", "#modal-container")
@@ -807,7 +807,7 @@ func (h *TemplateHandler) WorkspaceCreate(c echo.Context) error {
 
 // WorkspaceMembers renders the workspace members page.
 func (h *TemplateHandler) WorkspaceMembers(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.Redirect(http.StatusFound, "/login")
 	}
@@ -856,7 +856,7 @@ func (h *TemplateHandler) WorkspaceMembers(c echo.Context) error {
 
 // WorkspaceMembersPartial returns the workspace members list as HTML partial.
 func (h *TemplateHandler) WorkspaceMembersPartial(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
@@ -917,7 +917,7 @@ func (h *TemplateHandler) WorkspaceMembersPartial(c echo.Context) error {
 // WorkspaceMembersOptionsPartial returns workspace members as <option> elements for select dropdowns.
 // This is used by the chat creation form to populate the participants select.
 func (h *TemplateHandler) WorkspaceMembersOptionsPartial(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
@@ -971,7 +971,7 @@ func (h *TemplateHandler) WorkspaceMembersOptionsPartial(c echo.Context) error {
 
 // UpdateMemberRolePartial handles role update for HTMX and returns the updated member row.
 func (h *TemplateHandler) UpdateMemberRolePartial(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
@@ -1050,7 +1050,7 @@ func (h *TemplateHandler) UpdateMemberRolePartial(c echo.Context) error {
 
 // WorkspaceSettings renders the workspace settings page.
 func (h *TemplateHandler) WorkspaceSettings(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.Redirect(http.StatusFound, "/login")
 	}
@@ -1132,7 +1132,7 @@ func (h *TemplateHandler) UserSearchPartial(c echo.Context) error {
 
 // WorkspaceInvite handles inviting a user to workspace via HTMX.
 func (h *TemplateHandler) WorkspaceInvite(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
@@ -1192,7 +1192,7 @@ func (h *TemplateHandler) WorkspaceInvite(c echo.Context) error {
 
 // WorkspaceTransferForm returns the transfer ownership form partial.
 func (h *TemplateHandler) WorkspaceTransferForm(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
@@ -1240,7 +1240,7 @@ func (h *TemplateHandler) WorkspaceTransferForm(c echo.Context) error {
 
 // WorkspaceTransfer handles transferring workspace ownership.
 func (h *TemplateHandler) WorkspaceTransfer(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}

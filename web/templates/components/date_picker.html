@@ -3,14 +3,14 @@
     <input type="date"
            name="{{.Name}}"
            value="{{if .Value}}{{.Value | formatDateInput}}{{end}}"
-           hx-put="{{.HxPut}}"
+           {{if .HxPost}}hx-post="{{.HxPost}}"{{else}}hx-put="{{.HxPut}}"{{end}}
            hx-trigger="change"
            hx-swap="none"
            class="date-input">
     {{if and .AllowEmpty .Value}}
     <button type="button"
             class="clear-date"
-            hx-put="{{.HxPut}}"
+            {{if .HxPost}}hx-post="{{.HxPost}}"{{else}}hx-put="{{.HxPut}}"{{end}}
             hx-vals='{"{{.Name}}": ""}'
             hx-swap="none"
             title="Clear date">

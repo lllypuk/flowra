@@ -14,7 +14,6 @@ import (
 	taskapp "github.com/lllypuk/flowra/internal/application/task"
 	"github.com/lllypuk/flowra/internal/domain/task"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
-	"github.com/lllypuk/flowra/internal/middleware"
 )
 
 // Board template handler constants.
@@ -204,7 +203,7 @@ func (h *BoardTemplateHandler) BoardIndex(c echo.Context) error {
 		"workspace_id_param", c.Param("workspace_id"),
 	)
 
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		h.logger.Debug("BoardIndex: user not found, redirecting to login")
 		return c.Redirect(http.StatusFound, "/login")
@@ -290,7 +289,7 @@ func (h *BoardTemplateHandler) BoardIndex(c echo.Context) error {
 
 // BoardPartial returns all columns with tasks as HTML partial for HTMX.
 func (h *BoardTemplateHandler) BoardPartial(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
@@ -315,7 +314,7 @@ func (h *BoardTemplateHandler) BoardPartial(c echo.Context) error {
 
 // BoardColumnMore returns additional tasks for a column (pagination).
 func (h *BoardTemplateHandler) BoardColumnMore(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
@@ -376,7 +375,7 @@ func (h *BoardTemplateHandler) BoardColumnMore(c echo.Context) error {
 
 // TaskCardPartial returns a single task card as HTML partial.
 func (h *BoardTemplateHandler) TaskCardPartial(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
@@ -608,45 +607,6 @@ func (h *BoardTemplateHandler) parseStatusKey(key string) *task.Status {
 	}
 }
 
-// getUserView extracts user information from the context for templates.
-func (h *BoardTemplateHandler) getUserView(c echo.Context) *UserView {
-	userID := middleware.GetUserID(c)
-	if userID.IsZero() {
-		return nil
-	}
-
-	view := &UserView{
-		ID: userID.String(),
-	}
-
-	// Try to get user details from the "user" context map
-	if user := c.Get("user"); user != nil {
-		if userMap, ok := user.(map[string]any); ok {
-			view.Email = getString(userMap, "email")
-			view.Username = getString(userMap, "username")
-			view.DisplayName = getString(userMap, "display_name")
-			view.AvatarURL = getString(userMap, "avatar_url")
-		}
-	}
-
-	// Fall back to individual middleware context keys
-	if view.Username == "" {
-		view.Username = middleware.GetUsername(c)
-	}
-	if view.Email == "" {
-		view.Email = middleware.GetEmail(c)
-	}
-	if view.DisplayName == "" {
-		if view.Username != "" {
-			view.DisplayName = view.Username
-		} else if view.Email != "" {
-			view.DisplayName = view.Email
-		}
-	}
-
-	return view
-}
-
 // render renders a full page with the base layout.
 func (h *BoardTemplateHandler) render(c echo.Context, templateName string, title string, data any) error {
 	h.logger.Debug("render: starting",
@@ -661,7 +621,7 @@ func (h *BoardTemplateHandler) render(c echo.Context, templateName string, title
 
 	pageData := PageData{
 		Title:           title,
-		User:            h.getUserView(c),
+		User:            getUserView(c),
 		Data:            data,
 		ContentTemplate: "board-content",
 		IncludeBoardCSS: true,
@@ -706,7 +666,7 @@ func (h *BoardTemplateHandler) renderNotFound(c echo.Context) error {
 
 // TaskCreateForm returns the task creation form partial.
 func (h *BoardTemplateHandler) TaskCreateForm(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
@@ -748,7 +708,7 @@ type taskCreateFormInput struct {
 
 // TaskCreate handles task creation from the form.
 func (h *BoardTemplateHandler) TaskCreate(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}

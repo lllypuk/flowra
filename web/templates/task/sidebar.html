@@ -33,7 +33,7 @@
         <div class="field-row">
             <div class="field">
                 <label>Status</label>
-                <select hx-put="/api/v1/tasks/{{.Task.ID}}/status"
+                <select hx-post="/api/v1/workspaces/{{.Task.WorkspaceID}}/tasks/{{.Task.ID}}/actions/status"
                         hx-trigger="change"
                         hx-swap="none"
                         hx-indicator="#status-save-indicator"
@@ -51,7 +51,7 @@
 
             <div class="field">
                 <label>Priority</label>
-                <select hx-put="/api/v1/tasks/{{.Task.ID}}/priority"
+                <select hx-post="/api/v1/workspaces/{{.Task.WorkspaceID}}/tasks/{{.Task.ID}}/actions/priority"
                         hx-trigger="change"
                         hx-swap="none"
                         hx-indicator="#priority-save-indicator"
@@ -75,7 +75,7 @@
                 "Name" "assignee_id"
                 "Selected" .Task.AssigneeID
                 "Users" .Participants
-                "HxPut" (printf "/api/v1/tasks/%s/assignee" .Task.ID)
+                "HxPost" (printf "/api/v1/workspaces/%s/tasks/%s/actions/assignee" .Task.WorkspaceID .Task.ID)
                 "AllowEmpty" true
                 "EmptyLabel" "Unassigned"
             )}}
@@ -87,7 +87,7 @@
             {{template "components/date_picker" (dict
                 "Name" "due_date"
                 "Value" .Task.DueDate
-                "HxPut" (printf "/api/v1/tasks/%s/due-date" .Task.ID)
+                "HxPost" (printf "/api/v1/workspaces/%s/tasks/%s/actions/due-date" .Task.WorkspaceID .Task.ID)
                 "AllowEmpty" true
             )}}
         </div>
@@ -109,11 +109,11 @@
         <!-- Quick Date Buttons -->
         <div class="quick-dates">
             <button type="button" class="btn-quick-date small outline"
-                    onclick="setQuickDate('{{.Task.ID}}', 0)">Today</button>
+                    onclick="setQuickDate('{{.Task.ID}}', '{{.Task.WorkspaceID}}', 0)">Today</button>
             <button type="button" class="btn-quick-date small outline"
-                    onclick="setQuickDate('{{.Task.ID}}', 1)">Tomorrow</button>
+                    onclick="setQuickDate('{{.Task.ID}}', '{{.Task.WorkspaceID}}', 1)">Tomorrow</button>
             <button type="button" class="btn-quick-date small outline"
-                    onclick="setQuickDate('{{.Task.ID}}', 7)">Next Week</button>
+                    onclick="setQuickDate('{{.Task.ID}}', '{{.Task.WorkspaceID}}', 7)">Next Week</button>
         </div>
 
         <hr>
@@ -177,19 +177,6 @@
             </div>
         </div>
 
-        <hr>
-
-        <!-- Activity Timeline -->
-        <div class="field">
-            <label>Activity</label>
-            <div id="task-activity-{{.Task.ID}}"
-                 class="activity-timeline"
-                 hx-get="/partials/tasks/{{.Task.ID}}/activity"
-                 hx-trigger="load"
-                 hx-swap="innerHTML">
-                {{template "components/loading" (dict "ID" "activity-loading")}}
-            </div>
-        </div>
     </div>
 
     <footer class="sidebar-footer">
@@ -227,6 +214,18 @@ document.body.addEventListener('htmx:responseError', function(evt) {
         }
     }
 });
+
+function setQuickDate(taskId, workspaceId, daysFromNow) {
+    var date = new Date();
+    date.setDate(date.getDate() + daysFromNow);
+    var dateStr = date.toISOString().split('T')[0];
+
+    var url = '/api/v1/workspaces/' + workspaceId + '/tasks/' + taskId + '/actions/due-date';
+    htmx.ajax('POST', url, {
+        values: { due_date: dateStr },
+        swap: 'none'
+    });
+}
 
 // Task file upload
 function handleTaskFileUpload(input, taskId) {
@@ -412,11 +411,6 @@ function removeTaskAttachment(fileId, fileName) {
 .htmx-request .save-indicator,
 .htmx-request.save-indicator {
     display: inline;
-}
-
-.activity-timeline {
-    max-height: 300px;
-    overflow-y: auto;
 }
 
 /* Task Attachments */

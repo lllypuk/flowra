@@ -13,7 +13,6 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/event"
 	"github.com/lllypuk/flowra/internal/domain/task"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
-	"github.com/lllypuk/flowra/internal/middleware"
 )
 
 // Task detail template handler constants.
@@ -167,7 +166,7 @@ func (h *TaskDetailTemplateHandler) SetupTaskDetailRoutes(e *echo.Echo) {
 
 // TaskDetailsByChatID returns task details for a chat (resolves task by chat_id).
 func (h *TaskDetailTemplateHandler) TaskDetailsByChatID(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
@@ -244,7 +243,7 @@ func isTaskChatType(chatType string) bool {
 
 // TaskSidebarPartial returns the full task sidebar as HTML partial.
 func (h *TaskDetailTemplateHandler) TaskSidebarPartial(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
@@ -289,7 +288,7 @@ func (h *TaskDetailTemplateHandler) TaskSidebarPartial(c echo.Context) error {
 
 // TaskActivityPartial returns the activity timeline for a task.
 func (h *TaskDetailTemplateHandler) TaskActivityPartial(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
@@ -329,7 +328,7 @@ func (h *TaskDetailTemplateHandler) TaskActivityPartial(c echo.Context) error {
 
 // TaskEditTitleForm returns the inline title edit form.
 func (h *TaskDetailTemplateHandler) TaskEditTitleForm(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
@@ -357,7 +356,7 @@ func (h *TaskDetailTemplateHandler) TaskEditTitleForm(c echo.Context) error {
 
 // TaskTitleDisplay returns the title display view (after canceling edit).
 func (h *TaskDetailTemplateHandler) TaskTitleDisplay(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
@@ -385,7 +384,7 @@ func (h *TaskDetailTemplateHandler) TaskTitleDisplay(c echo.Context) error {
 
 // TaskEditDescriptionForm returns the inline description edit form.
 func (h *TaskDetailTemplateHandler) TaskEditDescriptionForm(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
@@ -413,7 +412,7 @@ func (h *TaskDetailTemplateHandler) TaskEditDescriptionForm(c echo.Context) erro
 
 // TaskDescriptionDisplay returns the description display view (after canceling edit).
 func (h *TaskDetailTemplateHandler) TaskDescriptionDisplay(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
@@ -441,7 +440,7 @@ func (h *TaskDetailTemplateHandler) TaskDescriptionDisplay(c echo.Context) error
 
 // TaskQuickEditPopover returns the quick edit popover for a task.
 func (h *TaskDetailTemplateHandler) TaskQuickEditPopover(c echo.Context) error {
-	user := h.getUserView(c)
+	user := getUserView(c)
 	if user == nil {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
@@ -672,43 +671,6 @@ func getPriorityOptions() []SelectOption {
 		{Value: string(task.PriorityHigh), Label: "High"},
 		{Value: string(task.PriorityCritical), Label: "Critical"},
 	}
-}
-
-// getUserView extracts user information from the context for templates.
-func (h *TaskDetailTemplateHandler) getUserView(c echo.Context) *UserView {
-	userID := middleware.GetUserID(c)
-	if userID.IsZero() {
-		return nil
-	}
-
-	view := &UserView{
-		ID: userID.String(),
-	}
-
-	if user := c.Get("user"); user != nil {
-		if userMap, ok := user.(map[string]any); ok {
-			view.Email = getString(userMap, "email")
-			view.Username = getString(userMap, "username")
-			view.DisplayName = getString(userMap, "display_name")
-			view.AvatarURL = getString(userMap, "avatar_url")
-		}
-	}
-
-	if view.Username == "" {
-		view.Username = middleware.GetUsername(c)
-	}
-	if view.Email == "" {
-		view.Email = middleware.GetEmail(c)
-	}
-	if view.DisplayName == "" {
-		if view.Username != "" {
-			view.DisplayName = view.Username
-		} else if view.Email != "" {
-			view.DisplayName = view.Email
-		}
-	}
-
-	return view
 }
 
 // renderPartial renders a template without the base layout.

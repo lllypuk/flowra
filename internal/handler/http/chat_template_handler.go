@@ -922,7 +922,11 @@ func getAssigneeID(assignee *uuid.UUID) string {
 	return assignee.String()
 }
 
-func (h *ChatTemplateHandler) loadParticipants(ctx context.Context, chatID uuid.UUID, userID ...uuid.UUID) []ParticipantViewData {
+func (h *ChatTemplateHandler) loadParticipants(
+	ctx context.Context,
+	chatID uuid.UUID,
+	userID ...uuid.UUID,
+) []ParticipantViewData {
 	if h.chatService == nil {
 		return []ParticipantViewData{}
 	}
@@ -933,7 +937,12 @@ func (h *ChatTemplateHandler) loadParticipants(ctx context.Context, chatID uuid.
 	}
 	result, err := h.chatService.GetChat(ctx, query)
 	if err != nil || result == nil || result.Chat == nil {
-		h.logger.Error("failed to load participants", slog.String("chat_id", chatID.String()), slog.Any("error", err))
+		h.logger.ErrorContext(
+			ctx,
+			"failed to load participants",
+			slog.String("chat_id", chatID.String()),
+			slog.Any("error", err),
+		)
 		return []ParticipantViewData{}
 	}
 

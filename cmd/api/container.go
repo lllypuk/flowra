@@ -144,6 +144,7 @@ type Container struct {
 	MessageHandler      *httphandler.MessageHandler
 	FileHandler         *httphandler.FileHandler
 	TaskHandler         *httphandler.TaskHandler
+	TaskActionHandler   *httphandler.TaskActionHandler
 	NotificationHandler *httphandler.NotificationHandler
 	UserHandler         *httphandler.UserHandler
 	WSHandler           *wshandler.Handler
@@ -875,37 +876,23 @@ func (c *Container) setupHTTPHandlers() {
 	c.setupTaskDetailTemplateHandler()
 
 	// === 13. Message Service and Handler ===
-	c.MessageService = service.NewMessageService(
-		service.WithSendMessageUseCase(c.SendMessageUC),
-		service.WithListMessagesUseCase(c.ListMessagesUC),
-		service.WithEditMessageUseCase(c.EditMessageUC),
-		service.WithDeleteMessageUseCase(c.DeleteMessageUC),
-		service.WithGetMessageUseCase(c.GetMessageUC),
-		service.WithAddReactionUseCase(c.AddReactionUC),
-		service.WithRemoveReactionUseCase(c.RemoveReactionUC),
-		service.WithAddAttachmentUseCase(c.AddAttachmentUC),
-	)
-	c.MessageHandler = httphandler.NewMessageHandler(c.MessageService)
-	c.Logger.Debug("message service and handler initialized (real)")
-
-	// === File Handler ===
-	fileStorage, fileErr := filestorage.NewLocalStorage("uploads")
-	if fileErr != nil {
-		c.Logger.Warn("failed to initialize file storage", "error", fileErr)
-	} else {
-		c.FileHandler = httphandler.NewFileHandler(fileStorage)
-		c.Logger.Debug("file handler initialized")
-	}
+	c.setupMessageHandler()
 
 	// === 14. Action Service ===
 	c.ActionService = service.NewActionService(c.SendMessageUC, c.UserRepo)
 	c.ChatActionHandler = httphandler.NewChatActionHandler(c.ActionService)
 	c.Logger.Debug("action service and chat action handler initialized")
-	c.Logger.Debug("action service initialized")
 
 	// Initialize TaskHandler with full service
 	c.TaskHandler = httphandler.NewTaskHandler(c.createFullTaskService())
 	c.Logger.Debug("task handler initialized (real)")
+
+	// Initialize TaskActionHandler — routes sidebar changes through chat message system
+	c.TaskActionHandler = httphandler.NewTaskActionHandler(
+		c.createTaskActionService(),
+		c.ActionService,
+	)
+	c.Logger.Debug("task action handler initialized")
 
 	// === 15. User Handler ===
 	c.setupUserHandler()
@@ -1600,9 +1587,38 @@ func (c *Container) setupTaskDetailTemplateHandler() {
 	c.Logger.Debug("task detail template handler initialized")
 }
 
+// setupMessageHandler initializes the message service and handler.
+func (c *Container) setupMessageHandler() {
+	c.MessageService = service.NewMessageService(
+		service.WithSendMessageUseCase(c.SendMessageUC),
+		service.WithListMessagesUseCase(c.ListMessagesUC),
+		service.WithEditMessageUseCase(c.EditMessageUC),
+		service.WithDeleteMessageUseCase(c.DeleteMessageUC),
+		service.WithGetMessageUseCase(c.GetMessageUC),
+		service.WithAddReactionUseCase(c.AddReactionUC),
+		service.WithRemoveReactionUseCase(c.RemoveReactionUC),
+		service.WithAddAttachmentUseCase(c.AddAttachmentUC),
+	)
+	c.MessageHandler = httphandler.NewMessageHandler(c.MessageService)
+
+	fileStorage, fileErr := filestorage.NewLocalStorage("uploads")
+	if fileErr != nil {
+		c.Logger.Warn("failed to initialize file storage", "error", fileErr)
+	} else {
+		c.FileHandler = httphandler.NewFileHandler(fileStorage)
+	}
+	c.Logger.Debug("message service and handler initialized (real)")
+}
+
 // createTaskDetailService creates a service implementing TaskDetailService.
 // Reuses the boardTaskServiceAdapter since both interfaces require the same GetTask method.
 func (c *Container) createTaskDetailService() httphandler.TaskDetailService {
+	return c.createBoardTaskService()
+}
+
+// createTaskActionService creates a service implementing TaskActionTaskService.
+// Reuses boardTaskServiceAdapter since it already provides GetTask by task_id.
+func (c *Container) createTaskActionService() httphandler.TaskActionTaskService {
 	return c.createBoardTaskService()
 }
 
@@ -1941,11 +1957,17 @@ func (a *userServiceAdapter) GetUser(ctx context.Context, query userapp.GetUserQ
 	return a.getUserUC.Execute(ctx, query)
 }
 
-func (a *userServiceAdapter) GetUserByUsername(ctx context.Context, query userapp.GetUserByUsernameQuery) (userapp.Result, error) {
+func (a *userServiceAdapter) GetUserByUsername(
+	ctx context.Context,
+	query userapp.GetUserByUsernameQuery,
+) (userapp.Result, error) {
 	return a.getUserByUsernameUC.Execute(ctx, query)
 }
 
-func (a *userServiceAdapter) UpdateProfile(ctx context.Context, cmd userapp.UpdateProfileCommand) (userapp.Result, error) {
+func (a *userServiceAdapter) UpdateProfile(
+	ctx context.Context,
+	cmd userapp.UpdateProfileCommand,
+) (userapp.Result, error) {
 	return a.updateProfileUC.Execute(ctx, cmd)
 }
 

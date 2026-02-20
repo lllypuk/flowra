@@ -202,6 +202,16 @@ func registerTaskRoutes(r *httpserver.Router, c *Container) {
 		tasks.PUT("/:task_id/due-date", placeholder)
 		tasks.DELETE("/:task_id", placeholder)
 	}
+
+	// Task field changes routed through the chat message system.
+	// These endpoints create system messages in the task's associated chat
+	// instead of updating the task aggregate directly.
+	if c.TaskActionHandler != nil {
+		tasks.POST("/:task_id/actions/status", c.TaskActionHandler.ChangeStatus)
+		tasks.POST("/:task_id/actions/priority", c.TaskActionHandler.ChangePriority)
+		tasks.POST("/:task_id/actions/assignee", c.TaskActionHandler.ChangeAssignee)
+		tasks.POST("/:task_id/actions/due-date", c.TaskActionHandler.SetDueDate)
+	}
 }
 
 // registerNotificationRoutes registers notification-related routes.

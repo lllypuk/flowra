@@ -1,9 +1,17 @@
 {{define "components/user_select"}}
+{{if .HxPost}}
+<select hx-post="{{.HxPost}}"
+        hx-trigger="change"
+        hx-swap="none"
+        name="{{.Name}}"
+        class="user-select">
+{{else}}
 <select hx-put="{{.HxPut}}"
         hx-trigger="change"
         hx-swap="none"
         name="{{.Name}}"
         class="user-select">
+{{end}}
     {{if .AllowEmpty}}
     <option value="" {{if not .Selected}}selected{{end}}>
         {{.EmptyLabel}}
