@@ -19,10 +19,16 @@ type ChatRepository interface {
 	FindByID(ctx context.Context, chatID uuid.UUID) (*chatapp.ReadModel, error)
 }
 
+// UserDisplayNameResolver defines interface for resolving user display names (consumer-side interface)
+type UserDisplayNameResolver interface {
+	GetDisplayName(ctx context.Context, userID uuid.UUID) (string, error)
+}
+
 // SendMessageUseCase handles sending messages
 type SendMessageUseCase struct {
 	messageRepo  Repository
 	chatRepo     ChatRepository
+	userResolver UserDisplayNameResolver // For resolving actor display names in bot responses
 	eventBus     event.Bus
 	tagProcessor *tag.Processor       // Tag processor for parsing tags from message content
 	tagExecutor  *tag.CommandExecutor // Tag executor for executing tag commands
@@ -34,6 +40,7 @@ type SendMessageUseCase struct {
 func NewSendMessageUseCase(
 	messageRepo Repository,
 	chatRepo ChatRepository,
+	userResolver UserDisplayNameResolver,
 	eventBus event.Bus,
 	tagProcessor *tag.Processor,
 	tagExecutor *tag.CommandExecutor,
@@ -42,6 +49,7 @@ func NewSendMessageUseCase(
 	return &SendMessageUseCase{
 		messageRepo:  messageRepo,
 		chatRepo:     chatRepo,
+		userResolver: userResolver,
 		eventBus:     eventBus,
 		tagProcessor: tagProcessor,
 		tagExecutor:  tagExecutor,
@@ -214,8 +222,16 @@ func (uc *SendMessageUseCase) processTagsAsync(
 		}
 	}
 
-	// Generate and send bot response
-	botResponse := processingResult.GenerateBotResponse()
+	// Resolve actor display name for bot response
+	actor := tag.ActorInfo{}
+	if uc.userResolver != nil {
+		if displayName, resolveErr := uc.userResolver.GetDisplayName(ctx, authorID); resolveErr == nil {
+			actor.DisplayName = displayName
+		}
+	}
+
+	// Generate and send bot response with actor name
+	botResponse := processingResult.GenerateBotResponseWithActor(actor)
 	if botResponse != "" {
 		uc.sendBotResponse(ctx, msg.ChatID(), botResponse)
 	}

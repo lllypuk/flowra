@@ -65,7 +65,7 @@ func NewParser() *Parser {
 		RequiresValue: true,
 		ValueType:     ValueTypeEnum,
 		AllowedValues: []string{"High", "Medium", "Low"},
-		Validator:     validatePriority,
+		Validator:     func(v string) error { _, err := validatePriority(v); return err },
 	})
 
 	parser.registerTag(Definition{
@@ -88,7 +88,7 @@ func NewParser() *Parser {
 		RequiresValue: true,
 		ValueType:     ValueTypeEnum,
 		AllowedValues: []string{"Critical", "Major", "Minor", "Trivial"},
-		Validator:     validateSeverity,
+		Validator:     func(v string) error { _, err := validateSeverity(v); return err },
 	})
 
 	// Participant Management Tags (Task 007a)

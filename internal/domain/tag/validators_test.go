@@ -193,41 +193,40 @@ func TestValidateISODate(t *testing.T) {
 
 func TestValidatePriority(t *testing.T) {
 	tests := []struct {
-		name      string
-		value     string
-		wantErr   bool
-		errSubstr string
+		name          string
+		value         string
+		wantErr       bool
+		errSubstr     string
+		wantCanonical string
 	}{
-		// valid values (CASE-SENSITIVE)
+		// valid values (case-insensitive)
 		{
-			name:    "High",
-			value:   "High",
-			wantErr: false,
+			name:          "High",
+			value:         "High",
+			wantCanonical: "High",
 		},
 		{
-			name:    "Medium",
-			value:   "Medium",
-			wantErr: false,
+			name:          "Medium",
+			value:         "Medium",
+			wantCanonical: "Medium",
 		},
 		{
-			name:    "Low",
-			value:   "Low",
-			wantErr: false,
+			name:          "Low",
+			value:         "Low",
+			wantCanonical: "Low",
+		},
+		{
+			name:          "lowercase high",
+			value:         "high",
+			wantCanonical: "High",
+		},
+		{
+			name:          "UPPERCASE HIGH",
+			value:         "HIGH",
+			wantCanonical: "High",
 		},
 
 		// Invalid values
-		{
-			name:      "lowercase high",
-			value:     "high",
-			wantErr:   true,
-			errSubstr: "invalid priority",
-		},
-		{
-			name:      "UPPERCASE HIGH",
-			value:     "HIGH",
-			wantErr:   true,
-			errSubstr: "invalid priority",
-		},
 		{
 			name:      "invalid value Urgent",
 			value:     "Urgent",
@@ -244,14 +243,15 @@ func TestValidatePriority(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validatePriority(tt.value)
+			canonical, err := validatePriority(tt.value)
 			if tt.wantErr {
 				require.Error(t, err)
 				if tt.errSubstr != "" {
 					assert.Contains(t, err.Error(), tt.errSubstr)
 				}
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
+				assert.Equal(t, tt.wantCanonical, canonical)
 			}
 		})
 	}
@@ -259,46 +259,45 @@ func TestValidatePriority(t *testing.T) {
 
 func TestValidateSeverity(t *testing.T) {
 	tests := []struct {
-		name      string
-		value     string
-		wantErr   bool
-		errSubstr string
+		name          string
+		value         string
+		wantErr       bool
+		errSubstr     string
+		wantCanonical string
 	}{
-		// valid values (CASE-SENSITIVE)
+		// valid values (case-insensitive)
 		{
-			name:    "Critical",
-			value:   "Critical",
-			wantErr: false,
+			name:          "Critical",
+			value:         "Critical",
+			wantCanonical: "Critical",
 		},
 		{
-			name:    "Major",
-			value:   "Major",
-			wantErr: false,
+			name:          "Major",
+			value:         "Major",
+			wantCanonical: "Major",
 		},
 		{
-			name:    "Minor",
-			value:   "Minor",
-			wantErr: false,
+			name:          "Minor",
+			value:         "Minor",
+			wantCanonical: "Minor",
 		},
 		{
-			name:    "Trivial",
-			value:   "Trivial",
-			wantErr: false,
+			name:          "Trivial",
+			value:         "Trivial",
+			wantCanonical: "Trivial",
+		},
+		{
+			name:          "lowercase critical",
+			value:         "critical",
+			wantCanonical: "Critical",
+		},
+		{
+			name:          "UPPERCASE CRITICAL",
+			value:         "CRITICAL",
+			wantCanonical: "Critical",
 		},
 
 		// Invalid values
-		{
-			name:      "lowercase critical",
-			value:     "critical",
-			wantErr:   true,
-			errSubstr: "invalid severity",
-		},
-		{
-			name:      "UPPERCASE CRITICAL",
-			value:     "CRITICAL",
-			wantErr:   true,
-			errSubstr: "invalid severity",
-		},
 		{
 			name:      "invalid value High",
 			value:     "High",
@@ -309,14 +308,15 @@ func TestValidateSeverity(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateSeverity(tt.value)
+			canonical, err := validateSeverity(tt.value)
 			if tt.wantErr {
 				require.Error(t, err)
 				if tt.errSubstr != "" {
 					assert.Contains(t, err.Error(), tt.errSubstr)
 				}
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
+				assert.Equal(t, tt.wantCanonical, canonical)
 			}
 		})
 	}
@@ -335,37 +335,43 @@ func TestNoValidation(t *testing.T) {
 
 func TestValidateStatus(t *testing.T) {
 	tests := []struct {
-		name       string
-		entityType string
-		status     string
-		wantErr    bool
-		errSubstr  string
+		name          string
+		entityType    string
+		status        string
+		wantErr       bool
+		errSubstr     string
+		wantCanonical string
 	}{
 		// Task statuses
 		{
-			name:       "valid Task status - To Do",
-			entityType: "Task",
-			status:     "To Do",
-			wantErr:    false,
+			name:          "valid Task status - To Do",
+			entityType:    "Task",
+			status:        "To Do",
+			wantCanonical: "To Do",
 		},
 		{
-			name:       "valid Task status - In Progress",
-			entityType: "Task",
-			status:     "In Progress",
-			wantErr:    false,
+			name:          "valid Task status - In Progress",
+			entityType:    "Task",
+			status:        "In Progress",
+			wantCanonical: "In Progress",
 		},
 		{
-			name:       "valid Task status - Done",
-			entityType: "Task",
-			status:     "Done",
-			wantErr:    false,
+			name:          "valid Task status - Done",
+			entityType:    "Task",
+			status:        "Done",
+			wantCanonical: "Done",
 		},
 		{
-			name:       "invalid Task status - lowercase",
-			entityType: "Task",
-			status:     "done",
-			wantErr:    true,
-			errSubstr:  "invalid status",
+			name:          "case-insensitive Task status - lowercase",
+			entityType:    "Task",
+			status:        "done",
+			wantCanonical: "Done",
+		},
+		{
+			name:          "case-insensitive Task status - in progress lowercase",
+			entityType:    "Task",
+			status:        "in progress",
+			wantCanonical: "In Progress",
 		},
 		{
 			name:       "invalid Task status - wrong value",
@@ -377,28 +383,28 @@ func TestValidateStatus(t *testing.T) {
 
 		// Bug statuses
 		{
-			name:       "valid Bug status - New",
-			entityType: "Bug",
-			status:     "New",
-			wantErr:    false,
+			name:          "valid Bug status - New",
+			entityType:    "Bug",
+			status:        "New",
+			wantCanonical: "New",
 		},
 		{
-			name:       "valid Bug status - Investigating",
-			entityType: "Bug",
-			status:     "Investigating",
-			wantErr:    false,
+			name:          "valid Bug status - Investigating",
+			entityType:    "Bug",
+			status:        "Investigating",
+			wantCanonical: "Investigating",
 		},
 		{
-			name:       "valid Bug status - Fixed",
-			entityType: "Bug",
-			status:     "Fixed",
-			wantErr:    false,
+			name:          "valid Bug status - Fixed",
+			entityType:    "Bug",
+			status:        "Fixed",
+			wantCanonical: "Fixed",
 		},
 		{
-			name:       "valid Bug status - Verified",
-			entityType: "Bug",
-			status:     "Verified",
-			wantErr:    false,
+			name:          "valid Bug status - Verified",
+			entityType:    "Bug",
+			status:        "Verified",
+			wantCanonical: "Verified",
 		},
 		{
 			name:       "invalid Bug status - Task status",
@@ -410,22 +416,28 @@ func TestValidateStatus(t *testing.T) {
 
 		// Epic statuses
 		{
-			name:       "valid Epic status - Planned",
-			entityType: "Epic",
-			status:     "Planned",
-			wantErr:    false,
+			name:          "valid Epic status - Planned",
+			entityType:    "Epic",
+			status:        "Planned",
+			wantCanonical: "Planned",
 		},
 		{
-			name:       "valid Epic status - In Progress",
-			entityType: "Epic",
-			status:     "In Progress",
-			wantErr:    false,
+			name:          "valid Epic status - In Progress",
+			entityType:    "Epic",
+			status:        "In Progress",
+			wantCanonical: "In Progress",
 		},
 		{
-			name:       "valid Epic status - Completed",
-			entityType: "Epic",
-			status:     "Completed",
-			wantErr:    false,
+			name:          "valid Epic status - Completed",
+			entityType:    "Epic",
+			status:        "Completed",
+			wantCanonical: "Completed",
+		},
+		{
+			name:          "case-insensitive Epic status",
+			entityType:    "Epic",
+			status:        "completed",
+			wantCanonical: "Completed",
 		},
 
 		// unknown entity type
@@ -440,14 +452,15 @@ func TestValidateStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateStatus(tt.entityType, tt.status)
+			canonical, err := ValidateStatus(tt.entityType, tt.status)
 			if tt.wantErr {
 				require.Error(t, err)
 				if tt.errSubstr != "" {
 					assert.Contains(t, err.Error(), tt.errSubstr)
 				}
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
+				assert.Equal(t, tt.wantCanonical, canonical)
 			}
 		})
 	}

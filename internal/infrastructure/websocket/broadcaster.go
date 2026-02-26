@@ -71,6 +71,17 @@ func DefaultEventTypes() []string {
 		"chat.deleted",
 		"chat.member_added",
 		"chat.member_removed",
+		"chat.type_changed",
+		"chat.status_changed",
+		"chat.renamed",
+		"chat.priority_set",
+		"chat.severity_set",
+		"chat.user_assigned",
+		"chat.assignee_removed",
+		"chat.due_date_set",
+		"chat.due_date_removed",
+		"chat.closed",
+		"chat.reopened",
 		"task.created",
 		"task.updated",
 		"task.status_changed",
@@ -259,19 +270,30 @@ type PayloadProvider interface {
 // mapEventTypeToWSType maps domain event types to WebSocket message types.
 func (b *Broadcaster) mapEventTypeToWSType(eventType string) string {
 	mapping := map[string]string{
-		"message.created":      "chat.message.posted",
-		"message.edited":       "chat.message.edited",
-		"message.deleted":      "chat.message.deleted",
-		"chat.created":         "chat.created",
-		"chat.updated":         "chat.updated",
-		"chat.deleted":         "chat.deleted",
-		"chat.member_added":    "chat.member_added",
-		"chat.member_removed":  "chat.member_removed",
-		"task.created":         "task.created",
-		"task.updated":         "task.updated",
-		"task.status_changed":  "task.updated",
-		"task.assigned":        "task.updated",
-		"notification.created": "notification.new",
+		"message.created":       "chat.message.posted",
+		"message.edited":        "chat.message.edited",
+		"message.deleted":       "chat.message.deleted",
+		"chat.created":          "chat.created",
+		"chat.updated":          "chat.updated",
+		"chat.deleted":          "chat.deleted",
+		"chat.member_added":     "chat.member_added",
+		"chat.member_removed":   "chat.member_removed",
+		"chat.type_changed":     "chat.type_changed",
+		"chat.status_changed":   "chat.status_changed",
+		"chat.renamed":          "chat.renamed",
+		"chat.priority_set":     "chat.priority_set",
+		"chat.severity_set":     "chat.severity_set",
+		"chat.user_assigned":    "chat.user_assigned",
+		"chat.assignee_removed": "chat.assignee_removed",
+		"chat.due_date_set":     "chat.due_date_set",
+		"chat.due_date_removed": "chat.due_date_removed",
+		"chat.closed":           "chat.closed",
+		"chat.reopened":         "chat.reopened",
+		"task.created":          "task.created",
+		"task.updated":          "task.updated",
+		"task.status_changed":   "task.updated",
+		"task.assigned":         "task.updated",
+		"notification.created":  "notification.new",
 	}
 
 	if wsType, ok := mapping[eventType]; ok {
@@ -291,18 +313,29 @@ func (b *Broadcaster) isUserSpecificEvent(eventType string) bool {
 // isChatEvent returns true if the event should be broadcast to a chat room.
 func (b *Broadcaster) isChatEvent(eventType string) bool {
 	chatEvents := map[string]bool{
-		"message.created":     true,
-		"message.edited":      true,
-		"message.deleted":     true,
-		"chat.created":        true,
-		"chat.updated":        true,
-		"chat.deleted":        true,
-		"chat.member_added":   true,
-		"chat.member_removed": true,
-		"task.created":        true,
-		"task.updated":        true,
-		"task.status_changed": true,
-		"task.assigned":       true,
+		"message.created":       true,
+		"message.edited":        true,
+		"message.deleted":       true,
+		"chat.created":          true,
+		"chat.updated":          true,
+		"chat.deleted":          true,
+		"chat.member_added":     true,
+		"chat.member_removed":   true,
+		"chat.type_changed":     true,
+		"chat.status_changed":   true,
+		"chat.renamed":          true,
+		"chat.priority_set":     true,
+		"chat.severity_set":     true,
+		"chat.user_assigned":    true,
+		"chat.assignee_removed": true,
+		"chat.due_date_set":     true,
+		"chat.due_date_removed": true,
+		"chat.closed":           true,
+		"chat.reopened":         true,
+		"task.created":          true,
+		"task.updated":          true,
+		"task.status_changed":   true,
+		"task.assigned":         true,
 	}
 	return chatEvents[eventType]
 }
@@ -317,7 +350,7 @@ func (b *Broadcaster) extractChatID(evt event.DomainEvent) uuid.UUID {
 	}
 
 	// For chat events, the aggregate ID is the chat ID
-	if evt.AggregateType() == "chat" {
+	if evt.AggregateType() == "Chat" || evt.AggregateType() == "chat" {
 		id, err := uuid.ParseUUID(evt.AggregateID())
 		if err == nil {
 			return id

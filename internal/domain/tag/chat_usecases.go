@@ -2,6 +2,7 @@ package tag
 
 import (
 	chatApp "github.com/lllypuk/flowra/internal/application/chat"
+	taskApp "github.com/lllypuk/flowra/internal/application/task"
 )
 
 // ChatUseCases grouping all Chat UseCases to simplify dependency injection
@@ -11,6 +12,9 @@ type ChatUseCases struct {
 	ConvertToTask *chatApp.ConvertToTaskUseCase
 	ConvertToBug  *chatApp.ConvertToBugUseCase
 	ConvertToEpic *chatApp.ConvertToEpicUseCase
+
+	// Task Read Model Creation (synchronous, to avoid relying on async event delivery)
+	CreateTask *taskApp.CreateTaskUseCase
 
 	// Entity Management
 	ChangeStatus *chatApp.ChangeStatusUseCase

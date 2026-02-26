@@ -76,33 +76,65 @@
 <script>
     // Subscribe to chat via WebSocket on load
     (function () {
+        var chatId = '{{.Data.Chat.ID}}';
+        var chatViewInitRegistry =
+            window.__flowraChatViewInit || (window.__flowraChatViewInit = {});
+        var chatViewInitState = chatViewInitRegistry[chatId] || {};
+
+        // Cancel pending init work from a previous render of the same chat partial.
+        if (chatViewInitState.subscribeTimer) {
+            clearTimeout(chatViewInitState.subscribeTimer);
+        }
+        if (
+            chatViewInitState.presenceAbortController &&
+            typeof chatViewInitState.presenceAbortController.abort === "function"
+        ) {
+            chatViewInitState.presenceAbortController.abort();
+        }
+
+        chatViewInitState.subscribeTimer = null;
+        chatViewInitState.presenceAbortController =
+            typeof AbortController !== "undefined" ? new AbortController() : null;
+        chatViewInitRegistry[chatId] = chatViewInitState;
+
         // Find WebSocket connection
         var wsElements = document.querySelectorAll('[hx-ext*="ws"]');
         if (wsElements.length > 0) {
-            var chatId = '{{.Data.Chat.ID}}';
-            
             // Wait a bit for WebSocket to connect
-            setTimeout(function () {
+            chatViewInitState.subscribeTimer = setTimeout(function () {
+                chatViewInitState.subscribeTimer = null;
                 for (var i = 0; i < wsElements.length; i++) {
                     // HTMX v2 stores ws in htmx-internal-data.webSocket.socket
                     var internalData = wsElements[i]['htmx-internal-data'];
                     var wsWrapper = internalData && internalData.webSocket;
                     var socket = wsWrapper && wsWrapper.socket;
                     if (socket && socket.readyState === WebSocket.OPEN) {
+                        if (chatViewInitState.lastSubscribedSocket === socket) {
+                            break;
+                        }
                         socket.send(
                             JSON.stringify({
                                 type: "subscribe",
                                 chat_id: chatId,
                             }),
                         );
+                        chatViewInitState.lastSubscribedSocket = socket;
                         console.log("Subscribed to chat:", chatId);
                         break;
                     }
                 }
             }, 500);
-            
+
             // Load initial presence data
-            fetch('/api/v1/workspaces/{{.Data.Chat.WorkspaceID}}/chats/' + chatId + '/presence')
+            var presenceFetchOptions = {};
+            if (chatViewInitState.presenceAbortController) {
+                presenceFetchOptions.signal = chatViewInitState.presenceAbortController.signal;
+            }
+
+            fetch(
+                '/api/v1/workspaces/{{.Data.Chat.WorkspaceID}}/chats/' + chatId + '/presence',
+                presenceFetchOptions,
+            )
                 .then(function(response) {
                     if (!response.ok) return;
                     return response.json();
@@ -126,13 +158,57 @@
                     }
                 })
                 .catch(function(err) {
+                    if (err && err.name === "AbortError") return;
                     console.log('Presence not available');
                 });
         }
     })();
 
+    // Register global listeners once per chat to avoid duplicates after self-refresh.
+    var chatViewListenerChatID = "{{.Data.Chat.ID}}";
+    var chatViewListenerRegistry =
+        window.__flowraChatViewListeners || (window.__flowraChatViewListeners = {});
+    if (
+        chatViewListenerRegistry[chatViewListenerChatID] &&
+        typeof chatViewListenerRegistry[chatViewListenerChatID].cleanup === "function"
+    ) {
+        chatViewListenerRegistry[chatViewListenerChatID].cleanup();
+    }
+
+    var chatViewListenerController =
+        typeof AbortController !== "undefined" ? new AbortController() : null;
+    var chatViewListenerCleanupFns = [];
+    var chatViewListenerScope = {
+        cleanup: function () {
+            if (chatViewListenerController) {
+                chatViewListenerController.abort();
+            }
+            for (var i = 0; i < chatViewListenerCleanupFns.length; i++) {
+                chatViewListenerCleanupFns[i]();
+            }
+            if (chatViewListenerRegistry[chatViewListenerChatID] === chatViewListenerScope) {
+                delete chatViewListenerRegistry[chatViewListenerChatID];
+            }
+        },
+    };
+    chatViewListenerRegistry[chatViewListenerChatID] = chatViewListenerScope;
+
+    function addChatViewListener(target, eventType, handler) {
+        if (chatViewListenerController) {
+            target.addEventListener(eventType, handler, {
+                signal: chatViewListenerController.signal,
+            });
+            return;
+        }
+
+        target.addEventListener(eventType, handler);
+        chatViewListenerCleanupFns.push(function () {
+            target.removeEventListener(eventType, handler);
+        });
+    }
+
     // Scroll to bottom on load
-    document.addEventListener("htmx:afterSwap", function (evt) {
+    addChatViewListener(document, "htmx:afterSwap", function (evt) {
         if (evt.detail.target.id === "messages-{{.Data.Chat.ID}}") {
             scrollToBottom("messages-{{.Data.Chat.ID}}");
         }
@@ -141,7 +217,7 @@
     // Handle incoming WebSocket messages
     // Note: evt.detail is msg.data from the WS payload; field names may be PascalCase (Go-style)
     // from domain events (ChatID, aggregate_id) or snake_case from processed payloads.
-    document.body.addEventListener("chat.message.posted", function (evt) {
+    addChatViewListener(document.body, "chat.message.posted", function (evt) {
         var msg = evt.detail;
         var chatId = msg.ChatID || msg.chat_id;
         var messageId = msg.aggregate_id || msg.message_id;
@@ -158,7 +234,7 @@
     });
 
     // Handle message edited
-    document.body.addEventListener("chat.message.edited", function (evt) {
+    addChatViewListener(document.body, "chat.message.edited", function (evt) {
         var msg = evt.detail;
         var messageId = msg.aggregate_id || msg.message_id;
         var el = messageId ? document.getElementById("message-" + messageId) : null;
@@ -171,7 +247,7 @@
     });
 
     // Handle message deleted
-    document.body.addEventListener("chat.message.deleted", function (evt) {
+    addChatViewListener(document.body, "chat.message.deleted", function (evt) {
         var msg = evt.detail;
         var messageId = msg.aggregate_id || msg.message_id;
         var el = messageId ? document.getElementById("message-" + messageId) : null;
@@ -181,7 +257,7 @@
     });
 
     // Handle typing indicator
-    document.body.addEventListener("chat.typing", function (evt) {
+    addChatViewListener(document.body, "chat.typing", function (evt) {
         var data = evt.detail;
         if (
             data.chat_id === "{{.Data.Chat.ID}}" &&
@@ -189,6 +265,26 @@
         ) {
             showTypingIndicator(data.username, "{{.Data.Chat.ID}}");
         }
+    });
+
+    // Handle chat property changes — re-fetch the chat view partial to update header/sidebar
+    var chatUpdateEvents = [
+        "chat.type_changed", "chat.status_changed", "chat.renamed",
+        "chat.priority_set", "chat.severity_set", "chat.user_assigned",
+        "chat.assignee_removed", "chat.due_date_set", "chat.due_date_removed",
+        "chat.closed", "chat.reopened"
+    ];
+    chatUpdateEvents.forEach(function (eventType) {
+        addChatViewListener(document.body, eventType, function (evt) {
+            var data = evt.detail || {};
+            var chatId = data.chat_id || data.aggregate_id || "";
+            if (chatId === "{{.Data.Chat.ID}}") {
+                htmx.ajax("GET", "/partials/chats/{{.Data.Chat.ID}}", {
+                    target: "#chat-{{.Data.Chat.ID}}",
+                    swap: "outerHTML"
+                });
+            }
+        });
     });
 </script>
 

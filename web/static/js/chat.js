@@ -565,8 +565,13 @@ document.body.addEventListener('htmx:wsAfterMessage', function(evt) {
         var msg = JSON.parse(evt.detail.message);
         if (msg.type && msg.data) {
             // Dispatch custom event for the message type
+            // Include chat_id from the top-level message in detail for routing
+            var detail = msg.data;
+            if (msg.chat_id && typeof detail === 'object' && detail !== null) {
+                detail.chat_id = detail.chat_id || msg.chat_id;
+            }
             document.body.dispatchEvent(new CustomEvent(msg.type, {
-                detail: msg.data,
+                detail: detail,
                 bubbles: true
             }));
         } else if (msg.type) {

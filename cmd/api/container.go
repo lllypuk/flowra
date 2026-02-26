@@ -658,6 +658,7 @@ func (c *Container) setupMessageUseCases() {
 	c.SendMessageUC = messageapp.NewSendMessageUseCase(
 		c.MessageRepo,
 		c.ChatQueryRepo,
+		&userDisplayNameAdapter{userRepo: c.UserRepo},
 		c.EventBus,
 		tagProcessor,
 		tagExecutor,
@@ -715,6 +716,9 @@ func (c *Container) createChatUseCasesForTags() *tag.ChatUseCases {
 		ConvertToTask: chatapp.NewConvertToTaskUseCase(c.ChatRepo),
 		ConvertToBug:  chatapp.NewConvertToBugUseCase(c.ChatRepo),
 		ConvertToEpic: chatapp.NewConvertToEpicUseCase(c.ChatRepo),
+
+		// Task Read Model Creation (synchronous)
+		CreateTask: taskapp.NewCreateTaskUseCase(c.TaskRepo),
 
 		// Entity Management
 		ChangeStatus: chatapp.NewChangeStatusUseCase(c.ChatRepo),
@@ -1699,6 +1703,23 @@ func (a *userLookupAdapter) GetDisplayName(ctx context.Context, userID string) s
 		return dn
 	}
 	return u.Username()
+}
+
+// userDisplayNameAdapter adapts MongoUserRepository to messageapp.UserDisplayNameResolver.
+type userDisplayNameAdapter struct {
+	userRepo *mongodb.MongoUserRepository
+}
+
+// GetDisplayName implements messageapp.UserDisplayNameResolver.
+func (a *userDisplayNameAdapter) GetDisplayName(ctx context.Context, userID uuid.UUID) (string, error) {
+	u, err := a.userRepo.FindByID(ctx, userID)
+	if err != nil {
+		return "", err
+	}
+	if dn := u.DisplayName(); dn != "" {
+		return dn, nil
+	}
+	return u.Username(), nil
 }
 
 // createUserProfileLookup creates a service implementing UserProfileLookup.
