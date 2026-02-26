@@ -5,7 +5,7 @@ A comprehensive chat system with integrated task tracker, help desk functionalit
 ## 📊 Current Project Status
 
 **Version:** 1.0.0-beta
-**Last Updated:** 2026-02-05
+**Last Updated:** 2026-02-26
 **Overall Progress:** ~98% to MVP
 **Status:** February 2026 Release Candidate
 
@@ -38,6 +38,8 @@ A comprehensive chat system with integrated task tracker, help desk functionalit
 - ✅ **E2E Tests:** Full coverage of critical flows
 - ✅ **API Documentation:** OpenAPI 3.1, Postman collection
 - ✅ **Tag System Frontend:** Human-readable messages, visual grouping, sidebar integration
+- ✅ **Tag Processing Test Coverage:** Concurrent integration tests + bot-response E2E scenarios
+- ✅ **Tag System Load Testing:** k6 script/profiles for tag-heavy message flows (`tests/load/tag-system`)
 - ✅ **Landing Page:** Redesigned with distinctive typography, scroll animations, responsive feature grid
 
 ### In Development 🔄
@@ -103,8 +105,10 @@ make dev                # Run in development mode
 make build              # Build binaries
 make test               # Run all tests
 make test-unit          # Run unit tests only
+make test-integration   # Run integration tests (Docker/testcontainers)
 make test-e2e           # Run E2E API tests
 make test-e2e-frontend  # Run frontend browser E2E tests (requires running server)
+make test-load-tags     # Run k6 tag-system load test (requires k6 + AUTH_TOKEN)
 make lint               # Run linter and format code
 make docker-up          # Start Docker services
 make docker-down        # Stop Docker services
@@ -166,6 +170,7 @@ make playwright-install # Install Playwright browsers for frontend tests
 - [Deployment Guide](./docs/DEPLOYMENT.md) - Deployment instructions
 - [Development Guide](./docs/DEVELOPMENT.md) - Developer environment setup
 - [Architecture](./docs/ARCHITECTURE.md) - System architecture overview
+- [Tag Load Test Guide](./tests/load/tag-system/README.md) - k6 profiles, auth setup, and metrics for tag-system load runs
 
 ### Architecture & Design
 - [Architecture Overview](./docs/01-architecture.md) - Detailed architecture
@@ -239,9 +244,10 @@ make playwright-install # Install Playwright browsers for frontend tests
 │   └── static/               # CSS, JS assets
 │
 ├── tests/                     # Test suites
-│   ├── e2e/                  # End-to-end tests
-│   ├── integration/          # Integration tests
-│   ├── testutil/             # Test utilities
+│   ├── e2e/                  # End-to-end tests (incl. bot response/tag flow scenarios)
+│   ├── integration/          # Integration tests (incl. concurrent tag processing)
+│   ├── load/                 # Manual load tests (k6 scripts and docs)
+│   ├── testutil/             # Test utilities (shared Mongo/Keycloak containers)
 │   └── mocks/                # Mock implementations
 │
 ├── docs/                      # Documentation

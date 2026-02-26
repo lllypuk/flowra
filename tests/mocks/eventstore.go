@@ -65,8 +65,8 @@ func (s *MockEventStore) SaveEvents(
 
 // LoadEvents loads all events for an aggregate
 func (s *MockEventStore) LoadEvents(ctx context.Context, aggregateID string) ([]event.DomainEvent, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	s.calls["LoadEvents"]++
 
@@ -81,8 +81,8 @@ func (s *MockEventStore) LoadEvents(ctx context.Context, aggregateID string) ([]
 
 // GetEvents returns all events for an aggregate (implements CommandRepository)
 func (s *MockEventStore) GetEvents(ctx context.Context, aggregateID uuid.UUID) ([]event.DomainEvent, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	s.calls["GetEvents"]++
 
@@ -97,8 +97,8 @@ func (s *MockEventStore) GetEvents(ctx context.Context, aggregateID uuid.UUID) (
 
 // Load loads Chat from event store by reconstructing state from events (implements CommandRepository)
 func (s *MockEventStore) Load(ctx context.Context, chatID uuid.UUID) (*chat.Chat, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	s.calls["Load"]++
 
@@ -153,8 +153,8 @@ func (s *MockEventStore) Save(ctx context.Context, c *chat.Chat) error {
 
 // GetVersion returns the current version of an aggregate
 func (s *MockEventStore) GetVersion(ctx context.Context, aggregateID string) (int, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	s.calls["GetVersion"]++
 

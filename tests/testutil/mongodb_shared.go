@@ -4,8 +4,10 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -13,6 +15,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
@@ -27,11 +30,16 @@ const containerStartupTimeout = 120 * time.Second
 
 // MongoDB container resource limits
 const (
-	containerMemoryLimit = 512 * 1024 * 1024 // 512MB
-	clientPingTimeout    = 2 * time.Second
-	maxPoolSize          = 100
-	minPoolSize          = 5
-	indexCreationTimeout = 30 * time.Second
+	containerMemoryLimit   = 512 * 1024 * 1024 // 512MB
+	clientPingTimeout      = 2 * time.Second
+	maxPoolSize            = 100
+	minPoolSize            = 5
+	indexCreationTimeout   = 30 * time.Second
+	mongoReplicaSetName    = "rs0"
+	replicaInitTimeout     = 45 * time.Second
+	replicaInitAttemptTO   = 5 * time.Second
+	replicaInitRetryDelay  = 500 * time.Millisecond
+	mongoDisconnectTimeout = 2 * time.Second
 )
 
 // sharedMongoContainer holds the singleton MongoDB container and client
@@ -119,17 +127,13 @@ func startMongoContainer(ctx context.Context) (*SharedMongoContainer, error) {
 	req := testcontainers.ContainerRequest{
 		Image:        "mongo:6.0",
 		ExposedPorts: []string{"27017/tcp"},
-		Env: map[string]string{
-			"MONGO_INITDB_ROOT_USERNAME": "admin",
-			"MONGO_INITDB_ROOT_PASSWORD": "admin123",
-		},
 		// Limit memory to prevent OOM and crashes
 		HostConfigModifier: func(hc *container.HostConfig) {
 			hc.Memory = containerMemoryLimit
 			hc.MemorySwap = containerMemoryLimit
 		},
-		// Use wiredTiger with limited cache size for stability
-		Cmd: []string{"--wiredTigerCacheSizeGB=0.25"},
+		// Enable single-node replica set so MongoDB transactions work in tests.
+		Cmd: []string{"--replSet", mongoReplicaSetName, "--bind_ip_all", "--wiredTigerCacheSizeGB=0.25"},
 		// Use both log and port check for more reliable startup detection
 		WaitingFor: wait.ForAll(
 			wait.ForLog("Waiting for connections").WithStartupTimeout(containerStartupTimeout),
@@ -156,12 +160,136 @@ func startMongoContainer(ctx context.Context) (*SharedMongoContainer, error) {
 		return nil, fmt.Errorf("failed to get container port: %w", err)
 	}
 
-	uri := fmt.Sprintf("mongodb://admin:admin123@%s", net.JoinHostPort(host, port.Port()))
+	if err := initializeMongoReplicaSet(ctx, cont); err != nil {
+		_ = cont.Terminate(ctx)
+		return nil, fmt.Errorf("failed to initialize MongoDB replica set: %w", err)
+	}
+
+	uri := mongoTestURI(host, port.Port())
 
 	return &SharedMongoContainer{
 		Container: cont,
 		URI:       uri,
 	}, nil
+}
+
+func mongoTestURI(host, port string) string {
+	host = normalizeMongoHost(host)
+	return fmt.Sprintf(
+		"mongodb://%s/admin?replicaSet=%s&directConnection=true",
+		net.JoinHostPort(host, port),
+		mongoReplicaSetName,
+	)
+}
+
+func initializeMongoReplicaSet(ctx context.Context, cont testcontainers.Container) error {
+	host, err := cont.Host(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to resolve container host for replica set init: %w", err)
+	}
+	host = normalizeMongoHost(host)
+	port, err := cont.MappedPort(ctx, "27017/tcp")
+	if err != nil {
+		return fmt.Errorf("failed to resolve container port for replica set init: %w", err)
+	}
+
+	bootstrapURI := fmt.Sprintf(
+		"mongodb://%s/admin?directConnection=true",
+		net.JoinHostPort(host, port.Port()),
+	)
+
+	deadline := time.Now().Add(replicaInitTimeout)
+	var lastErr error
+
+	for {
+		if parentErr := ctx.Err(); parentErr != nil {
+			return parentErr
+		}
+
+		attemptCtx, cancel := context.WithTimeout(ctx, replicaInitAttemptTO)
+		client, connErr := mongo.Connect(options.Client().ApplyURI(bootstrapURI))
+		if connErr != nil {
+			cancel()
+			lastErr = connErr
+			if time.Now().After(deadline) {
+				return lastErr
+			}
+			time.Sleep(replicaInitRetryDelay)
+			continue
+		}
+
+		adminDB := client.Database("admin")
+		initCmd := bson.D{
+			{Key: "replSetInitiate", Value: bson.D{
+				{Key: "_id", Value: mongoReplicaSetName},
+				{Key: "members", Value: bson.A{
+					bson.D{{Key: "_id", Value: 0}, {Key: "host", Value: "127.0.0.1:27017"}},
+				}},
+			}},
+		}
+
+		initErr := adminDB.RunCommand(attemptCtx, initCmd).Err()
+		if initErr != nil && !isReplicaSetAlreadyInitialized(initErr) {
+			lastErr = initErr
+			disconnectMongoClient(client)
+			cancel()
+			if time.Now().After(deadline) {
+				return fmt.Errorf("replSetInitiate failed: %w", lastErr)
+			}
+			time.Sleep(replicaInitRetryDelay)
+			continue
+		}
+
+		var helloResp bson.M
+		helloErr := adminDB.RunCommand(attemptCtx, bson.D{{Key: "hello", Value: 1}}).Decode(&helloResp)
+		disconnectMongoClient(client)
+		cancel()
+		if helloErr != nil {
+			lastErr = helloErr
+			if time.Now().After(deadline) {
+				return fmt.Errorf("hello command failed while waiting for primary: %w", lastErr)
+			}
+			time.Sleep(replicaInitRetryDelay)
+			continue
+		}
+
+		if isWritablePrimary, _ := helloResp["isWritablePrimary"].(bool); isWritablePrimary {
+			return nil
+		}
+		if isPrimary, _ := helloResp["ismaster"].(bool); isPrimary {
+			return nil
+		}
+
+		lastErr = errors.New("replica set not primary yet")
+		if time.Now().After(deadline) {
+			return lastErr
+		}
+		time.Sleep(replicaInitRetryDelay)
+	}
+}
+
+func isReplicaSetAlreadyInitialized(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "already initialized") || strings.Contains(msg, "AlreadyInitialized")
+}
+
+func normalizeMongoHost(host string) string {
+	if host == "localhost" {
+		return "127.0.0.1"
+	}
+	return host
+}
+
+func disconnectMongoClient(client *mongo.Client) {
+	if client == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), mongoDisconnectTimeout)
+	defer cancel()
+	_ = client.Disconnect(ctx)
 }
 
 // GetClient returns a shared MongoDB client, creating one if needed.

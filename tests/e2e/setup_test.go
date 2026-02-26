@@ -75,6 +75,7 @@ type E2ETestSuite struct {
 	MockChatService      *httphandler.MockChatService
 	MockMessageService   *httphandler.MockMessageService
 	MockTaskService      *httphandler.MockTaskService
+	MessageService       httphandler.MessageService
 
 	// Server state
 	serverAddr   string
@@ -131,6 +132,10 @@ func (v *E2ETokenValidator) ValidateToken(_ context.Context, token string) (*mid
 
 // NewE2ETestSuite creates a new E2E test suite.
 func NewE2ETestSuite(t *testing.T) *E2ETestSuite {
+	return newE2ETestSuite(t, nil)
+}
+
+func newE2ETestSuite(t *testing.T, configure func(*E2ETestSuite)) *E2ETestSuite {
 	t.Helper()
 
 	// Setup MongoDB using shared container
@@ -156,6 +161,10 @@ func NewE2ETestSuite(t *testing.T) *E2ETestSuite {
 
 	// Initialize mock services
 	suite.setupMockServices()
+
+	if configure != nil {
+		configure(suite)
+	}
 
 	// Setup and start HTTP server
 	suite.setupServer()
@@ -210,6 +219,7 @@ func (s *E2ETestSuite) setupMockServices() {
 	s.MockChatService = httphandler.NewMockChatService()
 	s.MockMessageService = httphandler.NewMockMessageService()
 	s.MockTaskService = httphandler.NewMockTaskService()
+	s.MessageService = s.MockMessageService
 }
 
 // setupServer creates and starts the HTTP server.
@@ -250,7 +260,7 @@ func (s *E2ETestSuite) setupServer() {
 	authHandler := httphandler.NewAuthHandler(s.MockAuthService, s.MockUserRepo)
 	workspaceHandler := httphandler.NewWorkspaceHandler(s.MockWorkspaceService, s.MockMemberService)
 	chatHandler := httphandler.NewChatHandler(s.MockChatService)
-	messageHandler := httphandler.NewMessageHandler(s.MockMessageService)
+	messageHandler := httphandler.NewMessageHandler(s.MessageService)
 	taskHandler := httphandler.NewTaskHandler(s.MockTaskService)
 
 	// Register routes

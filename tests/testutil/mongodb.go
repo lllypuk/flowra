@@ -4,8 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
-	"net"
 	"testing"
 	"time"
 
@@ -39,11 +37,8 @@ func setupMongoContainer(ctx context.Context, t *testing.T) *MongoContainer {
 	req := testcontainers.ContainerRequest{
 		Image:        "mongo:6.0",
 		ExposedPorts: []string{"27017/tcp"},
-		Env: map[string]string{
-			"MONGO_INITDB_ROOT_USERNAME": "admin",
-			"MONGO_INITDB_ROOT_PASSWORD": "admin123",
-		},
-		WaitingFor: wait.ForLog("Waiting for connections").WithStartupTimeout(mongoContainerStartupTimeout),
+		Cmd:          []string{"--replSet", mongoReplicaSetName, "--bind_ip_all"},
+		WaitingFor:   wait.ForLog("Waiting for connections").WithStartupTimeout(mongoContainerStartupTimeout),
 	}
 
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -65,7 +60,11 @@ func setupMongoContainer(ctx context.Context, t *testing.T) *MongoContainer {
 		t.Fatalf("Failed to get container port: %v", err)
 	}
 
-	uri := fmt.Sprintf("mongodb://admin:admin123@%s", net.JoinHostPort(host, port.Port()))
+	if err := initializeMongoReplicaSet(ctx, container); err != nil {
+		t.Fatalf("Failed to initialize MongoDB replica set: %v", err)
+	}
+
+	uri := mongoTestURI(host, port.Port())
 
 	// Cleanup: stop container after test
 	t.Cleanup(func() {

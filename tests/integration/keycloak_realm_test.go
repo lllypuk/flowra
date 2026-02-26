@@ -92,10 +92,10 @@ func TestKeycloakRealmSetup_TestUserCanAuthenticate(t *testing.T) {
 		username string
 		password string
 	}{
-		{"testuser", "password123"},
+		{"testuser", testutil.KeycloakTestUserPassword},
 		{"admin", "admin123"},
-		{"alice", "password123"},
-		{"bob", "password123"},
+		{"alice", testutil.KeycloakTestUserPassword},
+		{"bob", testutil.KeycloakTestUserPassword},
 	}
 
 	for _, tc := range testCases {
@@ -126,7 +126,7 @@ func TestKeycloakRealmSetup_TokenContainsExpectedClaims(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	tokenResp, err := kc.GetUserToken(ctx, "testuser", "password123")
+	tokenResp, err := kc.GetUserToken(ctx, "testuser", testutil.KeycloakTestUserPassword)
 	require.NoError(t, err)
 
 	// Parse JWT payload (second part of the token)
@@ -167,10 +167,10 @@ func TestKeycloakRealmSetup_TokenContainsRealmRoles(t *testing.T) {
 		password      string
 		expectedRoles []string
 	}{
-		{"testuser", "password123", []string{"user"}},
+		{"testuser", testutil.KeycloakTestUserPassword, []string{"user"}},
 		{"admin", "admin123", []string{"user", "admin"}},
-		{"alice", "password123", []string{"user", "workspace_owner"}},
-		{"bob", "password123", []string{"user"}},
+		{"alice", testutil.KeycloakTestUserPassword, []string{"user", "workspace_owner"}},
+		{"bob", testutil.KeycloakTestUserPassword, []string{"user"}},
 	}
 
 	for _, tc := range testCases {
@@ -216,7 +216,7 @@ func TestKeycloakRealmSetup_UserInfoEndpoint(t *testing.T) {
 	defer cancel()
 
 	// Get token for testuser
-	tokenResp, err := kc.GetUserToken(ctx, "testuser", "password123")
+	tokenResp, err := kc.GetUserToken(ctx, "testuser", testutil.KeycloakTestUserPassword)
 	require.NoError(t, err)
 
 	// Get user info
@@ -258,7 +258,7 @@ func TestKeycloakRealmSetup_RefreshTokenWorks(t *testing.T) {
 	defer cancel()
 
 	// Get initial token
-	tokenResp, err := kc.GetUserToken(ctx, "testuser", "password123")
+	tokenResp, err := kc.GetUserToken(ctx, "testuser", testutil.KeycloakTestUserPassword)
 	require.NoError(t, err)
 	assert.NotEmpty(t, tokenResp.RefreshToken)
 
@@ -274,7 +274,7 @@ func TestKeycloakRealmSetup_DirectAccessGrantsEnabled(t *testing.T) {
 	defer cancel()
 
 	// Direct access grants (password grant) should work
-	tokenResp, err := kc.GetUserToken(ctx, "testuser", "password123")
+	tokenResp, err := kc.GetUserToken(ctx, "testuser", testutil.KeycloakTestUserPassword)
 	require.NoError(t, err, "Direct access grants should be enabled")
 	assert.NotEmpty(t, tokenResp.AccessToken)
 }
@@ -285,7 +285,7 @@ func TestKeycloakRealmSetup_TokenScopes(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	tokenResp, err := kc.GetUserToken(ctx, "testuser", "password123")
+	tokenResp, err := kc.GetUserToken(ctx, "testuser", testutil.KeycloakTestUserPassword)
 	require.NoError(t, err)
 
 	// Check scope in token response

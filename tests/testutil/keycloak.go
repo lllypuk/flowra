@@ -38,6 +38,12 @@ const (
 	keycloakClientSecret  = "flowra-dev-secret-change-in-production" //nolint:gosec // Development secret
 )
 
+// Exported test credentials used by integration/e2e tests.
+const (
+	KeycloakTestUserPassword  = "test123"
+	KeycloakAdminTestPassword = keycloakAdminPassword
+)
+
 // sharedKeycloakContainer holds the singleton Keycloak container
 var (
 	sharedKeycloakContainer   *SharedKeycloakContainer
