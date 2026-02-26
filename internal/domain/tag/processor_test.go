@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/lllypuk/flowra/internal/domain/tag"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // ====== Task 03: TagProcessor Tests ======
@@ -142,7 +143,7 @@ func TestProcessTags_EntityCreation(t *testing.T) {
 			wantErrors:   1,
 		},
 		{
-			name:       "unknown tags ignored",
+			name:       "unknown tags produce warning",
 			entityType: "",
 			tags: []tag.ParsedTag{
 				{Key: "task", Value: "Task"},
@@ -150,7 +151,7 @@ func TestProcessTags_EntityCreation(t *testing.T) {
 				{Key: "bug", Value: "Bug"},
 			},
 			wantCommands: 2,
-			wantErrors:   0,
+			wantErrors:   1,
 		},
 	}
 
@@ -165,8 +166,8 @@ func TestProcessTags_EntityCreation(t *testing.T) {
 				tt.checkCommand(t, result.AppliedTags[0].Command)
 			}
 
-			// Check error messages
-			if tt.wantErrors > 0 {
+			// Check error messages for title validation tests
+			if tt.wantErrors > 0 && tt.name != "unknown tags produce warning" {
 				for _, err := range result.Errors {
 					assert.Contains(t, err.Error.Error(), "title is required")
 				}
@@ -251,13 +252,18 @@ func TestProcessTags_EntityManagement(t *testing.T) {
 			},
 		},
 		{
-			name:       "change status - invalid (lowercase)",
+			name:       "change status - case-insensitive (lowercase)",
 			entityType: "Task",
 			tags: []tag.ParsedTag{
 				{Key: "status", Value: "done"},
 			},
-			wantCommands: 0,
-			wantErrors:   1,
+			wantCommands: 1,
+			wantErrors:   0,
+			checkCommand: func(t *testing.T, cmd tag.Command) {
+				statusCmd, ok := cmd.(tag.ChangeStatusCommand)
+				require.True(t, ok)
+				assert.Equal(t, "Done", statusCmd.Status) // Canonical casing
+			},
 		},
 		{
 			name:       "change status - wrong entity type",
@@ -343,13 +349,18 @@ func TestProcessTags_EntityManagement(t *testing.T) {
 			},
 		},
 		{
-			name:       "change priority - invalid (lowercase)",
+			name:       "change priority - case-insensitive (lowercase)",
 			entityType: "Task",
 			tags: []tag.ParsedTag{
 				{Key: "priority", Value: "high"},
 			},
-			wantCommands: 0,
-			wantErrors:   1,
+			wantCommands: 1,
+			wantErrors:   0,
+			checkCommand: func(t *testing.T, cmd tag.Command) {
+				priorityCmd, ok := cmd.(tag.ChangePriorityCommand)
+				require.True(t, ok)
+				assert.Equal(t, "High", priorityCmd.Priority) // Canonical casing
+			},
 		},
 
 		// #due tests
@@ -432,13 +443,18 @@ func TestProcessTags_EntityManagement(t *testing.T) {
 			},
 		},
 		{
-			name:       "set severity - invalid (lowercase)",
+			name:       "set severity - case-insensitive (lowercase)",
 			entityType: "Bug",
 			tags: []tag.ParsedTag{
 				{Key: "severity", Value: "critical"},
 			},
-			wantCommands: 0,
-			wantErrors:   1,
+			wantCommands: 1,
+			wantErrors:   0,
+			checkCommand: func(t *testing.T, cmd tag.Command) {
+				severityCmd, ok := cmd.(tag.SetSeverityCommand)
+				require.True(t, ok)
+				assert.Equal(t, "Critical", severityCmd.Severity) // Canonical casing
+			},
 		},
 
 		// Combined tests

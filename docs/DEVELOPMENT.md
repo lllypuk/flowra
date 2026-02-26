@@ -22,7 +22,7 @@ This guide covers setting up the development environment and working with the Fl
 
 | Tool | Version | Installation |
 |------|---------|--------------|
-| Go | 1.25+ | [golang.org/dl](https://golang.org/dl/) |
+| Go | 1.26+ | [golang.org/dl](https://golang.org/dl/) |
 | Docker | 24.0+ | [docs.docker.com](https://docs.docker.com/get-docker/) |
 | Docker Compose | 2.20+ | Included with Docker Desktop |
 | Make | 3.8+ | Usually pre-installed |

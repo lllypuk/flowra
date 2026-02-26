@@ -332,10 +332,19 @@ func (b *RedisEventBus) HandlerCount(eventType string) int {
 
 // createEnvelope wraps a domain event in an envelope for serialization.
 func (b *RedisEventBus) createEnvelope(evt event.DomainEvent) (eventEnvelope, error) {
-	// Try to serialize the event payload
+	// First try json.Marshal which works for events with exported fields.
+	// If it produces an empty object (unexported fields), fall back to Payload().
 	payload, err := json.Marshal(evt)
 	if err != nil {
 		return eventEnvelope{}, fmt.Errorf("failed to marshal event payload: %w", err)
+	}
+
+	// json.Marshal returns "{}" for structs with only unexported fields (e.g. outboxEvent).
+	// In that case, use the Payload() method which provides the correct serialized data.
+	if string(payload) == "{}" {
+		if pe, ok := evt.(PayloadEvent); ok {
+			payload = pe.Payload()
+		}
 	}
 
 	return eventEnvelope{

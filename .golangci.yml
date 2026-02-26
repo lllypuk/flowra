@@ -465,6 +465,20 @@ linters:
       - text: 'comment on exported \S+ \S+ should be of the form ".+"'
         source: "// ?(nolint|TODO)"
         linters: [revive, staticcheck]
+      # G117: struct fields matching secret patterns (false positive for DTOs/configs)
+      - text: "G117:"
+        linters: [gosec]
+      # G704: SSRF in keycloak HTTP clients (URLs come from trusted config)
+      - path: "internal/infrastructure/keycloak/"
+        text: "G704:"
+        linters: [gosec]
+      # G704: SSRF in test utilities (URLs come from test config)
+      - path: "tests/"
+        text: "G704:"
+        linters: [gosec]
+      # var-naming: allow standard names like "user" and "metrics" for packages
+      - text: "var-naming: avoid package names that conflict"
+        linters: [revive]
       - path: '_test\.go'
         linters:
           - bodyclose

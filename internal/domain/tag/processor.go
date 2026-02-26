@@ -1,6 +1,7 @@
 package tag
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -43,7 +44,7 @@ func (p *Processor) ProcessMessage(
 // can be empty string if no active entity
 // if message creates a new entity, Entity Management Tags apply to it
 //
-//nolint:gocognit,funlen // Complexity justified: sequential tag processing logic
+//nolint:gocognit,funlen,cyclop // Complexity justified: sequential tag processing logic
 func (p *Processor) ProcessTags(
 	chatID uuid.UUID,
 	parsedTags []ParsedTag,
@@ -81,7 +82,7 @@ func (p *Processor) ProcessTags(
 				Success:  true,
 			})
 			// if created an entity, use its type for subsequent tags
-			entityType = "Task"
+			entityType = entityTypeTask
 
 		case "bug":
 			if err := ValidateEntityCreation("bug", tag.Value); err != nil {
@@ -103,7 +104,7 @@ func (p *Processor) ProcessTags(
 				Command:  cmd,
 				Success:  true,
 			})
-			entityType = "Bug"
+			entityType = entityTypeBug
 
 		case "epic":
 			if err := ValidateEntityCreation("epic", tag.Value); err != nil {
@@ -125,7 +126,7 @@ func (p *Processor) ProcessTags(
 				Command:  cmd,
 				Success:  true,
 			})
-			entityType = "Epic"
+			entityType = entityTypeEpic
 
 		// ====== Entity Management Tags ======
 		case "status":
@@ -138,7 +139,8 @@ func (p *Processor) ProcessTags(
 				})
 				continue
 			}
-			if err := ValidateStatus(entityType, tag.Value); err != nil {
+			canonicalStatus, err := ValidateStatus(entityType, tag.Value)
+			if err != nil {
 				result.Errors = append(result.Errors, TagError{
 					TagKey:   tag.Key,
 					TagValue: tag.Value,
@@ -149,11 +151,11 @@ func (p *Processor) ProcessTags(
 			}
 			cmd := ChangeStatusCommand{
 				ChatID: chatID,
-				Status: tag.Value,
+				Status: canonicalStatus,
 			}
 			result.AppliedTags = append(result.AppliedTags, TagApplication{
 				TagKey:   tag.Key,
-				TagValue: tag.Value,
+				TagValue: canonicalStatus,
 				Command:  cmd,
 				Success:  true,
 			})
@@ -181,7 +183,8 @@ func (p *Processor) ProcessTags(
 			})
 
 		case "priority":
-			if err := validatePriority(tag.Value); err != nil {
+			canonicalPriority, err := validatePriority(tag.Value)
+			if err != nil {
 				result.Errors = append(result.Errors, TagError{
 					TagKey:   tag.Key,
 					TagValue: tag.Value,
@@ -192,11 +195,11 @@ func (p *Processor) ProcessTags(
 			}
 			cmd := ChangePriorityCommand{
 				ChatID:   chatID,
-				Priority: tag.Value,
+				Priority: canonicalPriority,
 			}
 			result.AppliedTags = append(result.AppliedTags, TagApplication{
 				TagKey:   tag.Key,
-				TagValue: tag.Value,
+				TagValue: canonicalPriority,
 				Command:  cmd,
 				Success:  true,
 			})
@@ -245,7 +248,17 @@ func (p *Processor) ProcessTags(
 			})
 
 		case "severity":
-			if err := validateSeverity(tag.Value); err != nil {
+			if entityType != entityTypeBug {
+				result.Errors = append(result.Errors, TagError{
+					TagKey:   tag.Key,
+					TagValue: tag.Value,
+					Error:    fmt.Errorf("severity can only be set on Bugs, current entity is %s", entityType),
+					Severity: ErrorSeverityError,
+				})
+				continue
+			}
+			canonicalSeverity, err := validateSeverity(tag.Value)
+			if err != nil {
 				result.Errors = append(result.Errors, TagError{
 					TagKey:   tag.Key,
 					TagValue: tag.Value,
@@ -256,11 +269,11 @@ func (p *Processor) ProcessTags(
 			}
 			cmd := SetSeverityCommand{
 				ChatID:   chatID,
-				Severity: tag.Value,
+				Severity: canonicalSeverity,
 			}
 			result.AppliedTags = append(result.AppliedTags, TagApplication{
 				TagKey:   tag.Key,
-				TagValue: tag.Value,
+				TagValue: canonicalSeverity,
 				Command:  cmd,
 				Success:  true,
 			})
@@ -340,6 +353,14 @@ func (p *Processor) ProcessTags(
 				TagKey:  tag.Key,
 				Command: cmd,
 				Success: true,
+			})
+
+		default:
+			result.Errors = append(result.Errors, TagError{
+				TagKey:   tag.Key,
+				TagValue: tag.Value,
+				Error:    fmt.Errorf("unknown tag #%s", tag.Key),
+				Severity: ErrorSeverityWarning,
 			})
 		}
 	}

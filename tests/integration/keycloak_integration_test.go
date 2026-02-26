@@ -24,7 +24,7 @@ func TestJWTValidator_ValidToken(t *testing.T) {
 	defer cancel()
 
 	// Get a real token
-	tokenResp, err := kc.GetUserToken(ctx, "testuser", "password123")
+	tokenResp, err := kc.GetUserToken(ctx, "testuser", testutil.KeycloakTestUserPassword)
 	require.NoError(t, err)
 	require.NotEmpty(t, tokenResp.AccessToken)
 
@@ -68,10 +68,10 @@ func TestJWTValidator_ClaimsExtraction(t *testing.T) {
 		password      string
 		expectedRoles []string
 	}{
-		{"testuser", "password123", []string{"user"}},
+		{"testuser", testutil.KeycloakTestUserPassword, []string{"user"}},
 		{"admin", "admin123", []string{"user", "admin"}},
-		{"alice", "password123", []string{"user", "workspace_owner"}},
-		{"bob", "password123", []string{"user"}},
+		{"alice", testutil.KeycloakTestUserPassword, []string{"user", "workspace_owner"}},
+		{"bob", testutil.KeycloakTestUserPassword, []string{"user"}},
 	}
 
 	// Create validator without audience validation
@@ -145,7 +145,7 @@ func TestJWTValidator_TamperedToken(t *testing.T) {
 	defer cancel()
 
 	// Get a real token
-	tokenResp, err := kc.GetUserToken(ctx, "testuser", "password123")
+	tokenResp, err := kc.GetUserToken(ctx, "testuser", testutil.KeycloakTestUserPassword)
 	require.NoError(t, err)
 
 	validator, err := keycloak.NewJWTValidator(keycloak.JWTValidatorConfig{
@@ -176,7 +176,7 @@ func TestOAuthClient_RefreshToken(t *testing.T) {
 	defer cancel()
 
 	// Get initial token
-	tokenResp, err := kc.GetUserToken(ctx, "testuser", "password123")
+	tokenResp, err := kc.GetUserToken(ctx, "testuser", testutil.KeycloakTestUserPassword)
 	require.NoError(t, err)
 	require.NotEmpty(t, tokenResp.RefreshToken)
 
@@ -222,7 +222,7 @@ func TestOAuthClient_RevokeToken(t *testing.T) {
 	defer cancel()
 
 	// Get initial token
-	tokenResp, err := kc.GetUserToken(ctx, "testuser", "password123")
+	tokenResp, err := kc.GetUserToken(ctx, "testuser", testutil.KeycloakTestUserPassword)
 	require.NoError(t, err)
 	require.NotEmpty(t, tokenResp.RefreshToken)
 
@@ -249,7 +249,7 @@ func TestOAuthClient_GetUserInfo(t *testing.T) {
 	defer cancel()
 
 	// Get token
-	tokenResp, err := kc.GetUserToken(ctx, "testuser", "password123")
+	tokenResp, err := kc.GetUserToken(ctx, "testuser", testutil.KeycloakTestUserPassword)
 	require.NoError(t, err)
 
 	oauthClient := keycloak.NewOAuthClient(keycloak.OAuthClientConfig{
@@ -857,7 +857,7 @@ func TestFullAuthFlow_TokenValidationWithGroupMembership(t *testing.T) {
 	defer cancel()
 
 	// Step 1: Get user token
-	tokenResp, err := kc.GetUserToken(ctx, "alice", "password123")
+	tokenResp, err := kc.GetUserToken(ctx, "alice", testutil.KeycloakTestUserPassword)
 	require.NoError(t, err)
 
 	// Step 2: Validate token with JWTValidator

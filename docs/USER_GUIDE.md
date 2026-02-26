@@ -37,10 +37,11 @@ Flowra chat supports:
 
 - **Markdown formatting** - Use `**bold**`, `*italic*`, and `` `code` ``
 - **Tags** - Type `#` to see available commands:
-  - `#task "Title"` - Create a new task from your message
-  - `#bug "Title"` - Mark as a bug report
-  - `#epic "Title"` - Create an epic
-  - `#status "Value"`, `#assignee @user`, `#priority "High"` - Manage existing tasks
+  - `#task Title` - Create a new task from your message
+  - `#bug Title` - Mark as a bug report
+  - `#epic Title` - Create an epic
+  - `#status Done`, `#assignee @user`, `#priority High` - Manage existing tasks
+  - See the full guide: [`docs/TAGS_USER_GUIDE.md`](./TAGS_USER_GUIDE.md)
 - **Mentions** - Use `@username` to notify team members (autocomplete available)
 - **Tag autocomplete** - Type `#` to see tag suggestions
 - **File attachments** - Attach files using the paperclip button

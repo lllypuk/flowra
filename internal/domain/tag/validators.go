@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-	"slices"
 	"strings"
 	"time"
 )
@@ -80,28 +79,39 @@ func validateISODate(value string) error {
 	return errors.New("invalid date format. Use ISO 8601: YYYY-MM-DD")
 }
 
-// validatePriority checks value priority
-func validatePriority(value string) error {
+// validatePriority checks value priority and returns canonical form
+func validatePriority(value string) (string, error) {
 	allowedValues := []string{"High", "Medium", "Low"}
 
-	if slices.Contains(allowedValues, value) {
-		return nil
+	if canonical, ok := matchCaseInsensitive(value, allowedValues); ok {
+		return canonical, nil
 	}
 
-	return fmt.Errorf("invalid priority '%s'. Available: %s",
+	return "", fmt.Errorf("invalid priority '%s'. Available: %s",
 		value, strings.Join(allowedValues, ", "))
 }
 
-// validateSeverity validates bug severity value
-func validateSeverity(value string) error {
+// validateSeverity validates bug severity value and returns canonical form
+func validateSeverity(value string) (string, error) {
 	allowedValues := []string{"Critical", "Major", "Minor", "Trivial"}
 
-	if slices.Contains(allowedValues, value) {
-		return nil
+	if canonical, ok := matchCaseInsensitive(value, allowedValues); ok {
+		return canonical, nil
 	}
 
-	return fmt.Errorf("invalid severity '%s'. Available: %s",
+	return "", fmt.Errorf("invalid severity '%s'. Available: %s",
 		value, strings.Join(allowedValues, ", "))
+}
+
+// matchCaseInsensitive finds a case-insensitive match in the allowed values
+// and returns the canonical (properly-cased) value.
+func matchCaseInsensitive(value string, allowed []string) (string, bool) {
+	for _, a := range allowed {
+		if strings.EqualFold(value, a) {
+			return a, true
+		}
+	}
+	return "", false
 }
 
 // noValidation is a no-op validator for tags without additional validation
@@ -125,10 +135,10 @@ func ValidateEntityCreation(tagKey, title string) error {
 
 // ====== Task 04: Entity Management Validators ======
 
-// ValidateStatus validates status for specific entity type
-// entityType must be "Task", "Bug" or "Epic"
-// statuses are CASE-SENSITIVE
-func ValidateStatus(entityType, status string) error {
+// ValidateStatus validates status for specific entity type and returns the canonical value.
+// entityType must be "Task", "Bug" or "Epic".
+// Matching is case-insensitive; the returned string uses canonical casing.
+func ValidateStatus(entityType, status string) (string, error) {
 	var allowedStatuses []string
 
 	switch entityType {
@@ -139,14 +149,14 @@ func ValidateStatus(entityType, status string) error {
 	case "Epic":
 		allowedStatuses = EpicStatuses
 	default:
-		return fmt.Errorf("unknown entity type: %s", entityType)
+		return "", fmt.Errorf("unknown entity type: %s", entityType)
 	}
 
-	if slices.Contains(allowedStatuses, status) {
-		return nil
+	if canonical, ok := matchCaseInsensitive(status, allowedStatuses); ok {
+		return canonical, nil
 	}
 
-	return fmt.Errorf("invalid status '%s' for %s. Available: %s",
+	return "", fmt.Errorf("invalid status '%s' for %s. Available: %s",
 		status, entityType, strings.Join(allowedStatuses, ", "))
 }
 

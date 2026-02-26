@@ -343,7 +343,8 @@ Tags are the primary mechanism for task management through chat. All task operat
 | Principle | Description |
 |-----------|-------------|
 | **Simplicity** | Easy to remember basic syntax |
-| **Case-sensitive** | `#status` ≠ `#Status` (prevents accidental triggers) |
+| **Tag names are case-sensitive** | `#status` ≠ `#Status` (prevents accidental triggers) |
+| **Enum values are forgiving** | Values like status/priority/severity are matched case-insensitively and normalized |
 | **Partial Application** | Valid tags apply even when others fail |
 | **Known Tags Only** | Only registered tags are parsed (`#` in regular text is ignored) |
 
@@ -369,6 +370,8 @@ Finished work #status Done — sending for review
 
 ### System Tags
 
+User-facing reference with examples and troubleshooting: `docs/TAGS_USER_GUIDE.md`
+
 #### Entity Creation Tags
 
 | Tag | Description | Example |
@@ -381,17 +384,34 @@ Finished work #status Done — sending for review
 
 | Tag | Format | Description |
 |-----|--------|-------------|
-| `#status <value>` | Enum (case-sensitive) | Change status |
+| `#status <value>` | Enum (case-insensitive input) | Change status |
 | `#assignee @user` | Username | Assign to user |
 | `#priority <value>` | High/Medium/Low | Set priority |
 | `#due <date>` | ISO 8601 (YYYY-MM-DD) | Set deadline |
 | `#title <text>` | Free text | Change task title |
 | `#severity <value>` | Critical/Major/Minor/Trivial | Bug severity only |
 
+#### Participant Management Tags
+
+| Tag | Format | Description |
+|-----|--------|-------------|
+| `#invite @user` | Username | Add participant to chat |
+| `#remove @user` | Username | Remove participant from chat |
+
+#### Chat Lifecycle Tags
+
+| Tag | Format | Description |
+|-----|--------|-------------|
+| `#close` | No value | Close/archive current chat |
+| `#reopen` | No value | Reopen chat |
+| `#delete` | No value | Delete chat (parses today; execution currently not implemented) |
+
 **Status Values by Type:**
 - **Task:** To Do, In Progress, Done
 - **Bug:** New, Investigating, Fixed, Verified
 - **Epic:** Planned, In Progress, Completed
+
+**Priority via tags:** `High`, `Medium`, `Low` (tag commands do not currently support `Critical`).
 
 ### Validation Strategy
 
@@ -402,22 +422,24 @@ Input: "#status Done #assignee @unknown #priority High"
 
 Result:
 ✅ status → "Done" (applied)
-❌ assignee → error "User @unknown not found" (not applied)
+❌ assignee → error "user @unknown not found: ..." (not applied)
 ✅ priority → "High" (applied)
 
 Bot response:
 "✅ Status changed to Done
  ✅ Priority changed to High
- ❌ User @unknown not found"
+ ❌ user @unknown not found: ..."
 ```
 
 ### Error Types
 
 | Type | Example | Message Format |
 |------|---------|----------------|
-| **Syntax** | `#assignee alex` (missing @) | `❌ Invalid format. Use @username` |
-| **Semantic** | `#status Completed` (invalid value) | `❌ Invalid status. Available: To Do, In Progress, Done` |
-| **Business** | `#assignee @nonexistent` | `❌ User @nonexistent not found` |
+| **Syntax** | `#assignee alex` (missing @) | `❌ invalid assignee format. Use @username` |
+| **Semantic** | `#status Completed` (invalid value) | `❌ invalid status 'Completed' for Task. Available: To Do, In Progress, Done` |
+| **Business** | `#assignee @nonexistent` | `❌ user @nonexistent not found: ...` |
+
+Business-layer errors may include wrapped context from executors/use cases (for example `failed to assign user: ...`).
 
 **Important:** Messages are always saved, even if all tags are invalid. Tag errors don't prevent message posting.
 
@@ -661,7 +683,7 @@ Aggregates are rebuilt from event stream:
 
 | Technology | Purpose | Version |
 |------------|---------|---------|
-| **Go** | Primary language | 1.25+ |
+| **Go** | Primary language | 1.26+ |
 | **Echo** | HTTP framework | v4 |
 | **gorilla/websocket** | WebSocket | Latest |
 | **MongoDB Go Driver** | Database driver | v2 |
