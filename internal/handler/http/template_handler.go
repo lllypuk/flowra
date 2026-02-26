@@ -6,6 +6,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"html"
 	"html/template"
 	"io"
 	"io/fs"
@@ -965,7 +966,12 @@ func (h *TemplateHandler) WorkspaceMembersOptionsPartial(c echo.Context) error {
 		if displayName == "" {
 			displayName = mv.Username
 		}
-		options.WriteString(fmt.Sprintf(`<option value="%s">%s</option>`, memberUserID, displayName))
+		fmt.Fprintf( //nolint:gosec // G705: values are escaped with html.EscapeString
+			&options,
+			`<option value="%s">%s</option>`,
+			html.EscapeString(memberUserID),
+			html.EscapeString(displayName),
+		)
 	}
 
 	c.Response().Header().Set("Content-Type", "text/html; charset=utf-8")

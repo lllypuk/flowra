@@ -206,7 +206,7 @@ func TestSetDueDateUseCase_ValidationErrors(t *testing.T) {
 			name: "Date too far in past",
 			cmd: taskapp.SetDueDateCommand{
 				TaskID:    uuid.NewUUID(),
-				DueDate:   ptrTime(time.Date(2010, 1, 1, 0, 0, 0, 0, time.UTC)),
+				DueDate:   new(time.Date(2010, 1, 1, 0, 0, 0, 0, time.UTC)),
 				ChangedBy: uuid.NewUUID(),
 			},
 			expectedErr: taskapp.ErrInvalidDate,
@@ -257,9 +257,4 @@ func TestSetDueDateUseCase_TaskNotFound(t *testing.T) {
 	require.Error(t, err)
 	require.ErrorIs(t, err, taskapp.ErrTaskNotFound)
 	assert.Empty(t, result.Events)
-}
-
-// Helper function
-func ptrTime(t time.Time) *time.Time {
-	return &t
 }

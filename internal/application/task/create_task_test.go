@@ -188,7 +188,7 @@ func TestCreateTaskUseCase_ValidationErrors(t *testing.T) {
 			cmd: taskapp.CreateTaskCommand{
 				ChatID:    uuid.NewUUID(),
 				Title:     "Test",
-				DueDate:   ptr(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)),
+				DueDate:   new(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)),
 				CreatedBy: uuid.NewUUID(),
 			},
 			expectedErr: taskapp.ErrInvalidDate,
@@ -304,9 +304,4 @@ func TestCreateTaskUseCase_InitialStatusIsAlwaysToDo(t *testing.T) {
 	event, ok := result.Events[0].(*task.Created)
 	require.True(t, ok)
 	assert.Equal(t, task.StatusToDo, event.Status, "Initial status must always be To Do")
-}
-
-// Helper function
-func ptr[T any](v T) *T {
-	return &v
 }
