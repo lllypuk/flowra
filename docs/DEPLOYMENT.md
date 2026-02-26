@@ -23,7 +23,7 @@ This guide covers deploying Flowra in various environments, from local developme
 
 | Software | Minimum Version | Purpose |
 |----------|----------------|---------|
-| Go | 1.25+ | Backend runtime |
+| Go | 1.26+ | Backend runtime |
 | Docker | 24.0+ | Container runtime |
 | Docker Compose | 2.20+ | Multi-container orchestration |
 | MongoDB | 6.0+ | Primary database |

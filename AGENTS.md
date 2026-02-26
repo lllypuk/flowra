@@ -21,7 +21,7 @@ Use `make` targets (see `Makefile`) for common workflows:
 - `make docker-up` / `make docker-down` - local services (MongoDB, Redis, Keycloak)
 
 ## Coding Style & Naming Conventions
-Target Go `1.25` (`go.mod`). Follow standard Go formatting (`gofmt`) and imports (`goimports` via `golangci-lint`); keep lines under the configured `golines` limit (120). Use package-focused names, exported identifiers in `CamelCase`, unexported in `camelCase`, and files in `snake_case.go`. Keep tests in `*_test.go`. Prefer small, cohesive packages under the existing layer structure rather than cross-layer shortcuts.
+Target Go `1.26` (`go.mod`). Follow standard Go formatting (`gofmt`) and imports (`goimports` via `golangci-lint`); keep lines under the configured `golines` limit (120). Use package-focused names, exported identifiers in `CamelCase`, unexported in `camelCase`, and files in `snake_case.go`. Keep tests in `*_test.go`. Prefer small, cohesive packages under the existing layer structure rather than cross-layer shortcuts.
 
 ## Testing Guidelines
 Unit tests sit beside code in `internal/.../*_test.go`; broader scenarios live in `tests/integration` and `tests/e2e`; manual load tests live in `tests/load` (k6). Use build tags (`integration`, `e2e`) consistently. Test utilities belong in `tests/testutil`; reusable fakes/mocks in `tests/mocks`. Integration tests rely on Docker/testcontainers (MongoDB is started as a single-node replica set for transaction support), so ensure Docker is running. Load tests are not part of `make test`/CI by default and require explicit auth setup (`AUTH_TOKEN`). After development, you must run `make lint` and `make test` before opening a PR.

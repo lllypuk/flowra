@@ -588,10 +588,7 @@ func (h *TaskDetailTemplateHandler) loadPaginatedActivities(
 		return nil, false
 	}
 
-	end := start + defaultActivityLimit
-	if end > len(allActivities) {
-		end = len(allActivities)
-	}
+	end := min(start+defaultActivityLimit, len(allActivities))
 
 	return allActivities[start:end], end < len(allActivities)
 }

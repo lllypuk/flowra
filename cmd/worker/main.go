@@ -148,31 +148,25 @@ func main() {
 	var wg sync.WaitGroup
 
 	// Start user sync worker
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		if runErr := userSyncWorker.Run(ctx); runErr != nil && !errors.Is(runErr, context.Canceled) {
 			logger.Error("user sync worker error", slog.String("error", runErr.Error()))
 		}
-	}()
+	})
 
 	// Start outbox worker
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		if runErr := outboxWorker.Run(ctx); runErr != nil && !errors.Is(runErr, context.Canceled) {
 			logger.Error("outbox worker error", slog.String("error", runErr.Error()))
 		}
-	}()
+	})
 
 	// Start repair worker
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		if runErr := repairWorker.Start(ctx); runErr != nil && !errors.Is(runErr, context.Canceled) {
 			logger.Error("repair worker error", slog.String("error", runErr.Error()))
 		}
-	}()
+	})
 
 	// Wait for all workers to complete
 	wg.Wait()
