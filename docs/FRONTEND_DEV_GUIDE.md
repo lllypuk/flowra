@@ -152,9 +152,14 @@ func TestMyPage_Renders(t *testing.T) {
 
 ### Real-time Updates with WebSocket
 
+See also:
+
+- `docs/api/websocket-protocol.md` for the current server/client message protocol, event envelope, and reconnection notes
+- `docs/api/action-endpoints.md` for UI action routes often used together with real-time updates
+
 ```html
 <div hx-ext="ws"
-     ws-connect="/ws?token={{.Token}}"
+     ws-connect="/api/v1/ws?token={{.Token}}"
      ws-send>
 
     <!-- Messages container -->

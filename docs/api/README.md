@@ -43,6 +43,8 @@ curl http://localhost:8080/api/v1/workspaces \
 The complete API is documented in OpenAPI 3.1 format:
 
 - **[openapi.yaml](./openapi.yaml)** - Full API specification with all endpoints, schemas, and examples
+- **[action-endpoints.md](./action-endpoints.md)** - UI/HTMX action endpoints reference (chat/task action routes)
+- **[websocket-protocol.md](./websocket-protocol.md)** - Current WebSocket protocol reference (messages, events, reconnect)
 
 ### View Documentation
 
@@ -249,6 +251,10 @@ X-RateLimit-Reset: 1704067200
 
 Connect to `/api/v1/ws` with JWT token for real-time updates.
 
+For the current protocol (message types, payload envelope, HTMX integration, and reconnect behavior), see:
+
+- **[websocket-protocol.md](./websocket-protocol.md)**
+
 ### Connection
 
 ```javascript
@@ -259,13 +265,13 @@ const ws = new WebSocket('ws://localhost:8080/api/v1/ws?token=<jwt_token>');
 
 ```json
 // Subscribe to chat updates
-{"type": "subscribe_chat", "chat_id": "uuid"}
+{"type": "subscribe", "chat_id": "uuid"}
 
 // Unsubscribe from chat
-{"type": "unsubscribe_chat", "chat_id": "uuid"}
+{"type": "unsubscribe", "chat_id": "uuid"}
 
 // Send typing indicator
-{"type": "typing", "chat_id": "uuid"}
+{"type": "chat.typing", "chat_id": "uuid"}
 
 // Keepalive ping
 {"type": "ping"}
@@ -274,20 +280,20 @@ const ws = new WebSocket('ws://localhost:8080/api/v1/ws?token=<jwt_token>');
 ### Server Messages
 
 ```json
-// New message
-{"type": "message_posted", "data": {...}, "timestamp": "..."}
+// Ack after subscribe/unsubscribe
+{"type": "ack", "action": "subscribed", "chat_id": "uuid"}
 
-// Message edited
-{"type": "message_edited", "data": {...}, "timestamp": "..."}
+// Domain event broadcast (example)
+{"type": "chat.message.posted", "chat_id": "uuid", "data": {...}}
 
-// Task updated
-{"type": "task_updated", "data": {...}, "timestamp": "..."}
+// Presence update
+{"type": "presence.changed", "user_id": "uuid", "is_online": true}
 
-// User typing
-{"type": "user_typing", "data": {...}, "timestamp": "..."}
+// Typing indicator
+{"type": "chat.typing", "chat_id": "uuid", "user_id": "uuid"}
 
-// Notification
-{"type": "notification", "data": {...}, "timestamp": "..."}
+// User-specific notification
+{"type": "notification.new", "data": {...}}
 ```
 
 ## Postman Collection

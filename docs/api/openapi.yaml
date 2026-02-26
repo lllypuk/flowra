@@ -718,6 +718,305 @@ paths:
         "404":
           $ref: "#/components/responses/NotFoundError"
 
+  /workspaces/{workspace_id}/chats/{chat_id}/actions/status:
+    post:
+      tags:
+        - Chats
+      summary: Change chat status (action endpoint)
+      description: |
+        UI-oriented action endpoint that routes the status change through the message-based action system.
+        Supports JSON and HTMX form submissions.
+      operationId: chatActionChangeStatus
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceIdPath"
+        - $ref: "#/components/parameters/ChatIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActionStatusRequest"
+            example:
+              status: "In Progress"
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/ActionStatusRequest"
+      responses:
+        "200":
+          description: Action applied successfully (empty body)
+          headers:
+            Hx-Trigger:
+              description: HTMX trigger event name (`chatUpdated`)
+              schema:
+                type: string
+                example: chatUpdated
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntityError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /workspaces/{workspace_id}/chats/{chat_id}/actions/priority:
+    post:
+      tags:
+        - Chats
+      summary: Change chat priority (action endpoint)
+      description: UI-oriented action endpoint for priority changes routed through the action/message system.
+      operationId: chatActionChangePriority
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceIdPath"
+        - $ref: "#/components/parameters/ChatIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActionPriorityRequest"
+            example:
+              priority: "High"
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/ActionPriorityRequest"
+      responses:
+        "200":
+          description: Action applied successfully (empty body)
+          headers:
+            Hx-Trigger:
+              description: HTMX trigger event name (`chatUpdated`)
+              schema:
+                type: string
+                example: chatUpdated
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntityError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /workspaces/{workspace_id}/chats/{chat_id}/actions/assignee:
+    post:
+      tags:
+        - Chats
+      summary: Change chat assignee (action endpoint)
+      description: |
+        UI-oriented action endpoint for assignee changes routed through the action/message system.
+        Send an empty `assignee_id` to clear the assignee.
+      operationId: chatActionChangeAssignee
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceIdPath"
+        - $ref: "#/components/parameters/ChatIdPath"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActionAssigneeRequest"
+            example:
+              assignee_id: "550e8400-e29b-41d4-a716-446655440000"
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/ActionAssigneeRequest"
+      responses:
+        "200":
+          description: Action applied successfully (empty body)
+          headers:
+            Hx-Trigger:
+              description: HTMX trigger event name (`chatUpdated`)
+              schema:
+                type: string
+                example: chatUpdated
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntityError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /workspaces/{workspace_id}/chats/{chat_id}/actions/due-date:
+    post:
+      tags:
+        - Chats
+      summary: Set chat due date (action endpoint)
+      description: |
+        UI-oriented action endpoint for due date changes routed through the action/message system.
+        Accepts `YYYY-MM-DD`; send an empty `due_date` to clear.
+      operationId: chatActionSetDueDate
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceIdPath"
+        - $ref: "#/components/parameters/ChatIdPath"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActionDueDateRequest"
+            example:
+              due_date: "2026-02-27"
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/ActionDueDateRequest"
+      responses:
+        "200":
+          description: Action applied successfully (empty body)
+          headers:
+            Hx-Trigger:
+              description: HTMX trigger event name (`chatUpdated`)
+              schema:
+                type: string
+                example: chatUpdated
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntityError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /workspaces/{workspace_id}/chats/{chat_id}/actions/close:
+    post:
+      tags:
+        - Chats
+      summary: Close chat (action endpoint)
+      description: UI-oriented action endpoint that closes a chat via the action/message system.
+      operationId: chatActionClose
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceIdPath"
+        - $ref: "#/components/parameters/ChatIdPath"
+      responses:
+        "200":
+          description: Action applied successfully (empty body)
+          headers:
+            Hx-Trigger:
+              description: HTMX trigger event name (`chatUpdated`)
+              schema:
+                type: string
+                example: chatUpdated
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntityError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /workspaces/{workspace_id}/chats/{chat_id}/actions/reopen:
+    post:
+      tags:
+        - Chats
+      summary: Reopen chat (action endpoint)
+      description: UI-oriented action endpoint that reopens a chat via the action/message system.
+      operationId: chatActionReopen
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceIdPath"
+        - $ref: "#/components/parameters/ChatIdPath"
+      responses:
+        "200":
+          description: Action applied successfully (empty body)
+          headers:
+            Hx-Trigger:
+              description: HTMX trigger event name (`chatUpdated`)
+              schema:
+                type: string
+                example: chatUpdated
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntityError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /workspaces/{workspace_id}/chats/{chat_id}/actions/rename:
+    post:
+      tags:
+        - Chats
+      summary: Rename chat (action endpoint)
+      description: UI-oriented action endpoint that renames a chat via the action/message system.
+      operationId: chatActionRename
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceIdPath"
+        - $ref: "#/components/parameters/ChatIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActionRenameRequest"
+            example:
+              title: "Bug triage discussion"
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/ActionRenameRequest"
+      responses:
+        "200":
+          description: Action applied successfully (empty body)
+          headers:
+            Hx-Trigger:
+              description: HTMX trigger event name (`chatUpdated`)
+              schema:
+                type: string
+                example: chatUpdated
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntityError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   # ============================================
   # Message Endpoints
   # ============================================
@@ -1110,6 +1409,192 @@ paths:
         "404":
           $ref: "#/components/responses/NotFoundError"
 
+  /workspaces/{workspace_id}/tasks/{task_id}/actions/status:
+    post:
+      tags:
+        - Tasks
+      summary: Change task status (action endpoint)
+      description: |
+        UI-oriented action endpoint that resolves the task's associated chat and routes the change
+        through the message-based action system. Supports JSON and HTMX form submissions.
+      operationId: taskActionChangeStatus
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceIdPath"
+        - $ref: "#/components/parameters/TaskIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActionStatusRequest"
+            example:
+              status: "In Progress"
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/ActionStatusRequest"
+      responses:
+        "204":
+          description: Action applied successfully (empty body)
+          headers:
+            Hx-Trigger:
+              description: HTMX trigger event name (`taskUpdated`)
+              schema:
+                type: string
+                example: taskUpdated
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntityError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /workspaces/{workspace_id}/tasks/{task_id}/actions/priority:
+    post:
+      tags:
+        - Tasks
+      summary: Change task priority (action endpoint)
+      description: UI-oriented action endpoint for task priority changes routed through the action/message system.
+      operationId: taskActionChangePriority
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceIdPath"
+        - $ref: "#/components/parameters/TaskIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActionPriorityRequest"
+            example:
+              priority: "High"
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/ActionPriorityRequest"
+      responses:
+        "204":
+          description: Action applied successfully (empty body)
+          headers:
+            Hx-Trigger:
+              description: HTMX trigger event name (`taskUpdated`)
+              schema:
+                type: string
+                example: taskUpdated
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntityError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /workspaces/{workspace_id}/tasks/{task_id}/actions/assignee:
+    post:
+      tags:
+        - Tasks
+      summary: Change task assignee (action endpoint)
+      description: |
+        UI-oriented action endpoint for task assignee changes routed through the action/message system.
+        Send an empty `assignee_id` to clear the assignee.
+      operationId: taskActionChangeAssignee
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceIdPath"
+        - $ref: "#/components/parameters/TaskIdPath"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActionAssigneeRequest"
+            example:
+              assignee_id: "550e8400-e29b-41d4-a716-446655440000"
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/ActionAssigneeRequest"
+      responses:
+        "204":
+          description: Action applied successfully (empty body)
+          headers:
+            Hx-Trigger:
+              description: HTMX trigger event name (`taskUpdated`)
+              schema:
+                type: string
+                example: taskUpdated
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntityError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /workspaces/{workspace_id}/tasks/{task_id}/actions/due-date:
+    post:
+      tags:
+        - Tasks
+      summary: Set task due date (action endpoint)
+      description: |
+        UI-oriented action endpoint for task due date changes routed through the action/message system.
+        Accepts `YYYY-MM-DD`; send an empty `due_date` to clear.
+      operationId: taskActionSetDueDate
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceIdPath"
+        - $ref: "#/components/parameters/TaskIdPath"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActionDueDateRequest"
+            example:
+              due_date: "2026-02-27"
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/ActionDueDateRequest"
+      responses:
+        "204":
+          description: Action applied successfully (empty body)
+          headers:
+            Hx-Trigger:
+              description: HTMX trigger event name (`taskUpdated`)
+              schema:
+                type: string
+                example: taskUpdated
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntityError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   # ============================================
   # Notification Endpoints
   # ============================================
@@ -1465,6 +1950,30 @@ components:
             error:
               code: "VALIDATION_ERROR"
               message: "Invalid request data"
+
+    ConflictError:
+      description: Conflict (for example concurrent modification)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            success: false
+            error:
+              code: "CONCURRENT_MODIFICATION"
+              message: "Resource was modified by another request"
+
+    UnprocessableEntityError:
+      description: Operation not allowed in current state
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            success: false
+            error:
+              code: "INVALID_TRANSITION"
+              message: "State transition not allowed"
 
     InternalError:
       description: Internal server error
@@ -2064,6 +2573,57 @@ components:
               type: string
 
     # Task schemas
+    ActionStatusRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          description: |
+            Target status value used by action endpoints. For UI/HTMX flows this is typically a
+            human-readable label (for example `In Progress`), not the normalized task enum value.
+          minLength: 1
+          example: "In Progress"
+
+    ActionPriorityRequest:
+      type: object
+      required:
+        - priority
+      properties:
+        priority:
+          type: string
+          description: Priority label used by action endpoints (for example `Low`, `High`, `Critical`).
+          minLength: 1
+          example: "High"
+
+    ActionAssigneeRequest:
+      type: object
+      properties:
+        assignee_id:
+          type: string
+          description: UUID of the assignee. Send an empty string to clear the current assignee.
+          example: "550e8400-e29b-41d4-a716-446655440000"
+
+    ActionDueDateRequest:
+      type: object
+      properties:
+        due_date:
+          type: string
+          description: Date in `YYYY-MM-DD` format. Send an empty string to clear the due date.
+          example: "2026-02-27"
+
+    ActionRenameRequest:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          minLength: 1
+          description: New chat title.
+          example: "Bug triage discussion"
+
     CreateTaskRequest:
       type: object
       required:

@@ -1,8 +1,10 @@
 # Backlog
 
-## Future Enhancements
+This file tracks non-urgent work that is valuable but not yet scheduled.
 
-### Documentation
-- [ ] API documentation for action endpoints
-- [ ] WebSocket protocol documentation
-- [ ] Tag system user guide
+## Conventions
+
+- Status: use checkboxes (`[ ]` pending, `[x]` complete).
+- Priority: use `P1` (high), `P2` (medium), `P3` (low).
+- Keep tasks actionable and outcome-focused.
+- Do not add time estimates.
