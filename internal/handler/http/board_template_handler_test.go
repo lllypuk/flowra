@@ -23,6 +23,41 @@ type MockBoardTaskService struct {
 	tasks map[uuid.UUID]*taskapp.ReadModel
 }
 
+type RecordingBoardTaskService struct {
+	listFilters  []taskapp.Filters
+	countFilters []taskapp.Filters
+}
+
+func (m *RecordingBoardTaskService) ListTasks(
+	_ context.Context,
+	filters taskapp.Filters,
+) ([]*taskapp.ReadModel, error) {
+	m.listFilters = append(m.listFilters, filters)
+	return []*taskapp.ReadModel{}, nil
+}
+
+func (m *RecordingBoardTaskService) CountTasks(
+	_ context.Context,
+	filters taskapp.Filters,
+) (int, error) {
+	m.countFilters = append(m.countFilters, filters)
+	return 0, nil
+}
+
+func (m *RecordingBoardTaskService) GetTask(
+	_ context.Context,
+	_ uuid.UUID,
+) (*taskapp.ReadModel, error) {
+	return nil, taskapp.ErrTaskNotFound
+}
+
+func (m *RecordingBoardTaskService) GetTaskByChatID(
+	_ context.Context,
+	_ uuid.UUID,
+) (*taskapp.ReadModel, error) {
+	return nil, taskapp.ErrTaskNotFound
+}
+
 // NewMockBoardTaskService creates a new mock board task service.
 func NewMockBoardTaskService() *MockBoardTaskService {
 	return &MockBoardTaskService{
@@ -606,6 +641,38 @@ func TestBoardFilters(t *testing.T) {
 		err := handler.BoardPartial(c)
 		require.Error(t, err)
 	})
+}
+
+func TestBoardTemplateHandler_PropagatesWorkspaceFilter(t *testing.T) {
+	e := echo.New()
+	userID := uuid.NewUUID()
+	workspaceID := uuid.NewUUID()
+
+	recordingTaskService := &RecordingBoardTaskService{}
+	mockMemberService := NewMockBoardMemberService()
+	handler := httphandler.NewBoardTemplateHandler(nil, nil, recordingTaskService, mockMemberService)
+
+	req := httptest.NewRequest(http.MethodGet, "/partials/workspace/"+workspaceID.String()+"/board", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("workspace_id")
+	c.SetParamValues(workspaceID.String())
+	setUserContextForBoard(c, userID)
+
+	err := handler.BoardPartial(c)
+	require.Error(t, err)
+
+	require.Len(t, recordingTaskService.listFilters, 4)
+	for _, filter := range recordingTaskService.listFilters {
+		require.NotNil(t, filter.WorkspaceID)
+		assert.Equal(t, workspaceID, *filter.WorkspaceID)
+	}
+
+	require.Len(t, recordingTaskService.countFilters, 4)
+	for _, filter := range recordingTaskService.countFilters {
+		require.NotNil(t, filter.WorkspaceID)
+		assert.Equal(t, workspaceID, *filter.WorkspaceID)
+	}
 }
 
 func TestBoardTasksWithAssignee(t *testing.T) {

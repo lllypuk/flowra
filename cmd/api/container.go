@@ -1249,13 +1249,15 @@ func (a *boardChatCreatorAdapter) CreateChat(
 // createBoardTaskService creates a service implementing BoardTaskService.
 func (c *Container) createBoardTaskService() httphandler.BoardTaskService {
 	return &boardTaskServiceAdapter{
-		collection: c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model"),
+		collection:     c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model"),
+		chatCollection: c.MongoDB.Database(c.MongoDBName).Collection("chats_read_model"),
 	}
 }
 
 // boardTaskServiceAdapter adapts MongoDB collection to BoardTaskService.
 type boardTaskServiceAdapter struct {
-	collection *mongo.Collection
+	collection     *mongo.Collection
+	chatCollection *mongo.Collection
 }
 
 // ListTasks implements BoardTaskService.
@@ -1278,6 +1280,9 @@ func (a *boardTaskServiceAdapter) CountTasks(
 		return 0, nil
 	}
 	filter := a.buildFilter(filters)
+	if err := a.applyWorkspaceScope(ctx, filter, filters.WorkspaceID); err != nil {
+		return 0, err
+	}
 	count, err := a.collection.CountDocuments(ctx, filter)
 	if err != nil {
 		return 0, err
@@ -1317,6 +1322,9 @@ func (a *boardTaskServiceAdapter) queryTasks(
 	filters taskapp.Filters,
 ) ([]*taskapp.ReadModel, error) {
 	filter := a.buildFilter(filters)
+	if err := a.applyWorkspaceScope(ctx, filter, filters.WorkspaceID); err != nil {
+		return nil, err
+	}
 
 	opts := options.Find()
 	if filters.Limit > 0 {
@@ -1343,6 +1351,62 @@ func (a *boardTaskServiceAdapter) queryTasks(
 	}
 
 	return results, nil
+}
+
+// applyWorkspaceScope adds workspace filtering using chats_read_model linkage.
+func (a *boardTaskServiceAdapter) applyWorkspaceScope(
+	ctx context.Context,
+	filter map[string]any,
+	workspaceID *uuid.UUID,
+) error {
+	if workspaceID == nil {
+		return nil
+	}
+
+	if a.chatCollection == nil {
+		filter["chat_id"] = bson.M{"$in": []string{}}
+		return nil
+	}
+
+	chatIDs, err := a.findWorkspaceChatIDs(ctx, *workspaceID)
+	if err != nil {
+		return err
+	}
+
+	if len(chatIDs) == 0 {
+		filter["chat_id"] = bson.M{"$in": []string{}}
+		return nil
+	}
+
+	if chatID, ok := filter["chat_id"].(string); ok {
+		for _, id := range chatIDs {
+			if id == chatID {
+				return nil
+			}
+		}
+		filter["chat_id"] = bson.M{"$in": []string{}}
+		return nil
+	}
+
+	filter["chat_id"] = bson.M{"$in": chatIDs}
+	return nil
+}
+
+func (a *boardTaskServiceAdapter) findWorkspaceChatIDs(
+	ctx context.Context,
+	workspaceID uuid.UUID,
+) ([]string, error) {
+	if workspaceID.IsZero() {
+		return []string{}, nil
+	}
+
+	res := a.chatCollection.Distinct(ctx, "chat_id", bson.M{"workspace_id": workspaceID.String()})
+	var chatIDs []string
+	if err := res.Decode(&chatIDs); err != nil {
+		return nil, err
+	}
+
+	return chatIDs, nil
 }
 
 // buildFilter builds a MongoDB filter from task filters.
@@ -1447,7 +1511,8 @@ func (a *chatBasicInfoServiceAdapter) GetChatBasicInfo(
 func (c *Container) createFullTaskService() httphandler.TaskService {
 	return &fullTaskServiceAdapter{
 		boardTaskServiceAdapter: boardTaskServiceAdapter{
-			collection: c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model"),
+			collection:     c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model"),
+			chatCollection: c.MongoDB.Database(c.MongoDBName).Collection("chats_read_model"),
 		},
 		taskRepo: c.TaskRepo,
 		userRepo: c.UserRepo,
