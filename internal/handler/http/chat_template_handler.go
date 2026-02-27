@@ -68,6 +68,9 @@ type ChatViewData struct {
 	IsPublic         bool
 	IsTaskChat       bool
 	Status           string
+	AssigneeID       string
+	Priority         string
+	DueDate          *time.Time
 	CreatedBy        string
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
@@ -495,6 +498,9 @@ func (h *ChatTemplateHandler) MessagesPartial(c echo.Context) error {
 		if msg == nil {
 			continue
 		}
+		if shouldHideSystemTagCommand(msg) {
+			continue
+		}
 		messageViews = append(messageViews, h.convertMessageToView(msg, userID))
 	}
 
@@ -537,6 +543,9 @@ func (h *ChatTemplateHandler) SingleMessagePartial(c echo.Context) error {
 	msg, err := h.messageService.GetMessage(c.Request().Context(), messageID)
 	if err != nil {
 		return c.String(http.StatusNotFound, "Message not found")
+	}
+	if shouldHideSystemTagCommand(msg) {
+		return c.NoContent(http.StatusNoContent)
 	}
 
 	messageView := h.convertMessageToView(msg, userID)
@@ -866,6 +875,20 @@ func (h *ChatTemplateHandler) loadChatViewData(
 	}
 
 	chat := result.Chat
+	assigneeID := ""
+	if chat.AssignedTo != nil {
+		assigneeID = chat.AssignedTo.String()
+	}
+	priority := ""
+	if chat.Priority != nil {
+		priority = *chat.Priority
+	}
+	var dueDate *time.Time
+	if chat.DueDate != nil {
+		d := *chat.DueDate
+		dueDate = &d
+	}
+
 	return &ChatViewData{
 		ID:               chat.ID.String(),
 		WorkspaceID:      chat.WorkspaceID.String(),
@@ -874,6 +897,9 @@ func (h *ChatTemplateHandler) loadChatViewData(
 		IsPublic:         chat.IsPublic,
 		IsTaskChat:       isTaskType(string(chat.Type)),
 		Status:           getStringValue(chat.Status),
+		AssigneeID:       assigneeID,
+		Priority:         priority,
+		DueDate:          dueDate,
 		CreatedBy:        chat.CreatedBy.String(),
 		CreatedAt:        chat.CreatedAt,
 		UpdatedAt:        chat.CreatedAt,
@@ -887,32 +913,46 @@ func (h *ChatTemplateHandler) loadTaskViewData(ctx context.Context, chat *ChatVi
 		return nil
 	}
 
-	// Load task from task service using chat ID
+	// Prefer chat read-model fields as source of truth for sidebar values,
+	// because task read model can lag behind chat action processing.
+	taskView := &TaskViewData{
+		ID:         chat.ID,
+		Status:     chat.Status,
+		Priority:   chat.Priority,
+		AssigneeID: chat.AssigneeID,
+		DueDate:    chat.DueDate,
+	}
+
+	// Load task from task service using chat ID (primarily to get task ID and fallback values)
 	if h.taskService == nil {
-		return nil
+		return taskView
 	}
 
 	chatID, err := uuid.ParseUUID(chat.ID)
 	if err != nil {
-		return nil
+		return taskView
 	}
 
 	task, taskErr := h.taskService.GetTaskByChatID(ctx, chatID)
 	if taskErr != nil || task == nil {
-		return nil
+		return taskView
 	}
 
-	var dueDate *time.Time
-	if task.DueDate != nil {
-		dueDate = task.DueDate
+	taskView.ID = task.ID.String()
+	if taskView.Status == "" {
+		taskView.Status = string(task.Status)
 	}
-	return &TaskViewData{
-		ID:         task.ID.String(),
-		Status:     string(task.Status),
-		Priority:   string(task.Priority),
-		AssigneeID: getAssigneeID(task.AssignedTo),
-		DueDate:    dueDate,
+	if taskView.Priority == "" {
+		taskView.Priority = string(task.Priority)
 	}
+	if taskView.AssigneeID == "" {
+		taskView.AssigneeID = getAssigneeID(task.AssignedTo)
+	}
+	if taskView.DueDate == nil && task.DueDate != nil {
+		taskView.DueDate = task.DueDate
+	}
+
+	return taskView
 }
 
 func getAssigneeID(assignee *uuid.UUID) string {
@@ -1099,6 +1139,16 @@ func parseMessageContent(content string) parsedContent {
 		DisplayText: displayText,
 		Tags:        tags,
 	}
+}
+
+// shouldHideSystemTagCommand hides internal command messages like "#status Done".
+// Action responses are rendered by human-readable system/bot messages.
+func shouldHideSystemTagCommand(msg *message.Message) bool {
+	if msg == nil || !msg.IsSystemMessage() {
+		return false
+	}
+	content := strings.TrimSpace(msg.Content())
+	return strings.HasPrefix(content, "#")
 }
 
 func isTaskType(chatType string) bool {
