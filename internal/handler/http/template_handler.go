@@ -623,6 +623,7 @@ func SetupStaticRoutes(e *echo.Echo, staticFS embed.FS) error {
 
 	// Serve static files
 	e.StaticFS("/static", staticSub)
+	e.FileFS("/favicon.ico", "favicon.svg", staticSub)
 
 	return nil
 }
