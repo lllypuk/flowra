@@ -716,9 +716,6 @@ func (c *Container) createChatUseCasesForTags() *tag.ChatUseCases {
 		ConvertToBug:  chatapp.NewConvertToBugUseCase(c.ChatRepo),
 		ConvertToEpic: chatapp.NewConvertToEpicUseCase(c.ChatRepo),
 
-		// Task Read Model Creation (synchronous)
-		CreateTask: taskapp.NewCreateTaskUseCase(c.TaskRepo),
-
 		// Entity Management
 		ChangeStatus: chatapp.NewChangeStatusUseCase(c.ChatRepo),
 		AssignUser:   chatapp.NewAssignUserUseCase(c.ChatRepo),
@@ -880,7 +877,7 @@ func (c *Container) setupHTTPHandlers() {
 	c.Logger.Debug("action service and chat action handler initialized")
 
 	// Initialize TaskHandler with full service
-	c.TaskHandler = httphandler.NewTaskHandler(c.createFullTaskService())
+	c.TaskHandler = httphandler.NewTaskHandler(c.createFullTaskService(), c.ActionService)
 	c.Logger.Debug("task handler initialized (real)")
 
 	// Initialize TaskActionHandler — routes sidebar changes through chat message system

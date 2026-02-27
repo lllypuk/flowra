@@ -18,7 +18,7 @@ Assumption: service is not in production yet. We can make breaking changes and r
   - ADR: [adr-007-chat-sot.md](/home/sasha/Project/flowra/docs/architecture/adr-007-chat-sot.md)
 - [x] `P1` PR-02: Remove duplicate entity creation paths.
   - Details: [chat-sot-pr-02-remove-duplicate-creation.md](/home/sasha/Project/flowra/docs/tasks/chat-sot-pr-02-remove-duplicate-creation.md)
-- [ ] `P1` PR-03: Unify all writes through Chat command pipeline.
+- [x] `P1` PR-03: Unify all writes through Chat command pipeline.
   - Details: [chat-sot-pr-03-unify-write-path.md](/home/sasha/Project/flowra/docs/tasks/chat-sot-pr-03-unify-write-path.md)
 - [ ] `P1` PR-04: Rebuild projections from `chat.*` events only.
   - Details: [chat-sot-pr-04-chat-projections.md](/home/sasha/Project/flowra/docs/tasks/chat-sot-pr-04-chat-projections.md)

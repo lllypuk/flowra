@@ -74,22 +74,37 @@ func NewTaskActionHandler(
 }
 
 // resolveActorAndChat extracts the authenticated user ID and resolves the task's chat ID.
-func (h *TaskActionHandler) resolveActorAndChat(c echo.Context) (uuid.UUID, uuid.UUID, error) {
+func (h *TaskActionHandler) resolveActorAndTask(c echo.Context) (uuid.UUID, *taskapp.ReadModel, error) {
 	userID := middleware.GetUserID(c)
 	if userID.IsZero() {
-		return uuid.UUID(""), uuid.UUID(""), httpserver.RespondErrorWithCode(
+		return uuid.UUID(""), nil, httpserver.RespondErrorWithCode(
 			c, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
 	}
-	chatID, err := h.resolveChatID(c.Request().Context(), c)
-	return userID, chatID, err
+
+	taskIDStr := c.Param("task_id")
+	taskID, parseErr := uuid.ParseUUID(taskIDStr)
+	if parseErr != nil {
+		return uuid.UUID(""), nil, httpserver.RespondErrorWithCode(
+			c, http.StatusBadRequest, "INVALID_TASK_ID", "invalid task ID format")
+	}
+
+	taskModel, getErr := h.taskService.GetTask(c.Request().Context(), taskID)
+	if getErr != nil {
+		return uuid.UUID(""), nil, httpserver.RespondError(c, getErr)
+	}
+
+	return userID, taskModel, nil
 }
 
 // ChangeStatus handles POST /api/v1/workspaces/:workspace_id/tasks/:task_id/actions/status.
 // Sends a #status tag message to the task's associated chat.
 func (h *TaskActionHandler) ChangeStatus(c echo.Context) error {
-	userID, chatID, err := h.resolveActorAndChat(c)
+	userID, taskModel, err := h.resolveActorAndTask(c)
 	if err != nil {
 		return err
+	}
+	if taskModel == nil {
+		return nil
 	}
 
 	var req struct {
@@ -102,10 +117,21 @@ func (h *TaskActionHandler) ChangeStatus(c echo.Context) error {
 		return httpserver.RespondErrorWithCode(c, http.StatusBadRequest, "INVALID_STATUS", "status is required")
 	}
 
+	status, statusErr := parseStatus(req.Status)
+	if statusErr != nil {
+		return httpserver.RespondErrorWithCode(c, http.StatusBadRequest, "INVALID_STATUS", statusErr.Error())
+	}
+
+	// Idempotent no-op: same status requested.
+	if taskModel.Status == status {
+		c.Response().Header().Set("Hx-Trigger", "taskUpdated")
+		return c.NoContent(http.StatusNoContent)
+	}
+
 	if _, actionErr := h.actionService.ChangeStatus(
 		c.Request().Context(),
-		chatID,
-		req.Status,
+		taskModel.ChatID,
+		string(status),
 		userID,
 	); actionErr != nil {
 		return httpserver.RespondError(c, actionErr)
@@ -118,9 +144,12 @@ func (h *TaskActionHandler) ChangeStatus(c echo.Context) error {
 // ChangePriority handles POST /api/v1/workspaces/:workspace_id/tasks/:task_id/actions/priority.
 // Sends a #priority tag message to the task's associated chat.
 func (h *TaskActionHandler) ChangePriority(c echo.Context) error {
-	userID, chatID, err := h.resolveActorAndChat(c)
+	userID, taskModel, err := h.resolveActorAndTask(c)
 	if err != nil {
 		return err
+	}
+	if taskModel == nil {
+		return nil
 	}
 
 	var req struct {
@@ -133,10 +162,26 @@ func (h *TaskActionHandler) ChangePriority(c echo.Context) error {
 		return httpserver.RespondErrorWithCode(c, http.StatusBadRequest, "INVALID_PRIORITY", "priority is required")
 	}
 
+	priority := parsePriorityStrict(req.Priority)
+	if priority == "" {
+		return httpserver.RespondErrorWithCode(
+			c,
+			http.StatusBadRequest,
+			"INVALID_PRIORITY",
+			"priority must be Low, Medium, High, or Critical",
+		)
+	}
+
+	// Idempotent no-op: same priority requested.
+	if taskModel.Priority == priority {
+		c.Response().Header().Set("Hx-Trigger", "taskUpdated")
+		return c.NoContent(http.StatusNoContent)
+	}
+
 	if _, actionErr := h.actionService.SetPriority(
 		c.Request().Context(),
-		chatID,
-		req.Priority,
+		taskModel.ChatID,
+		string(priority),
 		userID,
 	); actionErr != nil {
 		return httpserver.RespondError(c, actionErr)
@@ -151,15 +196,12 @@ func (h *TaskActionHandler) ChangePriority(c echo.Context) error {
 // An empty assignee_id clears the current assignee.
 func (h *TaskActionHandler) ChangeAssignee(c echo.Context) error {
 	ctx := c.Request().Context()
-
-	userID := middleware.GetUserID(c)
-	if userID.IsZero() {
-		return httpserver.RespondErrorWithCode(c, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
-	}
-
-	chatID, err := h.resolveChatID(ctx, c)
+	userID, taskModel, err := h.resolveActorAndTask(c)
 	if err != nil {
 		return err
+	}
+	if taskModel == nil {
+		return nil
 	}
 
 	var req struct {
@@ -179,7 +221,13 @@ func (h *TaskActionHandler) ChangeAssignee(c echo.Context) error {
 		assigneeID = &parsed
 	}
 
-	if _, actionErr := h.actionService.AssignUser(ctx, chatID, assigneeID, userID); actionErr != nil {
+	// Idempotent no-op: same assignee requested.
+	if sameUUIDPtr(taskModel.AssignedTo, assigneeID) {
+		c.Response().Header().Set("Hx-Trigger", "taskUpdated")
+		return c.NoContent(http.StatusNoContent)
+	}
+
+	if _, actionErr := h.actionService.AssignUser(ctx, taskModel.ChatID, assigneeID, userID); actionErr != nil {
 		return httpserver.RespondError(c, actionErr)
 	}
 
@@ -192,15 +240,12 @@ func (h *TaskActionHandler) ChangeAssignee(c echo.Context) error {
 // An empty due_date clears the current due date.
 func (h *TaskActionHandler) SetDueDate(c echo.Context) error {
 	ctx := c.Request().Context()
-
-	userID := middleware.GetUserID(c)
-	if userID.IsZero() {
-		return httpserver.RespondErrorWithCode(c, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
-	}
-
-	chatID, err := h.resolveChatID(ctx, c)
+	userID, taskModel, err := h.resolveActorAndTask(c)
 	if err != nil {
 		return err
+	}
+	if taskModel == nil {
+		return nil
 	}
 
 	var req struct {
@@ -220,28 +265,16 @@ func (h *TaskActionHandler) SetDueDate(c echo.Context) error {
 		dueDate = &parsed
 	}
 
-	if _, actionErr := h.actionService.SetDueDate(ctx, chatID, dueDate, userID); actionErr != nil {
+	// Idempotent no-op: same due date requested.
+	if sameDate(taskModel.DueDate, dueDate) {
+		c.Response().Header().Set("Hx-Trigger", "taskUpdated")
+		return c.NoContent(http.StatusNoContent)
+	}
+
+	if _, actionErr := h.actionService.SetDueDate(ctx, taskModel.ChatID, dueDate, userID); actionErr != nil {
 		return httpserver.RespondError(c, actionErr)
 	}
 
 	c.Response().Header().Set("Hx-Trigger", "taskUpdated")
 	return c.NoContent(http.StatusNoContent)
-}
-
-// resolveChatID extracts the task_id path param, loads the task, and returns its ChatID.
-// Returns an echo error response (already written) on failure.
-func (h *TaskActionHandler) resolveChatID(ctx context.Context, c echo.Context) (uuid.UUID, error) {
-	taskIDStr := c.Param("task_id")
-	taskID, parseErr := uuid.ParseUUID(taskIDStr)
-	if parseErr != nil {
-		return uuid.UUID(""), httpserver.RespondErrorWithCode(
-			c, http.StatusBadRequest, "INVALID_TASK_ID", "invalid task ID format")
-	}
-
-	taskModel, getErr := h.taskService.GetTask(ctx, taskID)
-	if getErr != nil {
-		return uuid.UUID(""), httpserver.RespondError(c, getErr)
-	}
-
-	return taskModel.ChatID, nil
 }

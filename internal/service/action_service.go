@@ -272,6 +272,10 @@ func (s *ActionService) Close(
 	chatID uuid.UUID,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
+	if err := s.executeTagCommand(ctx, chatID, actorID, "#close"); err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	}
+
 	actorName := s.getActorDisplayName(ctx, actorID)
 	var content string
 	if actorName != "" {
@@ -288,6 +292,10 @@ func (s *ActionService) Reopen(
 	chatID uuid.UUID,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
+	if err := s.executeTagCommand(ctx, chatID, actorID, "#reopen"); err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	}
+
 	actorName := s.getActorDisplayName(ctx, actorID)
 	var content string
 	if actorName != "" {
@@ -341,6 +349,28 @@ func (s *ActionService) executeAction(
 		MessageID: result.Value.ID(),
 		Success:   true,
 	}, nil
+}
+
+// executeTagCommand sends a system message with an executable tag command.
+func (s *ActionService) executeTagCommand(
+	ctx context.Context,
+	chatID uuid.UUID,
+	actorID uuid.UUID,
+	tagCommand string,
+) error {
+	cmd := messageapp.SendMessageCommand{
+		ChatID:   chatID,
+		AuthorID: actorID,
+		Content:  tagCommand,
+		Type:     message.TypeSystem,
+		ActorID:  &actorID,
+	}
+
+	_, err := s.sendMessageUC.Execute(ctx, cmd)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // flushBatchMessage is called by the batcher to send a combined message

@@ -131,13 +131,20 @@ type TaskService interface {
 
 // TaskHandler handles task-related HTTP requests.
 type TaskHandler struct {
-	taskService TaskService
+	taskService   TaskService
+	actionService TaskActionService
 }
 
 // NewTaskHandler creates a new TaskHandler.
-func NewTaskHandler(taskService TaskService) *TaskHandler {
+func NewTaskHandler(taskService TaskService, actionServices ...TaskActionService) *TaskHandler {
+	var actionService TaskActionService
+	if len(actionServices) > 0 {
+		actionService = actionServices[0]
+	}
+
 	return &TaskHandler{
-		taskService: taskService,
+		taskService:   taskService,
+		actionService: actionService,
 	}
 }
 
@@ -329,6 +336,38 @@ func (h *TaskHandler) ChangeStatus(c echo.Context) error {
 			c, http.StatusBadRequest, "INVALID_STATUS", statusErr.Error())
 	}
 
+	if h.actionService != nil {
+		taskModel, getErr := h.taskService.GetTask(c.Request().Context(), taskID)
+		if getErr != nil {
+			return httpserver.RespondError(c, getErr)
+		}
+
+		// Idempotent no-op: requested status already set.
+		if taskModel.Status == status {
+			return httpserver.RespondOK(c, ToTaskResponseFromReadModel(taskModel))
+		}
+
+		if _, actionErr := h.actionService.ChangeStatus(
+			c.Request().Context(),
+			taskModel.ChatID,
+			string(status),
+			userID,
+		); actionErr != nil {
+			return httpserver.RespondError(c, actionErr)
+		}
+
+		// Best-effort read-back: action pipeline is asynchronous.
+		updatedTask, updatedErr := h.taskService.GetTask(c.Request().Context(), taskID)
+		if updatedErr != nil {
+			return httpserver.RespondOK(c, map[string]any{
+				"id":      taskID.String(),
+				"message": "status update queued",
+			})
+		}
+
+		return httpserver.RespondOK(c, ToTaskResponseFromReadModel(updatedTask))
+	}
+
 	cmd := taskapp.ChangeStatusCommand{
 		TaskID:    taskID,
 		NewStatus: status,
@@ -386,6 +425,37 @@ func (h *TaskHandler) Assign(c echo.Context) error {
 		assigneeID = &parsed
 	}
 
+	if h.actionService != nil {
+		taskModel, getErr := h.taskService.GetTask(c.Request().Context(), taskID)
+		if getErr != nil {
+			return httpserver.RespondError(c, getErr)
+		}
+
+		// Idempotent no-op: requested assignee already set.
+		if sameUUIDPtr(taskModel.AssignedTo, assigneeID) {
+			return httpserver.RespondOK(c, ToTaskResponseFromReadModel(taskModel))
+		}
+
+		if _, actionErr := h.actionService.AssignUser(
+			c.Request().Context(),
+			taskModel.ChatID,
+			assigneeID,
+			userID,
+		); actionErr != nil {
+			return httpserver.RespondError(c, actionErr)
+		}
+
+		updatedTask, updatedErr := h.taskService.GetTask(c.Request().Context(), taskID)
+		if updatedErr != nil {
+			return httpserver.RespondOK(c, map[string]any{
+				"id":      taskID.String(),
+				"message": "assignee update queued",
+			})
+		}
+
+		return httpserver.RespondOK(c, ToTaskResponseFromReadModel(updatedTask))
+	}
+
 	cmd := taskapp.AssignTaskCommand{
 		TaskID:     taskID,
 		AssigneeID: assigneeID,
@@ -436,6 +506,37 @@ func (h *TaskHandler) ChangePriority(c echo.Context) error {
 	if priority == "" {
 		return httpserver.RespondErrorWithCode(
 			c, http.StatusBadRequest, "INVALID_PRIORITY", "priority must be Low, Medium, High, or Critical")
+	}
+
+	if h.actionService != nil {
+		taskModel, getErr := h.taskService.GetTask(c.Request().Context(), taskID)
+		if getErr != nil {
+			return httpserver.RespondError(c, getErr)
+		}
+
+		// Idempotent no-op: requested priority already set.
+		if taskModel.Priority == priority {
+			return httpserver.RespondOK(c, ToTaskResponseFromReadModel(taskModel))
+		}
+
+		if _, actionErr := h.actionService.SetPriority(
+			c.Request().Context(),
+			taskModel.ChatID,
+			string(priority),
+			userID,
+		); actionErr != nil {
+			return httpserver.RespondError(c, actionErr)
+		}
+
+		updatedTask, updatedErr := h.taskService.GetTask(c.Request().Context(), taskID)
+		if updatedErr != nil {
+			return httpserver.RespondOK(c, map[string]any{
+				"id":      taskID.String(),
+				"message": "priority update queued",
+			})
+		}
+
+		return httpserver.RespondOK(c, ToTaskResponseFromReadModel(updatedTask))
 	}
 
 	cmd := taskapp.ChangePriorityCommand{
@@ -492,6 +593,37 @@ func (h *TaskHandler) SetDueDate(c echo.Context) error {
 				c, http.StatusBadRequest, "INVALID_DUE_DATE", "invalid due date format, expected YYYY-MM-DD")
 		}
 		dueDate = &parsed
+	}
+
+	if h.actionService != nil {
+		taskModel, getErr := h.taskService.GetTask(c.Request().Context(), taskID)
+		if getErr != nil {
+			return httpserver.RespondError(c, getErr)
+		}
+
+		// Idempotent no-op: requested due date already set.
+		if sameDate(taskModel.DueDate, dueDate) {
+			return httpserver.RespondOK(c, ToTaskResponseFromReadModel(taskModel))
+		}
+
+		if _, actionErr := h.actionService.SetDueDate(
+			c.Request().Context(),
+			taskModel.ChatID,
+			dueDate,
+			userID,
+		); actionErr != nil {
+			return httpserver.RespondError(c, actionErr)
+		}
+
+		updatedTask, updatedErr := h.taskService.GetTask(c.Request().Context(), taskID)
+		if updatedErr != nil {
+			return httpserver.RespondOK(c, map[string]any{
+				"id":      taskID.String(),
+				"message": "due date update queued",
+			})
+		}
+
+		return httpserver.RespondOK(c, ToTaskResponseFromReadModel(updatedTask))
 	}
 
 	cmd := taskapp.SetDueDateCommand{
@@ -768,6 +900,27 @@ func parseTaskPagination(c echo.Context, defaultLimit int) (int, int) {
 	}
 
 	return limit, offset
+}
+
+func sameUUIDPtr(a, b *uuid.UUID) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return *a == *b
+}
+
+// sameDate compares due dates by calendar day (YYYY-MM-DD).
+func sameDate(a, b *time.Time) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.Format("2006-01-02") == b.Format("2006-01-02")
 }
 
 // ToTaskResponseFromReadModel converts a ReadModel to TaskResponse.
