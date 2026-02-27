@@ -17,6 +17,7 @@ import (
 	wsapp "github.com/lllypuk/flowra/internal/application/workspace"
 	"github.com/lllypuk/flowra/internal/config"
 	"github.com/lllypuk/flowra/internal/domain/chat"
+	domainerrs "github.com/lllypuk/flowra/internal/domain/errs"
 	"github.com/lllypuk/flowra/internal/domain/event"
 	"github.com/lllypuk/flowra/internal/domain/message"
 	notificationdomain "github.com/lllypuk/flowra/internal/domain/notification"
@@ -33,6 +34,7 @@ import (
 	"github.com/lllypuk/flowra/internal/infrastructure/keycloak"
 	mongodbinfra "github.com/lllypuk/flowra/internal/infrastructure/mongodb"
 	"github.com/lllypuk/flowra/internal/infrastructure/outbox"
+	"github.com/lllypuk/flowra/internal/infrastructure/projector"
 	"github.com/lllypuk/flowra/internal/infrastructure/repair"
 	"github.com/lllypuk/flowra/internal/infrastructure/repository/mongodb"
 	"github.com/lllypuk/flowra/internal/infrastructure/websocket"
@@ -773,12 +775,24 @@ func (c *Container) setupTemplateRenderer() error {
 // registerEventHandlers registers all event handlers with the event bus.
 // This should be called after the event bus is ready to start.
 func (c *Container) registerEventHandlers() error {
-	return eventbus.RegisterAllHandlers(
+	if err := eventbus.RegisterAllHandlers(
 		c.EventBus,
 		c.NotifHandler,
 		c.LogHandler,
 		c.Logger,
-	)
+	); err != nil {
+		return err
+	}
+
+	taskReadModelColl := c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model")
+	taskProjector := projector.NewChatToTaskReadModelProjector(c.EventStore, taskReadModelColl, c.Logger)
+	taskProjectionHandler := eventbus.NewTaskReadModelProjectionHandler(taskProjector, c.RepairQueue, c.Logger)
+
+	if err := eventbus.RegisterTaskReadModelProjectionHandler(c.EventBus, taskProjectionHandler, c.Logger); err != nil {
+		return fmt.Errorf("failed to register task read model projection handler: %w", err)
+	}
+
+	return nil
 }
 
 // setupHTTPHandlers initializes HTTP handlers with real implementations.
@@ -1163,12 +1177,14 @@ func (c *Container) setupBoardTemplateHandler() {
 
 // createBoardChatCreator creates a service implementing BoardChatCreator.
 func (c *Container) createBoardChatCreator() httphandler.BoardChatCreator {
+	taskReadModelColl := c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model")
+
 	return &boardChatCreatorAdapter{
 		createUC:      chatapp.NewCreateChatUseCase(c.ChatRepo),
 		setPriorityUC: chatapp.NewSetPriorityUseCase(c.ChatRepo),
 		assignUserUC:  chatapp.NewAssignUserUseCase(c.ChatRepo),
 		setDueDateUC:  chatapp.NewSetDueDateUseCase(c.ChatRepo),
-		taskReadModel: c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model"),
+		taskProjector: projector.NewChatToTaskReadModelProjector(c.EventStore, taskReadModelColl, c.Logger),
 	}
 }
 
@@ -1178,7 +1194,7 @@ type boardChatCreatorAdapter struct {
 	setPriorityUC *chatapp.SetPriorityUseCase
 	assignUserUC  *chatapp.AssignUserUseCase
 	setDueDateUC  *chatapp.SetDueDateUseCase
-	taskReadModel *mongo.Collection
+	taskProjector appcore.ReadModelProjector
 }
 
 // CreateChat implements BoardChatCreator.
@@ -1255,73 +1271,15 @@ func (a *boardChatCreatorAdapter) CreateChat(
 		typedChat = dueDateResult.Value
 	}
 
-	if err = a.upsertTaskReadModel(ctx, typedChat); err != nil {
-		return "", err
+	if a.taskProjector == nil {
+		return "", errors.New("task read model projector is not configured")
+	}
+
+	if err = a.taskProjector.RebuildOne(ctx, typedChat.ID()); err != nil {
+		return "", fmt.Errorf("failed to project task read model: %w", err)
 	}
 
 	return typedChat.ID(), nil
-}
-
-func (a *boardChatCreatorAdapter) upsertTaskReadModel(ctx context.Context, typedChat *chat.Chat) error {
-	if typedChat == nil || !typedChat.IsTyped() {
-		return nil
-	}
-	if a.taskReadModel == nil {
-		return errors.New("tasks read model collection is not configured")
-	}
-
-	entityType, err := typedChat.GetTaskEntityType()
-	if err != nil {
-		return fmt.Errorf("failed to map chat type to task entity type: %w", err)
-	}
-
-	priority := typedChat.Priority()
-	if priority == "" {
-		priority = string(taskdomain.PriorityMedium)
-	}
-
-	doc := bson.M{
-		"task_id":     typedChat.ID().String(),
-		"chat_id":     typedChat.ID().String(),
-		"title":       typedChat.Title(),
-		"entity_type": string(entityType),
-		"status":      normalizeBoardStatus(typedChat.Status()),
-		"priority":    priority,
-		"created_by":  typedChat.CreatedBy().String(),
-		"created_at":  typedChat.CreatedAt(),
-		"version":     typedChat.Version(),
-	}
-
-	if typedChat.AssigneeID() != nil {
-		doc["assigned_to"] = typedChat.AssigneeID().String()
-	} else {
-		doc["assigned_to"] = nil
-	}
-
-	if typedChat.DueDate() != nil {
-		doc["due_date"] = *typedChat.DueDate()
-	} else {
-		doc["due_date"] = nil
-	}
-
-	filter := bson.M{"task_id": typedChat.ID().String()}
-	update := bson.M{"$set": doc}
-	opts := options.UpdateOne().SetUpsert(true)
-	if _, err = a.taskReadModel.UpdateOne(ctx, filter, update, opts); err != nil {
-		return fmt.Errorf("failed to upsert task read model from chat: %w", err)
-	}
-	return nil
-}
-
-func normalizeBoardStatus(status string) string {
-	switch status {
-	case "":
-		return string(taskdomain.StatusToDo)
-	case "New", "Planned":
-		return string(taskdomain.StatusToDo)
-	default:
-		return status
-	}
 }
 
 // createBoardTaskService creates a service implementing BoardTaskService.
@@ -1512,17 +1470,26 @@ func (a *boardTaskServiceAdapter) buildFilter(filters taskapp.Filters) map[strin
 
 // taskReadModelDoc represents a task document in MongoDB.
 type taskReadModelDoc struct {
-	ID         string     `bson:"task_id"`
-	ChatID     string     `bson:"chat_id"`
-	Title      string     `bson:"title"`
-	EntityType string     `bson:"entity_type"`
-	Status     string     `bson:"status"`
-	Priority   string     `bson:"priority"`
-	AssignedTo *string    `bson:"assigned_to,omitempty"`
-	DueDate    *time.Time `bson:"due_date,omitempty"`
-	CreatedBy  string     `bson:"created_by"`
-	CreatedAt  time.Time  `bson:"created_at"`
-	Version    int        `bson:"version"`
+	ID          string                       `bson:"task_id"`
+	ChatID      string                       `bson:"chat_id"`
+	Title       string                       `bson:"title"`
+	EntityType  string                       `bson:"entity_type"`
+	Status      string                       `bson:"status"`
+	Priority    string                       `bson:"priority"`
+	Severity    string                       `bson:"severity,omitempty"`
+	AssignedTo  *string                      `bson:"assigned_to,omitempty"`
+	DueDate     *time.Time                   `bson:"due_date,omitempty"`
+	CreatedBy   string                       `bson:"created_by"`
+	CreatedAt   time.Time                    `bson:"created_at"`
+	Version     int                          `bson:"version"`
+	Attachments []taskAttachmentReadModelDoc `bson:"attachments,omitempty"`
+}
+
+type taskAttachmentReadModelDoc struct {
+	FileID   string `bson:"file_id"`
+	FileName string `bson:"file_name"`
+	FileSize int64  `bson:"file_size"`
+	MimeType string `bson:"mime_type"`
 }
 
 // toReadModel converts the document to a ReadModel.
@@ -1538,6 +1505,7 @@ func (d *taskReadModelDoc) toReadModel() *taskapp.ReadModel {
 		EntityType: taskdomain.EntityType(d.EntityType),
 		Status:     taskdomain.Status(d.Status),
 		Priority:   taskdomain.Priority(d.Priority),
+		Severity:   d.Severity,
 		DueDate:    d.DueDate,
 		CreatedBy:  createdBy,
 		CreatedAt:  d.CreatedAt,
@@ -1547,6 +1515,19 @@ func (d *taskReadModelDoc) toReadModel() *taskapp.ReadModel {
 	if d.AssignedTo != nil {
 		assignedTo, _ := uuid.ParseUUID(*d.AssignedTo)
 		model.AssignedTo = &assignedTo
+	}
+
+	for _, att := range d.Attachments {
+		attachmentID, parseErr := uuid.ParseUUID(att.FileID)
+		if parseErr != nil {
+			continue
+		}
+		model.Attachments = append(model.Attachments, taskapp.AttachmentReadModel{
+			FileID:   attachmentID,
+			FileName: att.FileName,
+			FileSize: att.FileSize,
+			MimeType: att.MimeType,
+		})
 	}
 
 	return model
@@ -1587,13 +1568,17 @@ func (a *chatBasicInfoServiceAdapter) GetChatBasicInfo(
 
 // createFullTaskService creates a service implementing httphandler.TaskService.
 func (c *Container) createFullTaskService() httphandler.TaskService {
+	taskReadModelColl := c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model")
+
 	return &fullTaskServiceAdapter{
 		boardTaskServiceAdapter: boardTaskServiceAdapter{
-			collection:     c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model"),
+			collection:     taskReadModelColl,
 			chatCollection: c.MongoDB.Database(c.MongoDBName).Collection("chats_read_model"),
 		},
-		taskRepo: c.TaskRepo,
-		userRepo: c.UserRepo,
+		taskRepo:      c.TaskRepo,
+		chatRepo:      c.ChatRepo,
+		userRepo:      c.UserRepo,
+		taskProjector: projector.NewChatToTaskReadModelProjector(c.EventStore, taskReadModelColl, c.Logger),
 	}
 }
 
@@ -1602,8 +1587,10 @@ func (c *Container) createFullTaskService() httphandler.TaskService {
 type fullTaskServiceAdapter struct {
 	boardTaskServiceAdapter
 
-	taskRepo taskapp.CommandRepository
-	userRepo appcore.UserRepository
+	taskRepo      taskapp.CommandRepository
+	chatRepo      chatapp.CommandRepository
+	userRepo      appcore.UserRepository
+	taskProjector appcore.ReadModelProjector
 }
 
 // CreateTask implements httphandler.TaskService.
@@ -1667,8 +1654,27 @@ func (a *fullTaskServiceAdapter) AddAttachment(
 	ctx context.Context,
 	cmd taskapp.AddAttachmentCommand,
 ) (taskapp.TaskResult, error) {
-	uc := taskapp.NewAddAttachmentUseCase(a.taskRepo)
-	return uc.Execute(ctx, cmd)
+	uc := chatapp.NewAddAttachmentUseCase(a.chatRepo)
+	result, err := uc.Execute(ctx, chatapp.AddAttachmentCommand{
+		ChatID:   cmd.TaskID,
+		FileID:   cmd.FileID,
+		FileName: cmd.FileName,
+		FileSize: cmd.FileSize,
+		MimeType: cmd.MimeType,
+		AddedBy:  cmd.AddedBy,
+	})
+	if err != nil {
+		if errors.Is(err, domainerrs.ErrNotFound) {
+			return taskapp.TaskResult{}, taskapp.ErrTaskNotFound
+		}
+		return taskapp.TaskResult{}, err
+	}
+
+	if rebuildErr := a.syncTaskProjection(ctx, cmd.TaskID); rebuildErr != nil {
+		return taskapp.TaskResult{}, rebuildErr
+	}
+
+	return taskapp.NewSuccessResult(cmd.TaskID, result.Version, nil), nil
 }
 
 // RemoveAttachment implements httphandler.TaskService.
@@ -1676,8 +1682,31 @@ func (a *fullTaskServiceAdapter) RemoveAttachment(
 	ctx context.Context,
 	cmd taskapp.RemoveAttachmentCommand,
 ) (taskapp.TaskResult, error) {
-	uc := taskapp.NewRemoveAttachmentUseCase(a.taskRepo)
-	return uc.Execute(ctx, cmd)
+	uc := chatapp.NewRemoveAttachmentUseCase(a.chatRepo)
+	result, err := uc.Execute(ctx, chatapp.RemoveAttachmentCommand{
+		ChatID:    cmd.TaskID,
+		FileID:    cmd.FileID,
+		RemovedBy: cmd.RemovedBy,
+	})
+	if err != nil {
+		if errors.Is(err, domainerrs.ErrNotFound) {
+			return taskapp.TaskResult{}, taskapp.ErrTaskNotFound
+		}
+		return taskapp.TaskResult{}, err
+	}
+
+	if rebuildErr := a.syncTaskProjection(ctx, cmd.TaskID); rebuildErr != nil {
+		return taskapp.TaskResult{}, rebuildErr
+	}
+
+	return taskapp.NewSuccessResult(cmd.TaskID, result.Version, nil), nil
+}
+
+func (a *fullTaskServiceAdapter) syncTaskProjection(ctx context.Context, chatID uuid.UUID) error {
+	if a.taskProjector == nil {
+		return nil
+	}
+	return a.taskProjector.RebuildOne(ctx, chatID)
 }
 
 // createBoardMemberService creates a service implementing BoardMemberService.

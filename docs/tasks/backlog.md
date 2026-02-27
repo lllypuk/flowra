@@ -20,9 +20,9 @@ Assumption: service is not in production yet. We can make breaking changes and r
   - Details: [chat-sot-pr-02-remove-duplicate-creation.md](/home/sasha/Project/flowra/docs/tasks/chat-sot-pr-02-remove-duplicate-creation.md)
 - [x] `P1` PR-03: Unify all writes through Chat command pipeline.
   - Details: [chat-sot-pr-03-unify-write-path.md](/home/sasha/Project/flowra/docs/tasks/chat-sot-pr-03-unify-write-path.md)
-- [ ] `P1` PR-04: Rebuild projections from `chat.*` events only.
+- [x] `P1` PR-04: Rebuild projections from `chat.*` events only.
   - Details: [chat-sot-pr-04-chat-projections.md](/home/sasha/Project/flowra/docs/tasks/chat-sot-pr-04-chat-projections.md)
-- [ ] `P1` PR-05: Move task-only fields (attachments and details) into Chat domain.
+- [x] `P1` PR-05: Move task-only fields (attachments and details) into Chat domain.
   - Details: [chat-sot-pr-05-move-task-fields-to-chat.md](/home/sasha/Project/flowra/docs/tasks/chat-sot-pr-05-move-task-fields-to-chat.md)
 - [ ] `P1` PR-06: Remove Task aggregate write stack.
   - Details: [chat-sot-pr-06-remove-task-write-stack.md](/home/sasha/Project/flowra/docs/tasks/chat-sot-pr-06-remove-task-write-stack.md)

@@ -113,8 +113,8 @@ func (p *TaskProjector) RebuildAll(ctx context.Context) error {
 // ProcessEvent applies a single event to the read model.
 func (p *TaskProjector) ProcessEvent(ctx context.Context, evt event.DomainEvent) error {
 	// Check if this is a task event
-	if evt.AggregateType() != "task" {
-		return fmt.Errorf("invalid aggregate type: expected 'task', got '%s'", evt.AggregateType())
+	if !isAggregateType(evt.AggregateType(), aggregateTypeTask) {
+		return fmt.Errorf("invalid aggregate type: expected '%s', got '%s'", aggregateTypeTask, evt.AggregateType())
 	}
 
 	taskID, err := uuid.ParseUUID(evt.AggregateID())
@@ -240,31 +240,5 @@ func (p *TaskProjector) updateReadModel(ctx context.Context, task *taskdomain.Ag
 
 // getAllAggregateIDs retrieves all unique task IDs from the events collection.
 func (p *TaskProjector) getAllAggregateIDs(ctx context.Context) ([]uuid.UUID, error) {
-	// Get the events collection from the database
-	eventsDB := p.readModelColl.Database()
-	eventsColl := eventsDB.Collection("events")
-
-	// Use distinct to get unique aggregate IDs for task type
-	filter := bson.M{"aggregate_type": "task"}
-	result := eventsColl.Distinct(ctx, "aggregate_id", filter)
-
-	var aggregateIDs []uuid.UUID
-	var stringIDs []string
-	if err := result.Decode(&stringIDs); err != nil {
-		return nil, fmt.Errorf("failed to decode aggregate IDs: %w", err)
-	}
-
-	for _, idStr := range stringIDs {
-		id, err := uuid.ParseUUID(idStr)
-		if err != nil {
-			p.logger.WarnContext(ctx, "skipping invalid aggregate ID",
-				slog.String("aggregate_id", idStr),
-				slog.String("error", err.Error()),
-			)
-			continue
-		}
-		aggregateIDs = append(aggregateIDs, id)
-	}
-
-	return aggregateIDs, nil
+	return getAllAggregateIDsByType(ctx, p.readModelColl, aggregateTypeTask, "Task", p.logger)
 }

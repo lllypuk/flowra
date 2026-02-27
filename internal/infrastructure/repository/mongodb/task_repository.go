@@ -443,6 +443,7 @@ type taskReadModelDocument struct {
 	EntityType  string                   `bson:"entity_type"`
 	Status      string                   `bson:"status"`
 	Priority    string                   `bson:"priority"`
+	Severity    string                   `bson:"severity,omitempty"`
 	AssignedTo  *string                  `bson:"assigned_to,omitempty"`
 	DueDate     *time.Time               `bson:"due_date,omitempty"`
 	CreatedBy   string                   `bson:"created_by"`
@@ -472,6 +473,7 @@ func (r *MongoTaskQueryRepository) documentToReadModel(doc *taskReadModelDocumen
 		EntityType: taskdomain.EntityType(doc.EntityType),
 		Status:     taskdomain.Status(doc.Status),
 		Priority:   taskdomain.Priority(doc.Priority),
+		Severity:   doc.Severity,
 		CreatedBy:  uuid.UUID(doc.CreatedBy),
 		CreatedAt:  doc.CreatedAt,
 		Version:    doc.Version,

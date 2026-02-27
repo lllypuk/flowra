@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/lllypuk/flowra/internal/application/appcore"
@@ -189,7 +190,7 @@ func (w *RepairWorker) processReadModelSync(ctx context.Context, task repair.Tas
 	}
 
 	var projector appcore.ReadModelProjector
-	switch task.AggregateType {
+	switch strings.ToLower(strings.TrimSpace(task.AggregateType)) {
 	case "chat":
 		projector = w.chatProjector
 	case "task":

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/lllypuk/flowra/internal/application/appcore"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
@@ -62,16 +63,42 @@ func (c *ReadModelSyncChecker) Check(ctx context.Context) appcore.HealthStatus {
 		}
 	}
 
+	typedChatCount, err := c.chatReadModel.CountDocuments(ctx, bson.M{
+		"type": bson.M{"$in": []string{"task", "bug", "epic"}},
+	})
+	if err != nil {
+		return appcore.HealthStatus{
+			Healthy:   false,
+			Message:   fmt.Sprintf("failed to count typed chats: %v", err),
+			CheckedAt: time.Now(),
+		}
+	}
+
 	// In future, we would sample random aggregates and compare versions
 	// For now, we just report that collections are accessible
 	details := map[string]any{
-		"chat_count":  chatCount,
-		"task_count":  taskCount,
-		"sample_size": c.sampleSize,
-		"note":        "Full version comparison not yet implemented",
+		"chat_count":       chatCount,
+		"typed_chat_count": typedChatCount,
+		"task_count":       taskCount,
+		"sample_size":      c.sampleSize,
+		"note":             "Full version comparison not yet implemented",
 	}
 
-	message := fmt.Sprintf("read models accessible: %d chats, %d tasks", chatCount, taskCount)
+	if taskCount < typedChatCount {
+		return appcore.HealthStatus{
+			Healthy:   false,
+			Message:   fmt.Sprintf("task read model lagging: %d typed chats, %d task docs", typedChatCount, taskCount),
+			Details:   details,
+			CheckedAt: time.Now(),
+		}
+	}
+
+	message := fmt.Sprintf(
+		"read models accessible: %d chats (%d typed), %d tasks",
+		chatCount,
+		typedChatCount,
+		taskCount,
+	)
 
 	return appcore.HealthStatus{
 		Healthy:   true,

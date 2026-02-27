@@ -72,6 +72,7 @@ type ReadModel struct {
 	EntityType  taskdomain.EntityType
 	Status      taskdomain.Status
 	Priority    taskdomain.Priority
+	Severity    string
 	AssignedTo  *uuid.UUID
 	DueDate     *time.Time
 	CreatedBy   uuid.UUID

@@ -335,7 +335,7 @@ func setupRepairWorker(
 	chatProjector := projector.NewChatProjector(eventStore, chatReadModelColl, logger)
 
 	taskReadModelColl := db.Collection(mongodbinfra.CollectionTaskReadModel)
-	taskProjector := projector.NewTaskProjector(eventStore, taskReadModelColl, logger)
+	taskProjector := projector.NewChatToTaskReadModelProjector(eventStore, taskReadModelColl, logger)
 
 	// Create repair worker
 	return worker.NewRepairWorker(

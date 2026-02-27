@@ -117,8 +117,8 @@ func (p *ChatProjector) RebuildAll(ctx context.Context) error {
 // ProcessEvent applies a single event to the read model.
 func (p *ChatProjector) ProcessEvent(ctx context.Context, evt event.DomainEvent) error {
 	// Check if this is a chat event
-	if evt.AggregateType() != "chat" {
-		return fmt.Errorf("invalid aggregate type: expected 'chat', got '%s'", evt.AggregateType())
+	if !isAggregateType(evt.AggregateType(), aggregateTypeChat) {
+		return fmt.Errorf("invalid aggregate type: expected '%s', got '%s'", aggregateTypeChat, evt.AggregateType())
 	}
 
 	chatID, err := uuid.ParseUUID(evt.AggregateID())
@@ -261,31 +261,5 @@ func (p *ChatProjector) updateReadModel(ctx context.Context, chat *chatdomain.Ch
 
 // getAllAggregateIDs retrieves all unique chat IDs from the events collection.
 func (p *ChatProjector) getAllAggregateIDs(ctx context.Context) ([]uuid.UUID, error) {
-	// Get the events collection from the database
-	eventsDB := p.readModelColl.Database()
-	eventsColl := eventsDB.Collection("events")
-
-	// Use distinct to get unique aggregate IDs for chat type
-	filter := bson.M{"aggregate_type": "chat"}
-	result := eventsColl.Distinct(ctx, "aggregate_id", filter)
-
-	var aggregateIDs []uuid.UUID
-	var stringIDs []string
-	if err := result.Decode(&stringIDs); err != nil {
-		return nil, fmt.Errorf("failed to decode aggregate IDs: %w", err)
-	}
-
-	for _, idStr := range stringIDs {
-		id, err := uuid.ParseUUID(idStr)
-		if err != nil {
-			p.logger.WarnContext(ctx, "skipping invalid aggregate ID",
-				slog.String("aggregate_id", idStr),
-				slog.String("error", err.Error()),
-			)
-			continue
-		}
-		aggregateIDs = append(aggregateIDs, id)
-	}
-
-	return aggregateIDs, nil
+	return getAllAggregateIDsByType(ctx, p.readModelColl, aggregateTypeChat, "Chat", p.logger)
 }

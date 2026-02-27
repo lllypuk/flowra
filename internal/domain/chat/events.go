@@ -19,6 +19,8 @@ const (
 	EventTypePrioritySet        = "chat.priority_set"
 	EventTypeDueDateSet         = "chat.due_date_set"
 	EventTypeDueDateRemoved     = "chat.due_date_removed"
+	EventTypeAttachmentAdded    = "chat.attachment_added"
+	EventTypeAttachmentRemoved  = "chat.attachment_removed"
 	EventTypeChatRenamed        = "chat.renamed"
 	EventTypeSeveritySet        = "chat.severity_set"
 	EventTypeChatDeleted        = "chat.deleted"
@@ -301,6 +303,73 @@ func NewDueDateRemoved(
 		),
 		PreviousDueDate: previousDueDate,
 		RemovedBy:       removedBy,
+	}
+}
+
+// AttachmentAdded event attaching a file to typed chat.
+type AttachmentAdded struct {
+	event.BaseEvent `bson:",inline"`
+
+	FileID   uuid.UUID `json:"file_id"   bson:"file_id"`
+	FileName string    `json:"file_name" bson:"file_name"`
+	FileSize int64     `json:"file_size" bson:"file_size"`
+	MimeType string    `json:"mime_type" bson:"mime_type"`
+	AddedBy  uuid.UUID `json:"added_by"  bson:"added_by"`
+}
+
+// NewAttachmentAdded creates event AttachmentAdded.
+func NewAttachmentAdded(
+	chatID uuid.UUID,
+	fileID uuid.UUID,
+	fileName string,
+	fileSize int64,
+	mimeType string,
+	addedBy uuid.UUID,
+	version int,
+	metadata event.Metadata,
+) *AttachmentAdded {
+	return &AttachmentAdded{
+		BaseEvent: event.NewBaseEvent(
+			EventTypeAttachmentAdded,
+			chatID.String(),
+			"Chat",
+			version,
+			metadata,
+		),
+		FileID:   fileID,
+		FileName: fileName,
+		FileSize: fileSize,
+		MimeType: mimeType,
+		AddedBy:  addedBy,
+	}
+}
+
+// AttachmentRemoved event detaching a file from typed chat.
+type AttachmentRemoved struct {
+	event.BaseEvent `bson:",inline"`
+
+	FileID    uuid.UUID `json:"file_id"    bson:"file_id"`
+	RemovedBy uuid.UUID `json:"removed_by" bson:"removed_by"`
+}
+
+// NewAttachmentRemoved creates event AttachmentRemoved.
+func NewAttachmentRemoved(
+	chatID uuid.UUID,
+	fileID uuid.UUID,
+	removedBy uuid.UUID,
+	version int,
+	metadata event.Metadata,
+) *AttachmentRemoved {
+	return &AttachmentRemoved{
+		BaseEvent: event.NewBaseEvent(
+			EventTypeAttachmentRemoved,
+			chatID.String(),
+			"Chat",
+			version,
+			metadata,
+		),
+		FileID:    fileID,
+		RemovedBy: removedBy,
 	}
 }
 

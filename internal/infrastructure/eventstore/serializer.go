@@ -127,6 +127,10 @@ func createEventByType(eventType string) (event.DomainEvent, error) {
 		return &chatdomain.DueDateSet{}, nil
 	case chatdomain.EventTypeDueDateRemoved:
 		return &chatdomain.DueDateRemoved{}, nil
+	case chatdomain.EventTypeAttachmentAdded:
+		return &chatdomain.AttachmentAdded{}, nil
+	case chatdomain.EventTypeAttachmentRemoved:
+		return &chatdomain.AttachmentRemoved{}, nil
 	case chatdomain.EventTypeChatRenamed:
 		return &chatdomain.Renamed{}, nil
 	case chatdomain.EventTypeSeveritySet:

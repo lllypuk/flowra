@@ -87,7 +87,7 @@ func main() {
 		proj = projector.NewChatProjector(eventStore, readModelColl, logger)
 	case "task":
 		readModelColl := db.Collection(mongodb.CollectionTaskReadModel)
-		proj = projector.NewTaskProjector(eventStore, readModelColl, logger)
+		proj = projector.NewChatToTaskReadModelProjector(eventStore, readModelColl, logger)
 	}
 
 	// Execute operation
