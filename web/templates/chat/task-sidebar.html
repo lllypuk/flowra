@@ -7,15 +7,15 @@
     <div class="field">
         <label for="task-status">Status</label>
         <select id="task-status"
-                hx-post="/api/v1/workspaces/{{.Data.Chat.WorkspaceID}}/chats/{{.Data.Chat.ID}}/actions/status"
-                hx-trigger="change"
-                hx-swap="none"
-                hx-indicator="#status-loading"
+                data-action-url="/api/v1/workspaces/{{.Data.Chat.WorkspaceID}}/chats/{{.Data.Chat.ID}}/actions/status"
                 name="status">
-            <option value="To Do" {{if eq .Data.Task.Status "To Do"}}selected{{end}}>To Do</option>
-            <option value="In Progress" {{if eq .Data.Task.Status "In Progress"}}selected{{end}}>In Progress</option>
-            <option value="In Review" {{if eq .Data.Task.Status "In Review"}}selected{{end}}>In Review</option>
-            <option value="Done" {{if eq .Data.Task.Status "Done"}}selected{{end}}>Done</option>
+            {{if .Data.Statuses}}
+            {{range .Data.Statuses}}
+            <option value="{{.Value}}" {{if eq .Value $.Data.Task.Status}}selected{{end}}>{{.Label}}</option>
+            {{end}}
+            {{else}}
+            <option value="{{.Data.Task.Status}}" selected>{{.Data.Task.Status}}</option>
+            {{end}}
         </select>
         <span id="status-loading" class="htmx-indicator">Saving...</span>
     </div>
@@ -24,10 +24,7 @@
     <div class="field">
         <label for="task-assignee">Assignee</label>
         <select id="task-assignee"
-                hx-post="/api/v1/workspaces/{{.Data.Chat.WorkspaceID}}/chats/{{.Data.Chat.ID}}/actions/assignee"
-                hx-trigger="change"
-                hx-swap="none"
-                hx-indicator="#assignee-loading"
+                data-action-url="/api/v1/workspaces/{{.Data.Chat.WorkspaceID}}/chats/{{.Data.Chat.ID}}/actions/assignee"
                 name="assignee_id">
             <option value="">Unassigned</option>
             {{range .Data.Participants}}
@@ -44,10 +41,7 @@
     <div class="field">
         <label for="task-priority">Priority</label>
         <select id="task-priority"
-                hx-post="/api/v1/workspaces/{{.Data.Chat.WorkspaceID}}/chats/{{.Data.Chat.ID}}/actions/priority"
-                hx-trigger="change"
-                hx-swap="none"
-                hx-indicator="#priority-loading"
+                data-action-url="/api/v1/workspaces/{{.Data.Chat.WorkspaceID}}/chats/{{.Data.Chat.ID}}/actions/priority"
                 name="priority">
             <option value="Low" {{if or (eq .Data.Task.Priority "low") (eq .Data.Task.Priority "Low")}}selected{{end}}>Low</option>
             <option value="Medium" {{if or (eq .Data.Task.Priority "medium") (eq .Data.Task.Priority "Medium")}}selected{{end}}>Medium</option>
@@ -62,10 +56,7 @@
         <label for="task-due-date">Due Date</label>
         <input type="date"
                id="task-due-date"
-               hx-post="/api/v1/workspaces/{{.Data.Chat.WorkspaceID}}/chats/{{.Data.Chat.ID}}/actions/due-date"
-               hx-trigger="change delay:500ms"
-               hx-swap="none"
-               hx-indicator="#duedate-loading"
+               data-action-url="/api/v1/workspaces/{{.Data.Chat.WorkspaceID}}/chats/{{.Data.Chat.ID}}/actions/due-date"
                name="due_date"
                value="{{if .Data.Task.DueDate}}{{.Data.Task.DueDate | formatDateInput}}{{end}}">
         <span id="duedate-loading" class="htmx-indicator">Saving...</span>
@@ -147,113 +138,179 @@
 </style>
 
 <script>
-// Handle real-time task updates via WebSocket
 (function() {
     {{if .Data.Task}}
     var taskId = '{{.Data.Task.ID}}';
-    
-    // Map domain status values to form option values
-    var statusMap = {
-        'To Do': 'todo',
-        'In Progress': 'in_progress',
-        'In Review': 'review',
-        'Done': 'done',
-        'Backlog': 'backlog',
-        'Cancelled': 'cancelled'
-    };
-    
-    // Map form option values to display names
-    var statusDisplayMap = {
-        'todo': 'To Do',
-        'in_progress': 'In Progress',
-        'review': 'In Review',
-        'done': 'Done',
-        'backlog': 'Backlog',
-        'cancelled': 'Cancelled'
-    };
+    var sidebarRegistry = window.__flowraTaskSidebarListeners || (window.__flowraTaskSidebarListeners = {});
+    if (sidebarRegistry[taskId] && typeof sidebarRegistry[taskId].cleanup === 'function') {
+        sidebarRegistry[taskId].cleanup();
+    }
 
-    // Map form option values to CSS classes
-    var cssClassMap = {
-        'todo': 'status-todo',
-        'in_progress': 'status-in_progress',
-        'review': 'status-review',
-        'done': 'status-done',
-        'backlog': 'status-backlog',
-        'cancelled': 'status-cancelled'
-    };
+    var sidebarController = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var sidebarCleanupFns = [];
+    var dueDateTimer = null;
+    var inFlightByField = {};
 
-    // Update header badge immediately when user changes status dropdown
-    var statusSelect = document.getElementById('task-status');
-    if (statusSelect) {
-        statusSelect.addEventListener('change', function() {
-            var headerBadge = document.getElementById('chat-header-status');
-            if (headerBadge) {
-                var formValue = this.value;
-                var displayName = statusDisplayMap[formValue] || formValue;
-                var cssClass = cssClassMap[formValue] || 'status-' + formValue;
-
-                headerBadge.textContent = displayName;
-                headerBadge.className = 'status-badge ' + cssClass;
-            }
+    function addSidebarListener(target, eventType, handler) {
+        if (sidebarController) {
+            target.addEventListener(eventType, handler, { signal: sidebarController.signal });
+            return;
+        }
+        target.addEventListener(eventType, handler);
+        sidebarCleanupFns.push(function() {
+            target.removeEventListener(eventType, handler);
         });
     }
 
-    // Listen for task.updated WebSocket events
-    document.body.addEventListener('task.updated', function(evt) {
+    var sidebarScope = {
+        cleanup: function() {
+            if (dueDateTimer) {
+                clearTimeout(dueDateTimer);
+                dueDateTimer = null;
+            }
+            if (sidebarController) {
+                sidebarController.abort();
+            }
+            for (var i = 0; i < sidebarCleanupFns.length; i++) {
+                sidebarCleanupFns[i]();
+            }
+            if (sidebarRegistry[taskId] === sidebarScope) {
+                delete sidebarRegistry[taskId];
+            }
+        }
+    };
+    sidebarRegistry[taskId] = sidebarScope;
+
+    var statusClassMap = {
+        'To Do': 'status-todo',
+        'In Progress': 'status-in_progress',
+        'In Review': 'status-review',
+        'Done': 'status-done',
+        'Backlog': 'status-backlog',
+        'Cancelled': 'status-cancelled'
+    };
+
+    function setIndicatorVisible(indicatorId, visible) {
+        var indicator = document.getElementById(indicatorId);
+        if (!indicator) return;
+        indicator.style.display = visible ? 'inline' : 'none';
+    }
+
+    function submitTaskField(inputEl, indicatorId) {
+        if (!inputEl) return;
+        var url = inputEl.getAttribute('data-action-url');
+        var fieldName = inputEl.name;
+        if (!url || !fieldName) return;
+
+        var value = inputEl.value || '';
+        var requestKey = fieldName + ':' + value;
+        if (inFlightByField[fieldName] === requestKey) {
+            return;
+        }
+
+        inFlightByField[fieldName] = requestKey;
+        setIndicatorVisible(indicatorId, true);
+
+        var body = encodeURIComponent(fieldName) + '=' + encodeURIComponent(value);
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                'HX-Request': 'true'
+            },
+            credentials: 'same-origin',
+            body: body
+        })
+            .then(function(resp) {
+                if (!resp.ok) {
+                    throw new Error('request failed');
+                }
+            })
+            .catch(function() {
+                if (typeof showToast === 'function') {
+                    showToast('Failed to save changes. Please try again.', 'error');
+                }
+            })
+            .finally(function() {
+                if (inFlightByField[fieldName] === requestKey) {
+                    delete inFlightByField[fieldName];
+                }
+                setIndicatorVisible(indicatorId, false);
+            });
+    }
+
+    function updateHeaderStatus(statusValue) {
+        var headerBadge = document.getElementById('chat-header-status');
+        if (!headerBadge) return;
+        headerBadge.textContent = statusValue;
+        headerBadge.className = 'status-badge ' + (statusClassMap[statusValue] || ('status-' + statusValue.toLowerCase().replace(/ /g, '_')));
+    }
+
+    var statusSelect = document.getElementById('task-status');
+    if (statusSelect) {
+        addSidebarListener(statusSelect, 'change', function() {
+            updateHeaderStatus(this.value);
+            submitTaskField(statusSelect, 'status-loading');
+        });
+    }
+
+    var assigneeSelect = document.getElementById('task-assignee');
+    if (assigneeSelect) {
+        addSidebarListener(assigneeSelect, 'change', function() {
+            submitTaskField(assigneeSelect, 'assignee-loading');
+        });
+    }
+
+    var prioritySelect = document.getElementById('task-priority');
+    if (prioritySelect) {
+        addSidebarListener(prioritySelect, 'change', function() {
+            submitTaskField(prioritySelect, 'priority-loading');
+        });
+    }
+
+    var dueDateInput = document.getElementById('task-due-date');
+    if (dueDateInput) {
+        addSidebarListener(dueDateInput, 'change', function() {
+            if (dueDateTimer) {
+                clearTimeout(dueDateTimer);
+            }
+            dueDateTimer = setTimeout(function() {
+                submitTaskField(dueDateInput, 'duedate-loading');
+                dueDateTimer = null;
+            }, 500);
+        });
+    }
+
+    addSidebarListener(document.body, 'task.updated', function(evt) {
         var data = evt.detail;
-        
-        // Check if this event is for our task
+
         if (data.task_id === taskId && data.changes) {
             var changes = data.changes;
-            
-            // Update status dropdown and header badge if status changed
+
             if (changes.status && changes.status.new) {
-                // Map domain status to form value
-                var mappedStatus = statusMap[changes.status.new] || changes.status.new.toLowerCase().replace(/ /g, '_');
-
-                // Update status dropdown
-                var statusSelect = document.getElementById('task-status');
                 if (statusSelect) {
-                    statusSelect.value = mappedStatus;
+                    statusSelect.value = changes.status.new;
                 }
-
-                // Also update the header status badge
-                var headerBadge = document.getElementById('chat-header-status');
-                if (headerBadge) {
-                    // Update text
-                    headerBadge.textContent = changes.status.new;
-
-                    // Update CSS class using mappedStatus (form value)
-                    var newClass = cssClassMap[mappedStatus] || 'status-' + mappedStatus;
-                    headerBadge.className = 'status-badge ' + newClass;
-                }
+                updateHeaderStatus(changes.status.new);
             }
-            
-            // Update assignee dropdown if assignee changed
+
             if (changes.assignee !== undefined) {
-                var assigneeSelect = document.getElementById('task-assignee');
                 if (assigneeSelect) {
                     assigneeSelect.value = changes.assignee.new || '';
                 }
             }
-            
-            // Update priority dropdown if priority changed
+
             if (changes.priority) {
-                var prioritySelect = document.getElementById('task-priority');
                 if (prioritySelect && changes.priority.new) {
-                    // Priority values are capitalized (Low, Medium, High, Critical)
                     prioritySelect.value = changes.priority.new.charAt(0).toUpperCase() + changes.priority.new.slice(1);
                 }
             }
-            
-            // Update due date if changed
+
             if (changes.due_date !== undefined) {
-                var dueDateInput = document.getElementById('task-due-date');
                 if (dueDateInput) {
                     dueDateInput.value = changes.due_date.new || '';
                 }
             }
-            
         }
     });
     {{end}}

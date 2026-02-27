@@ -22,7 +22,7 @@
                     <img src="{{.AvatarURL}}" alt="{{.Username}}" />
                     {{else}}
                     <div class="avatar-placeholder">
-                        {{slice .Username 0 1 | upper}}
+                        {{initials .Username}}
                     </div>
                     {{end}}
                 </div>

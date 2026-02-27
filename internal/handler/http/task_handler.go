@@ -705,6 +705,10 @@ func parseTaskFilters(c echo.Context) taskapp.Filters {
 		Offset: 0,
 	}
 
+	if workspaceID, err := uuid.ParseUUID(c.Param("workspace_id")); err == nil {
+		filters.WorkspaceID = &workspaceID
+	}
+
 	filters.Status = parseStatusFilter(c.QueryParam("status"))
 	filters.AssigneeID = parseUUIDFilter(c.QueryParam("assignee_id"))
 	filters.Priority = parsePriorityFilter(c.QueryParam("priority"))

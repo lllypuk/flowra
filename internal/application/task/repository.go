@@ -52,15 +52,16 @@ type Repository interface {
 
 // Filters contains parameters filtering for zaprosov
 type Filters struct {
-	ChatID     *uuid.UUID
-	AssigneeID *uuid.UUID
-	Status     *taskdomain.Status
-	Priority   *taskdomain.Priority
-	EntityType *taskdomain.EntityType
-	CreatedBy  *uuid.UUID
-	Search     string
-	Offset     int
-	Limit      int
+	WorkspaceID *uuid.UUID
+	ChatID      *uuid.UUID
+	AssigneeID  *uuid.UUID
+	Status      *taskdomain.Status
+	Priority    *taskdomain.Priority
+	EntityType  *taskdomain.EntityType
+	CreatedBy   *uuid.UUID
+	Search      string
+	Offset      int
+	Limit       int
 }
 
 // ReadModel represents denormalizovannoe view Task for zaprosov

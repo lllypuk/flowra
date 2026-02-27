@@ -314,6 +314,51 @@ func (r *MongoUserRepository) documentToUser(doc *userDocument) (*userdomain.Use
 	), nil
 }
 
+// Search finds users whose username or email contains the query string (case-insensitive).
+func (r *MongoUserRepository) Search(ctx context.Context, query string, limit int) ([]*userdomain.User, error) {
+	if query == "" {
+		return nil, nil
+	}
+	if limit <= 0 || limit > 20 {
+		limit = 10
+	}
+
+	regex := bson.M{"$regex": query, "$options": "i"}
+	filter := bson.M{
+		"$or": bson.A{
+			bson.M{"username": regex},
+			bson.M{"email": regex},
+			bson.M{"display_name": regex},
+		},
+	}
+
+	opts := options.Find().SetLimit(int64(limit))
+	cursor, err := r.collection.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, HandleMongoError(err, "users")
+	}
+	defer cursor.Close(ctx)
+
+	var users []*userdomain.User
+	for cursor.Next(ctx) {
+		var doc userDocument
+		if decodeErr := cursor.Decode(&doc); decodeErr != nil {
+			continue
+		}
+		u, convErr := r.documentToUser(&doc)
+		if convErr != nil {
+			continue
+		}
+		users = append(users, u)
+	}
+
+	if cursorErr := cursor.Err(); cursorErr != nil {
+		return nil, HandleMongoError(cursorErr, "users")
+	}
+
+	return users, nil
+}
+
 // ListExternalIDs returns list all external ID (Keycloak ID) users
 func (r *MongoUserRepository) ListExternalIDs(ctx context.Context) ([]string, error) {
 	filter := bson.M{

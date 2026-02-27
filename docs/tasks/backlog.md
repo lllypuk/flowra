@@ -8,3 +8,22 @@ This file tracks non-urgent work that is valuable but not yet scheduled.
 - Priority: use `P1` (high), `P2` (medium), `P3` (low).
 - Keep tasks actionable and outcome-focused.
 - Do not add time estimates.
+
+## Chat = SoT Refactor Plan (No Migrations)
+
+Assumption: service is not in production yet. We can make breaking changes and reset data between PRs.
+
+- [ ] `P1` PR-01: Architecture Contract (`Chat = SoT`) and scope freeze.
+  - Details: [chat-sot-pr-01-architecture-contract.md](/home/sasha/Project/flowra/docs/tasks/chat-sot-pr-01-architecture-contract.md)
+- [ ] `P1` PR-02: Remove duplicate entity creation paths.
+  - Details: [chat-sot-pr-02-remove-duplicate-creation.md](/home/sasha/Project/flowra/docs/tasks/chat-sot-pr-02-remove-duplicate-creation.md)
+- [ ] `P1` PR-03: Unify all writes through Chat command pipeline.
+  - Details: [chat-sot-pr-03-unify-write-path.md](/home/sasha/Project/flowra/docs/tasks/chat-sot-pr-03-unify-write-path.md)
+- [ ] `P1` PR-04: Rebuild projections from `chat.*` events only.
+  - Details: [chat-sot-pr-04-chat-projections.md](/home/sasha/Project/flowra/docs/tasks/chat-sot-pr-04-chat-projections.md)
+- [ ] `P1` PR-05: Move task-only fields (attachments and details) into Chat domain.
+  - Details: [chat-sot-pr-05-move-task-fields-to-chat.md](/home/sasha/Project/flowra/docs/tasks/chat-sot-pr-05-move-task-fields-to-chat.md)
+- [ ] `P1` PR-06: Remove Task aggregate write stack.
+  - Details: [chat-sot-pr-06-remove-task-write-stack.md](/home/sasha/Project/flowra/docs/tasks/chat-sot-pr-06-remove-task-write-stack.md)
+- [ ] `P1` PR-07: Data reset tooling, test hardening, and final cleanup.
+  - Details: [chat-sot-pr-07-reset-tests-cleanup.md](/home/sasha/Project/flowra/docs/tasks/chat-sot-pr-07-reset-tests-cleanup.md)

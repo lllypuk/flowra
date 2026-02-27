@@ -729,8 +729,8 @@ func (c *Container) createChatUseCasesForTags() *tag.ChatUseCases {
 		SetSeverity:  chatapp.NewSetSeverityUseCase(c.ChatRepo),
 
 		// Participant Management (Task 007a)
-		AddParticipant:    chatapp.NewAddParticipantUseCase(c.EventStore),
-		RemoveParticipant: chatapp.NewRemoveParticipantUseCase(c.EventStore),
+		AddParticipant:    chatapp.NewAddParticipantUseCase(c.ChatRepo),
+		RemoveParticipant: chatapp.NewRemoveParticipantUseCase(c.ChatRepo),
 
 		// Chat Lifecycle (Task 007a)
 		CloseChat:  chatapp.NewCloseChatUseCase(c.EventStore),
@@ -817,6 +817,7 @@ func (c *Container) setupHTTPHandlers() {
 	if c.TemplateHandler != nil {
 		c.TemplateHandler.SetServices(c.WorkspaceService, c.MemberService)
 		c.TemplateHandler.SetUserLookup(c.createUserProfileLookup())
+		c.TemplateHandler.SetUserSearcher(c.createUserSearcher())
 	}
 
 	// === 5. Chat Service (Real) ===
@@ -956,8 +957,8 @@ func (c *Container) createChatService() *service.ChatService {
 	getUC := chatapp.NewGetChatUseCase(c.EventStore)
 	listUC := chatapp.NewListChatsUseCase(c.ChatQueryRepo, c.EventStore)
 	renameUC := chatapp.NewRenameChatUseCase(c.ChatRepo)
-	addPartUC := chatapp.NewAddParticipantUseCase(c.EventStore)
-	removePartUC := chatapp.NewRemoveParticipantUseCase(c.EventStore)
+	addPartUC := chatapp.NewAddParticipantUseCase(c.ChatRepo)
+	removePartUC := chatapp.NewRemoveParticipantUseCase(c.ChatRepo)
 
 	return service.NewChatService(service.ChatServiceConfig{
 		CreateUC:     createUC,
@@ -1039,6 +1040,7 @@ func (c *Container) setupChatTemplateHandler() {
 		taskService,
 	)
 	c.ChatTemplateHandler.SetUserLookup(c.createUserProfileLookup())
+	c.ChatTemplateHandler.SetMemberService(c.createBoardMemberService())
 
 	c.Logger.Debug("chat template handler initialized")
 }
@@ -1249,13 +1251,15 @@ func (a *boardChatCreatorAdapter) CreateChat(
 // createBoardTaskService creates a service implementing BoardTaskService.
 func (c *Container) createBoardTaskService() httphandler.BoardTaskService {
 	return &boardTaskServiceAdapter{
-		collection: c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model"),
+		collection:     c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model"),
+		chatCollection: c.MongoDB.Database(c.MongoDBName).Collection("chats_read_model"),
 	}
 }
 
 // boardTaskServiceAdapter adapts MongoDB collection to BoardTaskService.
 type boardTaskServiceAdapter struct {
-	collection *mongo.Collection
+	collection     *mongo.Collection
+	chatCollection *mongo.Collection
 }
 
 // ListTasks implements BoardTaskService.
@@ -1278,6 +1282,9 @@ func (a *boardTaskServiceAdapter) CountTasks(
 		return 0, nil
 	}
 	filter := a.buildFilter(filters)
+	if err := a.applyWorkspaceScope(ctx, filter, filters.WorkspaceID); err != nil {
+		return 0, err
+	}
 	count, err := a.collection.CountDocuments(ctx, filter)
 	if err != nil {
 		return 0, err
@@ -1317,6 +1324,9 @@ func (a *boardTaskServiceAdapter) queryTasks(
 	filters taskapp.Filters,
 ) ([]*taskapp.ReadModel, error) {
 	filter := a.buildFilter(filters)
+	if err := a.applyWorkspaceScope(ctx, filter, filters.WorkspaceID); err != nil {
+		return nil, err
+	}
 
 	opts := options.Find()
 	if filters.Limit > 0 {
@@ -1343,6 +1353,62 @@ func (a *boardTaskServiceAdapter) queryTasks(
 	}
 
 	return results, nil
+}
+
+// applyWorkspaceScope adds workspace filtering using chats_read_model linkage.
+func (a *boardTaskServiceAdapter) applyWorkspaceScope(
+	ctx context.Context,
+	filter map[string]any,
+	workspaceID *uuid.UUID,
+) error {
+	if workspaceID == nil {
+		return nil
+	}
+
+	if a.chatCollection == nil {
+		filter["chat_id"] = bson.M{"$in": []string{}}
+		return nil
+	}
+
+	chatIDs, err := a.findWorkspaceChatIDs(ctx, *workspaceID)
+	if err != nil {
+		return err
+	}
+
+	if len(chatIDs) == 0 {
+		filter["chat_id"] = bson.M{"$in": []string{}}
+		return nil
+	}
+
+	if chatID, ok := filter["chat_id"].(string); ok {
+		for _, id := range chatIDs {
+			if id == chatID {
+				return nil
+			}
+		}
+		filter["chat_id"] = bson.M{"$in": []string{}}
+		return nil
+	}
+
+	filter["chat_id"] = bson.M{"$in": chatIDs}
+	return nil
+}
+
+func (a *boardTaskServiceAdapter) findWorkspaceChatIDs(
+	ctx context.Context,
+	workspaceID uuid.UUID,
+) ([]string, error) {
+	if workspaceID.IsZero() {
+		return []string{}, nil
+	}
+
+	res := a.chatCollection.Distinct(ctx, "chat_id", bson.M{"workspace_id": workspaceID.String()})
+	var chatIDs []string
+	if err := res.Decode(&chatIDs); err != nil {
+		return nil, err
+	}
+
+	return chatIDs, nil
 }
 
 // buildFilter builds a MongoDB filter from task filters.
@@ -1447,7 +1513,8 @@ func (a *chatBasicInfoServiceAdapter) GetChatBasicInfo(
 func (c *Container) createFullTaskService() httphandler.TaskService {
 	return &fullTaskServiceAdapter{
 		boardTaskServiceAdapter: boardTaskServiceAdapter{
-			collection: c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model"),
+			collection:     c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model"),
+			chatCollection: c.MongoDB.Database(c.MongoDBName).Collection("chats_read_model"),
 		},
 		taskRepo: c.TaskRepo,
 		userRepo: c.UserRepo,
@@ -1747,6 +1814,39 @@ func (a *userProfileLookupAdapter) GetUser(ctx context.Context, userID uuid.UUID
 		CreatedAt:   u.CreatedAt(),
 		UpdatedAt:   u.UpdatedAt(),
 	}
+}
+
+// createUserSearcher creates a service implementing UserSearcher.
+func (c *Container) createUserSearcher() httphandler.UserSearcher {
+	return &userSearcherAdapter{userRepo: c.UserRepo}
+}
+
+// userSearcherAdapter adapts MongoUserRepository to UserSearcher.
+type userSearcherAdapter struct {
+	userRepo *mongodb.MongoUserRepository
+}
+
+// Search implements UserSearcher.
+func (a *userSearcherAdapter) Search(
+	ctx context.Context,
+	query string,
+	limit int,
+) ([]httphandler.UserSearchResult, error) {
+	users, err := a.userRepo.Search(ctx, query, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make([]httphandler.UserSearchResult, 0, len(users))
+	for _, u := range users {
+		results = append(results, httphandler.UserSearchResult{
+			ID:          u.ID().String(),
+			Username:    u.Username(),
+			DisplayName: u.DisplayName(),
+			Email:       u.Email(),
+		})
+	}
+	return results, nil
 }
 
 // createNotificationTemplateService creates a service implementing NotificationTemplateService.

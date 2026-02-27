@@ -249,6 +249,13 @@ type UserProfileLookup interface {
 	GetUser(ctx context.Context, userID uuid.UUID) *UserView
 }
 
+// UserSearcher searches users by query string for invite functionality.
+// Declared on the consumer side per project guidelines.
+type UserSearcher interface {
+	// Search finds users whose username, email or display name matches the query.
+	Search(ctx context.Context, query string, limit int) ([]UserSearchResult, error)
+}
+
 // TemplateHandler provides handlers for rendering HTML pages.
 type TemplateHandler struct {
 	renderer         *TemplateRenderer
@@ -257,6 +264,7 @@ type TemplateHandler struct {
 	memberService    MemberService
 	oauthClient      OAuthClient
 	userLookup       UserProfileLookup
+	userSearcher     UserSearcher
 }
 
 // NewTemplateHandler creates a new template handler.
@@ -292,6 +300,11 @@ func (h *TemplateHandler) SetOAuthClient(client OAuthClient) {
 // SetUserLookup sets the user lookup service for resolving user profiles.
 func (h *TemplateHandler) SetUserLookup(lookup UserProfileLookup) {
 	h.userLookup = lookup
+}
+
+// SetUserSearcher sets the user search service for invite functionality.
+func (h *TemplateHandler) SetUserSearcher(searcher UserSearcher) {
+	h.userSearcher = searcher
 }
 
 // render is a helper to render a template with common page data.
@@ -380,12 +393,9 @@ func getString(m map[string]any, key string) string {
 	return ""
 }
 
-// Home redirects to workspaces if logged in, otherwise to login.
+// Home renders the public landing page.
 func (h *TemplateHandler) Home(c echo.Context) error {
-	if getSessionCookie(c) != "" {
-		return c.Redirect(http.StatusFound, "/workspaces")
-	}
-	return c.Redirect(http.StatusFound, "/login")
+	return h.render(c, "home.html", "Home", nil)
 }
 
 // LoginPage renders the login page with OAuth auth URL.
@@ -623,6 +633,7 @@ func SetupStaticRoutes(e *echo.Echo, staticFS embed.FS) error {
 
 	// Serve static files
 	e.StaticFS("/static", staticSub)
+	e.FileFS("/favicon.ico", "favicon.svg", staticSub)
 
 	return nil
 }
@@ -1122,20 +1133,23 @@ func (h *TemplateHandler) WorkspaceInviteForm(c echo.Context) error {
 func (h *TemplateHandler) UserSearchPartial(c echo.Context) error {
 	query := c.QueryParam("search")
 
-	// For now, return empty results since we don't have a user search service
-	// In a real implementation, this would search users by username/email
 	data := map[string]any{
 		"Users": []UserSearchResult{},
 		"Query": query,
 	}
 
-	// If query is empty, return empty state
-	if query == "" {
+	if query == "" || h.userSearcher == nil {
 		return h.RenderPartial(c, "user_search_results", data)
 	}
 
-	// TODO: Implement actual user search when user service is available
-	// For now, this is a placeholder that returns empty results
+	const defaultSearchLimit = 10
+	results, err := h.userSearcher.Search(c.Request().Context(), query, defaultSearchLimit)
+	if err != nil {
+		h.logger.Error("user search failed", slog.String("error", err.Error()))
+		return h.RenderPartial(c, "user_search_results", data)
+	}
+
+	data["Users"] = results
 	return h.RenderPartial(c, "user_search_results", data)
 }
 

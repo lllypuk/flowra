@@ -5,17 +5,18 @@ import (
 	"fmt"
 
 	"github.com/lllypuk/flowra/internal/application/appcore"
+	domchat "github.com/lllypuk/flowra/internal/domain/chat"
 )
 
 // RemoveParticipantUseCase handles removing a participant from a chat
 type RemoveParticipantUseCase struct {
-	eventStore appcore.EventStore
+	chatRepo CommandRepository
 }
 
 // NewRemoveParticipantUseCase creates a new RemoveParticipantUseCase
-func NewRemoveParticipantUseCase(eventStore appcore.EventStore) *RemoveParticipantUseCase {
+func NewRemoveParticipantUseCase(chatRepo CommandRepository) *RemoveParticipantUseCase {
 	return &RemoveParticipantUseCase{
-		eventStore: eventStore,
+		chatRepo: chatRepo,
 	}
 }
 
@@ -25,7 +26,7 @@ func (uc *RemoveParticipantUseCase) Execute(ctx context.Context, cmd RemoveParti
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	chatAggregate, err := loadAggregate(ctx, uc.eventStore, cmd.ChatID)
+	chatAggregate, err := uc.chatRepo.Load(ctx, cmd.ChatID)
 	if err != nil {
 		return Result{}, err
 	}
@@ -34,7 +35,21 @@ func (uc *RemoveParticipantUseCase) Execute(ctx context.Context, cmd RemoveParti
 		return Result{}, fmt.Errorf("failed to remove participant: %w", removeErr)
 	}
 
-	return saveAggregate(ctx, uc.eventStore, chatAggregate, cmd.ChatID.String())
+	// Capture events before save (Save marks them as committed)
+	newEvents := chatAggregate.GetUncommittedEvents()
+
+	// Save via repository (updates both event store and read model)
+	if saveErr := uc.chatRepo.Save(ctx, chatAggregate); saveErr != nil {
+		return Result{}, fmt.Errorf("failed to save chat: %w", saveErr)
+	}
+
+	return Result{
+		Result: appcore.Result[*domchat.Chat]{
+			Value:   chatAggregate,
+			Version: chatAggregate.Version(),
+		},
+		Events: convertToInterfaceSlice(newEvents),
+	}, nil
 }
 
 func (uc *RemoveParticipantUseCase) validate(cmd RemoveParticipantCommand) error {

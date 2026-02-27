@@ -134,6 +134,7 @@ func registerChatRoutes(r *httpserver.Router, c *Container) {
 	// Chat participants
 	chats.POST("/:id/participants", c.ChatHandler.AddParticipant)
 	chats.DELETE("/:id/participants/:user_id", c.ChatHandler.RemoveParticipant)
+	chats.GET("/:id/presence", c.ChatHandler.GetPresence)
 
 	// Chat actions (message-based modifications)
 	if c.ChatActionHandler != nil {

@@ -222,6 +222,12 @@ func (uc *SendMessageUseCase) processTagsAsync(
 		}
 	}
 
+	// System tag messages are internal action commands.
+	// They should execute tags but should not generate an extra bot response.
+	if msg.IsSystemMessage() {
+		return
+	}
+
 	// Resolve actor display name for bot response
 	actor := tag.ActorInfo{}
 	if uc.userResolver != nil {

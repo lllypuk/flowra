@@ -441,13 +441,13 @@ func (h *BoardTemplateHandler) buildColumns(
 
 // buildTaskFilters builds task filters from board filters.
 func (h *BoardTemplateHandler) buildTaskFilters(
-	_ uuid.UUID, // workspaceID - reserved for future workspace-scoped filtering
+	workspaceID uuid.UUID,
 	filters BoardFilters,
 	userID string,
 ) taskapp.Filters {
-	taskFilters := taskapp.Filters{}
-
-	// TODO: Add workspace filter when supported by repository
+	taskFilters := taskapp.Filters{
+		WorkspaceID: &workspaceID,
+	}
 
 	// Filter by entity type
 	if filters.Type != "" {

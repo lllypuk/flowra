@@ -460,6 +460,85 @@ func TestBoardTaskServiceAdapter_ListTasks_WithFilters(t *testing.T) {
 	})
 }
 
+func TestBoardTaskServiceAdapter_ListTasks_WorkspaceIsolation(t *testing.T) {
+	_, db := testutil.SetupTestMongoDBWithClient(t)
+	tasksCollection := db.Collection("tasks_read_model")
+	chatsCollection := db.Collection("chats_read_model")
+
+	ctx := context.Background()
+	workspaceA := uuid.NewUUID()
+	workspaceB := uuid.NewUUID()
+	chatA := uuid.NewUUID()
+	chatB := uuid.NewUUID()
+	createdBy := uuid.NewUUID()
+
+	_, err := chatsCollection.InsertMany(ctx, []any{
+		bson.M{"chat_id": chatA.String(), "workspace_id": workspaceA.String()},
+		bson.M{"chat_id": chatB.String(), "workspace_id": workspaceB.String()},
+	})
+	require.NoError(t, err)
+
+	_, err = tasksCollection.InsertMany(ctx, []any{
+		bson.M{
+			"task_id":     uuid.NewUUID().String(),
+			"chat_id":     chatA.String(),
+			"title":       "Workspace A Task",
+			"entity_type": string(taskdomain.TypeTask),
+			"status":      string(taskdomain.StatusToDo),
+			"priority":    string(taskdomain.PriorityMedium),
+			"created_by":  createdBy.String(),
+			"created_at":  time.Now().UTC(),
+			"version":     1,
+		},
+		bson.M{
+			"task_id":     uuid.NewUUID().String(),
+			"chat_id":     chatB.String(),
+			"title":       "Workspace B Task",
+			"entity_type": string(taskdomain.TypeTask),
+			"status":      string(taskdomain.StatusToDo),
+			"priority":    string(taskdomain.PriorityMedium),
+			"created_by":  createdBy.String(),
+			"created_at":  time.Now().UTC(),
+			"version":     1,
+		},
+	})
+	require.NoError(t, err)
+
+	adapter := &boardTaskServiceAdapter{
+		collection:     tasksCollection,
+		chatCollection: chatsCollection,
+	}
+
+	t.Run("list tasks by workspace", func(t *testing.T) {
+		filters := taskapp.Filters{
+			WorkspaceID: &workspaceA,
+		}
+		results, listErr := adapter.ListTasks(ctx, filters)
+		require.NoError(t, listErr)
+		require.Len(t, results, 1)
+		assert.Equal(t, "Workspace A Task", results[0].Title)
+	})
+
+	t.Run("count tasks by workspace", func(t *testing.T) {
+		filters := taskapp.Filters{
+			WorkspaceID: &workspaceB,
+		}
+		count, countErr := adapter.CountTasks(ctx, filters)
+		require.NoError(t, countErr)
+		assert.Equal(t, 1, count)
+	})
+
+	t.Run("workspace without chats returns no tasks", func(t *testing.T) {
+		unknownWorkspace := uuid.NewUUID()
+		filters := taskapp.Filters{
+			WorkspaceID: &unknownWorkspace,
+		}
+		results, listErr := adapter.ListTasks(ctx, filters)
+		require.NoError(t, listErr)
+		assert.Empty(t, results)
+	})
+}
+
 // TestBoardTaskServiceAdapter_CountTasks tests the CountTasks method.
 func TestBoardTaskServiceAdapter_CountTasks(t *testing.T) {
 	_, db := testutil.SetupTestMongoDBWithClient(t)

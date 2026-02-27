@@ -159,7 +159,6 @@
                 })
                 .catch(function(err) {
                     if (err && err.name === "AbortError") return;
-                    console.log('Presence not available');
                 });
         }
     })();
@@ -422,13 +421,6 @@
         display: flex;
         gap: 0.75rem;
         padding: 0.5rem 0;
-    }
-
-    .message:hover {
-        background: var(--secondary-focus);
-        border-radius: 4px;
-        margin: 0 -0.5rem;
-        padding: 0.5rem;
     }
 
     .message-avatar {

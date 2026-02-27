@@ -68,6 +68,9 @@ type ChatViewData struct {
 	IsPublic         bool
 	IsTaskChat       bool
 	Status           string
+	AssigneeID       string
+	Priority         string
+	DueDate          *time.Time
 	CreatedBy        string
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
@@ -162,6 +165,7 @@ type ChatTemplateHandler struct {
 	messageService MessageTemplateService
 	taskService    TaskQueryForChatService
 	userLookup     UserProfileLookup
+	memberService  BoardMemberService
 }
 
 // NewChatTemplateHandler creates a new chat template handler.
@@ -187,6 +191,11 @@ func NewChatTemplateHandler(
 // SetUserLookup sets the user lookup service for resolving participant profiles.
 func (h *ChatTemplateHandler) SetUserLookup(lookup UserProfileLookup) {
 	h.userLookup = lookup
+}
+
+// SetMemberService sets the member service for loading workspace members.
+func (h *ChatTemplateHandler) SetMemberService(svc BoardMemberService) {
+	h.memberService = svc
 }
 
 // SetupChatRoutes registers chat-related page and partial routes.
@@ -294,7 +303,8 @@ func (h *ChatTemplateHandler) ChatView(c echo.Context) error {
 	// Load task data for task chats
 	if chatData.IsTaskChat {
 		data["Task"] = h.loadTaskViewData(c.Request().Context(), chatData)
-		data["Participants"] = h.loadParticipants(c.Request().Context(), chatID, userID)
+		data["Participants"] = h.loadWorkspaceMembers(c.Request().Context(), workspaceID)
+		data["Statuses"] = getChatStatusOptions(chatData.Type)
 	}
 
 	return h.render(c, "chat/layout.html", chatData.Title, data)
@@ -335,7 +345,10 @@ func (h *ChatTemplateHandler) ChatViewPartial(c echo.Context) error {
 
 	if chatData.IsTaskChat {
 		innerData["Task"] = h.loadTaskViewData(c.Request().Context(), chatData)
-		innerData["Participants"] = h.loadParticipants(c.Request().Context(), chatID, userID)
+		if wsID, parseErr := uuid.ParseUUID(chatData.WorkspaceID); parseErr == nil {
+			innerData["Participants"] = h.loadWorkspaceMembers(c.Request().Context(), wsID)
+		}
+		innerData["Statuses"] = getChatStatusOptions(chatData.Type)
 	}
 
 	// Wrap in "Data" to match template expectations (template uses .Data.Chat.ID)
@@ -495,6 +508,9 @@ func (h *ChatTemplateHandler) MessagesPartial(c echo.Context) error {
 		if msg == nil {
 			continue
 		}
+		if shouldHideSystemTagCommand(msg) {
+			continue
+		}
 		messageViews = append(messageViews, h.convertMessageToView(msg, userID))
 	}
 
@@ -537,6 +553,9 @@ func (h *ChatTemplateHandler) SingleMessagePartial(c echo.Context) error {
 	msg, err := h.messageService.GetMessage(c.Request().Context(), messageID)
 	if err != nil {
 		return c.String(http.StatusNotFound, "Message not found")
+	}
+	if shouldHideSystemTagCommand(msg) {
+		return c.NoContent(http.StatusNoContent)
 	}
 
 	messageView := h.convertMessageToView(msg, userID)
@@ -866,6 +885,20 @@ func (h *ChatTemplateHandler) loadChatViewData(
 	}
 
 	chat := result.Chat
+	assigneeID := ""
+	if chat.AssignedTo != nil {
+		assigneeID = chat.AssignedTo.String()
+	}
+	priority := ""
+	if chat.Priority != nil {
+		priority = *chat.Priority
+	}
+	var dueDate *time.Time
+	if chat.DueDate != nil {
+		d := *chat.DueDate
+		dueDate = &d
+	}
+
 	return &ChatViewData{
 		ID:               chat.ID.String(),
 		WorkspaceID:      chat.WorkspaceID.String(),
@@ -874,6 +907,9 @@ func (h *ChatTemplateHandler) loadChatViewData(
 		IsPublic:         chat.IsPublic,
 		IsTaskChat:       isTaskType(string(chat.Type)),
 		Status:           getStringValue(chat.Status),
+		AssigneeID:       assigneeID,
+		Priority:         priority,
+		DueDate:          dueDate,
 		CreatedBy:        chat.CreatedBy.String(),
 		CreatedAt:        chat.CreatedAt,
 		UpdatedAt:        chat.CreatedAt,
@@ -887,32 +923,46 @@ func (h *ChatTemplateHandler) loadTaskViewData(ctx context.Context, chat *ChatVi
 		return nil
 	}
 
-	// Load task from task service using chat ID
+	// Prefer chat read-model fields as source of truth for sidebar values,
+	// because task read model can lag behind chat action processing.
+	taskView := &TaskViewData{
+		ID:         chat.ID,
+		Status:     chat.Status,
+		Priority:   chat.Priority,
+		AssigneeID: chat.AssigneeID,
+		DueDate:    chat.DueDate,
+	}
+
+	// Load task from task service using chat ID (primarily to get task ID and fallback values)
 	if h.taskService == nil {
-		return nil
+		return taskView
 	}
 
 	chatID, err := uuid.ParseUUID(chat.ID)
 	if err != nil {
-		return nil
+		return taskView
 	}
 
 	task, taskErr := h.taskService.GetTaskByChatID(ctx, chatID)
 	if taskErr != nil || task == nil {
-		return nil
+		return taskView
 	}
 
-	var dueDate *time.Time
-	if task.DueDate != nil {
-		dueDate = task.DueDate
+	taskView.ID = task.ID.String()
+	if taskView.Status == "" {
+		taskView.Status = string(task.Status)
 	}
-	return &TaskViewData{
-		ID:         task.ID.String(),
-		Status:     string(task.Status),
-		Priority:   string(task.Priority),
-		AssigneeID: getAssigneeID(task.AssignedTo),
-		DueDate:    dueDate,
+	if taskView.Priority == "" {
+		taskView.Priority = string(task.Priority)
 	}
+	if taskView.AssigneeID == "" {
+		taskView.AssigneeID = getAssigneeID(task.AssignedTo)
+	}
+	if taskView.DueDate == nil && task.DueDate != nil {
+		taskView.DueDate = task.DueDate
+	}
+
+	return taskView
 }
 
 func getAssigneeID(assignee *uuid.UUID) string {
@@ -967,6 +1017,24 @@ func (h *ChatTemplateHandler) loadParticipants(
 		participants = append(participants, pv)
 	}
 	return participants
+}
+
+const maxWorkspaceMembersForChat = 100
+
+// loadWorkspaceMembers loads all workspace members for use in the task sidebar assignee dropdown.
+func (h *ChatTemplateHandler) loadWorkspaceMembers(ctx context.Context, workspaceID uuid.UUID) []MemberViewData {
+	if h.memberService == nil {
+		return nil
+	}
+	members, err := h.memberService.ListWorkspaceMembers(ctx, workspaceID, 0, maxWorkspaceMembersForChat)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "failed to load workspace members",
+			slog.String("workspace_id", workspaceID.String()),
+			slog.String("error", err.Error()),
+		)
+		return nil
+	}
+	return members
 }
 
 func (h *ChatTemplateHandler) convertMessageToView(msg *message.Message, currentUserID uuid.UUID) MessageViewData {
@@ -1099,6 +1167,16 @@ func parseMessageContent(content string) parsedContent {
 		DisplayText: displayText,
 		Tags:        tags,
 	}
+}
+
+// shouldHideSystemTagCommand hides internal command messages like "#status Done".
+// Action responses are rendered by human-readable system/bot messages.
+func shouldHideSystemTagCommand(msg *message.Message) bool {
+	if msg == nil || !msg.IsSystemMessage() {
+		return false
+	}
+	content := strings.TrimSpace(msg.Content())
+	return strings.HasPrefix(content, "#")
 }
 
 func isTaskType(chatType string) bool {
