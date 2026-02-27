@@ -85,17 +85,16 @@ type Container struct {
 	Logger *slog.Logger
 
 	// Infrastructure
-	MongoDB             *mongo.Client
-	MongoDBName         string
-	Redis               *redis.Client
-	EventStore          *eventstore.MongoEventStore
-	EventBus            *eventbus.RedisEventBus
-	Outbox              appcore.Outbox
-	Hub                 *websocket.Hub
-	Broadcaster         *websocket.Broadcaster
-	NotifHandler        *eventbus.NotificationHandler
-	LogHandler          *eventbus.LoggingHandler
-	TaskCreationHandler *eventbus.TaskCreationHandler
+	MongoDB      *mongo.Client
+	MongoDBName  string
+	Redis        *redis.Client
+	EventStore   *eventstore.MongoEventStore
+	EventBus     *eventbus.RedisEventBus
+	Outbox       appcore.Outbox
+	Hub          *websocket.Hub
+	Broadcaster  *websocket.Broadcaster
+	NotifHandler *eventbus.NotificationHandler
+	LogHandler   *eventbus.LoggingHandler
 
 	// Reliability components
 	DeadLetterHandler *eventbus.DeadLetterHandler
@@ -749,13 +748,6 @@ func (c *Container) setupEventHandlers() {
 	// Create logging handler for debugging
 	c.LogHandler = eventbus.NewLoggingHandler(c.Logger)
 
-	// Create task creation handler for chat type changes
-	createTaskUC := taskapp.NewCreateTaskUseCase(c.TaskRepo)
-	c.TaskCreationHandler = eventbus.NewTaskCreationHandler(
-		createTaskUC,
-		c.Logger,
-	)
-
 	c.Logger.Debug("event handlers initialized")
 }
 
@@ -788,7 +780,6 @@ func (c *Container) registerEventHandlers() error {
 		c.EventBus,
 		c.NotifHandler,
 		c.LogHandler,
-		c.TaskCreationHandler,
 		c.Logger,
 	)
 }
@@ -1167,50 +1158,30 @@ func (c *Container) setupBoardTemplateHandler() {
 		memberService,
 	)
 
-	// Set task creator for creating new tasks
-	c.BoardTemplateHandler.SetTaskCreator(c.createBoardTaskCreator())
-
-	// Set chat creator for creating task chats
+	// Set chat creator for creating typed chats and bootstrapping task read model.
 	c.BoardTemplateHandler.SetChatCreator(c.createBoardChatCreator())
 
 	c.Logger.Debug("board template handler initialized")
 }
 
-// createBoardTaskCreator creates a service implementing BoardTaskCreator.
-func (c *Container) createBoardTaskCreator() httphandler.BoardTaskCreator {
-	return &boardTaskCreatorAdapter{
-		taskRepo: c.TaskRepo,
-	}
-}
-
-// boardTaskCreatorAdapter creates tasks using the repository pattern.
-type boardTaskCreatorAdapter struct {
-	taskRepo taskapp.CommandRepository
-}
-
-// CreateTask implements BoardTaskCreator.
-// The repository handles both event store and read model updates.
-func (a *boardTaskCreatorAdapter) CreateTask(
-	ctx context.Context,
-	cmd taskapp.CreateTaskCommand,
-) (*taskapp.TaskResult, error) {
-	createUC := taskapp.NewCreateTaskUseCase(a.taskRepo)
-	result, err := createUC.Execute(ctx, cmd)
-	if err != nil {
-		return nil, err
-	}
-	return &result, nil
-}
-
 // createBoardChatCreator creates a service implementing BoardChatCreator.
 func (c *Container) createBoardChatCreator() httphandler.BoardChatCreator {
-	createUC := chatapp.NewCreateChatUseCase(c.ChatRepo)
-	return &boardChatCreatorAdapter{createUC: createUC}
+	return &boardChatCreatorAdapter{
+		createUC:      chatapp.NewCreateChatUseCase(c.ChatRepo),
+		setPriorityUC: chatapp.NewSetPriorityUseCase(c.ChatRepo),
+		assignUserUC:  chatapp.NewAssignUserUseCase(c.ChatRepo),
+		setDueDateUC:  chatapp.NewSetDueDateUseCase(c.ChatRepo),
+		taskReadModel: c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model"),
+	}
 }
 
-// boardChatCreatorAdapter adapts CreateChatUseCase to BoardChatCreator.
+// boardChatCreatorAdapter adapts chat use cases to BoardChatCreator.
 type boardChatCreatorAdapter struct {
-	createUC *chatapp.CreateChatUseCase
+	createUC      *chatapp.CreateChatUseCase
+	setPriorityUC *chatapp.SetPriorityUseCase
+	assignUserUC  *chatapp.AssignUserUseCase
+	setDueDateUC  *chatapp.SetDueDateUseCase
+	taskReadModel *mongo.Collection
 }
 
 // CreateChat implements BoardChatCreator.
@@ -1218,6 +1189,9 @@ func (a *boardChatCreatorAdapter) CreateChat(
 	ctx context.Context,
 	workspaceID, userID uuid.UUID,
 	chatType, title string,
+	priority taskdomain.Priority,
+	assigneeID *uuid.UUID,
+	dueDate *time.Time,
 ) (uuid.UUID, error) {
 	// Map string chat type to domain type
 	var domainType chat.Type
@@ -1245,7 +1219,112 @@ func (a *boardChatCreatorAdapter) CreateChat(
 		return "", err
 	}
 
-	return result.Value.ID(), nil
+	typedChat := result.Value
+	if typedChat == nil {
+		return "", errors.New("typed chat was not created")
+	}
+
+	priorityResult, err := a.setPriorityUC.Execute(ctx, chatapp.SetPriorityCommand{
+		ChatID:   typedChat.ID(),
+		Priority: string(priority),
+		SetBy:    userID,
+	})
+	if err != nil {
+		return "", err
+	}
+	typedChat = priorityResult.Value
+
+	if assigneeID != nil {
+		assignResult, assignErr := a.assignUserUC.Execute(ctx, chatapp.AssignUserCommand{
+			ChatID:     typedChat.ID(),
+			AssigneeID: assigneeID,
+			AssignedBy: userID,
+		})
+		if assignErr != nil {
+			return "", assignErr
+		}
+		typedChat = assignResult.Value
+	}
+
+	if dueDate != nil {
+		dueDateResult, dueDateErr := a.setDueDateUC.Execute(ctx, chatapp.SetDueDateCommand{
+			ChatID:  typedChat.ID(),
+			DueDate: dueDate,
+			SetBy:   userID,
+		})
+		if dueDateErr != nil {
+			return "", dueDateErr
+		}
+		typedChat = dueDateResult.Value
+	}
+
+	if err = a.upsertTaskReadModel(ctx, typedChat); err != nil {
+		return "", err
+	}
+
+	return typedChat.ID(), nil
+}
+
+func (a *boardChatCreatorAdapter) upsertTaskReadModel(ctx context.Context, typedChat *chat.Chat) error {
+	if typedChat == nil || !typedChat.IsTyped() {
+		return nil
+	}
+	if a.taskReadModel == nil {
+		return errors.New("tasks read model collection is not configured")
+	}
+
+	entityType, err := typedChat.GetTaskEntityType()
+	if err != nil {
+		return fmt.Errorf("failed to map chat type to task entity type: %w", err)
+	}
+
+	priority := typedChat.Priority()
+	if priority == "" {
+		priority = string(taskdomain.PriorityMedium)
+	}
+
+	doc := bson.M{
+		"task_id":     typedChat.ID().String(),
+		"chat_id":     typedChat.ID().String(),
+		"title":       typedChat.Title(),
+		"entity_type": string(entityType),
+		"status":      normalizeBoardStatus(typedChat.Status()),
+		"priority":    priority,
+		"created_by":  typedChat.CreatedBy().String(),
+		"created_at":  typedChat.CreatedAt(),
+		"version":     typedChat.Version(),
+	}
+
+	if typedChat.AssigneeID() != nil {
+		doc["assigned_to"] = typedChat.AssigneeID().String()
+	} else {
+		doc["assigned_to"] = nil
+	}
+
+	if typedChat.DueDate() != nil {
+		doc["due_date"] = *typedChat.DueDate()
+	} else {
+		doc["due_date"] = nil
+	}
+
+	filter := bson.M{"task_id": typedChat.ID().String()}
+	update := bson.M{"$set": doc}
+	opts := options.UpdateOne().SetUpsert(true)
+	if _, err = a.taskReadModel.UpdateOne(ctx, filter, update, opts); err != nil {
+		return fmt.Errorf("failed to upsert task read model from chat: %w", err)
+	}
+	return nil
+}
+
+func normalizeBoardStatus(status string) string {
+	switch status {
+	case "":
+		return string(taskdomain.StatusToDo)
+	case "New", "Planned":
+		return string(taskdomain.StatusToDo)
+	default:
+		return status
+	}
 }
 
 // createBoardTaskService creates a service implementing BoardTaskService.

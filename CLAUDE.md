@@ -250,6 +250,16 @@ The tag system (`internal/domain/tag/`) processes commands in messages:
 
 UI actions (sidebar status/priority/assignee changes) go through `ActionService` which creates human-readable system messages like "John changed status to In Progress".
 
+### Chat = SoT Contributor Checklist
+
+For typed entities (`task`, `bug`, `epic`), architecture is locked to `Chat = source of truth` (see `docs/architecture/adr-007-chat-sot.md`).
+
+Before merging changes that touch write logic:
+- Do not add new write handlers or commands under `internal/application/task`.
+- Do not emit new `task.*` events.
+- Ensure typed entity business writes emit `chat.*` events only.
+- Keep compatibility adapters on read/query side only, not on write side.
+
 ### HTMX v2 WebSocket API
 
 HTMX v2 stores the WebSocket connection differently from v1. When accessing the socket programmatically:

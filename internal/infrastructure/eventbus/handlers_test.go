@@ -1274,7 +1274,7 @@ func TestRegisterAllHandlers(t *testing.T) {
 		notifHandler := eventbus.NewNotificationHandler(uc)
 		logHandler := eventbus.NewLoggingHandler(logger)
 
-		err := eventbus.RegisterAllHandlers(bus, notifHandler, logHandler, nil, logger)
+		err := eventbus.RegisterAllHandlers(bus, notifHandler, logHandler, logger)
 		require.NoError(t, err)
 
 		// Notification handler events
@@ -1283,6 +1283,8 @@ func TestRegisterAllHandlers(t *testing.T) {
 
 		// Logging handler events (should have 2 handlers - notification + logging)
 		assert.GreaterOrEqual(t, bus.HandlerCount(message.EventTypeMessageCreated), 2)
+		// chat.type_changed must be subscribed only by logging handler (task creation handler removed from wiring)
+		assert.Equal(t, 1, bus.HandlerCount(chat.EventTypeChatTypeChanged))
 	})
 
 	t.Run("handles nil notification handler", func(t *testing.T) {
@@ -1290,7 +1292,7 @@ func TestRegisterAllHandlers(t *testing.T) {
 		logger := slog.Default()
 		logHandler := eventbus.NewLoggingHandler(logger)
 
-		err := eventbus.RegisterAllHandlers(bus, nil, logHandler, nil, logger)
+		err := eventbus.RegisterAllHandlers(bus, nil, logHandler, logger)
 		require.NoError(t, err)
 	})
 
@@ -1302,7 +1304,7 @@ func TestRegisterAllHandlers(t *testing.T) {
 		uc := notification.NewCreateNotificationUseCase(repo)
 		notifHandler := eventbus.NewNotificationHandler(uc)
 
-		err := eventbus.RegisterAllHandlers(bus, notifHandler, nil, nil, logger)
+		err := eventbus.RegisterAllHandlers(bus, notifHandler, nil, logger)
 		require.NoError(t, err)
 	})
 }
