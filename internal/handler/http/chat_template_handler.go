@@ -298,6 +298,7 @@ func (h *ChatTemplateHandler) ChatView(c echo.Context) error {
 	if chatData.IsTaskChat {
 		data["Task"] = h.loadTaskViewData(c.Request().Context(), chatData)
 		data["Participants"] = h.loadParticipants(c.Request().Context(), chatID, userID)
+		data["Statuses"] = getChatStatusOptions(chatData.Type)
 	}
 
 	return h.render(c, "chat/layout.html", chatData.Title, data)
@@ -339,6 +340,7 @@ func (h *ChatTemplateHandler) ChatViewPartial(c echo.Context) error {
 	if chatData.IsTaskChat {
 		innerData["Task"] = h.loadTaskViewData(c.Request().Context(), chatData)
 		innerData["Participants"] = h.loadParticipants(c.Request().Context(), chatID, userID)
+		innerData["Statuses"] = getChatStatusOptions(chatData.Type)
 	}
 
 	// Wrap in "Data" to match template expectations (template uses .Data.Chat.ID)

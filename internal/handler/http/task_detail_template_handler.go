@@ -237,7 +237,7 @@ func (h *TaskDetailTemplateHandler) TaskDetailsByChatID(c echo.Context) error {
 	innerData := map[string]any{
 		"Task":         h.convertToDetailView(taskModel),
 		"Chat":         chatInfo,
-		"Statuses":     getStatusOptions(),
+		"Statuses":     getChatStatusOptions(chatInfo.Type),
 		"Priorities":   getPriorityOptions(),
 		"Participants": participants,
 	}
@@ -709,6 +709,37 @@ func getStatusOptions() []SelectOption {
 		{Value: string(task.StatusInProgress), Label: "In Progress"},
 		{Value: string(task.StatusInReview), Label: "In Review"},
 		{Value: string(task.StatusDone), Label: "Done"},
+	}
+}
+
+// getChatStatusOptions returns status options for chat sidebar based on chat type.
+func getChatStatusOptions(chatType string) []SelectOption {
+	switch strings.ToLower(chatType) {
+	case chatTypeBug:
+		return []SelectOption{
+			{Value: "New", Label: "New"},
+			{Value: "Investigating", Label: "Investigating"},
+			{Value: "Fixed", Label: "Fixed"},
+			{Value: "Verified", Label: "Verified"},
+		}
+	case chatTypeEpic:
+		return []SelectOption{
+			{Value: "Planned", Label: "Planned"},
+			{Value: "In Progress", Label: "In Progress"},
+			{Value: "Completed", Label: "Completed"},
+		}
+	case chatTypeTask:
+		return []SelectOption{
+			{Value: "To Do", Label: "To Do"},
+			{Value: "In Progress", Label: "In Progress"},
+			{Value: "Done", Label: "Done"},
+		}
+	default:
+		return []SelectOption{
+			{Value: "To Do", Label: "To Do"},
+			{Value: "In Progress", Label: "In Progress"},
+			{Value: "Done", Label: "Done"},
+		}
 	}
 }
 

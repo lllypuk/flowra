@@ -9,10 +9,13 @@
         <select id="task-status"
                 data-action-url="/api/v1/workspaces/{{.Data.Chat.WorkspaceID}}/chats/{{.Data.Chat.ID}}/actions/status"
                 name="status">
-            <option value="To Do" {{if eq .Data.Task.Status "To Do"}}selected{{end}}>To Do</option>
-            <option value="In Progress" {{if eq .Data.Task.Status "In Progress"}}selected{{end}}>In Progress</option>
-            <option value="In Review" {{if eq .Data.Task.Status "In Review"}}selected{{end}}>In Review</option>
-            <option value="Done" {{if eq .Data.Task.Status "Done"}}selected{{end}}>Done</option>
+            {{if .Data.Statuses}}
+            {{range .Data.Statuses}}
+            <option value="{{.Value}}" {{if eq .Value $.Data.Task.Status}}selected{{end}}>{{.Label}}</option>
+            {{end}}
+            {{else}}
+            <option value="{{.Data.Task.Status}}" selected>{{.Data.Task.Status}}</option>
+            {{end}}
         </select>
         <span id="status-loading" class="htmx-indicator">Saving...</span>
     </div>
