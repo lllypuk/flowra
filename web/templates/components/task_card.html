@@ -35,7 +35,7 @@
             <img src="{{.Assignee.AvatarURL}}" alt="" class="avatar-tiny">
             {{else}}
             <span class="avatar-tiny avatar-placeholder">
-                {{.Assignee.Username | slice 0 1 | upper}}
+                {{initials .Assignee.Username}}
             </span>
             {{end}}
             {{.Assignee.Username}}

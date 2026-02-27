@@ -729,8 +729,8 @@ func (c *Container) createChatUseCasesForTags() *tag.ChatUseCases {
 		SetSeverity:  chatapp.NewSetSeverityUseCase(c.ChatRepo),
 
 		// Participant Management (Task 007a)
-		AddParticipant:    chatapp.NewAddParticipantUseCase(c.EventStore),
-		RemoveParticipant: chatapp.NewRemoveParticipantUseCase(c.EventStore),
+		AddParticipant:    chatapp.NewAddParticipantUseCase(c.ChatRepo),
+		RemoveParticipant: chatapp.NewRemoveParticipantUseCase(c.ChatRepo),
 
 		// Chat Lifecycle (Task 007a)
 		CloseChat:  chatapp.NewCloseChatUseCase(c.EventStore),
@@ -817,6 +817,7 @@ func (c *Container) setupHTTPHandlers() {
 	if c.TemplateHandler != nil {
 		c.TemplateHandler.SetServices(c.WorkspaceService, c.MemberService)
 		c.TemplateHandler.SetUserLookup(c.createUserProfileLookup())
+		c.TemplateHandler.SetUserSearcher(c.createUserSearcher())
 	}
 
 	// === 5. Chat Service (Real) ===
@@ -956,8 +957,8 @@ func (c *Container) createChatService() *service.ChatService {
 	getUC := chatapp.NewGetChatUseCase(c.EventStore)
 	listUC := chatapp.NewListChatsUseCase(c.ChatQueryRepo, c.EventStore)
 	renameUC := chatapp.NewRenameChatUseCase(c.ChatRepo)
-	addPartUC := chatapp.NewAddParticipantUseCase(c.EventStore)
-	removePartUC := chatapp.NewRemoveParticipantUseCase(c.EventStore)
+	addPartUC := chatapp.NewAddParticipantUseCase(c.ChatRepo)
+	removePartUC := chatapp.NewRemoveParticipantUseCase(c.ChatRepo)
 
 	return service.NewChatService(service.ChatServiceConfig{
 		CreateUC:     createUC,
@@ -1039,6 +1040,7 @@ func (c *Container) setupChatTemplateHandler() {
 		taskService,
 	)
 	c.ChatTemplateHandler.SetUserLookup(c.createUserProfileLookup())
+	c.ChatTemplateHandler.SetMemberService(c.createBoardMemberService())
 
 	c.Logger.Debug("chat template handler initialized")
 }
@@ -1812,6 +1814,39 @@ func (a *userProfileLookupAdapter) GetUser(ctx context.Context, userID uuid.UUID
 		CreatedAt:   u.CreatedAt(),
 		UpdatedAt:   u.UpdatedAt(),
 	}
+}
+
+// createUserSearcher creates a service implementing UserSearcher.
+func (c *Container) createUserSearcher() httphandler.UserSearcher {
+	return &userSearcherAdapter{userRepo: c.UserRepo}
+}
+
+// userSearcherAdapter adapts MongoUserRepository to UserSearcher.
+type userSearcherAdapter struct {
+	userRepo *mongodb.MongoUserRepository
+}
+
+// Search implements UserSearcher.
+func (a *userSearcherAdapter) Search(
+	ctx context.Context,
+	query string,
+	limit int,
+) ([]httphandler.UserSearchResult, error) {
+	users, err := a.userRepo.Search(ctx, query, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make([]httphandler.UserSearchResult, 0, len(users))
+	for _, u := range users {
+		results = append(results, httphandler.UserSearchResult{
+			ID:          u.ID().String(),
+			Username:    u.Username(),
+			DisplayName: u.DisplayName(),
+			Email:       u.Email(),
+		})
+	}
+	return results, nil
 }
 
 // createNotificationTemplateService creates a service implementing NotificationTemplateService.

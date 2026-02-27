@@ -10,13 +10,13 @@ import (
 
 // AddParticipantUseCase handles adding a participant to a chat
 type AddParticipantUseCase struct {
-	eventStore appcore.EventStore
+	chatRepo CommandRepository
 }
 
 // NewAddParticipantUseCase creates a new AddParticipantUseCase
-func NewAddParticipantUseCase(eventStore appcore.EventStore) *AddParticipantUseCase {
+func NewAddParticipantUseCase(chatRepo CommandRepository) *AddParticipantUseCase {
 	return &AddParticipantUseCase{
-		eventStore: eventStore,
+		chatRepo: chatRepo,
 	}
 }
 
@@ -26,7 +26,7 @@ func (uc *AddParticipantUseCase) Execute(ctx context.Context, cmd AddParticipant
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	chatAggregate, err := loadAggregate(ctx, uc.eventStore, cmd.ChatID)
+	chatAggregate, err := uc.chatRepo.Load(ctx, cmd.ChatID)
 	if err != nil {
 		return Result{}, err
 	}
@@ -36,7 +36,21 @@ func (uc *AddParticipantUseCase) Execute(ctx context.Context, cmd AddParticipant
 		return Result{}, fmt.Errorf("failed to add participant: %w", addErr)
 	}
 
-	return saveAggregate(ctx, uc.eventStore, chatAggregate, cmd.ChatID.String())
+	// Capture events before save (Save marks them as committed)
+	newEvents := chatAggregate.GetUncommittedEvents()
+
+	// Save via repository (updates both event store and read model)
+	if saveErr := uc.chatRepo.Save(ctx, chatAggregate); saveErr != nil {
+		return Result{}, fmt.Errorf("failed to save chat: %w", saveErr)
+	}
+
+	return Result{
+		Result: appcore.Result[*chat.Chat]{
+			Value:   chatAggregate,
+			Version: chatAggregate.Version(),
+		},
+		Events: convertToInterfaceSlice(newEvents),
+	}, nil
 }
 
 func (uc *AddParticipantUseCase) validate(cmd AddParticipantCommand) error {

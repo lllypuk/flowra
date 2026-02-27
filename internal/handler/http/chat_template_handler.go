@@ -165,6 +165,7 @@ type ChatTemplateHandler struct {
 	messageService MessageTemplateService
 	taskService    TaskQueryForChatService
 	userLookup     UserProfileLookup
+	memberService  BoardMemberService
 }
 
 // NewChatTemplateHandler creates a new chat template handler.
@@ -190,6 +191,11 @@ func NewChatTemplateHandler(
 // SetUserLookup sets the user lookup service for resolving participant profiles.
 func (h *ChatTemplateHandler) SetUserLookup(lookup UserProfileLookup) {
 	h.userLookup = lookup
+}
+
+// SetMemberService sets the member service for loading workspace members.
+func (h *ChatTemplateHandler) SetMemberService(svc BoardMemberService) {
+	h.memberService = svc
 }
 
 // SetupChatRoutes registers chat-related page and partial routes.
@@ -297,7 +303,7 @@ func (h *ChatTemplateHandler) ChatView(c echo.Context) error {
 	// Load task data for task chats
 	if chatData.IsTaskChat {
 		data["Task"] = h.loadTaskViewData(c.Request().Context(), chatData)
-		data["Participants"] = h.loadParticipants(c.Request().Context(), chatID, userID)
+		data["Participants"] = h.loadWorkspaceMembers(c.Request().Context(), workspaceID)
 		data["Statuses"] = getChatStatusOptions(chatData.Type)
 	}
 
@@ -339,7 +345,9 @@ func (h *ChatTemplateHandler) ChatViewPartial(c echo.Context) error {
 
 	if chatData.IsTaskChat {
 		innerData["Task"] = h.loadTaskViewData(c.Request().Context(), chatData)
-		innerData["Participants"] = h.loadParticipants(c.Request().Context(), chatID, userID)
+		if wsID, parseErr := uuid.ParseUUID(chatData.WorkspaceID); parseErr == nil {
+			innerData["Participants"] = h.loadWorkspaceMembers(c.Request().Context(), wsID)
+		}
 		innerData["Statuses"] = getChatStatusOptions(chatData.Type)
 	}
 
@@ -1009,6 +1017,24 @@ func (h *ChatTemplateHandler) loadParticipants(
 		participants = append(participants, pv)
 	}
 	return participants
+}
+
+const maxWorkspaceMembersForChat = 100
+
+// loadWorkspaceMembers loads all workspace members for use in the task sidebar assignee dropdown.
+func (h *ChatTemplateHandler) loadWorkspaceMembers(ctx context.Context, workspaceID uuid.UUID) []MemberViewData {
+	if h.memberService == nil {
+		return nil
+	}
+	members, err := h.memberService.ListWorkspaceMembers(ctx, workspaceID, 0, maxWorkspaceMembersForChat)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "failed to load workspace members",
+			slog.String("workspace_id", workspaceID.String()),
+			slog.String("error", err.Error()),
+		)
+		return nil
+	}
+	return members
 }
 
 func (h *ChatTemplateHandler) convertMessageToView(msg *message.Message, currentUserID uuid.UUID) MessageViewData {
