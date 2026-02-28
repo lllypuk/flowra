@@ -8,6 +8,7 @@ import (
 	taskapp "github.com/lllypuk/flowra/internal/application/task"
 	taskdomain "github.com/lllypuk/flowra/internal/domain/task"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
+	mongodbinfra "github.com/lllypuk/flowra/internal/infrastructure/mongodb"
 	"github.com/lllypuk/flowra/internal/infrastructure/repository/mongodb"
 	"github.com/lllypuk/flowra/tests/testutil"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +18,7 @@ import (
 
 func TestMongoTaskRepository_FindByIDAndChatID(t *testing.T) {
 	_, db := testutil.SetupTestMongoDBWithClient(t)
-	coll := db.Collection("task_read_model")
+	coll := db.Collection(mongodbinfra.CollectionTaskReadModel)
 	repo := mongodb.NewMongoTaskRepository(nil, coll)
 
 	taskID := uuid.NewUUID()
@@ -72,7 +73,7 @@ func TestMongoTaskRepository_FindByIDAndChatID(t *testing.T) {
 
 func TestMongoTaskRepository_ListAndCountWithFilters(t *testing.T) {
 	_, db := testutil.SetupTestMongoDBWithClient(t)
-	coll := db.Collection("task_read_model")
+	coll := db.Collection(mongodbinfra.CollectionTaskReadModel)
 	repo := mongodb.NewMongoTaskRepository(nil, coll)
 
 	workspaceTaskA := uuid.NewUUID()

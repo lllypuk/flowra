@@ -17,6 +17,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/errs"
 	"github.com/lllypuk/flowra/internal/domain/event"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
+	mongodbinfra "github.com/lllypuk/flowra/internal/infrastructure/mongodb"
 	"github.com/lllypuk/flowra/internal/infrastructure/repair"
 )
 
@@ -280,7 +281,7 @@ func (r *MongoChatRepository) updateReadModel(ctx context.Context, chat *chatdom
 	opts := options.UpdateOne().SetUpsert(true)
 
 	_, err := r.readModelColl.UpdateOne(ctx, filter, update, opts)
-	return HandleMongoError(err, "chat_read_model")
+	return HandleMongoError(err, mongodbinfra.CollectionChatReadModel)
 }
 
 // MongoChatReadModelRepository realizuet chatapp.QueryRepository (application layer interface)

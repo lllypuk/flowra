@@ -1,4 +1,4 @@
-package service
+package service_test
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 
 	messageapp "github.com/lllypuk/flowra/internal/application/message"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
+	"github.com/lllypuk/flowra/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -50,12 +51,12 @@ func TestActionService_TaskTagActionsSyncProjection(t *testing.T) {
 	testCases := []struct {
 		name      string
 		wantTag   string
-		executeFn func(*ActionService) error
+		executeFn func(*service.ActionService) error
 	}{
 		{
 			name:    "status",
 			wantTag: "#status In Progress",
-			executeFn: func(svc *ActionService) error {
+			executeFn: func(svc *service.ActionService) error {
 				_, err := svc.ChangeStatus(context.Background(), chatID, "In Progress", actorID)
 				return err
 			},
@@ -63,7 +64,7 @@ func TestActionService_TaskTagActionsSyncProjection(t *testing.T) {
 		{
 			name:    "priority",
 			wantTag: "#priority High",
-			executeFn: func(svc *ActionService) error {
+			executeFn: func(svc *service.ActionService) error {
 				_, err := svc.SetPriority(context.Background(), chatID, "High", actorID)
 				return err
 			},
@@ -71,7 +72,7 @@ func TestActionService_TaskTagActionsSyncProjection(t *testing.T) {
 		{
 			name:    "assignee clear",
 			wantTag: "#assignee @none",
-			executeFn: func(svc *ActionService) error {
+			executeFn: func(svc *service.ActionService) error {
 				_, err := svc.AssignUser(context.Background(), chatID, nil, actorID)
 				return err
 			},
@@ -79,7 +80,7 @@ func TestActionService_TaskTagActionsSyncProjection(t *testing.T) {
 		{
 			name:    "due date set",
 			wantTag: "#due 2026-03-15",
-			executeFn: func(svc *ActionService) error {
+			executeFn: func(svc *service.ActionService) error {
 				_, err := svc.SetDueDate(context.Background(), chatID, &dueDate, actorID)
 				return err
 			},
@@ -90,7 +91,7 @@ func TestActionService_TaskTagActionsSyncProjection(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			sender := &mockActionMessageSender{}
 			projector := &mockTaskProjectionSync{}
-			svc := NewActionService(sender, nil, WithTaskProjectionSync(projector))
+			svc := service.NewActionService(sender, nil, service.WithTaskProjectionSync(projector))
 			t.Cleanup(svc.Shutdown)
 
 			err := tc.executeFn(svc)
@@ -108,7 +109,7 @@ func TestActionService_ProjectionSyncFailureReturnsError(t *testing.T) {
 	actorID := uuid.NewUUID()
 	sender := &mockActionMessageSender{}
 	projector := &mockTaskProjectionSync{err: errors.New("projection failed")}
-	svc := NewActionService(sender, nil, WithTaskProjectionSync(projector))
+	svc := service.NewActionService(sender, nil, service.WithTaskProjectionSync(projector))
 	t.Cleanup(svc.Shutdown)
 
 	result, err := svc.ChangeStatus(context.Background(), chatID, "Done", actorID)
@@ -125,7 +126,7 @@ func TestActionService_DoesNotSyncProjectionWhenSendMessageFails(t *testing.T) {
 	actorID := uuid.NewUUID()
 	sender := &mockActionMessageSender{err: errors.New("send failed")}
 	projector := &mockTaskProjectionSync{}
-	svc := NewActionService(sender, nil, WithTaskProjectionSync(projector))
+	svc := service.NewActionService(sender, nil, service.WithTaskProjectionSync(projector))
 	t.Cleanup(svc.Shutdown)
 
 	result, err := svc.SetPriority(context.Background(), chatID, "High", actorID)

@@ -550,8 +550,8 @@ Main MongoDB collections:
 - `users` - User read model
 - `workspaces` - Workspace read model
 - `workspace_members` - Workspace membership
-- `chat_read_model` - Chat read model
-- `task_read_model` - Task read model
+- `chats_read_model` - Chat read model
+- `tasks_read_model` - Task read model
 - `messages` - Message read model
 - `notifications` - Notification read model
 

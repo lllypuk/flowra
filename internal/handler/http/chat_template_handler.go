@@ -672,37 +672,27 @@ func (h *ChatTemplateHandler) ChatCreateForm(c echo.Context) error {
 func (h *ChatTemplateHandler) ChatCreate(c echo.Context) error {
 	user := h.getUserView(c)
 	if user == nil {
-		//nolint:canonicalheader // HTMX uses non-canonical header names
-		c.Response().Header().Set("HX-Retarget", "#modal-container")
-		return c.String(http.StatusUnauthorized, `<div class="error">Unauthorized</div>`)
+		return h.modalError(c, http.StatusUnauthorized, "Unauthorized")
 	}
 
 	if h.chatService == nil {
-		//nolint:canonicalheader // HTMX uses non-canonical header names
-		c.Response().Header().Set("HX-Retarget", "#modal-container")
-		return c.String(http.StatusServiceUnavailable, `<div class="error">Service unavailable</div>`)
+		return h.modalError(c, http.StatusServiceUnavailable, "Service unavailable")
 	}
 
 	userID, err := uuid.ParseUUID(user.ID)
 	if err != nil {
-		//nolint:canonicalheader // HTMX uses non-canonical header names
-		c.Response().Header().Set("HX-Retarget", "#modal-container")
-		return c.String(http.StatusBadRequest, `<div class="error">Invalid user ID</div>`)
+		return h.modalError(c, http.StatusBadRequest, "Invalid user ID")
 	}
 
 	workspaceIDStr := c.FormValue("workspace_id")
 	workspaceID, err := uuid.ParseUUID(workspaceIDStr)
 	if err != nil {
-		//nolint:canonicalheader // HTMX uses non-canonical header names
-		c.Response().Header().Set("HX-Retarget", "#modal-container")
-		return c.String(http.StatusBadRequest, `<div class="error">Invalid workspace ID</div>`)
+		return h.modalError(c, http.StatusBadRequest, "Invalid workspace ID")
 	}
 
 	name := c.FormValue("name")
 	if name == "" {
-		//nolint:canonicalheader // HTMX uses non-canonical header names
-		c.Response().Header().Set("HX-Retarget", "#modal-container")
-		return c.String(http.StatusBadRequest, `<div class="error">Chat name is required</div>`)
+		return h.modalError(c, http.StatusBadRequest, "Chat name is required")
 	}
 
 	chatType := c.FormValue("type")
@@ -736,9 +726,7 @@ func (h *ChatTemplateHandler) ChatCreate(c echo.Context) error {
 	result, err := h.chatService.CreateChat(c.Request().Context(), cmd)
 	if err != nil {
 		h.logger.Error("failed to create chat", slog.String("error", err.Error()))
-		//nolint:canonicalheader // HTMX uses non-canonical header names
-		c.Response().Header().Set("HX-Retarget", "#modal-container")
-		return c.String(http.StatusInternalServerError, `<div class="error">Failed to create chat</div>`)
+		return h.modalError(c, http.StatusInternalServerError, "Failed to create chat")
 	}
 
 	if domainType == chatdomain.TypeTask || domainType == chatdomain.TypeBug || domainType == chatdomain.TypeEpic {
@@ -747,9 +735,7 @@ func (h *ChatTemplateHandler) ChatCreate(c echo.Context) error {
 				slog.String("chat_id", result.Value.ID().String()),
 				slog.String("type", string(domainType)),
 			)
-			//nolint:canonicalheader // HTMX uses non-canonical header names
-			c.Response().Header().Set("HX-Retarget", "#modal-container")
-			return c.String(http.StatusServiceUnavailable, `<div class="error">Task projection unavailable</div>`)
+			return h.modalError(c, http.StatusServiceUnavailable, "Task projection unavailable")
 		}
 		if err = h.taskProjector.RebuildOne(c.Request().Context(), result.Value.ID()); err != nil {
 			h.logger.Error("failed to sync task projection after typed chat creation",
@@ -757,9 +743,7 @@ func (h *ChatTemplateHandler) ChatCreate(c echo.Context) error {
 				slog.String("type", string(domainType)),
 				slog.String("error", err.Error()),
 			)
-			//nolint:canonicalheader // HTMX uses non-canonical header names
-			c.Response().Header().Set("HX-Retarget", "#modal-container")
-			return c.String(http.StatusInternalServerError, `<div class="error">Failed to sync task projection</div>`)
+			return h.modalError(c, http.StatusInternalServerError, "Failed to sync task projection")
 		}
 	}
 
@@ -769,6 +753,12 @@ func (h *ChatTemplateHandler) ChatCreate(c echo.Context) error {
 	//nolint:canonicalheader // HTMX uses non-canonical header names
 	c.Response().Header().Set("HX-Redirect", chatURL)
 	return c.NoContent(http.StatusOK)
+}
+
+func (h *ChatTemplateHandler) modalError(c echo.Context, statusCode int, message string) error {
+	//nolint:canonicalheader // HTMX uses non-canonical header names
+	c.Response().Header().Set("HX-Retarget", "#modal-container")
+	return c.String(statusCode, `<div class="error">`+message+`</div>`)
 }
 
 // ChatSearchPartial returns filtered chat list based on search query.

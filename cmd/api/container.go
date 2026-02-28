@@ -529,8 +529,8 @@ func (c *Container) setupHealthCheckers() {
 
 	// ReadModel sync checker
 	c.ReadModelChecker = healthcheck.NewReadModelSyncChecker(
-		db.Collection("chats_read_model"),
-		db.Collection("tasks_read_model"),
+		db.Collection(mongodbinfra.CollectionChatReadModel),
+		db.Collection(mongodbinfra.CollectionTaskReadModel),
 		healthCheckReadModelSampleSize,
 	)
 
@@ -592,13 +592,13 @@ func (c *Container) setupRepositories() {
 	}
 	c.ChatRepo = mongodb.NewMongoChatRepository(
 		c.EventStore,
-		db.Collection("chats_read_model"),
+		db.Collection(mongodbinfra.CollectionChatReadModel),
 		chatRepoOpts...,
 	)
 
 	// Chat read model repository (query side)
 	c.ChatQueryRepo = mongodb.NewMongoChatReadModelRepository(
-		db.Collection("chats_read_model"),
+		db.Collection(mongodbinfra.CollectionChatReadModel),
 		c.EventStore,
 		mongodb.WithChatReadModelRepoLogger(c.Logger),
 	)
@@ -615,7 +615,7 @@ func (c *Container) setupRepositories() {
 	}
 	c.TaskRepo = mongodb.NewMongoTaskRepository(
 		c.EventStore,
-		db.Collection("tasks_read_model"),
+		db.Collection(mongodbinfra.CollectionTaskReadModel),
 		taskRepoOpts...,
 	)
 
@@ -778,7 +778,7 @@ func (c *Container) registerEventHandlers() error {
 		return err
 	}
 
-	taskReadModelColl := c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model")
+	taskReadModelColl := c.MongoDB.Database(c.MongoDBName).Collection(mongodbinfra.CollectionTaskReadModel)
 	taskProjector := projector.NewChatToTaskReadModelProjector(c.EventStore, taskReadModelColl, c.Logger)
 	taskProjectionHandler := eventbus.NewTaskReadModelProjectionHandler(taskProjector, c.RepairQueue, c.Logger)
 
@@ -882,7 +882,7 @@ func (c *Container) setupHTTPHandlers() {
 	// === 14. Action Service ===
 	actionTaskProjector := projector.NewChatToTaskReadModelProjector(
 		c.EventStore,
-		c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model"),
+		c.MongoDB.Database(c.MongoDBName).Collection(mongodbinfra.CollectionTaskReadModel),
 		c.Logger,
 	)
 	c.ActionService = service.NewActionService(
@@ -1047,7 +1047,7 @@ func (c *Container) setupChatTemplateHandler() {
 	c.ChatTemplateHandler.SetTaskProjector(
 		projector.NewChatToTaskReadModelProjector(
 			c.EventStore,
-			c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model"),
+			c.MongoDB.Database(c.MongoDBName).Collection(mongodbinfra.CollectionTaskReadModel),
 			c.Logger,
 		),
 	)
@@ -1137,7 +1137,7 @@ func (a *chatTemplateServiceAdapter) ListChats(
 // createTaskQueryForChatService creates a service implementing TaskQueryForChatService.
 func (c *Container) createTaskQueryForChatService() httphandler.TaskQueryForChatService {
 	return &taskQueryForChatServiceAdapter{
-		collection: c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model"),
+		collection: c.MongoDB.Database(c.MongoDBName).Collection(mongodbinfra.CollectionTaskReadModel),
 	}
 }
 
@@ -1187,7 +1187,7 @@ func (c *Container) setupBoardTemplateHandler() {
 
 // createBoardChatCreator creates a service implementing BoardChatCreator.
 func (c *Container) createBoardChatCreator() httphandler.BoardChatCreator {
-	taskReadModelColl := c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model")
+	taskReadModelColl := c.MongoDB.Database(c.MongoDBName).Collection(mongodbinfra.CollectionTaskReadModel)
 
 	return &boardChatCreatorAdapter{
 		createUC:      chatapp.NewCreateChatUseCase(c.ChatRepo),
@@ -1295,8 +1295,8 @@ func (a *boardChatCreatorAdapter) CreateChat(
 // createBoardTaskService creates a service implementing BoardTaskService.
 func (c *Container) createBoardTaskService() httphandler.BoardTaskService {
 	return &boardTaskServiceAdapter{
-		collection:     c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model"),
-		chatCollection: c.MongoDB.Database(c.MongoDBName).Collection("chats_read_model"),
+		collection:     c.MongoDB.Database(c.MongoDBName).Collection(mongodbinfra.CollectionTaskReadModel),
+		chatCollection: c.MongoDB.Database(c.MongoDBName).Collection(mongodbinfra.CollectionChatReadModel),
 	}
 }
 
@@ -1578,12 +1578,12 @@ func (a *chatBasicInfoServiceAdapter) GetChatBasicInfo(
 
 // createFullTaskService creates a service implementing httphandler.TaskService.
 func (c *Container) createFullTaskService() httphandler.TaskService {
-	taskReadModelColl := c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model")
+	taskReadModelColl := c.MongoDB.Database(c.MongoDBName).Collection(mongodbinfra.CollectionTaskReadModel)
 
 	return &fullTaskServiceAdapter{
 		boardTaskServiceAdapter: boardTaskServiceAdapter{
 			collection:     taskReadModelColl,
-			chatCollection: c.MongoDB.Database(c.MongoDBName).Collection("chats_read_model"),
+			chatCollection: c.MongoDB.Database(c.MongoDBName).Collection(mongodbinfra.CollectionChatReadModel),
 		},
 		chatRepo:      c.ChatRepo,
 		taskProjector: projector.NewChatToTaskReadModelProjector(c.EventStore, taskReadModelColl, c.Logger),
@@ -1963,7 +1963,7 @@ func (c *Container) createTaskActionService() httphandler.TaskActionTaskService 
 // createChatBasicInfoService creates a service implementing ChatBasicInfoService.
 func (c *Container) createChatBasicInfoService() httphandler.ChatBasicInfoService {
 	return &chatBasicInfoServiceAdapter{
-		collection: c.MongoDB.Database(c.MongoDBName).Collection("chats_read_model"),
+		collection: c.MongoDB.Database(c.MongoDBName).Collection(mongodbinfra.CollectionChatReadModel),
 	}
 }
 

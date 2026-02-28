@@ -137,6 +137,13 @@ func TestGetMemberIndexes(t *testing.T) {
 	require.NotNil(t, compoundIdx, "user+workspace unique compound index should exist")
 }
 
+func TestReadModelCollectionNames_AreCanonicalPlural(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "chats_read_model", mongodb.CollectionChatReadModel)
+	assert.Equal(t, "tasks_read_model", mongodb.CollectionTaskReadModel)
+}
+
 func TestGetChatReadModelIndexes(t *testing.T) {
 	t.Parallel()
 

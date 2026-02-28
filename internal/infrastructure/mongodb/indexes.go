@@ -16,8 +16,8 @@ const (
 	CollectionUsers         = "users"
 	CollectionWorkspaces    = "workspaces"
 	CollectionMembers       = "workspace_members"
-	CollectionChatReadModel = "chat_read_model"
-	CollectionTaskReadModel = "task_read_model"
+	CollectionChatReadModel = "chats_read_model"
+	CollectionTaskReadModel = "tasks_read_model"
 	CollectionMessages      = "messages"
 	CollectionNotifications = "notifications"
 	CollectionOutbox        = "outbox"
@@ -209,7 +209,7 @@ func GetMemberIndexes() []IndexDefinition {
 	}
 }
 
-// GetChatReadModelIndexes returns index definitions for the chat_read_model collection.
+// GetChatReadModelIndexes returns index definitions for the chats_read_model collection.
 func GetChatReadModelIndexes() []IndexDefinition {
 	return []IndexDefinition{
 		{
@@ -278,7 +278,7 @@ func GetChatReadModelIndexes() []IndexDefinition {
 	}
 }
 
-// GetTaskReadModelIndexes returns index definitions for the task_read_model collection.
+// GetTaskReadModelIndexes returns index definitions for the tasks_read_model collection.
 func GetTaskReadModelIndexes() []IndexDefinition {
 	return []IndexDefinition{
 		{

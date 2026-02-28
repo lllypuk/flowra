@@ -669,7 +669,7 @@ func TestChatTemplateHandler_ChatCreate(t *testing.T) {
 		assert.Equal(
 			t,
 			"/workspaces/"+workspaceID.String()+"/chats/"+projector.lastChatID.String(),
-			rec.Header().Get("HX-Redirect"),
+			rec.Header().Get("Hx-Redirect"),
 		)
 	})
 
@@ -700,7 +700,7 @@ func TestChatTemplateHandler_ChatCreate(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, 0, projector.calls)
-		assert.Contains(t, rec.Header().Get("HX-Redirect"), "/workspaces/"+workspaceID.String()+"/chats/")
+		assert.Contains(t, rec.Header().Get("Hx-Redirect"), "/workspaces/"+workspaceID.String()+"/chats/")
 	})
 
 	t.Run("typed chat returns 500 when projection sync fails", func(t *testing.T) {
@@ -729,7 +729,7 @@ func TestChatTemplateHandler_ChatCreate(t *testing.T) {
 		err := handler.ChatCreate(c)
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
-		assert.Equal(t, "#modal-container", rec.Header().Get("HX-Retarget"))
+		assert.Equal(t, "#modal-container", rec.Header().Get("Hx-Retarget"))
 		assert.Contains(t, rec.Body.String(), "Failed to sync task projection")
 		assert.Equal(t, 1, projector.calls)
 	})

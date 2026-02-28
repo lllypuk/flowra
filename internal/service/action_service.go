@@ -84,31 +84,15 @@ func (s *ActionService) ChangeStatus(
 	newStatus string,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
-	// Execute the actual domain change via tag command
-	tagContent := fmt.Sprintf("#status %s", newStatus)
-	cmd := messageapp.SendMessageCommand{
-		ChatID:   chatID,
-		AuthorID: actorID,
-		Content:  tagContent,
-		Type:     message.TypeSystem,
-		ActorID:  &actorID,
-	}
-
-	if _, err := s.sendMessageUC.Execute(ctx, cmd); err != nil {
-		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
-	}
-	if err := s.syncTaskProjection(ctx, chatID); err != nil {
-		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
-	}
-
-	// Add human-readable message to batch
-	actorName := s.getActorDisplayName(ctx, actorID)
-	err := s.batcher.AddChange(ctx, actorID, chatID, actorName, ChangeTypeStatus, newStatus)
-	if err != nil {
-		s.logger.WarnContext(ctx, "failed to batch status change message", "error", err)
-	}
-
-	return &appcore.ActionResult{Success: true}, nil
+	return s.executeTaskTagAction(
+		ctx,
+		chatID,
+		actorID,
+		fmt.Sprintf("#status %s", newStatus),
+		ChangeTypeStatus,
+		newStatus,
+		"failed to batch status change message",
+	)
 }
 
 // AssignUser executes assignee change via tag command and batches the human-readable message
@@ -168,31 +152,15 @@ func (s *ActionService) SetPriority(
 	priority string,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
-	// Execute the actual domain change via tag command
-	tagContent := fmt.Sprintf("#priority %s", priority)
-	cmd := messageapp.SendMessageCommand{
-		ChatID:   chatID,
-		AuthorID: actorID,
-		Content:  tagContent,
-		Type:     message.TypeSystem,
-		ActorID:  &actorID,
-	}
-
-	if _, err := s.sendMessageUC.Execute(ctx, cmd); err != nil {
-		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
-	}
-	if err := s.syncTaskProjection(ctx, chatID); err != nil {
-		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
-	}
-
-	// Add human-readable message to batch
-	actorName := s.getActorDisplayName(ctx, actorID)
-	err := s.batcher.AddChange(ctx, actorID, chatID, actorName, ChangeTypePriority, priority)
-	if err != nil {
-		s.logger.WarnContext(ctx, "failed to batch priority change message", "error", err)
-	}
-
-	return &appcore.ActionResult{Success: true}, nil
+	return s.executeTaskTagAction(
+		ctx,
+		chatID,
+		actorID,
+		fmt.Sprintf("#priority %s", priority),
+		ChangeTypePriority,
+		priority,
+		"failed to batch priority change message",
+	)
 }
 
 // SetDueDate executes due date change via tag command and batches the human-readable message
@@ -410,6 +378,30 @@ func (s *ActionService) executeTagCommand(
 		return err
 	}
 	return nil
+}
+
+func (s *ActionService) executeTaskTagAction(
+	ctx context.Context,
+	chatID uuid.UUID,
+	actorID uuid.UUID,
+	tagContent string,
+	changeType ChangeType,
+	changeValue string,
+	warnMsg string,
+) (*appcore.ActionResult, error) {
+	if err := s.executeTagCommand(ctx, chatID, actorID, tagContent); err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	}
+	if err := s.syncTaskProjection(ctx, chatID); err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	}
+
+	actorName := s.getActorDisplayName(ctx, actorID)
+	if err := s.batcher.AddChange(ctx, actorID, chatID, actorName, changeType, changeValue); err != nil {
+		s.logger.WarnContext(ctx, warnMsg, "error", err)
+	}
+
+	return &appcore.ActionResult{Success: true}, nil
 }
 
 // flushBatchMessage is called by the batcher to send a combined message

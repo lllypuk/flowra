@@ -20,6 +20,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/tag"
 	userdomain "github.com/lllypuk/flowra/internal/domain/user"
 	domainuuid "github.com/lllypuk/flowra/internal/domain/uuid"
+	mongodbinfra "github.com/lllypuk/flowra/internal/infrastructure/mongodb"
 	"github.com/lllypuk/flowra/internal/infrastructure/repository/mongodb"
 	"github.com/lllypuk/flowra/tests/mocks"
 	"github.com/lllypuk/flowra/tests/testutil"
@@ -186,7 +187,7 @@ func newTagExecutorTestEnv(t *testing.T, repoOpts countingRepoOptions) *tagExecu
 	ctx := context.Background()
 
 	eventStoreRepo := mocks.NewMockEventStore()
-	rawChatRepo := mongodb.NewMongoChatRepository(eventStoreRepo, db.Collection("chats_read_model"))
+	rawChatRepo := mongodb.NewMongoChatRepository(eventStoreRepo, db.Collection(mongodbinfra.CollectionChatReadModel))
 	chatRepo := &countingChatCommandRepo{
 		base:           rawChatRepo,
 		saveDelay:      repoOpts.saveDelay,

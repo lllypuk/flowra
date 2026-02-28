@@ -11,6 +11,7 @@ import (
 	taskdomain "github.com/lllypuk/flowra/internal/domain/task"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 	"github.com/lllypuk/flowra/internal/infrastructure/httpserver"
+	mongodbinfra "github.com/lllypuk/flowra/internal/infrastructure/mongodb"
 	"github.com/lllypuk/flowra/internal/middleware"
 	"github.com/lllypuk/flowra/internal/service"
 	"github.com/lllypuk/flowra/tests/testutil"
@@ -297,7 +298,7 @@ func TestContainer_WiringMode_Default(t *testing.T) {
 func TestBoardTaskServiceAdapter_ListTasks(t *testing.T) {
 	// Setup test MongoDB with testcontainers
 	_, db := testutil.SetupTestMongoDBWithClient(t)
-	collection := db.Collection("tasks_read_model")
+	collection := db.Collection(mongodbinfra.CollectionTaskReadModel)
 
 	// Create test data with the correct schema
 	taskID := uuid.NewUUID()
@@ -352,7 +353,7 @@ func TestBoardTaskServiceAdapter_ListTasks(t *testing.T) {
 // TestBoardTaskServiceAdapter_ListTasks_WithFilters tests filtering functionality.
 func TestBoardTaskServiceAdapter_ListTasks_WithFilters(t *testing.T) {
 	_, db := testutil.SetupTestMongoDBWithClient(t)
-	collection := db.Collection("tasks_read_model")
+	collection := db.Collection(mongodbinfra.CollectionTaskReadModel)
 
 	ctx := context.Background()
 
@@ -462,8 +463,8 @@ func TestBoardTaskServiceAdapter_ListTasks_WithFilters(t *testing.T) {
 
 func TestBoardTaskServiceAdapter_ListTasks_WorkspaceIsolation(t *testing.T) {
 	_, db := testutil.SetupTestMongoDBWithClient(t)
-	tasksCollection := db.Collection("tasks_read_model")
-	chatsCollection := db.Collection("chats_read_model")
+	tasksCollection := db.Collection(mongodbinfra.CollectionTaskReadModel)
+	chatsCollection := db.Collection(mongodbinfra.CollectionChatReadModel)
 
 	ctx := context.Background()
 	workspaceA := uuid.NewUUID()
@@ -542,7 +543,7 @@ func TestBoardTaskServiceAdapter_ListTasks_WorkspaceIsolation(t *testing.T) {
 // TestBoardTaskServiceAdapter_CountTasks tests the CountTasks method.
 func TestBoardTaskServiceAdapter_CountTasks(t *testing.T) {
 	_, db := testutil.SetupTestMongoDBWithClient(t)
-	collection := db.Collection("tasks_read_model")
+	collection := db.Collection(mongodbinfra.CollectionTaskReadModel)
 
 	ctx := context.Background()
 
@@ -574,7 +575,7 @@ func TestBoardTaskServiceAdapter_CountTasks(t *testing.T) {
 // TestBoardTaskServiceAdapter_ListTasks_Pagination tests pagination functionality.
 func TestBoardTaskServiceAdapter_ListTasks_Pagination(t *testing.T) {
 	_, db := testutil.SetupTestMongoDBWithClient(t)
-	collection := db.Collection("tasks_read_model")
+	collection := db.Collection(mongodbinfra.CollectionTaskReadModel)
 
 	ctx := context.Background()
 
@@ -632,7 +633,7 @@ func TestBoardTaskServiceAdapter_ListTasks_Pagination(t *testing.T) {
 // TestBoardTaskServiceAdapter_GetTask tests getting a single task by ID.
 func TestBoardTaskServiceAdapter_GetTask(t *testing.T) {
 	_, db := testutil.SetupTestMongoDBWithClient(t)
-	collection := db.Collection("tasks_read_model")
+	collection := db.Collection(mongodbinfra.CollectionTaskReadModel)
 
 	taskID := uuid.NewUUID()
 	chatID := uuid.NewUUID()
@@ -669,7 +670,7 @@ func TestBoardTaskServiceAdapter_GetTask(t *testing.T) {
 // TestBoardTaskServiceAdapter_GetTask_NotFound tests GetTask with non-existent ID.
 func TestBoardTaskServiceAdapter_GetTask_NotFound(t *testing.T) {
 	_, db := testutil.SetupTestMongoDBWithClient(t)
-	collection := db.Collection("tasks_read_model")
+	collection := db.Collection(mongodbinfra.CollectionTaskReadModel)
 
 	adapter := &boardTaskServiceAdapter{collection: collection}
 

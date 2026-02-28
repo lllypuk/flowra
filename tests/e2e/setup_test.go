@@ -25,6 +25,7 @@ import (
 	httphandler "github.com/lllypuk/flowra/internal/handler/http"
 	"github.com/lllypuk/flowra/internal/infrastructure/eventbus"
 	"github.com/lllypuk/flowra/internal/infrastructure/eventstore"
+	mongodbinfra "github.com/lllypuk/flowra/internal/infrastructure/mongodb"
 	"github.com/lllypuk/flowra/internal/infrastructure/repository/mongodb"
 	wsinfra "github.com/lllypuk/flowra/internal/infrastructure/websocket"
 	"github.com/lllypuk/flowra/internal/middleware"
@@ -200,12 +201,12 @@ func (s *E2ETestSuite) setupRepositories() {
 	)
 	s.ChatRepo = mongodb.NewMongoChatRepository(
 		s.EventStore,
-		s.MongoDB.Collection("chats_read_model"),
+		s.MongoDB.Collection(mongodbinfra.CollectionChatReadModel),
 	)
 	s.MessageRepo = mongodb.NewMongoMessageRepository(s.MongoDB.Collection("messages"))
 	s.TaskRepo = mongodb.NewMongoTaskRepository(
 		s.EventStore,
-		s.MongoDB.Collection("tasks_read_model"),
+		s.MongoDB.Collection(mongodbinfra.CollectionTaskReadModel),
 	)
 	s.NotificationRepo = mongodb.NewMongoNotificationRepository(s.MongoDB.Collection("notifications"))
 }
