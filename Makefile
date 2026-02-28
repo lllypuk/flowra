@@ -1,4 +1,4 @@
-.PHONY: help dev build test lint docker-up docker-down docker-logs clean deps test-unit test-integration test-e2e test-e2e-frontend test-coverage playwright-install test-load-tags
+.PHONY: help dev build test lint docker-up docker-down docker-logs clean deps test-unit test-integration test-e2e test-e2e-frontend test-coverage playwright-install test-load-tags reset-data
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -27,6 +27,9 @@ test-e2e-frontend: ## Run frontend E2E tests (set HEADLESS=false for visible bro
 
 test-load-tags: ## Run k6 tag-system load test (requires k6 and AUTH_TOKEN)
 	k6 run tests/load/tag-system/k6-tag-message-flow.js
+
+reset-data: ## Reset local/dev data for Chat=SoT model (events/read models/outbox/repair queue)
+	bash ./scripts/reset-data.sh
 
 playwright-install: ## Install Playwright browsers for frontend E2E tests
 	go run github.com/playwright-community/playwright-go/cmd/playwright@latest install chromium

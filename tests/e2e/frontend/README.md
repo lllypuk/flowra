@@ -67,6 +67,9 @@ Frontend E2E tests cover:
 - ✅ Accessibility (Keyboard navigation, Skip links, ARIA)
 - ✅ Responsive design (Mobile, Tablet layouts)
 
+Manual smoke checklist for critical board + sidebar regression:
+- [`SMOKE_CHECKLIST.md`](./SMOKE_CHECKLIST.md)
+
 ## Troubleshooting
 
 ### Tests are skipped

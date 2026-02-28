@@ -114,7 +114,11 @@ make docker-up          # Start Docker services
 make docker-down        # Stop Docker services
 make test-coverage      # Generate coverage report
 make playwright-install # Install Playwright browsers for frontend tests
+make reset-data         # Reset local/dev Chat=SoT data collections and recreate indexes
 ```
+
+When switching between branches around the Chat=SoT refactor, run `make reset-data`
+before `make dev` to avoid stale event/read-model shape mismatches.
 
 ---
 
@@ -144,10 +148,10 @@ make playwright-install # Install Playwright browsers for frontend tests
 - **Capabilities**: Content, attachments, reactions, threading
 - **Operations**: Create, Edit, Delete, AddAttachment, AddReaction
 
-### Task Aggregate
-- **Types**: Task, Bug, Feature, Support
-- **States**: Todo, InProgress, Review, Done, Cancelled
-- **Priority**: Low, Medium, High, Critical
+### Typed Entities (Chat = SoT)
+- **Types**: Task, Bug, Epic (as typed chat variants)
+- **State Ownership**: status/priority/assignee/due date are written through Chat commands
+- **Events**: business writes emit `chat.*` events only
 
 ### Notification Aggregate
 - **Types**: Task, Chat, Mention, System
@@ -222,7 +226,7 @@ make playwright-install # Install Playwright browsers for frontend tests
 │   ├── domain/               # Domain models (48 files, 6 aggregates)
 │   │   ├── chat/             # Chat aggregate
 │   │   ├── message/          # Message aggregate
-│   │   ├── task/             # Task aggregate
+│   │   ├── task/             # Shared task entity state/event contracts (query-side support)
 │   │   ├── user/             # User aggregate
 │   │   ├── workspace/        # Workspace aggregate
 │   │   ├── notification/     # Notification aggregate

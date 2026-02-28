@@ -42,6 +42,9 @@ make build
 
 # Development mode (starts infrastructure + API server)
 make dev
+
+# Reset local/dev data when switching Chat=SoT branches
+make reset-data
 ```
 
 ### Local Testing and Development
@@ -121,7 +124,7 @@ internal/                     # Internal application code (296 files)
 ├── domain/                  # Business logic and models (48 files)
 │   ├── chat/               # Chat aggregate
 │   ├── message/            # Message aggregate
-│   ├── task/               # Task aggregate
+│   ├── task/               # Shared task entity state/event contracts (query-side support)
 │   ├── user/               # User aggregate
 │   ├── workspace/          # Workspace aggregate
 │   ├── notification/       # Notification aggregate

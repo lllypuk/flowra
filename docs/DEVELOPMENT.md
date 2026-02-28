@@ -218,7 +218,7 @@ git push origin feature/my-feature
 │   ├── domain/           # Domain models and business logic
 │   │   ├── chat/         # Chat aggregate
 │   │   ├── message/      # Message aggregate
-│   │   ├── task/         # Task aggregate
+│   │   ├── task/         # Shared task entity state/event contracts (query-side support)
 │   │   ├── notification/ # Notification aggregate
 │   │   ├── user/         # User entity
 │   │   ├── workspace/    # Workspace entity

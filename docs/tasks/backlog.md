@@ -26,5 +26,5 @@ Assumption: service is not in production yet. We can make breaking changes and r
   - Details: [chat-sot-pr-05-move-task-fields-to-chat.md](/home/sasha/Project/flowra/docs/tasks/chat-sot-pr-05-move-task-fields-to-chat.md)
 - [x] `P1` PR-06: Remove Task aggregate write stack.
   - Details: [chat-sot-pr-06-remove-task-write-stack.md](/home/sasha/Project/flowra/docs/tasks/chat-sot-pr-06-remove-task-write-stack.md)
-- [ ] `P1` PR-07: Data reset tooling, test hardening, and final cleanup.
+- [x] `P1` PR-07: Data reset tooling, test hardening, and final cleanup.
   - Details: [chat-sot-pr-07-reset-tests-cleanup.md](/home/sasha/Project/flowra/docs/tasks/chat-sot-pr-07-reset-tests-cleanup.md)

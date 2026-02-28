@@ -217,7 +217,7 @@ make vet          # Check code with vet
 
 # Database
 make seed         # Populate DB with test data
-make db-reset     # Clear and recreate DB
+make reset-data   # Reset Chat=SoT local/dev data collections and recreate indexes
 
 # Docker
 make docker-build # Build Docker image
