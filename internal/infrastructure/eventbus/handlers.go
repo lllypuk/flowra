@@ -7,14 +7,12 @@ import (
 	"fmt"
 	"log/slog"
 	"regexp"
-	"strings"
 
 	"github.com/lllypuk/flowra/internal/application/notification"
 	"github.com/lllypuk/flowra/internal/domain/chat"
 	"github.com/lllypuk/flowra/internal/domain/event"
 	"github.com/lllypuk/flowra/internal/domain/message"
 	domainNotif "github.com/lllypuk/flowra/internal/domain/notification"
-	"github.com/lllypuk/flowra/internal/domain/task"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 	"github.com/redis/go-redis/v9"
 )
@@ -25,7 +23,6 @@ const (
 	defaultMaxDeadLetters  = 1000
 	mentionPatternTemplate = `@([a-zA-Z0-9_-]+)`
 	minMentionMatchGroups  = 2
-	maxTaskTitleLength     = 50
 	maxPayloadLogLength    = 500
 )
 
@@ -99,12 +96,6 @@ func (h *NotificationHandler) Handle(ctx context.Context, evt event.DomainEvent)
 		return h.handleParticipantAdded(ctx, evt)
 	case message.EventTypeMessageCreated:
 		return h.handleMessageCreated(ctx, evt)
-	case task.EventTypeTaskCreated:
-		return h.handleTaskCreated(ctx, evt)
-	case task.EventTypeStatusChanged:
-		return h.handleTaskStatusChanged(ctx, evt)
-	case task.EventTypeAssigneeChanged:
-		return h.handleTaskAssigneeChanged(ctx, evt)
 	default:
 		// Ignore unknown event types
 		return nil
@@ -132,13 +123,18 @@ func (h *NotificationHandler) handleParticipantAdded(ctx context.Context, evt ev
 	}
 
 	var data struct {
-		UserID string `json:"UserID"`
+		UserID      string `json:"UserID"`
+		UserIDSnake string `json:"user_id"`
 	}
 	if unmarshalErr := json.Unmarshal(payload, &data); unmarshalErr != nil {
 		h.logger.WarnContext(ctx, "failed to unmarshal participant_added payload",
 			slog.String("error", unmarshalErr.Error()),
 		)
 		return nil
+	}
+
+	if data.UserID == "" {
+		data.UserID = data.UserIDSnake
 	}
 
 	if data.UserID == "" {
@@ -276,141 +272,6 @@ func (h *NotificationHandler) notifyMentionedUser(
 
 	if _, execErr := h.createNotifUC.Execute(ctx, cmd); execErr != nil {
 		return fmt.Errorf("failed to create mention notification: %w", execErr)
-	}
-
-	return nil
-}
-
-// handleTaskCreated processes task.created events.
-func (h *NotificationHandler) handleTaskCreated(ctx context.Context, evt event.DomainEvent) error {
-	payload, extractErr := h.extractPayload(evt)
-	if extractErr != nil {
-		h.logger.WarnContext(ctx, "failed to extract payload for task.created",
-			slog.String("error", extractErr.Error()),
-		)
-		return nil
-	}
-
-	var data struct {
-		Title      string  `json:"Title"`
-		AssigneeID *string `json:"AssigneeID"`
-		CreatedBy  string  `json:"CreatedBy"`
-	}
-	if unmarshalErr := json.Unmarshal(payload, &data); unmarshalErr != nil {
-		h.logger.WarnContext(ctx, "failed to unmarshal task.created payload",
-			slog.String("error", unmarshalErr.Error()),
-		)
-		return nil
-	}
-
-	// Notify assignee if assigned and different from creator
-	if data.AssigneeID != nil && *data.AssigneeID != "" && *data.AssigneeID != data.CreatedBy {
-		assigneeID, parseErr := uuid.ParseUUID(*data.AssigneeID)
-		if parseErr != nil {
-			h.logger.WarnContext(ctx, "invalid assignee ID in task.created",
-				slog.String("assignee_id", *data.AssigneeID),
-				slog.String("error", parseErr.Error()),
-			)
-			return nil
-		}
-
-		cmd := notification.CreateNotificationCommand{
-			UserID: assigneeID,
-			Type:   domainNotif.TypeTaskAssigned,
-			Title:  "Task assigned to you",
-			Message: fmt.Sprintf(
-				"You have been assigned to task: %s",
-				truncateString(data.Title, maxTaskTitleLength),
-			),
-			ResourceID: evt.AggregateID(),
-		}
-
-		if _, execErr := h.createNotifUC.Execute(ctx, cmd); execErr != nil {
-			return fmt.Errorf("failed to create task assignment notification: %w", execErr)
-		}
-	}
-
-	return nil
-}
-
-// handleTaskStatusChanged processes task.status_changed events.
-func (h *NotificationHandler) handleTaskStatusChanged(ctx context.Context, evt event.DomainEvent) error {
-	payload, extractErr := h.extractPayload(evt)
-	if extractErr != nil {
-		h.logger.WarnContext(ctx, "failed to extract payload for task.status_changed",
-			slog.String("error", extractErr.Error()),
-		)
-		return nil
-	}
-
-	var data struct {
-		OldStatus string `json:"OldStatus"`
-		NewStatus string `json:"NewStatus"`
-		ChangedBy string `json:"ChangedBy"`
-	}
-	if unmarshalErr := json.Unmarshal(payload, &data); unmarshalErr != nil {
-		h.logger.WarnContext(ctx, "failed to unmarshal task.status_changed payload",
-			slog.String("error", unmarshalErr.Error()),
-		)
-		return nil
-	}
-
-	h.logger.DebugContext(ctx, "task status changed",
-		slog.String("task_id", evt.AggregateID()),
-		slog.String("old_status", data.OldStatus),
-		slog.String("new_status", data.NewStatus),
-	)
-
-	// TODO: Notify watchers and reporter when we have that information
-	// For now, we just log the event
-
-	return nil
-}
-
-// handleTaskAssigneeChanged processes task.assignee_changed events.
-func (h *NotificationHandler) handleTaskAssigneeChanged(ctx context.Context, evt event.DomainEvent) error {
-	payload, extractErr := h.extractPayload(evt)
-	if extractErr != nil {
-		h.logger.WarnContext(ctx, "failed to extract payload for task.assignee_changed",
-			slog.String("error", extractErr.Error()),
-		)
-		return nil
-	}
-
-	var data struct {
-		OldAssignee *string `json:"OldAssignee"`
-		NewAssignee *string `json:"NewAssignee"`
-		ChangedBy   string  `json:"ChangedBy"`
-	}
-	if unmarshalErr := json.Unmarshal(payload, &data); unmarshalErr != nil {
-		h.logger.WarnContext(ctx, "failed to unmarshal task.assignee_changed payload",
-			slog.String("error", unmarshalErr.Error()),
-		)
-		return nil
-	}
-
-	// Notify new assignee if different from who made the change
-	if data.NewAssignee != nil && *data.NewAssignee != "" && *data.NewAssignee != data.ChangedBy {
-		assigneeID, parseErr := uuid.ParseUUID(*data.NewAssignee)
-		if parseErr != nil {
-			h.logger.WarnContext(ctx, "invalid new assignee ID",
-				slog.String("assignee_id", *data.NewAssignee),
-				slog.String("error", parseErr.Error()),
-			)
-			return nil
-		}
-
-		cmd := notification.CreateNotificationCommand{
-			UserID:     assigneeID,
-			Type:       domainNotif.TypeTaskAssigned,
-			Title:      "Task assigned to you",
-			Message:    "A task has been assigned to you",
-			ResourceID: evt.AggregateID(),
-		}
-
-		if _, execErr := h.createNotifUC.Execute(ctx, cmd); execErr != nil {
-			return fmt.Errorf("failed to create assignee notification: %w", execErr)
-		}
 	}
 
 	return nil
@@ -670,18 +531,6 @@ func (r *HandlerRegistry) RegisterNotificationHandler(handler *NotificationHandl
 		chat.EventTypeChatCreated,
 		chat.EventTypeParticipantAdded,
 		message.EventTypeMessageCreated,
-		task.EventTypeTaskCreated,
-		task.EventTypeStatusChanged,
-		task.EventTypeAssigneeChanged,
-	}
-
-	return r.Register(eventTypes, handler.AsEventHandler())
-}
-
-// RegisterTaskCreationHandler registers the task creation handler for chat type change events.
-func (r *HandlerRegistry) RegisterTaskCreationHandler(handler *TaskCreationHandler) error {
-	eventTypes := []string{
-		chat.EventTypeChatTypeChanged,
 	}
 
 	return r.Register(eventTypes, handler.AsEventHandler())
@@ -723,13 +572,6 @@ func RegisterAllHandlers(
 			message.EventTypeMessageCreated,
 			message.EventTypeMessageEdited,
 			message.EventTypeMessageDeleted,
-			task.EventTypeTaskCreated,
-			task.EventTypeTaskUpdated,
-			task.EventTypeTaskDeleted,
-			task.EventTypeStatusChanged,
-			task.EventTypeAssigneeChanged,
-			task.EventTypePriorityChanged,
-			task.EventTypeDueDateChanged,
 		}
 		if err := registry.RegisterLoggingHandler(logHandler, eventTypes); err != nil {
 			return fmt.Errorf("failed to register logging handler: %w", err)
@@ -737,12 +579,4 @@ func RegisterAllHandlers(
 	}
 
 	return nil
-}
-
-// truncateString truncates a string to maxLen characters, adding "..." if truncated.
-func truncateString(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	return strings.TrimSpace(s[:maxLen]) + "..."
 }

@@ -609,15 +609,9 @@ func (c *Container) setupRepositories() {
 		mongodb.WithMessageRepoLogger(c.Logger),
 	)
 
-	// Task repository (event sourced)
+	// Task repository (query side)
 	taskRepoOpts := []mongodb.TaskRepoOption{
 		mongodb.WithTaskRepoLogger(c.Logger),
-	}
-	if c.Outbox != nil {
-		taskRepoOpts = append(taskRepoOpts, mongodb.WithTaskRepoOutbox(c.Outbox))
-	} else {
-		//nolint:staticcheck // Fallback to direct EventBus when Outbox is disabled
-		taskRepoOpts = append(taskRepoOpts, mongodb.WithTaskRepoEventBus(c.EventBus))
 	}
 	c.TaskRepo = mongodb.NewMongoTaskRepository(
 		c.EventStore,
@@ -1575,9 +1569,7 @@ func (c *Container) createFullTaskService() httphandler.TaskService {
 			collection:     taskReadModelColl,
 			chatCollection: c.MongoDB.Database(c.MongoDBName).Collection("chats_read_model"),
 		},
-		taskRepo:      c.TaskRepo,
 		chatRepo:      c.ChatRepo,
-		userRepo:      c.UserRepo,
 		taskProjector: projector.NewChatToTaskReadModelProjector(c.EventStore, taskReadModelColl, c.Logger),
 	}
 }
@@ -1587,9 +1579,7 @@ func (c *Container) createFullTaskService() httphandler.TaskService {
 type fullTaskServiceAdapter struct {
 	boardTaskServiceAdapter
 
-	taskRepo      taskapp.CommandRepository
 	chatRepo      chatapp.CommandRepository
-	userRepo      appcore.UserRepository
 	taskProjector appcore.ReadModelProjector
 }
 
@@ -1599,8 +1589,80 @@ func (a *fullTaskServiceAdapter) CreateTask(
 	ctx context.Context,
 	cmd taskapp.CreateTaskCommand,
 ) (taskapp.TaskResult, error) {
-	createUC := taskapp.NewCreateTaskUseCase(a.taskRepo)
-	return createUC.Execute(ctx, cmd)
+	var (
+		result chatapp.Result
+		err    error
+	)
+
+	switch cmd.EntityType {
+	case taskdomain.TypeBug:
+		convertUC := chatapp.NewConvertToBugUseCase(a.chatRepo)
+		result, err = convertUC.Execute(ctx, chatapp.ConvertToBugCommand{
+			ChatID:      cmd.ChatID,
+			Title:       cmd.Title,
+			ConvertedBy: cmd.CreatedBy,
+		})
+	case taskdomain.TypeEpic:
+		convertUC := chatapp.NewConvertToEpicUseCase(a.chatRepo)
+		result, err = convertUC.Execute(ctx, chatapp.ConvertToEpicCommand{
+			ChatID:      cmd.ChatID,
+			Title:       cmd.Title,
+			ConvertedBy: cmd.CreatedBy,
+		})
+	case taskdomain.TypeTask, "":
+		convertUC := chatapp.NewConvertToTaskUseCase(a.chatRepo)
+		result, err = convertUC.Execute(ctx, chatapp.ConvertToTaskCommand{
+			ChatID:      cmd.ChatID,
+			Title:       cmd.Title,
+			ConvertedBy: cmd.CreatedBy,
+		})
+	case taskdomain.TypeDiscussion:
+		return taskapp.TaskResult{}, taskapp.ErrInvalidEntityType
+	default:
+		return taskapp.TaskResult{}, taskapp.ErrInvalidEntityType
+	}
+	if err != nil {
+		return taskapp.TaskResult{}, mapTaskWriteError(err)
+	}
+
+	if cmd.Priority != "" {
+		setPriorityUC := chatapp.NewSetPriorityUseCase(a.chatRepo)
+		if _, setErr := setPriorityUC.Execute(ctx, chatapp.SetPriorityCommand{
+			ChatID:   cmd.ChatID,
+			Priority: string(cmd.Priority),
+			SetBy:    cmd.CreatedBy,
+		}); setErr != nil {
+			return taskapp.TaskResult{}, mapTaskWriteError(setErr)
+		}
+	}
+
+	if cmd.AssigneeID != nil {
+		assignUC := chatapp.NewAssignUserUseCase(a.chatRepo)
+		if _, assignErr := assignUC.Execute(ctx, chatapp.AssignUserCommand{
+			ChatID:     cmd.ChatID,
+			AssigneeID: cmd.AssigneeID,
+			AssignedBy: cmd.CreatedBy,
+		}); assignErr != nil {
+			return taskapp.TaskResult{}, mapTaskWriteError(assignErr)
+		}
+	}
+
+	if cmd.DueDate != nil {
+		setDueDateUC := chatapp.NewSetDueDateUseCase(a.chatRepo)
+		if _, setErr := setDueDateUC.Execute(ctx, chatapp.SetDueDateCommand{
+			ChatID:  cmd.ChatID,
+			DueDate: cmd.DueDate,
+			SetBy:   cmd.CreatedBy,
+		}); setErr != nil {
+			return taskapp.TaskResult{}, mapTaskWriteError(setErr)
+		}
+	}
+
+	if rebuildErr := a.syncTaskProjection(ctx, cmd.ChatID); rebuildErr != nil {
+		return taskapp.TaskResult{}, rebuildErr
+	}
+
+	return taskapp.NewSuccessResult(cmd.ChatID, result.Version, nil), nil
 }
 
 // ChangeStatus implements httphandler.TaskService.
@@ -1609,8 +1671,21 @@ func (a *fullTaskServiceAdapter) ChangeStatus(
 	ctx context.Context,
 	cmd taskapp.ChangeStatusCommand,
 ) (taskapp.TaskResult, error) {
-	changeStatusUC := taskapp.NewChangeStatusUseCase(a.taskRepo)
-	return changeStatusUC.Execute(ctx, cmd)
+	uc := chatapp.NewChangeStatusUseCase(a.chatRepo)
+	result, err := uc.Execute(ctx, chatapp.ChangeStatusCommand{
+		ChatID:    cmd.TaskID,
+		Status:    string(cmd.NewStatus),
+		ChangedBy: cmd.ChangedBy,
+	})
+	if err != nil {
+		return taskapp.TaskResult{}, mapTaskWriteError(err)
+	}
+
+	if rebuildErr := a.syncTaskProjection(ctx, cmd.TaskID); rebuildErr != nil {
+		return taskapp.TaskResult{}, rebuildErr
+	}
+
+	return taskapp.NewSuccessResult(cmd.TaskID, result.Version, nil), nil
 }
 
 // AssignTask implements httphandler.TaskService.
@@ -1619,8 +1694,21 @@ func (a *fullTaskServiceAdapter) AssignTask(
 	ctx context.Context,
 	cmd taskapp.AssignTaskCommand,
 ) (taskapp.TaskResult, error) {
-	assignUC := taskapp.NewAssignTaskUseCase(a.taskRepo, a.userRepo)
-	return assignUC.Execute(ctx, cmd)
+	uc := chatapp.NewAssignUserUseCase(a.chatRepo)
+	result, err := uc.Execute(ctx, chatapp.AssignUserCommand{
+		ChatID:     cmd.TaskID,
+		AssigneeID: cmd.AssigneeID,
+		AssignedBy: cmd.AssignedBy,
+	})
+	if err != nil {
+		return taskapp.TaskResult{}, mapTaskWriteError(err)
+	}
+
+	if rebuildErr := a.syncTaskProjection(ctx, cmd.TaskID); rebuildErr != nil {
+		return taskapp.TaskResult{}, rebuildErr
+	}
+
+	return taskapp.NewSuccessResult(cmd.TaskID, result.Version, nil), nil
 }
 
 // ChangePriority implements httphandler.TaskService.
@@ -1629,8 +1717,21 @@ func (a *fullTaskServiceAdapter) ChangePriority(
 	ctx context.Context,
 	cmd taskapp.ChangePriorityCommand,
 ) (taskapp.TaskResult, error) {
-	changePriorityUC := taskapp.NewChangePriorityUseCase(a.taskRepo)
-	return changePriorityUC.Execute(ctx, cmd)
+	uc := chatapp.NewSetPriorityUseCase(a.chatRepo)
+	result, err := uc.Execute(ctx, chatapp.SetPriorityCommand{
+		ChatID:   cmd.TaskID,
+		Priority: string(cmd.Priority),
+		SetBy:    cmd.ChangedBy,
+	})
+	if err != nil {
+		return taskapp.TaskResult{}, mapTaskWriteError(err)
+	}
+
+	if rebuildErr := a.syncTaskProjection(ctx, cmd.TaskID); rebuildErr != nil {
+		return taskapp.TaskResult{}, rebuildErr
+	}
+
+	return taskapp.NewSuccessResult(cmd.TaskID, result.Version, nil), nil
 }
 
 // SetDueDate implements httphandler.TaskService.
@@ -1639,8 +1740,21 @@ func (a *fullTaskServiceAdapter) SetDueDate(
 	ctx context.Context,
 	cmd taskapp.SetDueDateCommand,
 ) (taskapp.TaskResult, error) {
-	setDueDateUC := taskapp.NewSetDueDateUseCase(a.taskRepo)
-	return setDueDateUC.Execute(ctx, cmd)
+	uc := chatapp.NewSetDueDateUseCase(a.chatRepo)
+	result, err := uc.Execute(ctx, chatapp.SetDueDateCommand{
+		ChatID:  cmd.TaskID,
+		DueDate: cmd.DueDate,
+		SetBy:   cmd.ChangedBy,
+	})
+	if err != nil {
+		return taskapp.TaskResult{}, mapTaskWriteError(err)
+	}
+
+	if rebuildErr := a.syncTaskProjection(ctx, cmd.TaskID); rebuildErr != nil {
+		return taskapp.TaskResult{}, rebuildErr
+	}
+
+	return taskapp.NewSuccessResult(cmd.TaskID, result.Version, nil), nil
 }
 
 // DeleteTask implements httphandler.TaskService.
@@ -1664,10 +1778,7 @@ func (a *fullTaskServiceAdapter) AddAttachment(
 		AddedBy:  cmd.AddedBy,
 	})
 	if err != nil {
-		if errors.Is(err, domainerrs.ErrNotFound) {
-			return taskapp.TaskResult{}, taskapp.ErrTaskNotFound
-		}
-		return taskapp.TaskResult{}, err
+		return taskapp.TaskResult{}, mapTaskWriteError(err)
 	}
 
 	if rebuildErr := a.syncTaskProjection(ctx, cmd.TaskID); rebuildErr != nil {
@@ -1689,10 +1800,7 @@ func (a *fullTaskServiceAdapter) RemoveAttachment(
 		RemovedBy: cmd.RemovedBy,
 	})
 	if err != nil {
-		if errors.Is(err, domainerrs.ErrNotFound) {
-			return taskapp.TaskResult{}, taskapp.ErrTaskNotFound
-		}
-		return taskapp.TaskResult{}, err
+		return taskapp.TaskResult{}, mapTaskWriteError(err)
 	}
 
 	if rebuildErr := a.syncTaskProjection(ctx, cmd.TaskID); rebuildErr != nil {
@@ -1707,6 +1815,13 @@ func (a *fullTaskServiceAdapter) syncTaskProjection(ctx context.Context, chatID 
 		return nil
 	}
 	return a.taskProjector.RebuildOne(ctx, chatID)
+}
+
+func mapTaskWriteError(err error) error {
+	if errors.Is(err, domainerrs.ErrNotFound) {
+		return taskapp.ErrTaskNotFound
+	}
+	return err
 }
 
 // createBoardMemberService creates a service implementing BoardMemberService.

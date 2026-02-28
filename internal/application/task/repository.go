@@ -4,23 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/lllypuk/flowra/internal/domain/event"
 	taskdomain "github.com/lllypuk/flowra/internal/domain/task"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
-
-// CommandRepository predostavlyaet metody for work s agregatom Task
-// via Event Sourcing (writing)
-type CommandRepository interface {
-	// Load loads Task from event store putem reconstruction state from events
-	Load(ctx context.Context, taskID uuid.UUID) (*taskdomain.Aggregate, error)
-
-	// Save saves novye event Task in event store
-	Save(ctx context.Context, task *taskdomain.Aggregate) error
-
-	// GetEvents returns all event tasks
-	GetEvents(ctx context.Context, taskID uuid.UUID) ([]event.DomainEvent, error)
-}
 
 // QueryRepository predostavlyaet metody for chteniya dannyh Task
 // from read model (denormalizovannoe view)
@@ -42,12 +28,6 @@ type QueryRepository interface {
 
 	// Count returns count zadach s filtrami
 	Count(ctx context.Context, filters Filters) (int, error)
-}
-
-// Repository combines Command and Query repozitorii
-type Repository interface {
-	CommandRepository
-	QueryRepository
 }
 
 // Filters contains parameters filtering for zaprosov

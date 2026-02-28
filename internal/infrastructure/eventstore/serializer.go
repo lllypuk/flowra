@@ -11,7 +11,6 @@ import (
 
 	chatdomain "github.com/lllypuk/flowra/internal/domain/chat"
 	"github.com/lllypuk/flowra/internal/domain/event"
-	taskdomain "github.com/lllypuk/flowra/internal/domain/task"
 )
 
 // EventDocument represents dokument event in MongoDB
@@ -103,7 +102,7 @@ func (s *EventSerializer) SerializeMany(events []event.DomainEvent) ([]*EventDoc
 
 // createEventByType creates empty event instance by event type.
 //
-//nolint:funlen // switch-case registry grows with event types
+
 func createEventByType(eventType string) (event.DomainEvent, error) {
 	switch eventType {
 	// Chat events
@@ -141,27 +140,6 @@ func createEventByType(eventType string) (event.DomainEvent, error) {
 		return &chatdomain.Closed{}, nil
 	case chatdomain.EventTypeChatReopened:
 		return &chatdomain.Reopened{}, nil
-	// Task events
-	case taskdomain.EventTypeTaskCreated:
-		return &taskdomain.Created{}, nil
-	case taskdomain.EventTypeTaskUpdated:
-		return &taskdomain.Updated{}, nil
-	case taskdomain.EventTypeTaskDeleted:
-		return &taskdomain.Deleted{}, nil
-	case taskdomain.EventTypeStatusChanged:
-		return &taskdomain.StatusChanged{}, nil
-	case taskdomain.EventTypeAssigneeChanged:
-		return &taskdomain.AssigneeChanged{}, nil
-	case taskdomain.EventTypePriorityChanged:
-		return &taskdomain.PriorityChanged{}, nil
-	case taskdomain.EventTypeDueDateChanged:
-		return &taskdomain.DueDateChanged{}, nil
-	case taskdomain.EventTypeCustomFieldSet:
-		return &taskdomain.CustomFieldSet{}, nil
-	case taskdomain.EventTypeAttachmentAdded:
-		return &taskdomain.AttachmentAdded{}, nil
-	case taskdomain.EventTypeAttachmentRemoved:
-		return &taskdomain.AttachmentRemoved{}, nil
 	default:
 		return nil, fmt.Errorf("unknown event type: %s", eventType)
 	}

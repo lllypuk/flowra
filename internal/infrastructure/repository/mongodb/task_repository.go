@@ -2,7 +2,6 @@ package mongodb
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -14,20 +13,15 @@ import (
 	"github.com/lllypuk/flowra/internal/application/appcore"
 	taskapp "github.com/lllypuk/flowra/internal/application/task"
 	"github.com/lllypuk/flowra/internal/domain/errs"
-	"github.com/lllypuk/flowra/internal/domain/event"
 	taskdomain "github.com/lllypuk/flowra/internal/domain/task"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
-	"github.com/lllypuk/flowra/internal/infrastructure/repair"
 )
 
-// MongoTaskRepository realizuet taskapp.CommandRepository
+// MongoTaskRepository provides query-only access to task read model.
 type MongoTaskRepository struct {
-	eventStore    appcore.EventStore
-	readModelColl *mongo.Collection
-	outbox        appcore.Outbox
-	eventBus      event.Bus // deprecated: use outbox for reliable event delivery
-	repairQueue   repair.Queue
-	logger        *slog.Logger
+	collection *mongo.Collection
+	eventStore appcore.EventStore
+	logger     *slog.Logger
 }
 
 // TaskRepoOption configures MongoTaskRepository.
@@ -40,39 +34,16 @@ func WithTaskRepoLogger(logger *slog.Logger) TaskRepoOption {
 	}
 }
 
-// WithTaskRepoEventBus sets the event bus for task repository.
-//
-// Deprecated: Use WithTaskRepoOutbox for reliable event delivery via outbox pattern.
-func WithTaskRepoEventBus(eventBus event.Bus) TaskRepoOption {
-	return func(r *MongoTaskRepository) {
-		r.eventBus = eventBus
-	}
-}
-
-// WithTaskRepoOutbox sets the outbox for reliable event delivery.
-func WithTaskRepoOutbox(outbox appcore.Outbox) TaskRepoOption {
-	return func(r *MongoTaskRepository) {
-		r.outbox = outbox
-	}
-}
-
-// WithTaskRepoRepairQueue sets the repair queue for failed read model updates.
-func WithTaskRepoRepairQueue(repairQueue repair.Queue) TaskRepoOption {
-	return func(r *MongoTaskRepository) {
-		r.repairQueue = repairQueue
-	}
-}
-
-// NewMongoTaskRepository creates New MongoDB Task Repository
+// NewMongoTaskRepository creates new MongoDB task query repository.
 func NewMongoTaskRepository(
 	eventStore appcore.EventStore,
 	readModelColl *mongo.Collection,
 	opts ...TaskRepoOption,
 ) *MongoTaskRepository {
 	r := &MongoTaskRepository{
-		eventStore:    eventStore,
-		readModelColl: readModelColl,
-		logger:        slog.Default(),
+		collection: readModelColl,
+		eventStore: eventStore,
+		logger:     slog.Default(),
 	}
 
 	for _, opt := range opts {
@@ -82,209 +53,8 @@ func NewMongoTaskRepository(
 	return r
 }
 
-// Load loads Task from event store putem reconstruction state from events
-func (r *MongoTaskRepository) Load(ctx context.Context, taskID uuid.UUID) (*taskdomain.Aggregate, error) {
-	if taskID.IsZero() {
-		return nil, errs.ErrInvalidInput
-	}
-
-	// Loading event from event store
-	events, err := r.eventStore.LoadEvents(ctx, taskID.String())
-	if err != nil {
-		if errors.Is(err, appcore.ErrAggregateNotFound) {
-			return nil, errs.ErrNotFound
-		}
-		r.logger.ErrorContext(ctx, "failed to load task events from event store",
-			slog.String("task_id", taskID.String()),
-			slog.String("error", err.Error()),
-		)
-		return nil, fmt.Errorf("failed to load events for task %s: %w", taskID, err)
-	}
-
-	if len(events) == 0 {
-		return nil, errs.ErrNotFound
-	}
-
-	// Creating aggregate and primenyaem event
-	aggregate := taskdomain.NewTaskAggregate(taskID)
-	aggregate.ReplayEvents(events)
-
-	// pomechaem event as committed
-	aggregate.MarkEventsAsCommitted()
-
-	return aggregate, nil
-}
-
-// Save saves novye event Task in event store and obnovlyaet read model
-func (r *MongoTaskRepository) Save(ctx context.Context, task *taskdomain.Aggregate) error {
-	if task == nil {
-		return errs.ErrInvalidInput
-	}
-
-	uncommittedEvents := task.UncommittedEvents()
-	if len(uncommittedEvents) == 0 {
-		return nil // nechego sav
-	}
-
-	// 1. Saving event in event store
-	expectedVersion := task.Version() - len(uncommittedEvents)
-	err := r.eventStore.SaveEvents(ctx, task.ID().String(), uncommittedEvents, expectedVersion)
-	if err != nil {
-		if errors.Is(err, appcore.ErrConcurrencyConflict) {
-			r.logger.WarnContext(ctx, "concurrency conflict while saving task events",
-				slog.String("task_id", task.ID().String()),
-				slog.Int("expected_version", expectedVersion),
-				slog.Int("events_count", len(uncommittedEvents)),
-			)
-			return errs.ErrConcurrentModification
-		}
-		r.logger.ErrorContext(ctx, "failed to save task events to event store",
-			slog.String("task_id", task.ID().String()),
-			slog.Int("events_count", len(uncommittedEvents)),
-			slog.String("error", err.Error()),
-		)
-		return fmt.Errorf("failed to save events: %w", err)
-	}
-
-	// 2. Updating read model
-	if updateErr := r.updateReadModel(ctx, task); updateErr != nil {
-		r.logger.ErrorContext(ctx, "failed to update task read model",
-			slog.String("task_id", task.ID().String()),
-			slog.String("error", updateErr.Error()),
-		)
-		// Queue for repair instead of silent failure
-		if r.repairQueue != nil {
-			repairErr := r.repairQueue.Add(ctx, repair.Task{
-				AggregateID:   task.ID().String(),
-				AggregateType: "task",
-				TaskType:      repair.TaskTypeReadModelSync,
-				Error:         updateErr.Error(),
-			})
-			if repairErr != nil {
-				r.logger.ErrorContext(ctx, "failed to queue repair task",
-					slog.String("task_id", task.ID().String()),
-					slog.String("error", repairErr.Error()),
-				)
-			}
-		}
-	}
-
-	// 3. Write events to outbox for reliable delivery (preferred)
-	if r.outbox != nil {
-		if outboxErr := r.outbox.AddBatch(ctx, uncommittedEvents); outboxErr != nil {
-			r.logger.ErrorContext(ctx, "failed to add events to outbox",
-				slog.String("task_id", task.ID().String()),
-				slog.Int("events_count", len(uncommittedEvents)),
-				slog.String("error", outboxErr.Error()),
-			)
-			// Don't fail - events are saved in event store
-		}
-	} else if r.eventBus != nil {
-		// Fallback: direct publish to EventBus (deprecated, less reliable)
-		for _, evt := range uncommittedEvents {
-			if pubErr := r.eventBus.Publish(ctx, evt); pubErr != nil {
-				r.logger.WarnContext(ctx, "failed to publish task event to bus",
-					slog.String("task_id", task.ID().String()),
-					slog.String("event_type", evt.EventType()),
-					slog.String("error", pubErr.Error()),
-				)
-				// Don't fail - event is already persisted
-			}
-		}
-	}
-
-	// 4. Mark events as committed
-	task.MarkEventsAsCommitted()
-
-	return nil
-}
-
-// GetEvents returns all event tasks
-func (r *MongoTaskRepository) GetEvents(ctx context.Context, taskID uuid.UUID) ([]event.DomainEvent, error) {
-	if taskID.IsZero() {
-		return nil, errs.ErrInvalidInput
-	}
-
-	events, err := r.eventStore.LoadEvents(ctx, taskID.String())
-	if err != nil {
-		if errors.Is(err, appcore.ErrAggregateNotFound) {
-			return nil, errs.ErrNotFound
-		}
-		return nil, err
-	}
-
-	return events, nil
-}
-
-// updateReadModel obnovlyaet denormalizovannoe view in read model
-func (r *MongoTaskRepository) updateReadModel(ctx context.Context, task *taskdomain.Aggregate) error {
-	if task.ID().IsZero() {
-		return errs.ErrInvalidInput
-	}
-
-	doc := bson.M{
-		"task_id":     task.ID().String(),
-		"chat_id":     task.ChatID().String(),
-		"title":       task.Title(),
-		"entity_type": string(task.EntityType()),
-		"status":      string(task.Status()),
-		"priority":    string(task.Priority()),
-		"created_by":  task.CreatedBy().String(),
-		"created_at":  task.CreatedAt(),
-		"version":     task.Version(),
-	}
-
-	if task.AssignedTo() != nil {
-		doc["assigned_to"] = task.AssignedTo().String()
-	} else {
-		doc["assigned_to"] = nil
-	}
-
-	if task.DueDate() != nil {
-		doc["due_date"] = *task.DueDate()
-	} else {
-		doc["due_date"] = nil
-	}
-
-	// Convert attachments
-	var attachmentDocs []taskAttachmentDocument
-	for _, a := range task.Attachments() {
-		attachmentDocs = append(attachmentDocs, taskAttachmentDocument{
-			FileID:   a.FileID().String(),
-			FileName: a.FileName(),
-			FileSize: a.FileSize(),
-			MimeType: a.MimeType(),
-		})
-	}
-	doc["attachments"] = attachmentDocs
-
-	filter := bson.M{"task_id": task.ID().String()}
-	update := bson.M{"$set": doc}
-	opts := options.UpdateOne().SetUpsert(true)
-
-	_, err := r.readModelColl.UpdateOne(ctx, filter, update, opts)
-	return HandleMongoError(err, "task_read_model")
-}
-
-// MongoTaskQueryRepository realizuet taskapp.QueryRepository
-type MongoTaskQueryRepository struct {
-	collection *mongo.Collection
-	eventStore appcore.EventStore
-}
-
-// NewMongoTaskQueryRepository creates New MongoDB Task Query Repository
-func NewMongoTaskQueryRepository(
-	collection *mongo.Collection,
-	eventStore appcore.EventStore,
-) *MongoTaskQueryRepository {
-	return &MongoTaskQueryRepository{
-		collection: collection,
-		eventStore: eventStore,
-	}
-}
-
-// FindByID finds zadachu po ID from read model
-func (r *MongoTaskQueryRepository) FindByID(ctx context.Context, taskID uuid.UUID) (*taskapp.ReadModel, error) {
+// FindByID finds a task by ID from read model.
+func (r *MongoTaskRepository) FindByID(ctx context.Context, taskID uuid.UUID) (*taskapp.ReadModel, error) {
 	if taskID.IsZero() {
 		return nil, errs.ErrInvalidInput
 	}
@@ -299,8 +69,8 @@ func (r *MongoTaskQueryRepository) FindByID(ctx context.Context, taskID uuid.UUI
 	return r.documentToReadModel(&doc)
 }
 
-// FindByChatID finds zadachu po ID chat
-func (r *MongoTaskQueryRepository) FindByChatID(ctx context.Context, chatID uuid.UUID) (*taskapp.ReadModel, error) {
+// FindByChatID finds a task by associated chat ID.
+func (r *MongoTaskRepository) FindByChatID(ctx context.Context, chatID uuid.UUID) (*taskapp.ReadModel, error) {
 	if chatID.IsZero() {
 		return nil, errs.ErrInvalidInput
 	}
@@ -315,8 +85,8 @@ func (r *MongoTaskQueryRepository) FindByChatID(ctx context.Context, chatID uuid
 	return r.documentToReadModel(&doc)
 }
 
-// FindByAssignee finds tasks value user
-func (r *MongoTaskQueryRepository) FindByAssignee(
+// FindByAssignee finds tasks by assignee.
+func (r *MongoTaskRepository) FindByAssignee(
 	ctx context.Context,
 	assigneeID uuid.UUID,
 	filters taskapp.Filters,
@@ -331,8 +101,8 @@ func (r *MongoTaskQueryRepository) FindByAssignee(
 	return r.findMany(ctx, filter, filters)
 }
 
-// FindByStatus finds tasks s opredelennym statusom
-func (r *MongoTaskQueryRepository) FindByStatus(
+// FindByStatus finds tasks by status.
+func (r *MongoTaskRepository) FindByStatus(
 	ctx context.Context,
 	status taskdomain.Status,
 	filters taskapp.Filters,
@@ -343,16 +113,16 @@ func (r *MongoTaskQueryRepository) FindByStatus(
 	return r.findMany(ctx, filter, filters)
 }
 
-// List returns list zadach s filtrami
-func (r *MongoTaskQueryRepository) List(ctx context.Context, filters taskapp.Filters) ([]*taskapp.ReadModel, error) {
+// List returns list of tasks with filters.
+func (r *MongoTaskRepository) List(ctx context.Context, filters taskapp.Filters) ([]*taskapp.ReadModel, error) {
 	filter := bson.M{}
 	r.applyFilters(filter, filters)
 
 	return r.findMany(ctx, filter, filters)
 }
 
-// Count returns count zadach s filtrami
-func (r *MongoTaskQueryRepository) Count(ctx context.Context, filters taskapp.Filters) (int, error) {
+// Count returns count of tasks with filters.
+func (r *MongoTaskRepository) Count(ctx context.Context, filters taskapp.Filters) (int, error) {
 	filter := bson.M{}
 	r.applyFilters(filter, filters)
 
@@ -364,8 +134,8 @@ func (r *MongoTaskQueryRepository) Count(ctx context.Context, filters taskapp.Fi
 	return int(count), nil
 }
 
-// applyFilters primenyaet filters to MongoDB query
-func (r *MongoTaskQueryRepository) applyFilters(filter bson.M, filters taskapp.Filters) {
+// applyFilters applies filters to MongoDB query.
+func (r *MongoTaskRepository) applyFilters(filter bson.M, filters taskapp.Filters) {
 	if filters.ChatID != nil {
 		filter["chat_id"] = filters.ChatID.String()
 	}
@@ -389,13 +159,12 @@ func (r *MongoTaskQueryRepository) applyFilters(filter bson.M, filters taskapp.F
 	}
 }
 
-// findMany performs search s paginatsiey
-func (r *MongoTaskQueryRepository) findMany(
+// findMany performs search with pagination.
+func (r *MongoTaskRepository) findMany(
 	ctx context.Context,
 	filter bson.M,
 	filters taskapp.Filters,
 ) ([]*taskapp.ReadModel, error) {
-	// primenyaem defoltnyy limit if not ukazan
 	limit := DefaultLimitWithMax(filters.Limit, DefaultPaginationLimit, MaxPaginationLimit)
 
 	opts := options.Find().
@@ -435,7 +204,7 @@ func (r *MongoTaskQueryRepository) findMany(
 	return results, nil
 }
 
-// taskReadModelDocument struct dokumenta read model
+// taskReadModelDocument represents read model document.
 type taskReadModelDocument struct {
 	TaskID      string                   `bson:"task_id"`
 	ChatID      string                   `bson:"chat_id"`
@@ -460,8 +229,8 @@ type taskAttachmentDocument struct {
 	MimeType string `bson:"mime_type"`
 }
 
-// documentToReadModel preobrazuet dokument in ReadModel
-func (r *MongoTaskQueryRepository) documentToReadModel(doc *taskReadModelDocument) (*taskapp.ReadModel, error) {
+// documentToReadModel converts BSON document to task read model.
+func (r *MongoTaskRepository) documentToReadModel(doc *taskReadModelDocument) (*taskapp.ReadModel, error) {
 	if doc == nil {
 		return nil, errs.ErrInvalidInput
 	}
@@ -500,26 +269,5 @@ func (r *MongoTaskQueryRepository) documentToReadModel(doc *taskReadModelDocumen
 	return rm, nil
 }
 
-// MongoTaskFullRepository combines Command and Query repozitorii
-type MongoTaskFullRepository struct {
-	*MongoTaskRepository
-	*MongoTaskQueryRepository
-}
-
-// NewMongoTaskFullRepository creates full repozitoriy
-func NewMongoTaskFullRepository(
-	eventStore appcore.EventStore,
-	readModelColl *mongo.Collection,
-) *MongoTaskFullRepository {
-	return &MongoTaskFullRepository{
-		MongoTaskRepository:      NewMongoTaskRepository(eventStore, readModelColl),
-		MongoTaskQueryRepository: NewMongoTaskQueryRepository(readModelColl, eventStore),
-	}
-}
-
-// Compile-time interface checks
-var (
-	_ taskapp.CommandRepository = (*MongoTaskRepository)(nil)
-	_ taskapp.QueryRepository   = (*MongoTaskQueryRepository)(nil)
-	_ taskapp.Repository        = (*MongoTaskFullRepository)(nil)
-)
+// Compile-time interface checks.
+var _ taskapp.QueryRepository = (*MongoTaskRepository)(nil)

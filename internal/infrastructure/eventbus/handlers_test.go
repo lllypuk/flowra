@@ -15,7 +15,6 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/event"
 	"github.com/lllypuk/flowra/internal/domain/message"
 	domainNotif "github.com/lllypuk/flowra/internal/domain/notification"
-	"github.com/lllypuk/flowra/internal/domain/task"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 	"github.com/lllypuk/flowra/internal/infrastructure/eventbus"
 	"github.com/lllypuk/flowra/tests/testutil"
@@ -491,175 +490,6 @@ func TestNotificationHandler_HandleMessageCreated(t *testing.T) {
 	})
 }
 
-func TestNotificationHandler_HandleTaskCreated(t *testing.T) {
-	t.Run("creates notification for assignee", func(t *testing.T) {
-		repo := newMockNotificationRepository()
-		uc := notification.NewCreateNotificationUseCase(repo)
-		handler := eventbus.NewNotificationHandler(uc)
-
-		assigneeID := uuid.NewUUID()
-		creatorID := uuid.NewUUID()
-		evt := newTestPayloadEvent(
-			task.EventTypeTaskCreated,
-			"task-123",
-			map[string]any{
-				"Title":      "Important Task",
-				"AssigneeID": assigneeID.String(),
-				"CreatedBy":  creatorID.String(),
-			},
-		)
-
-		err := handler.Handle(context.Background(), evt)
-		require.NoError(t, err)
-
-		notifications := repo.GetNotifications()
-		assert.Len(t, notifications, 1)
-		assert.Equal(t, assigneeID, notifications[0].UserID())
-		assert.Equal(t, domainNotif.TypeTaskAssigned, notifications[0].Type())
-		assert.Contains(t, notifications[0].Message(), "Important Task")
-	})
-
-	t.Run("skips notification when creator is assignee", func(t *testing.T) {
-		repo := newMockNotificationRepository()
-		uc := notification.NewCreateNotificationUseCase(repo)
-		handler := eventbus.NewNotificationHandler(uc)
-
-		userID := uuid.NewUUID()
-		evt := newTestPayloadEvent(
-			task.EventTypeTaskCreated,
-			"task-123",
-			map[string]any{
-				"Title":      "My Task",
-				"AssigneeID": userID.String(),
-				"CreatedBy":  userID.String(),
-			},
-		)
-
-		err := handler.Handle(context.Background(), evt)
-		require.NoError(t, err)
-
-		notifications := repo.GetNotifications()
-		assert.Empty(t, notifications)
-	})
-
-	t.Run("skips notification when no assignee", func(t *testing.T) {
-		repo := newMockNotificationRepository()
-		uc := notification.NewCreateNotificationUseCase(repo)
-		handler := eventbus.NewNotificationHandler(uc)
-
-		evt := newTestPayloadEvent(
-			task.EventTypeTaskCreated,
-			"task-123",
-			map[string]any{
-				"Title":     "Unassigned Task",
-				"CreatedBy": "creator-123",
-			},
-		)
-
-		err := handler.Handle(context.Background(), evt)
-		require.NoError(t, err)
-
-		notifications := repo.GetNotifications()
-		assert.Empty(t, notifications)
-	})
-
-	t.Run("truncates long task titles", func(t *testing.T) {
-		repo := newMockNotificationRepository()
-		uc := notification.NewCreateNotificationUseCase(repo)
-		handler := eventbus.NewNotificationHandler(uc)
-
-		assigneeID := uuid.NewUUID()
-		longTitle := "This is a very long task title that should be truncated to ensure it fits nicely in the notification message without taking too much space"
-		evt := newTestPayloadEvent(
-			task.EventTypeTaskCreated,
-			"task-123",
-			map[string]any{
-				"Title":      longTitle,
-				"AssigneeID": assigneeID.String(),
-				"CreatedBy":  "other-user",
-			},
-		)
-
-		err := handler.Handle(context.Background(), evt)
-		require.NoError(t, err)
-
-		notifications := repo.GetNotifications()
-		require.Len(t, notifications, 1)
-		assert.Contains(t, notifications[0].Message(), "...")
-		assert.Less(t, len(notifications[0].Message()), len(longTitle))
-	})
-}
-
-func TestNotificationHandler_HandleTaskAssigneeChanged(t *testing.T) {
-	t.Run("creates notification for new assignee", func(t *testing.T) {
-		repo := newMockNotificationRepository()
-		uc := notification.NewCreateNotificationUseCase(repo)
-		handler := eventbus.NewNotificationHandler(uc)
-
-		newAssigneeID := uuid.NewUUID()
-		changerID := uuid.NewUUID()
-		evt := newTestPayloadEvent(
-			task.EventTypeAssigneeChanged,
-			"task-123",
-			map[string]any{
-				"NewAssignee": newAssigneeID.String(),
-				"ChangedBy":   changerID.String(),
-			},
-		)
-
-		err := handler.Handle(context.Background(), evt)
-		require.NoError(t, err)
-
-		notifications := repo.GetNotifications()
-		assert.Len(t, notifications, 1)
-		assert.Equal(t, newAssigneeID, notifications[0].UserID())
-		assert.Equal(t, domainNotif.TypeTaskAssigned, notifications[0].Type())
-	})
-
-	t.Run("skips when user assigns to themselves", func(t *testing.T) {
-		repo := newMockNotificationRepository()
-		uc := notification.NewCreateNotificationUseCase(repo)
-		handler := eventbus.NewNotificationHandler(uc)
-
-		userID := uuid.NewUUID()
-		evt := newTestPayloadEvent(
-			task.EventTypeAssigneeChanged,
-			"task-123",
-			map[string]any{
-				"NewAssignee": userID.String(),
-				"ChangedBy":   userID.String(),
-			},
-		)
-
-		err := handler.Handle(context.Background(), evt)
-		require.NoError(t, err)
-
-		notifications := repo.GetNotifications()
-		assert.Empty(t, notifications)
-	})
-
-	t.Run("skips when assignee removed (nil)", func(t *testing.T) {
-		repo := newMockNotificationRepository()
-		uc := notification.NewCreateNotificationUseCase(repo)
-		handler := eventbus.NewNotificationHandler(uc)
-
-		evt := newTestPayloadEvent(
-			task.EventTypeAssigneeChanged,
-			"task-123",
-			map[string]any{
-				"OldAssignee": "old-assignee-id",
-				"ChangedBy":   "changer-id",
-			},
-		)
-
-		err := handler.Handle(context.Background(), evt)
-		require.NoError(t, err)
-
-		notifications := repo.GetNotifications()
-		assert.Empty(t, notifications)
-	})
-}
-
 func TestNotificationHandler_HandleChatCreated(t *testing.T) {
 	t.Run("logs chat created event", func(t *testing.T) {
 		repo := newMockNotificationRepository()
@@ -690,54 +520,6 @@ func TestNotificationHandler_HandleChatCreated(t *testing.T) {
 	})
 }
 
-func TestNotificationHandler_HandleTaskStatusChanged(t *testing.T) {
-	t.Run("logs task status change", func(t *testing.T) {
-		repo := newMockNotificationRepository()
-		uc := notification.NewCreateNotificationUseCase(repo)
-		var buf bytes.Buffer
-		logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
-		handler := eventbus.NewNotificationHandler(uc,
-			eventbus.WithNotificationLogger(logger),
-		)
-
-		evt := newTestPayloadEvent(
-			task.EventTypeStatusChanged,
-			"task-123",
-			map[string]any{
-				"OldStatus": "todo",
-				"NewStatus": "in_progress",
-				"ChangedBy": uuid.NewUUID().String(),
-			},
-		)
-
-		err := handler.Handle(context.Background(), evt)
-		require.NoError(t, err)
-
-		// Status changed is logged
-		assert.Contains(t, buf.String(), "task status changed")
-	})
-
-	t.Run("handles invalid payload gracefully", func(t *testing.T) {
-		repo := newMockNotificationRepository()
-		uc := notification.NewCreateNotificationUseCase(repo)
-		handler := eventbus.NewNotificationHandler(uc)
-
-		evt := &testPayloadEvent{
-			BaseEvent: event.NewBaseEvent(
-				task.EventTypeStatusChanged,
-				"task-123",
-				"Task",
-				1,
-				event.Metadata{},
-			),
-			payload: []byte("invalid json"),
-		}
-
-		err := handler.Handle(context.Background(), evt)
-		require.NoError(t, err) // Should not error, just skip
-	})
-}
-
 func TestNotificationHandler_HandleUnknownEvent(t *testing.T) {
 	t.Run("ignores unknown event types", func(t *testing.T) {
 		repo := newMockNotificationRepository()
@@ -761,20 +543,18 @@ func TestNotificationHandler_RepositoryError(t *testing.T) {
 		uc := notification.NewCreateNotificationUseCase(repo)
 		handler := eventbus.NewNotificationHandler(uc)
 
-		assigneeID := uuid.NewUUID()
+		addedUserID := uuid.NewUUID()
 		evt := newTestPayloadEvent(
-			task.EventTypeTaskCreated,
-			"task-123",
+			chat.EventTypeParticipantAdded,
+			"chat-123",
 			map[string]any{
-				"Title":      "Test Task",
-				"AssigneeID": assigneeID.String(),
-				"CreatedBy":  "other-user",
+				"UserID": addedUserID.String(),
 			},
 		)
 
 		err := handler.Handle(context.Background(), evt)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to create task assignment notification")
+		assert.Contains(t, err.Error(), "failed to create notification for participant added")
 	})
 }
 
@@ -1237,9 +1017,6 @@ func TestHandlerRegistry_RegisterNotificationHandler(t *testing.T) {
 		assert.Equal(t, 1, bus.HandlerCount(chat.EventTypeChatCreated))
 		assert.Equal(t, 1, bus.HandlerCount(chat.EventTypeParticipantAdded))
 		assert.Equal(t, 1, bus.HandlerCount(message.EventTypeMessageCreated))
-		assert.Equal(t, 1, bus.HandlerCount(task.EventTypeTaskCreated))
-		assert.Equal(t, 1, bus.HandlerCount(task.EventTypeStatusChanged))
-		assert.Equal(t, 1, bus.HandlerCount(task.EventTypeAssigneeChanged))
 	})
 }
 
@@ -1279,7 +1056,7 @@ func TestRegisterAllHandlers(t *testing.T) {
 
 		// Notification handler events
 		assert.GreaterOrEqual(t, bus.HandlerCount(chat.EventTypeChatCreated), 1)
-		assert.GreaterOrEqual(t, bus.HandlerCount(task.EventTypeTaskCreated), 1)
+		assert.GreaterOrEqual(t, bus.HandlerCount(chat.EventTypeParticipantAdded), 1)
 
 		// Logging handler events (should have 2 handlers - notification + logging)
 		assert.GreaterOrEqual(t, bus.HandlerCount(message.EventTypeMessageCreated), 2)
@@ -1326,7 +1103,7 @@ func TestEventHandlers_Integration(t *testing.T) {
 		notifHandler := eventbus.NewNotificationHandler(uc)
 
 		// Register handler
-		err := bus.Subscribe(task.EventTypeAssigneeChanged, notifHandler.AsEventHandler())
+		err := bus.Subscribe(chat.EventTypeParticipantAdded, notifHandler.AsEventHandler())
 		require.NoError(t, err)
 
 		// Start bus
@@ -1336,15 +1113,13 @@ func TestEventHandlers_Integration(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 
 		// Publish event
-		taskID := uuid.NewUUID()
-		assigneeID := uuid.NewUUID()
-		changerID := uuid.NewUUID()
-		evt := task.NewAssigneeChanged(
-			taskID,
-			nil,
-			&assigneeID,
-			changerID,
-			event.NewMetadata(changerID.String(), "corr-1", "cause-1"),
+		evt := chat.NewParticipantAdded(
+			uuid.NewUUID(),
+			uuid.NewUUID(),
+			chat.RoleMember,
+			time.Now(),
+			1,
+			event.NewMetadata("different-user", "corr-1", "cause-1"),
 		)
 
 		err = bus.Publish(ctx, evt)
@@ -1358,8 +1133,7 @@ func TestEventHandlers_Integration(t *testing.T) {
 
 		notifications := repo.GetNotifications()
 		require.Len(t, notifications, 1)
-		assert.Equal(t, assigneeID, notifications[0].UserID())
-		assert.Equal(t, domainNotif.TypeTaskAssigned, notifications[0].Type())
+		assert.Equal(t, domainNotif.TypeChatMessage, notifications[0].Type())
 
 		err = bus.Shutdown()
 		require.NoError(t, err)
