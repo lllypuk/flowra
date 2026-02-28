@@ -59,6 +59,11 @@ type TaskQueryForChatService interface {
 	GetTaskByChatID(ctx context.Context, chatID uuid.UUID) (*taskapp.ReadModel, error)
 }
 
+// ChatTaskProjectionSync defines projection synchronization required by chat template flows.
+type ChatTaskProjectionSync interface {
+	RebuildOne(ctx context.Context, chatID uuid.UUID) error
+}
+
 // ChatViewData represents chat data for templates.
 type ChatViewData struct {
 	ID               string
@@ -164,6 +169,7 @@ type ChatTemplateHandler struct {
 	chatService    ChatTemplateService
 	messageService MessageTemplateService
 	taskService    TaskQueryForChatService
+	taskProjector  ChatTaskProjectionSync
 	userLookup     UserProfileLookup
 	memberService  BoardMemberService
 }
@@ -196,6 +202,11 @@ func (h *ChatTemplateHandler) SetUserLookup(lookup UserProfileLookup) {
 // SetMemberService sets the member service for loading workspace members.
 func (h *ChatTemplateHandler) SetMemberService(svc BoardMemberService) {
 	h.memberService = svc
+}
+
+// SetTaskProjector sets synchronous task read-model projector for typed chat flows.
+func (h *ChatTemplateHandler) SetTaskProjector(projector ChatTaskProjectionSync) {
+	h.taskProjector = projector
 }
 
 // SetupChatRoutes registers chat-related page and partial routes.
@@ -728,6 +739,28 @@ func (h *ChatTemplateHandler) ChatCreate(c echo.Context) error {
 		//nolint:canonicalheader // HTMX uses non-canonical header names
 		c.Response().Header().Set("HX-Retarget", "#modal-container")
 		return c.String(http.StatusInternalServerError, `<div class="error">Failed to create chat</div>`)
+	}
+
+	if domainType == chatdomain.TypeTask || domainType == chatdomain.TypeBug || domainType == chatdomain.TypeEpic {
+		if h.taskProjector == nil {
+			h.logger.Error("task projector is not configured for typed chat creation",
+				slog.String("chat_id", result.Value.ID().String()),
+				slog.String("type", string(domainType)),
+			)
+			//nolint:canonicalheader // HTMX uses non-canonical header names
+			c.Response().Header().Set("HX-Retarget", "#modal-container")
+			return c.String(http.StatusServiceUnavailable, `<div class="error">Task projection unavailable</div>`)
+		}
+		if err = h.taskProjector.RebuildOne(c.Request().Context(), result.Value.ID()); err != nil {
+			h.logger.Error("failed to sync task projection after typed chat creation",
+				slog.String("chat_id", result.Value.ID().String()),
+				slog.String("type", string(domainType)),
+				slog.String("error", err.Error()),
+			)
+			//nolint:canonicalheader // HTMX uses non-canonical header names
+			c.Response().Header().Set("HX-Retarget", "#modal-container")
+			return c.String(http.StatusInternalServerError, `<div class="error">Failed to sync task projection</div>`)
+		}
 	}
 
 	// Redirect to the new chat

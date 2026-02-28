@@ -135,10 +135,17 @@ func (uc *SendMessageUseCase) Execute(
 		)
 	}
 
-	// 7. async tag handling (do not block response)
-	// Use background context since HTTP request context will be canceled after response
+	// 7. tag handling
 	if uc.tagProcessor != nil && uc.tagExecutor != nil {
-		go uc.processTagsAsync(context.Background(), msg, cmd.AuthorID, chatReadModel.Type)
+		if msg.IsSystemMessage() {
+			// System tag messages back UI task actions and require deterministic side effects
+			// before HTTP response is returned.
+			uc.processTagsAsync(ctx, msg, cmd.AuthorID, chatReadModel.Type)
+		} else {
+			// User messages keep async processing to avoid blocking send flow.
+			// Use background context since HTTP request context will be canceled after response.
+			go uc.processTagsAsync(context.Background(), msg, cmd.AuthorID, chatReadModel.Type)
+		}
 	}
 
 	return Result{

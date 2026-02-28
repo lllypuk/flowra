@@ -880,7 +880,16 @@ func (c *Container) setupHTTPHandlers() {
 	c.setupMessageHandler()
 
 	// === 14. Action Service ===
-	c.ActionService = service.NewActionService(c.SendMessageUC, c.UserRepo)
+	actionTaskProjector := projector.NewChatToTaskReadModelProjector(
+		c.EventStore,
+		c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model"),
+		c.Logger,
+	)
+	c.ActionService = service.NewActionService(
+		c.SendMessageUC,
+		c.UserRepo,
+		service.WithTaskProjectionSync(actionTaskProjector),
+	)
 	c.ChatActionHandler = httphandler.NewChatActionHandler(c.ActionService)
 	c.Logger.Debug("action service and chat action handler initialized")
 
@@ -1034,6 +1043,13 @@ func (c *Container) setupChatTemplateHandler() {
 		chatService,
 		messageService,
 		taskService,
+	)
+	c.ChatTemplateHandler.SetTaskProjector(
+		projector.NewChatToTaskReadModelProjector(
+			c.EventStore,
+			c.MongoDB.Database(c.MongoDBName).Collection("tasks_read_model"),
+			c.Logger,
+		),
 	)
 	c.ChatTemplateHandler.SetUserLookup(c.createUserProfileLookup())
 	c.ChatTemplateHandler.SetMemberService(c.createBoardMemberService())

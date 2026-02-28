@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -169,6 +171,18 @@ func (m *MockTaskQueryForChatService) GetTaskByChatID(
 		return nil, taskapp.ErrTaskNotFound
 	}
 	return task, nil
+}
+
+type mockChatTaskProjector struct {
+	calls      int
+	lastChatID uuid.UUID
+	err        error
+}
+
+func (m *mockChatTaskProjector) RebuildOne(_ context.Context, chatID uuid.UUID) error {
+	m.calls++
+	m.lastChatID = chatID
+	return m.err
 }
 
 // setUserContextForTemplate sets user authentication context on the echo context.
@@ -620,6 +634,104 @@ func TestChatTemplateHandler_ChatCreateForm(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+}
+
+func TestChatTemplateHandler_ChatCreate(t *testing.T) {
+	t.Run("typed chat syncs task projection", func(t *testing.T) {
+		e := echo.New()
+		userID := uuid.NewUUID()
+		workspaceID := uuid.NewUUID()
+
+		mockChatService := NewMockChatTemplateService()
+		mockMessageService := NewMockMessageTemplateService()
+		projector := &mockChatTaskProjector{}
+
+		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService, nil)
+		handler.SetTaskProjector(projector)
+
+		form := url.Values{}
+		form.Set("workspace_id", workspaceID.String())
+		form.Set("name", "Smoke task")
+		form.Set("type", "task")
+
+		req := httptest.NewRequest(http.MethodPost, "/partials/chat/create", strings.NewReader(form.Encode()))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationForm)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		setUserContextForTemplate(c, userID)
+
+		err := handler.ChatCreate(c)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, 1, projector.calls)
+		assert.NotEmpty(t, projector.lastChatID)
+		assert.Equal(
+			t,
+			"/workspaces/"+workspaceID.String()+"/chats/"+projector.lastChatID.String(),
+			rec.Header().Get("HX-Redirect"),
+		)
+	})
+
+	t.Run("discussion chat does not sync task projection", func(t *testing.T) {
+		e := echo.New()
+		userID := uuid.NewUUID()
+		workspaceID := uuid.NewUUID()
+
+		mockChatService := NewMockChatTemplateService()
+		mockMessageService := NewMockMessageTemplateService()
+		projector := &mockChatTaskProjector{}
+
+		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService, nil)
+		handler.SetTaskProjector(projector)
+
+		form := url.Values{}
+		form.Set("workspace_id", workspaceID.String())
+		form.Set("name", "General chat")
+		form.Set("type", "discussion")
+
+		req := httptest.NewRequest(http.MethodPost, "/partials/chat/create", strings.NewReader(form.Encode()))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationForm)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		setUserContextForTemplate(c, userID)
+
+		err := handler.ChatCreate(c)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, 0, projector.calls)
+		assert.Contains(t, rec.Header().Get("HX-Redirect"), "/workspaces/"+workspaceID.String()+"/chats/")
+	})
+
+	t.Run("typed chat returns 500 when projection sync fails", func(t *testing.T) {
+		e := echo.New()
+		userID := uuid.NewUUID()
+		workspaceID := uuid.NewUUID()
+
+		mockChatService := NewMockChatTemplateService()
+		mockMessageService := NewMockMessageTemplateService()
+		projector := &mockChatTaskProjector{err: assert.AnError}
+
+		handler := httphandler.NewChatTemplateHandler(nil, nil, mockChatService, mockMessageService, nil)
+		handler.SetTaskProjector(projector)
+
+		form := url.Values{}
+		form.Set("workspace_id", workspaceID.String())
+		form.Set("name", "Broken task")
+		form.Set("type", "task")
+
+		req := httptest.NewRequest(http.MethodPost, "/partials/chat/create", strings.NewReader(form.Encode()))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationForm)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		setUserContextForTemplate(c, userID)
+
+		err := handler.ChatCreate(c)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+		assert.Equal(t, "#modal-container", rec.Header().Get("HX-Retarget"))
+		assert.Contains(t, rec.Body.String(), "Failed to sync task projection")
+		assert.Equal(t, 1, projector.calls)
 	})
 }
 

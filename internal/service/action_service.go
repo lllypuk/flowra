@@ -12,23 +12,50 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
+// ActionMessageSender defines command execution required by ActionService.
+type ActionMessageSender interface {
+	Execute(ctx context.Context, cmd messageapp.SendMessageCommand) (messageapp.Result, error)
+}
+
+// TaskProjectionSync defines projection synchronization required by ActionService.
+type TaskProjectionSync interface {
+	RebuildOne(ctx context.Context, chatID uuid.UUID) error
+}
+
+// ActionServiceOption customizes ActionService behavior.
+type ActionServiceOption func(*ActionService)
+
+// WithTaskProjectionSync configures synchronous task read-model rebuild after task-related actions.
+func WithTaskProjectionSync(sync TaskProjectionSync) ActionServiceOption {
+	return func(s *ActionService) {
+		s.taskProjectionSync = sync
+	}
+}
+
 // ActionService converts UI actions to chat messages with human-readable content
 type ActionService struct {
-	sendMessageUC *messageapp.SendMessageUseCase
-	userRepo      appcore.UserRepository
-	batcher       *ChangeBatcher
-	logger        *slog.Logger
+	sendMessageUC      ActionMessageSender
+	userRepo           appcore.UserRepository
+	taskProjectionSync TaskProjectionSync
+	batcher            *ChangeBatcher
+	logger             *slog.Logger
 }
 
 // NewActionService creates a new ActionService
 func NewActionService(
-	sendMessageUC *messageapp.SendMessageUseCase,
+	sendMessageUC ActionMessageSender,
 	userRepo appcore.UserRepository,
+	opts ...ActionServiceOption,
 ) *ActionService {
 	svc := &ActionService{
 		sendMessageUC: sendMessageUC,
 		userRepo:      userRepo,
 		logger:        slog.Default(),
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(svc)
+		}
 	}
 
 	// Initialize batcher with flush function and logger
@@ -68,6 +95,9 @@ func (s *ActionService) ChangeStatus(
 	}
 
 	if _, err := s.sendMessageUC.Execute(ctx, cmd); err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	}
+	if err := s.syncTaskProjection(ctx, chatID); err != nil {
 		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
 	}
 
@@ -117,6 +147,9 @@ func (s *ActionService) AssignUser(
 	if _, err := s.sendMessageUC.Execute(ctx, cmd); err != nil {
 		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
 	}
+	if err := s.syncTaskProjection(ctx, chatID); err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	}
 
 	// Add human-readable message to batch
 	actorName := s.getActorDisplayName(ctx, actorID)
@@ -146,6 +179,9 @@ func (s *ActionService) SetPriority(
 	}
 
 	if _, err := s.sendMessageUC.Execute(ctx, cmd); err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	}
+	if err := s.syncTaskProjection(ctx, chatID); err != nil {
 		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
 	}
 
@@ -186,6 +222,9 @@ func (s *ActionService) SetDueDate(
 	}
 
 	if _, err := s.sendMessageUC.Execute(ctx, cmd); err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	}
+	if err := s.syncTaskProjection(ctx, chatID); err != nil {
 		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
 	}
 
@@ -389,4 +428,18 @@ func (s *ActionService) Shutdown() {
 	if s.batcher != nil {
 		s.batcher.Close()
 	}
+}
+
+func (s *ActionService) syncTaskProjection(ctx context.Context, chatID uuid.UUID) error {
+	if s.taskProjectionSync == nil {
+		return nil
+	}
+	if err := s.taskProjectionSync.RebuildOne(ctx, chatID); err != nil {
+		s.logger.ErrorContext(ctx, "failed to sync task projection after chat action",
+			slog.String("chat_id", chatID.String()),
+			slog.String("error", err.Error()),
+		)
+		return fmt.Errorf("failed to sync task projection: %w", err)
+	}
+	return nil
 }
