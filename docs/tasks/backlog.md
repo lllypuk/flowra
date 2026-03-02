@@ -109,3 +109,12 @@ Assumption: we optimize for a clean implementation, not for compatibility with l
 - [x] `P3` PR-32: Document handling of legacy `task.*` events in Chat=SoT era.
   - Scope: docs/architecture or operations docs.
   - Done when: behavior is explicitly documented for operators and developers.
+
+## Review Follow-Ups: Part 2 (2026-03-02)
+
+- [x] `P1` PR-33: Make `userRepo` mandatory in `NewAssignUserUseCase` to prevent silent assignee validation bypass.
+  - Scope: `internal/application/chat/assign_user.go` and all call sites/tests constructing `AssignUserUseCase`.
+  - Done when: constructor requires `appcore.UserRepository` (non-variadic), missing dependency fails at compile time, and tests use explicit stub/mock repositories.
+- [x] `P1` PR-34: Add failure-safe projection sync in `fullTaskServiceAdapter.CreateTask`.
+  - Scope: `cmd/api/container.go` (`fullTaskServiceAdapter.CreateTask` flow).
+  - Done when: partial failures after typed chat creation (`setPriority`/`assignUser`/`setDueDate`) still trigger projection repair/sync via defer-style finalization, keeping `tasks_read_model` consistent.

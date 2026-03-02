@@ -1749,7 +1749,7 @@ func (a *fullTaskServiceAdapter) CreateTask(
 			Priority: string(cmd.Priority),
 			SetBy:    cmd.CreatedBy,
 		}); setErr != nil {
-			return taskapp.TaskResult{}, mapTaskWriteError(setErr)
+			return a.finishCreateTask(ctx, cmd.ChatID, result.Version, mapTaskWriteError(setErr))
 		}
 	}
 
@@ -1759,7 +1759,7 @@ func (a *fullTaskServiceAdapter) CreateTask(
 			AssigneeID: cmd.AssigneeID,
 			AssignedBy: cmd.CreatedBy,
 		}); assignErr != nil {
-			return taskapp.TaskResult{}, mapTaskWriteError(assignErr)
+			return a.finishCreateTask(ctx, cmd.ChatID, result.Version, mapTaskWriteError(assignErr))
 		}
 	}
 
@@ -1769,15 +1769,31 @@ func (a *fullTaskServiceAdapter) CreateTask(
 			DueDate: cmd.DueDate,
 			SetBy:   cmd.CreatedBy,
 		}); setErr != nil {
-			return taskapp.TaskResult{}, mapTaskWriteError(setErr)
+			return a.finishCreateTask(ctx, cmd.ChatID, result.Version, mapTaskWriteError(setErr))
 		}
 	}
 
-	if rebuildErr := a.syncTaskProjection(ctx, cmd.ChatID); rebuildErr != nil {
-		return taskapp.TaskResult{}, rebuildErr
+	return a.finishCreateTask(ctx, cmd.ChatID, result.Version, nil)
+}
+
+func (a *fullTaskServiceAdapter) finishCreateTask(
+	ctx context.Context,
+	chatID uuid.UUID,
+	version int,
+	createErr error,
+) (taskapp.TaskResult, error) {
+	projectionErr := a.syncTaskProjection(ctx, chatID)
+	if projectionErr == nil {
+		if createErr != nil {
+			return taskapp.TaskResult{}, createErr
+		}
+		return taskapp.NewSuccessResult(chatID, version), nil
 	}
 
-	return taskapp.NewSuccessResult(cmd.ChatID, result.Version), nil
+	if createErr != nil {
+		return taskapp.TaskResult{}, errors.Join(createErr, projectionErr)
+	}
+	return taskapp.TaskResult{}, projectionErr
 }
 
 // ChangeStatus implements httphandler.TaskService.

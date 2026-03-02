@@ -16,15 +16,14 @@ type AssignUserUseCase struct {
 }
 
 // NewAssignUserUseCase creates a new AssignUserUseCase
-func NewAssignUserUseCase(chatRepo CommandRepository, userRepo ...appcore.UserRepository) *AssignUserUseCase {
-	var repo appcore.UserRepository
-	if len(userRepo) > 0 {
-		repo = userRepo[0]
+func NewAssignUserUseCase(chatRepo CommandRepository, userRepo appcore.UserRepository) *AssignUserUseCase {
+	if userRepo == nil {
+		panic("userRepo is required")
 	}
 
 	return &AssignUserUseCase{
 		chatRepo: chatRepo,
-		userRepo: repo,
+		userRepo: userRepo,
 	}
 }
 
@@ -75,7 +74,7 @@ func (uc *AssignUserUseCase) validate(cmd AssignUserCommand) error {
 }
 
 func (uc *AssignUserUseCase) validateAssigneeExists(ctx context.Context, assigneeID *uuid.UUID) error {
-	if assigneeID == nil || uc.userRepo == nil {
+	if assigneeID == nil {
 		return nil
 	}
 

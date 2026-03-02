@@ -54,7 +54,8 @@ func TestChatSoT_TypedLifecycleEmitsOnlyChatEventsAndKeepsReadModelsConsistent(t
 
 	workspaceID := uuid.NewUUID()
 	actorID := uuid.NewUUID()
-	assigneeID := uuid.NewUUID()
+	userRepo := mongorepo.NewMongoUserRepository(env.db.Collection("users"))
+	assigneeID := seedUser(t, ctx, userRepo, "typed-lifecycle-assignee")
 	dueDate := time.Now().UTC().Add(72 * time.Hour).Truncate(time.Second)
 
 	createResult, err := chatapp.NewCreateChatUseCase(env.chatRepo).Execute(ctx, chatapp.CreateChatCommand{
@@ -81,7 +82,7 @@ func TestChatSoT_TypedLifecycleEmitsOnlyChatEventsAndKeepsReadModelsConsistent(t
 	})
 	require.NoError(t, err)
 
-	_, err = chatapp.NewAssignUserUseCase(env.chatRepo).Execute(ctx, chatapp.AssignUserCommand{
+	_, err = chatapp.NewAssignUserUseCase(env.chatRepo, userRepo).Execute(ctx, chatapp.AssignUserCommand{
 		ChatID:     chatID,
 		AssigneeID: &assigneeID,
 		AssignedBy: actorID,
@@ -213,7 +214,8 @@ func TestChatSoT_SidebarBoardRegressionQueriesStayConsistentAfterReload(t *testi
 
 	workspaceID := uuid.NewUUID()
 	actorID := uuid.NewUUID()
-	assigneeID := uuid.NewUUID()
+	userRepo := mongorepo.NewMongoUserRepository(env.db.Collection("users"))
+	assigneeID := seedUser(t, ctx, userRepo, "sidebar-board-assignee")
 	dueDate := time.Now().UTC().Add(72 * time.Hour).Truncate(time.Second)
 
 	createResult, err := chatapp.NewCreateChatUseCase(env.chatRepo).Execute(ctx, chatapp.CreateChatCommand{
@@ -242,7 +244,7 @@ func TestChatSoT_SidebarBoardRegressionQueriesStayConsistentAfterReload(t *testi
 	require.NoError(t, err)
 	require.NoError(t, env.syncReadModels(ctx, chatID))
 
-	_, err = chatapp.NewAssignUserUseCase(env.chatRepo).Execute(ctx, chatapp.AssignUserCommand{
+	_, err = chatapp.NewAssignUserUseCase(env.chatRepo, userRepo).Execute(ctx, chatapp.AssignUserCommand{
 		ChatID:     chatID,
 		AssigneeID: &assigneeID,
 		AssignedBy: actorID,
@@ -250,7 +252,7 @@ func TestChatSoT_SidebarBoardRegressionQueriesStayConsistentAfterReload(t *testi
 	require.NoError(t, err)
 	require.NoError(t, env.syncReadModels(ctx, chatID))
 
-	_, err = chatapp.NewAssignUserUseCase(env.chatRepo).Execute(ctx, chatapp.AssignUserCommand{
+	_, err = chatapp.NewAssignUserUseCase(env.chatRepo, userRepo).Execute(ctx, chatapp.AssignUserCommand{
 		ChatID:     chatID,
 		AssigneeID: nil,
 		AssignedBy: actorID,

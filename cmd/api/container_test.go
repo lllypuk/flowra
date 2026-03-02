@@ -21,6 +21,7 @@ import (
 	"github.com/lllypuk/flowra/internal/infrastructure/repair"
 	"github.com/lllypuk/flowra/internal/middleware"
 	"github.com/lllypuk/flowra/internal/service"
+	"github.com/lllypuk/flowra/tests/mocks"
 	"github.com/lllypuk/flowra/tests/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -488,6 +489,56 @@ func TestBoardChatCreatorAdapter_CreateChat_FailsFastWhenProjectorMissing(t *tes
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "task read model projector is not configured")
 	assert.Equal(t, 0, createCalls)
+}
+
+func TestFullTaskServiceAdapter_CreateTask_PartialFailureStillSyncsProjection(t *testing.T) {
+	ctx := context.Background()
+	workspaceID := uuid.NewUUID()
+	actorID := uuid.NewUUID()
+	assigneeID := uuid.NewUUID()
+
+	chatRepo := mocks.NewMockChatRepository()
+	userRepo := mocks.NewMockUserRepository()
+	projector := &boardTaskProjectorMock{}
+
+	sourceChat, err := chatdomain.NewChat(workspaceID, chatdomain.TypeDiscussion, true, actorID)
+	require.NoError(t, err)
+	require.NoError(t, chatRepo.Save(ctx, sourceChat))
+
+	adapter := &fullTaskServiceAdapter{
+		chatRepo:           chatRepo,
+		userRepo:           userRepo,
+		taskProjector:      projector,
+		convertToTaskUC:    chatapp.NewConvertToTaskUseCase(chatRepo),
+		convertToBugUC:     chatapp.NewConvertToBugUseCase(chatRepo),
+		convertToEpicUC:    chatapp.NewConvertToEpicUseCase(chatRepo),
+		changeStatusUC:     chatapp.NewChangeStatusUseCase(chatRepo),
+		assignUserUC:       chatapp.NewAssignUserUseCase(chatRepo, userRepo),
+		setPriorityUC:      chatapp.NewSetPriorityUseCase(chatRepo),
+		setDueDateUC:       chatapp.NewSetDueDateUseCase(chatRepo),
+		addAttachmentUC:    chatapp.NewAddAttachmentUseCase(chatRepo),
+		removeAttachmentUC: chatapp.NewRemoveAttachmentUseCase(chatRepo),
+	}
+
+	_, err = adapter.CreateTask(ctx, taskapp.CreateTaskCommand{
+		ChatID:     sourceChat.ID(),
+		Title:      "Converted task",
+		EntityType: taskdomain.TypeTask,
+		Priority:   taskdomain.PriorityHigh,
+		AssigneeID: &assigneeID, // Assignee is absent in user repo; assignment should fail.
+		CreatedBy:  actorID,
+	})
+	require.Error(t, err)
+	require.ErrorIs(t, err, taskapp.ErrUserNotFound)
+
+	assert.Equal(t, 1, projector.rebuildOneCalls)
+	require.Len(t, projector.rebuildOneIDs, 1)
+	assert.Equal(t, sourceChat.ID(), projector.rebuildOneIDs[0])
+
+	updatedChat, loadErr := chatRepo.Load(ctx, sourceChat.ID())
+	require.NoError(t, loadErr)
+	assert.Equal(t, chatdomain.TypeTask, updatedChat.Type())
+	assert.Equal(t, string(taskdomain.PriorityHigh), updatedChat.Priority())
 }
 
 func TestContainer_UserRepoAdapter(t *testing.T) {
