@@ -4,15 +4,18 @@ package integration_test
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	chatapp "github.com/lllypuk/flowra/internal/application/chat"
 	taskapp "github.com/lllypuk/flowra/internal/application/task"
 	chatdomain "github.com/lllypuk/flowra/internal/domain/chat"
+	domainerrs "github.com/lllypuk/flowra/internal/domain/errs"
 	"github.com/lllypuk/flowra/internal/domain/event"
 	taskdomain "github.com/lllypuk/flowra/internal/domain/task"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
@@ -279,6 +282,97 @@ func TestChatSoT_SidebarBoardRegressionQueriesStayConsistentAfterReload(t *testi
 	assertSidebarBoardParity(t, ctx, env, workspaceID, chatID, actorID, dueDate)
 }
 
+func TestChatSoT_ConcurrentTypedMutationsSingleAggregateRemainDeterministic(t *testing.T) {
+	ctx := context.Background()
+	env := newChatSoTTestEnv(t)
+
+	workspaceID := uuid.NewUUID()
+	actorID := uuid.NewUUID()
+
+	createResult, err := chatapp.NewCreateChatUseCase(env.chatRepo).Execute(ctx, chatapp.CreateChatCommand{
+		WorkspaceID: workspaceID,
+		Title:       "Concurrent typed mutation",
+		Type:        chatdomain.TypeTask,
+		IsPublic:    true,
+		CreatedBy:   actorID,
+	})
+	require.NoError(t, err)
+	chatID := createResult.Value.ID()
+
+	userRepo := mongorepo.NewMongoUserRepository(env.db.Collection("users"))
+	assigneeID := seedUser(t, ctx, userRepo, "typed-concurrency-assignee")
+
+	concurrentRepo := &countingChatCommandRepo{
+		base:      env.chatRepo,
+		saveDelay: 300 * time.Microsecond,
+	}
+
+	changeStatusUC := chatapp.NewChangeStatusUseCase(concurrentRepo)
+	assignUserUC := chatapp.NewAssignUserUseCase(concurrentRepo, userRepo)
+	setPriorityUC := chatapp.NewSetPriorityUseCase(concurrentRepo)
+
+	mutations := []func(context.Context) error{
+		func(runCtx context.Context) error {
+			_, execErr := changeStatusUC.Execute(runCtx, chatapp.ChangeStatusCommand{
+				ChatID:    chatID,
+				Status:    string(taskdomain.StatusInProgress),
+				ChangedBy: actorID,
+			})
+			return execErr
+		},
+		func(runCtx context.Context) error {
+			_, execErr := assignUserUC.Execute(runCtx, chatapp.AssignUserCommand{
+				ChatID:     chatID,
+				AssigneeID: &assigneeID,
+				AssignedBy: actorID,
+			})
+			return execErr
+		},
+		func(runCtx context.Context) error {
+			_, execErr := setPriorityUC.Execute(runCtx, chatapp.SetPriorityCommand{
+				ChatID:   chatID,
+				Priority: string(taskdomain.PriorityHigh),
+				SetBy:    actorID,
+			})
+			return execErr
+		},
+	}
+
+	start := make(chan struct{})
+	errCh := make(chan error, len(mutations)*4)
+
+	var wg sync.WaitGroup
+	for i := 0; i < 4; i++ {
+		for _, mutation := range mutations {
+			wg.Add(1)
+			go func(mutate func(context.Context) error) {
+				defer wg.Done()
+				<-start
+				errCh <- retryOnOptimisticConflict(ctx, 10, mutate)
+			}(mutation)
+		}
+	}
+
+	close(start)
+	wg.Wait()
+	close(errCh)
+
+	for mutationErr := range errCh {
+		require.NoError(t, mutationErr)
+	}
+
+	require.Greater(t, concurrentRepo.ConflictCount(), int64(0), "expected optimistic-lock conflicts")
+	require.NoError(t, env.syncReadModels(ctx, chatID))
+
+	taskRM, err := env.taskRepo.FindByID(ctx, chatID)
+	require.NoError(t, err)
+	assert.Equal(t, taskdomain.StatusInProgress, taskRM.Status)
+	assert.Equal(t, taskdomain.PriorityHigh, taskRM.Priority)
+	if assert.NotNil(t, taskRM.AssignedTo) {
+		assert.Equal(t, assigneeID, *taskRM.AssignedTo)
+	}
+}
+
 func newChatSoTTestEnv(t *testing.T) *chatSoTTestEnv {
 	t.Helper()
 
@@ -406,4 +500,25 @@ func assertSidebarBoardParity(
 		CountDocuments(ctx, bson.M{"chat_id": chatID.String()})
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), chatCount, "chat read model must not contain duplicates")
+}
+
+func retryOnOptimisticConflict(
+	ctx context.Context,
+	maxAttempts int,
+	run func(context.Context) error,
+) error {
+	var lastErr error
+
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		if err := run(ctx); err != nil {
+			lastErr = err
+			if !errors.Is(err, domainerrs.ErrConcurrentModification) {
+				return err
+			}
+			continue
+		}
+		return nil
+	}
+
+	return lastErr
 }

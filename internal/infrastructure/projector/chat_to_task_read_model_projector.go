@@ -187,29 +187,7 @@ func (p *ChatToTaskReadModelProjector) readModelAbsent(ctx context.Context, chat
 }
 
 func (p *ChatToTaskReadModelProjector) getAllAggregateIDs(ctx context.Context) ([]uuid.UUID, error) {
-	eventsColl := p.readModelColl.Database().Collection("events")
-	filter := bson.M{"aggregate_type": bson.M{"$in": []string{aggregateTypeChat, "Chat"}}}
-	result := eventsColl.Distinct(ctx, "aggregate_id", filter)
-
-	var stringIDs []string
-	if err := result.Decode(&stringIDs); err != nil {
-		return nil, fmt.Errorf("failed to decode aggregate IDs: %w", err)
-	}
-
-	aggregateIDs := make([]uuid.UUID, 0, len(stringIDs))
-	for _, idStr := range stringIDs {
-		id, err := uuid.ParseUUID(idStr)
-		if err != nil {
-			p.logger.WarnContext(ctx, "skipping invalid aggregate ID",
-				slog.String("aggregate_id", idStr),
-				slog.String("error", err.Error()),
-			)
-			continue
-		}
-		aggregateIDs = append(aggregateIDs, id)
-	}
-
-	return aggregateIDs, nil
+	return getAllAggregateIDsByType(ctx, p.readModelColl, aggregateTypeChat, "Chat", p.logger)
 }
 
 func replayChatEvents(events []event.DomainEvent) (*chatdomain.Chat, error) {

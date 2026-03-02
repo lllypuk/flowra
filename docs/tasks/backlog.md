@@ -79,16 +79,16 @@ Assumption: we optimize for a clean implementation, not for compatibility with l
 - [x] `P1` PR-22: Sync task projection after `ActionService.Close/Reopen`.
   - Scope: `internal/service/action_service.go`.
   - Done when: close/reopen updates are immediately reflected in `tasks_read_model`.
-- [ ] `P3` PR-23: Remove duplicate aggregate ID collection logic.
+- [x] `P3` PR-23: Remove duplicate aggregate ID collection logic.
   - Scope: `internal/infrastructure/projector/chat_to_task_read_model_projector.go`.
   - Done when: projector reuses shared `getAllAggregateIDsByType`.
-- [ ] `P3` PR-24: Deduplicate `logDevRuntimeMode` helper.
+- [x] `P3` PR-24: Deduplicate `logDevRuntimeMode` helper.
   - Scope: `cmd/api/main.go`, `cmd/worker/main.go`.
   - Done when: one shared helper is used by both binaries.
-- [ ] `P3` PR-25: Define and enforce `TaskResult.Events` contract.
+- [x] `P3` PR-25: Define and enforce `TaskResult.Events` contract.
   - Scope: `internal/application/task/results.go` and task service adapters.
   - Done when: field is either correctly populated or explicitly removed/deprecated with tests.
-- [ ] `P2` PR-26: Add concurrent-write regression coverage for one chat aggregate.
+- [x] `P2` PR-26: Add concurrent-write regression coverage for one chat aggregate.
   - Scope: integration tests (`tests/integration`).
   - Done when: race-prone concurrent status/assignee/priority operations are covered and deterministic.
 - [ ] `P2` PR-27: Add failure-recovery tests for partial create/setup and projection rebuild errors.

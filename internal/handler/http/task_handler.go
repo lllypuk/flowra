@@ -961,7 +961,7 @@ func (m *MockTaskService) CreateTask(
 
 	m.tasks[taskID] = rm
 
-	return taskapp.NewSuccessResult(taskID, 1, nil), nil
+	return taskapp.NewSuccessResult(taskID, 1), nil
 }
 
 // GetTask gets a task from the mock service.
@@ -1040,7 +1040,7 @@ func (m *MockTaskService) ChangeStatus(
 	t.Status = cmd.NewStatus
 	t.Version++
 
-	return taskapp.NewSuccessResult(cmd.TaskID, t.Version, nil), nil
+	return taskapp.NewSuccessResult(cmd.TaskID, t.Version), nil
 }
 
 // AssignTask assigns a task in the mock service.
@@ -1056,7 +1056,7 @@ func (m *MockTaskService) AssignTask(
 	t.AssignedTo = cmd.AssigneeID
 	t.Version++
 
-	return taskapp.NewSuccessResult(cmd.TaskID, t.Version, nil), nil
+	return taskapp.NewSuccessResult(cmd.TaskID, t.Version), nil
 }
 
 // ChangePriority changes task priority in the mock service.
@@ -1072,7 +1072,7 @@ func (m *MockTaskService) ChangePriority(
 	t.Priority = cmd.Priority
 	t.Version++
 
-	return taskapp.NewSuccessResult(cmd.TaskID, t.Version, nil), nil
+	return taskapp.NewSuccessResult(cmd.TaskID, t.Version), nil
 }
 
 // SetDueDate sets task due date in the mock service.
@@ -1088,7 +1088,7 @@ func (m *MockTaskService) SetDueDate(
 	t.DueDate = cmd.DueDate
 	t.Version++
 
-	return taskapp.NewSuccessResult(cmd.TaskID, t.Version, nil), nil
+	return taskapp.NewSuccessResult(cmd.TaskID, t.Version), nil
 }
 
 // DeleteTask deletes a task from the mock service.
@@ -1111,7 +1111,7 @@ func (m *MockTaskService) AddAttachment(
 		return taskapp.TaskResult{}, taskapp.ErrTaskNotFound
 	}
 	t.Version++
-	return taskapp.NewSuccessResult(cmd.TaskID, t.Version, nil), nil
+	return taskapp.NewSuccessResult(cmd.TaskID, t.Version), nil
 }
 
 // RemoveAttachment removes an attachment in the mock service.
@@ -1124,5 +1124,5 @@ func (m *MockTaskService) RemoveAttachment(
 		return taskapp.TaskResult{}, taskapp.ErrTaskNotFound
 	}
 	t.Version++
-	return taskapp.NewSuccessResult(cmd.TaskID, t.Version, nil), nil
+	return taskapp.NewSuccessResult(cmd.TaskID, t.Version), nil
 }

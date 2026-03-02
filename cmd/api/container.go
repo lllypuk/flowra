@@ -1768,7 +1768,7 @@ func (a *fullTaskServiceAdapter) CreateTask(
 		return taskapp.TaskResult{}, rebuildErr
 	}
 
-	return taskapp.NewSuccessResult(cmd.ChatID, result.Version, nil), nil
+	return taskapp.NewSuccessResult(cmd.ChatID, result.Version), nil
 }
 
 // ChangeStatus implements httphandler.TaskService.
@@ -1790,7 +1790,7 @@ func (a *fullTaskServiceAdapter) ChangeStatus(
 		return taskapp.TaskResult{}, rebuildErr
 	}
 
-	return taskapp.NewSuccessResult(cmd.TaskID, result.Version, nil), nil
+	return taskapp.NewSuccessResult(cmd.TaskID, result.Version), nil
 }
 
 // AssignTask implements httphandler.TaskService.
@@ -1812,7 +1812,7 @@ func (a *fullTaskServiceAdapter) AssignTask(
 		return taskapp.TaskResult{}, rebuildErr
 	}
 
-	return taskapp.NewSuccessResult(cmd.TaskID, result.Version, nil), nil
+	return taskapp.NewSuccessResult(cmd.TaskID, result.Version), nil
 }
 
 // ChangePriority implements httphandler.TaskService.
@@ -1834,7 +1834,7 @@ func (a *fullTaskServiceAdapter) ChangePriority(
 		return taskapp.TaskResult{}, rebuildErr
 	}
 
-	return taskapp.NewSuccessResult(cmd.TaskID, result.Version, nil), nil
+	return taskapp.NewSuccessResult(cmd.TaskID, result.Version), nil
 }
 
 // SetDueDate implements httphandler.TaskService.
@@ -1856,7 +1856,7 @@ func (a *fullTaskServiceAdapter) SetDueDate(
 		return taskapp.TaskResult{}, rebuildErr
 	}
 
-	return taskapp.NewSuccessResult(cmd.TaskID, result.Version, nil), nil
+	return taskapp.NewSuccessResult(cmd.TaskID, result.Version), nil
 }
 
 // DeleteTask implements httphandler.TaskService.
@@ -1886,7 +1886,7 @@ func (a *fullTaskServiceAdapter) AddAttachment(
 		return taskapp.TaskResult{}, rebuildErr
 	}
 
-	return taskapp.NewSuccessResult(cmd.TaskID, result.Version, nil), nil
+	return taskapp.NewSuccessResult(cmd.TaskID, result.Version), nil
 }
 
 // RemoveAttachment implements httphandler.TaskService.
@@ -1907,7 +1907,7 @@ func (a *fullTaskServiceAdapter) RemoveAttachment(
 		return taskapp.TaskResult{}, rebuildErr
 	}
 
-	return taskapp.NewSuccessResult(cmd.TaskID, result.Version, nil), nil
+	return taskapp.NewSuccessResult(cmd.TaskID, result.Version), nil
 }
 
 func (a *fullTaskServiceAdapter) syncTaskProjection(ctx context.Context, chatID uuid.UUID) error {
