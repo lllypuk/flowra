@@ -45,7 +45,7 @@ tests/
 make test-unit
 
 # Specific package
-go test ./internal/usecase/task/
+go test ./internal/application/task/...
 ```
 
 ### 2. Integration Tests
@@ -73,9 +73,6 @@ go test -tags=integration ./tests/integration/...
 ```bash
 # Generate HTML report
 make test-coverage
-
-# Check threshold (80%)
-make test-coverage-check
 
 # View coverage in terminal
 go test -coverprofile=coverage.out ./...
@@ -233,33 +230,34 @@ assert.True(t, condition)
 make test                  # All tests
 make test-unit            # Only unit tests
 make test-integration     # Only integration tests
+make test-e2e             # API E2E tests
+make test-e2e-frontend    # Frontend browser E2E tests
+make test-e2e-frontend-smoke # Focused board+sidebar smoke regression
 make test-coverage        # Generate HTML report
-make test-coverage-check  # Check threshold (80%)
-make test-verbose         # Tests with verbose output
-make test-clean           # Clean cache and coverage files
+make playwright-install   # Install Playwright Chromium
+make lint                 # Format + lint
 ```
 
 ## Environment Variables
 
 ### Integration Tests
 
-- `TEST_DATABASE_URL` - URL of test PostgreSQL database
-  - Example: `postgresql://postgres:postgres123@localhost:5432/test_db?sslmode=disable`
-  - If not set, integration tests will be skipped
+- Docker daemon must be running (testcontainers starts MongoDB replica set automatically)
+- Build tag `integration` is already included by `make test-integration`
 
 ## CI/CD (Future)
 
 When CI is configured, it will automatically run:
 1. Unit tests on every push
-2. Coverage check (minimum 80%)
+2. Coverage report generation
 3. Integration tests on PR
 4. Linting
 
 ## Coverage Goals
 
 ```
-internal/usecase/task/          > 80%
-internal/domain/task/           > 90%
+internal/application/task/      > 80%
+internal/domain/chat/           > 90%
 internal/infrastructure/        > 70%
 ```
 
@@ -268,9 +266,9 @@ internal/infrastructure/        > 70%
 ### Integration tests do not run
 
 Check:
-1. PostgreSQL is running: `docker-compose ps postgres`
-2. `TEST_DATABASE_URL` environment variable is set
-3. Build tag `integration` is specified: `-tags=integration`
+1. Docker daemon is running
+2. Testcontainers can pull/start MongoDB image
+3. Build tag `integration` is specified (or use `make test-integration`)
 
 ### Coverage is low
 

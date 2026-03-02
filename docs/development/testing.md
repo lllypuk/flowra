@@ -673,7 +673,7 @@ jobs:
           REDIS_PORT: 6379
 
       - name: Generate coverage report
-        run: make coverage
+        run: make test-coverage
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
@@ -699,7 +699,7 @@ jobs:
 
 ```makefile
 # Makefile
-.PHONY: test test-unit test-integration test-e2e coverage lint
+.PHONY: test test-unit test-integration test-e2e test-coverage lint
 
 # All tests
 test:

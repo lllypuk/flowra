@@ -107,7 +107,7 @@ make dev
 make dev-lite
 
 # Or directly (API only)
-FLOWRA_DEV_MODE=lite go run cmd/api/main.go
+FLOWRA_DEV_MODE=lite go run ./cmd/api
 ```
 
 ### 6. Verify Setup
@@ -245,16 +245,16 @@ git push origin feature/my-feature
 │   ├── middleware/       # HTTP middleware
 │   └── config/           # Configuration
 │
-├── pkg/                   # Public packages (if any)
-│
 ├── web/                   # Frontend resources
 │   ├── templates/        # HTML templates
 │   ├── static/           # Static assets
 │   └── components/       # HTMX components
 │
 ├── tests/                # Test suites
-│   ├── e2e/             # End-to-end tests
+│   ├── e2e/             # End-to-end tests (API + frontend)
 │   ├── integration/     # Integration tests
+│   ├── load/            # Manual k6 load tests
+│   ├── mocks/           # Reusable mocks/fakes
 │   └── testutil/        # Test utilities
 │
 ├── configs/             # Configuration files
@@ -319,17 +319,20 @@ make test-unit
 # Run E2E tests (requires testcontainers)
 make test-e2e
 
-# Run E2E tests with docker-compose MongoDB
-make test-e2e-docker
+# Run frontend E2E tests (Playwright)
+make test-e2e-frontend
+
+# Run focused board+sidebar smoke regression
+make test-e2e-frontend-smoke
+
+# Run integration tests (requires Docker/testcontainers)
+make test-integration
 
 # Run specific test
 go test -v ./internal/domain/chat/...
 
 # Run with coverage
 make test-coverage
-
-# Check coverage threshold (80%)
-make test-coverage-check
 ```
 
 ### Writing Tests
@@ -703,4 +706,4 @@ Follow the project's interface design principles (see CLAUDE.md):
 
 ---
 
-*Last updated: February 2026*
+*Last updated: March 2026*
