@@ -209,15 +209,31 @@ func (p *ChatProjector) updateReadModel(ctx context.Context, chat *chatdomain.Ch
 	if chat.ID().IsZero() {
 		return errors.New("invalid chat ID")
 	}
+	setDoc, unsetDoc := buildChatReadModelMutation(chat)
 
-	// Convert participants to strings
+	// Upsert the document
+	filter := bson.M{"chat_id": chat.ID().String()}
+	update := bson.M{"$set": setDoc}
+	if len(unsetDoc) > 0 {
+		update["$unset"] = unsetDoc
+	}
+	opts := options.UpdateOne().SetUpsert(true)
+
+	_, err := p.readModelColl.UpdateOne(ctx, filter, update, opts)
+	if err != nil {
+		return fmt.Errorf("failed to upsert read model: %w", err)
+	}
+
+	return nil
+}
+
+func buildChatReadModelMutation(chat *chatdomain.Chat) (bson.M, bson.M) {
 	participantStrs := make([]string, len(chat.Participants()))
 	for i, p := range chat.Participants() {
 		participantStrs[i] = p.UserID().String()
 	}
 
-	// Build read model document
-	doc := bson.M{
+	setDoc := bson.M{
 		"chat_id":      chat.ID().String(),
 		"workspace_id": chat.WorkspaceID().String(),
 		"type":         string(chat.Type()),
@@ -228,35 +244,43 @@ func (p *ChatProjector) updateReadModel(ctx context.Context, chat *chatdomain.Ch
 		"participants": participantStrs,
 	}
 
-	// Add additional fields for typed chats (task/bug/epic)
-	if chat.Type() != chatdomain.TypeDiscussion {
-		doc["status"] = chat.Status()
-		doc["priority"] = chat.Priority()
+	unsetDoc := bson.M{}
 
-		if chat.AssigneeID() != nil {
-			doc["assigned_to"] = chat.AssigneeID().String()
-		}
-
-		if chat.DueDate() != nil {
-			doc["due_date"] = *chat.DueDate()
-		}
-
-		if chat.Type() == chatdomain.TypeBug {
-			doc["severity"] = chat.Severity()
-		}
+	if chat.Type() == chatdomain.TypeDiscussion {
+		unsetDoc["status"] = ""
+		unsetDoc["priority"] = ""
+		unsetDoc["assigned_to"] = ""
+		unsetDoc["due_date"] = ""
+		unsetDoc["severity"] = ""
+		return setDoc, unsetDoc
 	}
 
-	// Upsert the document
-	filter := bson.M{"chat_id": chat.ID().String()}
-	update := bson.M{"$set": doc}
-	opts := options.UpdateOne().SetUpsert(true)
+	setDoc["status"] = chat.Status()
+	setDoc["priority"] = chat.Priority()
 
-	_, err := p.readModelColl.UpdateOne(ctx, filter, update, opts)
-	if err != nil {
-		return fmt.Errorf("failed to upsert read model: %w", err)
+	if assigneeID := chat.AssigneeID(); assigneeID != nil {
+		setDoc["assigned_to"] = assigneeID.String()
+	} else {
+		unsetDoc["assigned_to"] = ""
 	}
 
-	return nil
+	if dueDate := chat.DueDate(); dueDate != nil {
+		setDoc["due_date"] = *dueDate
+	} else {
+		unsetDoc["due_date"] = ""
+	}
+
+	if chat.Type() == chatdomain.TypeBug {
+		if severity := chat.Severity(); severity != "" {
+			setDoc["severity"] = severity
+		} else {
+			unsetDoc["severity"] = ""
+		}
+	} else {
+		unsetDoc["severity"] = ""
+	}
+
+	return setDoc, unsetDoc
 }
 
 // getAllAggregateIDs retrieves all unique chat IDs from the events collection.

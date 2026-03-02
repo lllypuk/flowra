@@ -34,11 +34,11 @@ Assumption: service is not in production yet. We can make breaking changes and r
 
 Assumption: we optimize for a clean implementation, not for compatibility with legacy internals.
 
-- [ ] `P1` PR-08: Force task projection sync for chat-driven typed mutations.
+- [x] `P1` PR-08: Force task projection sync for chat-driven typed mutations.
   - Details: [chat-sot-pr-08-chat-driven-task-projection-sync.md](/home/sasha/Project/flowra/docs/tasks/chat-sot-pr-08-chat-driven-task-projection-sync.md)
 - [x] `P1` PR-09: Unify read-model collection names (`task_read_model` vs `tasks_read_model`).
   - Details: [chat-sot-pr-09-unify-read-model-collection-names.md](/home/sasha/Project/flowra/docs/tasks/chat-sot-pr-09-unify-read-model-collection-names.md)
-- [ ] `P1` PR-10: Fix nullable field cleanup in chat read model (`$unset` for assignee/due date).
+- [x] `P1` PR-10: Fix nullable field cleanup in chat read model (`$unset` for assignee/due date).
   - Details: [chat-sot-pr-10-chat-read-model-nullable-unset.md](/home/sasha/Project/flowra/docs/tasks/chat-sot-pr-10-chat-read-model-nullable-unset.md)
 - [ ] `P1` PR-11: Make dev runtime full-stack by default.
   - Details: [chat-sot-pr-11-dev-runtime-outbox-contract.md](/home/sasha/Project/flowra/docs/tasks/chat-sot-pr-11-dev-runtime-outbox-contract.md)

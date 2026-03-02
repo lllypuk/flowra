@@ -85,6 +85,14 @@ func TestActionService_TaskTagActionsSyncProjection(t *testing.T) {
 				return err
 			},
 		},
+		{
+			name:    "due date clear",
+			wantTag: "#due",
+			executeFn: func(svc *service.ActionService) error {
+				_, err := svc.SetDueDate(context.Background(), chatID, nil, actorID)
+				return err
+			},
+		},
 	}
 
 	for _, tc := range testCases {

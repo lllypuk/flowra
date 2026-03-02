@@ -174,7 +174,7 @@ func (s *ActionService) SetDueDate(
 	var tagContent string
 	var formattedDate string
 	if dueDate == nil {
-		tagContent = "#due none"
+		tagContent = "#due"
 		formattedDate = ""
 	} else {
 		tagContent = fmt.Sprintf("#due %s", dueDate.Format("2006-01-02"))
