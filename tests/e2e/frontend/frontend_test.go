@@ -19,7 +19,7 @@ const (
 	baseURL          = "http://localhost:8080"
 	defaultTimeout   = 30 * time.Second
 	keycloakUser     = "testuser"
-	keycloakPassword = "password"
+	keycloakPassword = "test123"
 	defaultHeadless  = true
 	slowMo           = 0 // Set to 100 for debugging
 )
@@ -32,14 +32,14 @@ var (
 func TestMain(m *testing.M) {
 	// Check if server is available
 	serverAvailable = checkServerAvailable()
-	
+
 	if !serverAvailable {
 		fmt.Println("WARNING: Server is not available at", baseURL)
 		fmt.Println("Frontend E2E tests require a running server.")
 		fmt.Println("Start the server with: make dev")
 		fmt.Println("Or with docker: docker-compose up")
 	}
-	
+
 	os.Exit(m.Run())
 }
 
@@ -48,13 +48,13 @@ func checkServerAvailable() bool {
 	client := &http.Client{
 		Timeout: 2 * time.Second,
 	}
-	
+
 	resp, err := client.Get(baseURL + "/health")
 	if err != nil {
 		return false
 	}
 	defer resp.Body.Close()
-	
+
 	return resp.StatusCode == http.StatusOK
 }
 

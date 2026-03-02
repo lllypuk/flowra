@@ -15,6 +15,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/tag"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 	httphandler "github.com/lllypuk/flowra/internal/handler/http"
+	mongodbinfra "github.com/lllypuk/flowra/internal/infrastructure/mongodb"
 	"github.com/lllypuk/flowra/internal/infrastructure/repository/mongodb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,7 +39,7 @@ func newRealE2EMessageService(t *testing.T, suite *E2ETestSuite) httphandler.Mes
 	require.NoError(t, err)
 
 	chatReadRepo := mongodb.NewMongoChatReadModelRepository(
-		suite.MongoDB.Collection("chats_read_model"),
+		suite.MongoDB.Collection(mongodbinfra.CollectionChatReadModel),
 		suite.EventStore,
 	)
 

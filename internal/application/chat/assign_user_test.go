@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/lllypuk/flowra/internal/application/chat"
+	"github.com/lllypuk/flowra/tests/mocks"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -14,6 +15,7 @@ import (
 // TestAssignUserUseCase_Success_AssignUser tests assigning a user
 func TestAssignUserUseCase_Success_AssignUser(t *testing.T) {
 	chatRepo := newTestChatRepo()
+	userRepo := mocks.NewMockUserRepository()
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
@@ -27,7 +29,8 @@ func TestAssignUserUseCase_Success_AssignUser(t *testing.T) {
 	)
 
 	assigneeID := generateUUID(t)
-	assignUseCase := chat.NewAssignUserUseCase(chatRepo)
+	userRepo.AddUser(assigneeID, "alice", "Alice")
+	assignUseCase := chat.NewAssignUserUseCase(chatRepo, userRepo)
 	assignCmd := chat.AssignUserCommand{
 		ChatID:     createdChat.ID(),
 		AssigneeID: &assigneeID,
@@ -43,6 +46,7 @@ func TestAssignUserUseCase_Success_AssignUser(t *testing.T) {
 // TestAssignUserUseCase_Success_UnassignUser tests removing assignment
 func TestAssignUserUseCase_Success_UnassignUser(t *testing.T) {
 	chatRepo := newTestChatRepo()
+	userRepo := mocks.NewMockUserRepository()
 	creatorID := generateUUID(t)
 	workspaceID := generateUUID(t)
 
@@ -57,7 +61,8 @@ func TestAssignUserUseCase_Success_UnassignUser(t *testing.T) {
 
 	// First assign
 	assigneeID := generateUUID(t)
-	assignUseCase := chat.NewAssignUserUseCase(chatRepo)
+	userRepo.AddUser(assigneeID, "alice", "Alice")
+	assignUseCase := chat.NewAssignUserUseCase(chatRepo, userRepo)
 	assignCmd := chat.AssignUserCommand{
 		ChatID:     createdChat.ID(),
 		AssigneeID: &assigneeID,
@@ -81,7 +86,8 @@ func TestAssignUserUseCase_Success_UnassignUser(t *testing.T) {
 // TestAssignUserUseCase_ValidationError_InvalidChatID tests validation error
 func TestAssignUserUseCase_ValidationError_InvalidChatID(t *testing.T) {
 	chatRepo := newTestChatRepo()
-	assignUseCase := chat.NewAssignUserUseCase(chatRepo)
+	userRepo := mocks.NewMockUserRepository()
+	assignUseCase := chat.NewAssignUserUseCase(chatRepo, userRepo)
 
 	assigneeID := generateUUID(t)
 	assignCmd := chat.AssignUserCommand{
@@ -98,9 +104,11 @@ func TestAssignUserUseCase_ValidationError_InvalidChatID(t *testing.T) {
 // TestAssignUserUseCase_Error_ChatNotFound tests error when chat not found
 func TestAssignUserUseCase_Error_ChatNotFound(t *testing.T) {
 	chatRepo := newTestChatRepo()
-	assignUseCase := chat.NewAssignUserUseCase(chatRepo)
+	userRepo := mocks.NewMockUserRepository()
+	assignUseCase := chat.NewAssignUserUseCase(chatRepo, userRepo)
 
 	assigneeID := generateUUID(t)
+	userRepo.AddUser(assigneeID, "alice", "Alice")
 	assignCmd := chat.AssignUserCommand{
 		ChatID:     generateUUID(t),
 		AssigneeID: &assigneeID,
@@ -110,4 +118,62 @@ func TestAssignUserUseCase_Error_ChatNotFound(t *testing.T) {
 
 	executeAndAssertError(t, err)
 	assert.Nil(t, result.Value)
+}
+
+func TestAssignUserUseCase_Error_AssigneeNotFound(t *testing.T) {
+	chatRepo := newTestChatRepo()
+	creatorID := generateUUID(t)
+	workspaceID := generateUUID(t)
+
+	createdChat := createTestChatWithRepo(
+		t,
+		chatRepo,
+		domainChat.TypeTask,
+		"Test Task",
+		workspaceID,
+		creatorID,
+	)
+
+	userRepo := mocks.NewMockUserRepository()
+	assignUseCase := chat.NewAssignUserUseCase(chatRepo, userRepo)
+	assigneeID := generateUUID(t)
+
+	result, err := assignUseCase.Execute(testContext(), chat.AssignUserCommand{
+		ChatID:     createdChat.ID(),
+		AssigneeID: &assigneeID,
+		AssignedBy: creatorID,
+	})
+
+	require.ErrorIs(t, err, chat.ErrAssigneeNotFound)
+	assert.Nil(t, result.Value)
+}
+
+func TestAssignUserUseCase_Success_AssignUser_WithExistingAssignee(t *testing.T) {
+	chatRepo := newTestChatRepo()
+	creatorID := generateUUID(t)
+	workspaceID := generateUUID(t)
+
+	createdChat := createTestChatWithRepo(
+		t,
+		chatRepo,
+		domainChat.TypeTask,
+		"Test Task",
+		workspaceID,
+		creatorID,
+	)
+
+	userRepo := mocks.NewMockUserRepository()
+	assigneeID := generateUUID(t)
+	userRepo.AddUser(assigneeID, "alice", "Alice")
+
+	assignUseCase := chat.NewAssignUserUseCase(chatRepo, userRepo)
+	result, err := assignUseCase.Execute(testContext(), chat.AssignUserCommand{
+		ChatID:     createdChat.ID(),
+		AssigneeID: &assigneeID,
+		AssignedBy: creatorID,
+	})
+
+	executeAndAssertSuccess(t, err)
+	require.NotNil(t, result.Value.AssigneeID())
+	assert.Equal(t, assigneeID, *result.Value.AssigneeID())
 }

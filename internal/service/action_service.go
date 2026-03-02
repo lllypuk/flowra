@@ -12,23 +12,50 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
+// ActionMessageSender defines command execution required by ActionService.
+type ActionMessageSender interface {
+	Execute(ctx context.Context, cmd messageapp.SendMessageCommand) (messageapp.Result, error)
+}
+
+// TaskProjectionSync defines projection synchronization required by ActionService.
+type TaskProjectionSync interface {
+	RebuildOne(ctx context.Context, chatID uuid.UUID) error
+}
+
+// ActionServiceOption customizes ActionService behavior.
+type ActionServiceOption func(*ActionService)
+
+// WithTaskProjectionSync configures synchronous task read-model rebuild after task-related actions.
+func WithTaskProjectionSync(sync TaskProjectionSync) ActionServiceOption {
+	return func(s *ActionService) {
+		s.taskProjectionSync = sync
+	}
+}
+
 // ActionService converts UI actions to chat messages with human-readable content
 type ActionService struct {
-	sendMessageUC *messageapp.SendMessageUseCase
-	userRepo      appcore.UserRepository
-	batcher       *ChangeBatcher
-	logger        *slog.Logger
+	sendMessageUC      ActionMessageSender
+	userRepo           appcore.UserRepository
+	taskProjectionSync TaskProjectionSync
+	batcher            *ChangeBatcher
+	logger             *slog.Logger
 }
 
 // NewActionService creates a new ActionService
 func NewActionService(
-	sendMessageUC *messageapp.SendMessageUseCase,
+	sendMessageUC ActionMessageSender,
 	userRepo appcore.UserRepository,
+	opts ...ActionServiceOption,
 ) *ActionService {
 	svc := &ActionService{
 		sendMessageUC: sendMessageUC,
 		userRepo:      userRepo,
 		logger:        slog.Default(),
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(svc)
+		}
 	}
 
 	// Initialize batcher with flush function and logger
@@ -57,28 +84,15 @@ func (s *ActionService) ChangeStatus(
 	newStatus string,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
-	// Execute the actual domain change via tag command
-	tagContent := fmt.Sprintf("#status %s", newStatus)
-	cmd := messageapp.SendMessageCommand{
-		ChatID:   chatID,
-		AuthorID: actorID,
-		Content:  tagContent,
-		Type:     message.TypeSystem,
-		ActorID:  &actorID,
-	}
-
-	if _, err := s.sendMessageUC.Execute(ctx, cmd); err != nil {
-		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
-	}
-
-	// Add human-readable message to batch
-	actorName := s.getActorDisplayName(ctx, actorID)
-	err := s.batcher.AddChange(ctx, actorID, chatID, actorName, ChangeTypeStatus, newStatus)
-	if err != nil {
-		s.logger.WarnContext(ctx, "failed to batch status change message", "error", err)
-	}
-
-	return &appcore.ActionResult{Success: true}, nil
+	return s.executeTaskTagAction(
+		ctx,
+		chatID,
+		actorID,
+		fmt.Sprintf("#status %s", newStatus),
+		ChangeTypeStatus,
+		newStatus,
+		"failed to batch status change message",
+	)
 }
 
 // AssignUser executes assignee change via tag command and batches the human-readable message
@@ -117,6 +131,9 @@ func (s *ActionService) AssignUser(
 	if _, err := s.sendMessageUC.Execute(ctx, cmd); err != nil {
 		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
 	}
+	if err := s.syncTaskProjection(ctx, chatID); err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	}
 
 	// Add human-readable message to batch
 	actorName := s.getActorDisplayName(ctx, actorID)
@@ -135,28 +152,15 @@ func (s *ActionService) SetPriority(
 	priority string,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
-	// Execute the actual domain change via tag command
-	tagContent := fmt.Sprintf("#priority %s", priority)
-	cmd := messageapp.SendMessageCommand{
-		ChatID:   chatID,
-		AuthorID: actorID,
-		Content:  tagContent,
-		Type:     message.TypeSystem,
-		ActorID:  &actorID,
-	}
-
-	if _, err := s.sendMessageUC.Execute(ctx, cmd); err != nil {
-		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
-	}
-
-	// Add human-readable message to batch
-	actorName := s.getActorDisplayName(ctx, actorID)
-	err := s.batcher.AddChange(ctx, actorID, chatID, actorName, ChangeTypePriority, priority)
-	if err != nil {
-		s.logger.WarnContext(ctx, "failed to batch priority change message", "error", err)
-	}
-
-	return &appcore.ActionResult{Success: true}, nil
+	return s.executeTaskTagAction(
+		ctx,
+		chatID,
+		actorID,
+		fmt.Sprintf("#priority %s", priority),
+		ChangeTypePriority,
+		priority,
+		"failed to batch priority change message",
+	)
 }
 
 // SetDueDate executes due date change via tag command and batches the human-readable message
@@ -170,7 +174,7 @@ func (s *ActionService) SetDueDate(
 	var tagContent string
 	var formattedDate string
 	if dueDate == nil {
-		tagContent = "#due none"
+		tagContent = "#due"
 		formattedDate = ""
 	} else {
 		tagContent = fmt.Sprintf("#due %s", dueDate.Format("2006-01-02"))
@@ -186,6 +190,9 @@ func (s *ActionService) SetDueDate(
 	}
 
 	if _, err := s.sendMessageUC.Execute(ctx, cmd); err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	}
+	if err := s.syncTaskProjection(ctx, chatID); err != nil {
 		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
 	}
 
@@ -272,6 +279,13 @@ func (s *ActionService) Close(
 	chatID uuid.UUID,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
+	if err := s.executeTagCommand(ctx, chatID, actorID, "#close"); err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	}
+	if err := s.syncTaskProjection(ctx, chatID); err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	}
+
 	actorName := s.getActorDisplayName(ctx, actorID)
 	var content string
 	if actorName != "" {
@@ -288,6 +302,13 @@ func (s *ActionService) Reopen(
 	chatID uuid.UUID,
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
+	if err := s.executeTagCommand(ctx, chatID, actorID, "#reopen"); err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	}
+	if err := s.syncTaskProjection(ctx, chatID); err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	}
+
 	actorName := s.getActorDisplayName(ctx, actorID)
 	var content string
 	if actorName != "" {
@@ -343,6 +364,52 @@ func (s *ActionService) executeAction(
 	}, nil
 }
 
+// executeTagCommand sends a system message with an executable tag command.
+func (s *ActionService) executeTagCommand(
+	ctx context.Context,
+	chatID uuid.UUID,
+	actorID uuid.UUID,
+	tagCommand string,
+) error {
+	cmd := messageapp.SendMessageCommand{
+		ChatID:   chatID,
+		AuthorID: actorID,
+		Content:  tagCommand,
+		Type:     message.TypeSystem,
+		ActorID:  &actorID,
+	}
+
+	_, err := s.sendMessageUC.Execute(ctx, cmd)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *ActionService) executeTaskTagAction(
+	ctx context.Context,
+	chatID uuid.UUID,
+	actorID uuid.UUID,
+	tagContent string,
+	changeType ChangeType,
+	changeValue string,
+	warnMsg string,
+) (*appcore.ActionResult, error) {
+	if err := s.executeTagCommand(ctx, chatID, actorID, tagContent); err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	}
+	if err := s.syncTaskProjection(ctx, chatID); err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	}
+
+	actorName := s.getActorDisplayName(ctx, actorID)
+	if err := s.batcher.AddChange(ctx, actorID, chatID, actorName, changeType, changeValue); err != nil {
+		s.logger.WarnContext(ctx, warnMsg, "error", err)
+	}
+
+	return &appcore.ActionResult{Success: true}, nil
+}
+
 // flushBatchMessage is called by the batcher to send a combined message
 func (s *ActionService) flushBatchMessage(
 	ctx context.Context,
@@ -359,4 +426,18 @@ func (s *ActionService) Shutdown() {
 	if s.batcher != nil {
 		s.batcher.Close()
 	}
+}
+
+func (s *ActionService) syncTaskProjection(ctx context.Context, chatID uuid.UUID) error {
+	if s.taskProjectionSync == nil {
+		return nil
+	}
+	if err := s.taskProjectionSync.RebuildOne(ctx, chatID); err != nil {
+		s.logger.ErrorContext(ctx, "failed to sync task projection after chat action",
+			slog.String("chat_id", chatID.String()),
+			slog.String("error", err.Error()),
+		)
+		return fmt.Errorf("failed to sync task projection: %w", err)
+	}
+	return nil
 }

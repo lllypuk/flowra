@@ -11,11 +11,11 @@ Flowra provides a RESTful API for managing workspaces, chats, messages, tasks, a
 ### 1. Start the Development Environment
 
 ```bash
-# Start infrastructure services
-docker-compose up -d mongodb redis keycloak
+# Recommended full local runtime (infra + worker + API)
+make dev
 
-# Start the API server
-go run cmd/api/main.go
+# Optional API-only mode
+# make dev-lite
 ```
 
 ### 2. Authenticate

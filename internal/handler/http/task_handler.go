@@ -131,14 +131,25 @@ type TaskService interface {
 
 // TaskHandler handles task-related HTTP requests.
 type TaskHandler struct {
-	taskService TaskService
+	taskService   TaskService
+	actionService TaskActionService
 }
 
 // NewTaskHandler creates a new TaskHandler.
-func NewTaskHandler(taskService TaskService) *TaskHandler {
-	return &TaskHandler{
-		taskService: taskService,
+func NewTaskHandler(taskService TaskService, actionServices ...TaskActionService) *TaskHandler {
+	var actionService TaskActionService
+	if len(actionServices) > 0 {
+		actionService = actionServices[0]
 	}
+
+	return &TaskHandler{
+		taskService:   taskService,
+		actionService: actionService,
+	}
+}
+
+func (h *TaskHandler) ensureActionService() bool {
+	return h.actionService != nil
 }
 
 // RegisterRoutes registers task routes with the router.
@@ -329,30 +340,44 @@ func (h *TaskHandler) ChangeStatus(c echo.Context) error {
 			c, http.StatusBadRequest, "INVALID_STATUS", statusErr.Error())
 	}
 
-	cmd := taskapp.ChangeStatusCommand{
-		TaskID:    taskID,
-		NewStatus: status,
-		ChangedBy: userID,
-	}
-
-	result, err := h.taskService.ChangeStatus(c.Request().Context(), cmd)
-	if err != nil {
-		return httpserver.RespondError(c, err)
-	}
-
-	// Get updated task
-	taskModel, getErr := h.taskService.GetTask(c.Request().Context(), result.TaskID)
+	taskModel, getErr := h.taskService.GetTask(c.Request().Context(), taskID)
 	if getErr != nil {
-		// Return minimal response if get fails
+		return httpserver.RespondError(c, getErr)
+	}
+
+	// Idempotent no-op: requested status already set.
+	if taskModel.Status == status {
+		return httpserver.RespondOK(c, ToTaskResponseFromReadModel(taskModel))
+	}
+
+	if !h.ensureActionService() {
+		return httpserver.RespondErrorWithCode(
+			c,
+			http.StatusServiceUnavailable,
+			"SERVICE_UNAVAILABLE",
+			"task action service is not configured",
+		)
+	}
+
+	if _, actionErr := h.actionService.ChangeStatus(
+		c.Request().Context(),
+		taskModel.ChatID,
+		string(status),
+		userID,
+	); actionErr != nil {
+		return httpserver.RespondError(c, actionErr)
+	}
+
+	// Best-effort read-back: action pipeline is asynchronous.
+	updatedTask, updatedErr := h.taskService.GetTask(c.Request().Context(), taskID)
+	if updatedErr != nil {
 		return httpserver.RespondOK(c, map[string]any{
-			"id":      result.TaskID.String(),
-			"version": result.Version,
-			"message": "status updated successfully",
+			"id":      taskID.String(),
+			"message": "status update queued",
 		})
 	}
 
-	resp := ToTaskResponseFromReadModel(taskModel)
-	return httpserver.RespondOK(c, resp)
+	return httpserver.RespondOK(c, ToTaskResponseFromReadModel(updatedTask))
 }
 
 // Assign handles PUT /api/v1/tasks/:id/assign.
@@ -386,29 +411,43 @@ func (h *TaskHandler) Assign(c echo.Context) error {
 		assigneeID = &parsed
 	}
 
-	cmd := taskapp.AssignTaskCommand{
-		TaskID:     taskID,
-		AssigneeID: assigneeID,
-		AssignedBy: userID,
-	}
-
-	result, err := h.taskService.AssignTask(c.Request().Context(), cmd)
-	if err != nil {
-		return httpserver.RespondError(c, err)
-	}
-
-	// Get updated task
-	taskModel, getErr := h.taskService.GetTask(c.Request().Context(), result.TaskID)
+	taskModel, getErr := h.taskService.GetTask(c.Request().Context(), taskID)
 	if getErr != nil {
+		return httpserver.RespondError(c, getErr)
+	}
+
+	// Idempotent no-op: requested assignee already set.
+	if sameUUIDPtr(taskModel.AssignedTo, assigneeID) {
+		return httpserver.RespondOK(c, ToTaskResponseFromReadModel(taskModel))
+	}
+
+	if !h.ensureActionService() {
+		return httpserver.RespondErrorWithCode(
+			c,
+			http.StatusServiceUnavailable,
+			"SERVICE_UNAVAILABLE",
+			"task action service is not configured",
+		)
+	}
+
+	if _, actionErr := h.actionService.AssignUser(
+		c.Request().Context(),
+		taskModel.ChatID,
+		assigneeID,
+		userID,
+	); actionErr != nil {
+		return httpserver.RespondError(c, actionErr)
+	}
+
+	updatedTask, updatedErr := h.taskService.GetTask(c.Request().Context(), taskID)
+	if updatedErr != nil {
 		return httpserver.RespondOK(c, map[string]any{
-			"id":      result.TaskID.String(),
-			"version": result.Version,
-			"message": "assignee updated successfully",
+			"id":      taskID.String(),
+			"message": "assignee update queued",
 		})
 	}
 
-	resp := ToTaskResponseFromReadModel(taskModel)
-	return httpserver.RespondOK(c, resp)
+	return httpserver.RespondOK(c, ToTaskResponseFromReadModel(updatedTask))
 }
 
 // ChangePriority handles PUT /api/v1/tasks/:id/priority.
@@ -438,29 +477,43 @@ func (h *TaskHandler) ChangePriority(c echo.Context) error {
 			c, http.StatusBadRequest, "INVALID_PRIORITY", "priority must be Low, Medium, High, or Critical")
 	}
 
-	cmd := taskapp.ChangePriorityCommand{
-		TaskID:    taskID,
-		Priority:  priority,
-		ChangedBy: userID,
-	}
-
-	result, err := h.taskService.ChangePriority(c.Request().Context(), cmd)
-	if err != nil {
-		return httpserver.RespondError(c, err)
-	}
-
-	// Get updated task
-	taskModel, getErr := h.taskService.GetTask(c.Request().Context(), result.TaskID)
+	taskModel, getErr := h.taskService.GetTask(c.Request().Context(), taskID)
 	if getErr != nil {
+		return httpserver.RespondError(c, getErr)
+	}
+
+	// Idempotent no-op: requested priority already set.
+	if taskModel.Priority == priority {
+		return httpserver.RespondOK(c, ToTaskResponseFromReadModel(taskModel))
+	}
+
+	if !h.ensureActionService() {
+		return httpserver.RespondErrorWithCode(
+			c,
+			http.StatusServiceUnavailable,
+			"SERVICE_UNAVAILABLE",
+			"task action service is not configured",
+		)
+	}
+
+	if _, actionErr := h.actionService.SetPriority(
+		c.Request().Context(),
+		taskModel.ChatID,
+		string(priority),
+		userID,
+	); actionErr != nil {
+		return httpserver.RespondError(c, actionErr)
+	}
+
+	updatedTask, updatedErr := h.taskService.GetTask(c.Request().Context(), taskID)
+	if updatedErr != nil {
 		return httpserver.RespondOK(c, map[string]any{
-			"id":      result.TaskID.String(),
-			"version": result.Version,
-			"message": "priority updated successfully",
+			"id":      taskID.String(),
+			"message": "priority update queued",
 		})
 	}
 
-	resp := ToTaskResponseFromReadModel(taskModel)
-	return httpserver.RespondOK(c, resp)
+	return httpserver.RespondOK(c, ToTaskResponseFromReadModel(updatedTask))
 }
 
 // SetDueDate handles PUT /api/v1/tasks/:id/due-date.
@@ -494,29 +547,43 @@ func (h *TaskHandler) SetDueDate(c echo.Context) error {
 		dueDate = &parsed
 	}
 
-	cmd := taskapp.SetDueDateCommand{
-		TaskID:    taskID,
-		DueDate:   dueDate,
-		ChangedBy: userID,
-	}
-
-	result, err := h.taskService.SetDueDate(c.Request().Context(), cmd)
-	if err != nil {
-		return httpserver.RespondError(c, err)
-	}
-
-	// Get updated task
-	taskModel, getErr := h.taskService.GetTask(c.Request().Context(), result.TaskID)
+	taskModel, getErr := h.taskService.GetTask(c.Request().Context(), taskID)
 	if getErr != nil {
+		return httpserver.RespondError(c, getErr)
+	}
+
+	// Idempotent no-op: requested due date already set.
+	if sameDate(taskModel.DueDate, dueDate) {
+		return httpserver.RespondOK(c, ToTaskResponseFromReadModel(taskModel))
+	}
+
+	if !h.ensureActionService() {
+		return httpserver.RespondErrorWithCode(
+			c,
+			http.StatusServiceUnavailable,
+			"SERVICE_UNAVAILABLE",
+			"task action service is not configured",
+		)
+	}
+
+	if _, actionErr := h.actionService.SetDueDate(
+		c.Request().Context(),
+		taskModel.ChatID,
+		dueDate,
+		userID,
+	); actionErr != nil {
+		return httpserver.RespondError(c, actionErr)
+	}
+
+	updatedTask, updatedErr := h.taskService.GetTask(c.Request().Context(), taskID)
+	if updatedErr != nil {
 		return httpserver.RespondOK(c, map[string]any{
-			"id":      result.TaskID.String(),
-			"version": result.Version,
-			"message": "due date updated successfully",
+			"id":      taskID.String(),
+			"message": "due date update queued",
 		})
 	}
 
-	resp := ToTaskResponseFromReadModel(taskModel)
-	return httpserver.RespondOK(c, resp)
+	return httpserver.RespondOK(c, ToTaskResponseFromReadModel(updatedTask))
 }
 
 // Delete handles DELETE /api/v1/tasks/:id.
@@ -770,6 +837,27 @@ func parseTaskPagination(c echo.Context, defaultLimit int) (int, int) {
 	return limit, offset
 }
 
+func sameUUIDPtr(a, b *uuid.UUID) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return *a == *b
+}
+
+// sameDate compares due dates by calendar day (YYYY-MM-DD).
+func sameDate(a, b *time.Time) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.Format("2006-01-02") == b.Format("2006-01-02")
+}
+
 // ToTaskResponseFromReadModel converts a ReadModel to TaskResponse.
 func ToTaskResponseFromReadModel(rm *taskapp.ReadModel) TaskResponse {
 	resp := TaskResponse{
@@ -873,7 +961,7 @@ func (m *MockTaskService) CreateTask(
 
 	m.tasks[taskID] = rm
 
-	return taskapp.NewSuccessResult(taskID, 1, nil), nil
+	return taskapp.NewSuccessResult(taskID, 1), nil
 }
 
 // GetTask gets a task from the mock service.
@@ -952,7 +1040,7 @@ func (m *MockTaskService) ChangeStatus(
 	t.Status = cmd.NewStatus
 	t.Version++
 
-	return taskapp.NewSuccessResult(cmd.TaskID, t.Version, nil), nil
+	return taskapp.NewSuccessResult(cmd.TaskID, t.Version), nil
 }
 
 // AssignTask assigns a task in the mock service.
@@ -968,7 +1056,7 @@ func (m *MockTaskService) AssignTask(
 	t.AssignedTo = cmd.AssigneeID
 	t.Version++
 
-	return taskapp.NewSuccessResult(cmd.TaskID, t.Version, nil), nil
+	return taskapp.NewSuccessResult(cmd.TaskID, t.Version), nil
 }
 
 // ChangePriority changes task priority in the mock service.
@@ -984,7 +1072,7 @@ func (m *MockTaskService) ChangePriority(
 	t.Priority = cmd.Priority
 	t.Version++
 
-	return taskapp.NewSuccessResult(cmd.TaskID, t.Version, nil), nil
+	return taskapp.NewSuccessResult(cmd.TaskID, t.Version), nil
 }
 
 // SetDueDate sets task due date in the mock service.
@@ -1000,7 +1088,7 @@ func (m *MockTaskService) SetDueDate(
 	t.DueDate = cmd.DueDate
 	t.Version++
 
-	return taskapp.NewSuccessResult(cmd.TaskID, t.Version, nil), nil
+	return taskapp.NewSuccessResult(cmd.TaskID, t.Version), nil
 }
 
 // DeleteTask deletes a task from the mock service.
@@ -1023,7 +1111,7 @@ func (m *MockTaskService) AddAttachment(
 		return taskapp.TaskResult{}, taskapp.ErrTaskNotFound
 	}
 	t.Version++
-	return taskapp.NewSuccessResult(cmd.TaskID, t.Version, nil), nil
+	return taskapp.NewSuccessResult(cmd.TaskID, t.Version), nil
 }
 
 // RemoveAttachment removes an attachment in the mock service.
@@ -1036,5 +1124,5 @@ func (m *MockTaskService) RemoveAttachment(
 		return taskapp.TaskResult{}, taskapp.ErrTaskNotFound
 	}
 	t.Version++
-	return taskapp.NewSuccessResult(cmd.TaskID, t.Version, nil), nil
+	return taskapp.NewSuccessResult(cmd.TaskID, t.Version), nil
 }

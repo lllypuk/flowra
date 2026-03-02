@@ -17,22 +17,30 @@ This is a **Chat System with Task Management** built in Go. It's a comprehensive
 
 ### Environment Setup
 ```bash
-# Start infrastructure services
-docker-compose up -d mongodb redis keycloak
+# Install/update dependencies
+make deps
 
-# Start the main application
-go run cmd/api/main.go
+# Recommended default local runtime (infra + worker + API)
+make dev
+
+# Optional API-only runtime (limited, no worker)
+make dev-lite
 ```
 
 ### Code Quality
 ```bash
-# Run linting with comprehensive Go linting rules
-golangci-lint run
+# Run formatting + lint autofix
+make lint
 
-# Run tests
-go test ./...
-go test ./tests/integration -tags=integration
-go test ./tests/e2e -tags=e2e
+# Run the full test suite
+make test
+
+# Focused suites
+make test-unit
+make test-integration
+make test-e2e
+make test-e2e-frontend
+make test-e2e-frontend-smoke
 ```
 
 ### Build and Development
@@ -40,8 +48,14 @@ go test ./tests/e2e -tags=e2e
 # Build application
 make build
 
-# Development mode (starts infrastructure + API server)
+# Development mode (starts infrastructure + worker + API)
 make dev
+
+# API-only development mode (explicit opt-in)
+make dev-lite
+
+# Reset local/dev data when switching Chat=SoT branches
+make reset-data
 ```
 
 ### Local Testing and Development
@@ -51,12 +65,12 @@ make dev
 # Quick start (recommended)
 make dev
 
-# Manual start
-docker-compose up -d  # Start infrastructure
-go run cmd/api/main.go  # Start API server
+# Manual split mode
+make docker-up                          # Start infrastructure
+FLOWRA_DEV_MODE=lite go run ./cmd/api  # Start API only
 
 # Alternative: build and run
-go build -o /tmp/flowra-api cmd/api/*.go
+go build -o /tmp/flowra-api ./cmd/api
 /tmp/flowra-api
 ```
 
@@ -121,7 +135,7 @@ internal/                     # Internal application code (296 files)
 ├── domain/                  # Business logic and models (48 files)
 │   ├── chat/               # Chat aggregate
 │   ├── message/            # Message aggregate
-│   ├── task/               # Task aggregate
+│   ├── task/               # Shared task entity state/event contracts (query-side support)
 │   ├── user/               # User aggregate
 │   ├── workspace/          # Workspace aggregate
 │   ├── notification/       # Notification aggregate
@@ -250,6 +264,30 @@ The tag system (`internal/domain/tag/`) processes commands in messages:
 
 UI actions (sidebar status/priority/assignee changes) go through `ActionService` which creates human-readable system messages like "John changed status to In Progress".
 
+### Chat = SoT Contributor Checklist
+
+For typed entities (`task`, `bug`, `epic`), architecture is locked to `Chat = source of truth` (see `docs/architecture/adr-007-chat-sot.md`).
+
+Before merging changes that touch write logic:
+- Do not add new write handlers or commands under `internal/application/task`.
+- Do not emit new `task.*` events.
+- Ensure typed entity business writes emit `chat.*` events only.
+- Keep compatibility adapters on read/query side only, not on write side.
+- Keep assignee writes validated against real users (`NewAssignUserUseCase` requires `UserRepository`).
+- Do not re-introduce `TaskResult.Events`; task side effects are logged/handled centrally in services.
+
+### Read Model Collection Naming
+
+Current Chat=SoT read-model collections are:
+- `chats_read_model`
+- `tasks_read_model`
+
+Legacy collections (`chat_read_model`, `task_read_model`) are no longer authoritative. API/worker startup can warn if they still contain data. For local/dev cleanup, run:
+
+```bash
+make reset-data
+```
+
 ### HTMX v2 WebSocket API
 
 HTMX v2 stores the WebSocket connection differently from v1. When accessing the socket programmatically:
@@ -295,6 +333,14 @@ document.body.addEventListener("chat.message.posted", function (evt) {
     // ...
 });
 ```
+
+### HTMX WebSocket Close Safety
+
+`web/static/js/app.js` patches `htmx-ext-ws` close behavior at runtime in `htmx:wsOpen` to avoid errors when navigating away before the WS socket is fully initialized. Keep this guard when updating HTMX/WebSocket logic.
+
+### First Message Empty State
+
+`web/templates/chat/view.html` removes `.messages-empty` before appending the first realtime message. Keep this behavior to avoid stale "empty chat" placeholders after `chat.message.posted`.
 
 ### Echo Handler Struct Tags
 
@@ -409,8 +455,9 @@ The landing page (`web/templates/home.html`) uses Google Fonts (Playfair Display
 - Unit tests for all business logic
 - Integration tests with MongoDB (testcontainers)
 - E2E tests for user workflows
+- Frontend Playwright smoke/e2e coverage for board + sidebar flows
 - Load testing for performance validation
-- Test database uses in-memory MongoDB (testcontainers)
+- Test database uses containerized MongoDB replica set via testcontainers
 
 ### Test Commands
 ```bash
@@ -418,8 +465,9 @@ make test               # Run all tests
 make test-unit          # Run unit tests only
 make test-integration   # Run integration tests
 make test-e2e           # Run E2E tests
+make test-e2e-frontend  # Run frontend browser E2E tests
+make test-e2e-frontend-smoke # Run targeted board+sidebar smoke regression
 make test-coverage      # Generate coverage report
-make test-coverage-check # Check 80% threshold
 ```
 
 **Note**: All tests automatically create MongoDB indexes during test database setup.

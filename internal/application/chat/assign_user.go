@@ -6,17 +6,24 @@ import (
 
 	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/chat"
+	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
 // AssignUserUseCase handles assigning a user to a chat
 type AssignUserUseCase struct {
 	chatRepo CommandRepository
+	userRepo appcore.UserRepository
 }
 
 // NewAssignUserUseCase creates a new AssignUserUseCase
-func NewAssignUserUseCase(chatRepo CommandRepository) *AssignUserUseCase {
+func NewAssignUserUseCase(chatRepo CommandRepository, userRepo appcore.UserRepository) *AssignUserUseCase {
+	if userRepo == nil {
+		panic("userRepo is required")
+	}
+
 	return &AssignUserUseCase{
 		chatRepo: chatRepo,
+		userRepo: userRepo,
 	}
 }
 
@@ -24,6 +31,9 @@ func NewAssignUserUseCase(chatRepo CommandRepository) *AssignUserUseCase {
 func (uc *AssignUserUseCase) Execute(ctx context.Context, cmd AssignUserCommand) (Result, error) {
 	if err := uc.validate(cmd); err != nil {
 		return Result{}, fmt.Errorf("validation failed: %w", err)
+	}
+	if validationErr := uc.validateAssigneeExists(ctx, cmd.AssigneeID); validationErr != nil {
+		return Result{}, validationErr
 	}
 
 	chatAggregate, err := uc.chatRepo.Load(ctx, cmd.ChatID)
@@ -59,6 +69,21 @@ func (uc *AssignUserUseCase) validate(cmd AssignUserCommand) error {
 	}
 	if err := appcore.ValidateUUID("assignedBy", cmd.AssignedBy); err != nil {
 		return err
+	}
+	return nil
+}
+
+func (uc *AssignUserUseCase) validateAssigneeExists(ctx context.Context, assigneeID *uuid.UUID) error {
+	if assigneeID == nil {
+		return nil
+	}
+
+	exists, err := uc.userRepo.Exists(ctx, *assigneeID)
+	if err != nil {
+		return fmt.Errorf("failed to validate assignee existence: %w", err)
+	}
+	if !exists {
+		return ErrAssigneeNotFound
 	}
 	return nil
 }

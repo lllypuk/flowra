@@ -53,6 +53,10 @@ func taskURL(workspaceID, taskID uuid.UUID) string {
 	return "/api/v1/workspaces/" + workspaceID.String() + "/tasks/" + taskID.String()
 }
 
+func newTaskHandlerWithAction(taskService httphandler.TaskService) *httphandler.TaskHandler {
+	return httphandler.NewTaskHandler(taskService, &spyTaskWriteActionService{})
+}
+
 func TestTaskHandler_Create(t *testing.T) {
 	t.Run("successful create task", func(t *testing.T) {
 		e := echo.New()
@@ -61,7 +65,7 @@ func TestTaskHandler_Create(t *testing.T) {
 		chatID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		reqBody := `{"title": "New Task", "chat_id": "` + chatID.String() + `", "priority": "high"}`
 		req := httptest.NewRequest(stdhttp.MethodPost, workspaceTasksURL(workspaceID), strings.NewReader(reqBody))
@@ -91,7 +95,7 @@ func TestTaskHandler_Create(t *testing.T) {
 		assigneeID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		reqBody := `{
 			"title": "Task with details",
@@ -121,7 +125,7 @@ func TestTaskHandler_Create(t *testing.T) {
 		chatID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		reqBody := `{"title": "New Task", "chat_id": "` + chatID.String() + `"}`
 		req := httptest.NewRequest(stdhttp.MethodPost, workspaceTasksURL(workspaceID), strings.NewReader(reqBody))
@@ -143,7 +147,7 @@ func TestTaskHandler_Create(t *testing.T) {
 		chatID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		reqBody := `{"chat_id": "` + chatID.String() + `"}`
 		req := httptest.NewRequest(stdhttp.MethodPost, workspaceTasksURL(workspaceID), strings.NewReader(reqBody))
@@ -166,7 +170,7 @@ func TestTaskHandler_Create(t *testing.T) {
 		workspaceID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		reqBody := `{"title": "New Task"}`
 		req := httptest.NewRequest(stdhttp.MethodPost, workspaceTasksURL(workspaceID), strings.NewReader(reqBody))
@@ -190,7 +194,7 @@ func TestTaskHandler_Create(t *testing.T) {
 		chatID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		reqBody := `{"title": "New Task", "chat_id": "` + chatID.String() + `", "due_date": "invalid-date"}`
 		req := httptest.NewRequest(stdhttp.MethodPost, workspaceTasksURL(workspaceID), strings.NewReader(reqBody))
@@ -219,7 +223,7 @@ func TestTaskHandler_Get(t *testing.T) {
 		testTask := createTestTaskReadModel(chatID, userID)
 		mockService.AddTask(testTask)
 
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		req := httptest.NewRequest(stdhttp.MethodGet, taskURL(workspaceID, testTask.ID), nil)
 		rec := httptest.NewRecorder()
@@ -246,7 +250,7 @@ func TestTaskHandler_Get(t *testing.T) {
 		taskID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		req := httptest.NewRequest(stdhttp.MethodGet, taskURL(workspaceID, taskID), nil)
 		rec := httptest.NewRecorder()
@@ -267,7 +271,7 @@ func TestTaskHandler_Get(t *testing.T) {
 		workspaceID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		req := httptest.NewRequest(
 			stdhttp.MethodGet,
@@ -300,7 +304,7 @@ func TestTaskHandler_List(t *testing.T) {
 		mockService.AddTask(task1)
 		mockService.AddTask(task2)
 
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		req := httptest.NewRequest(stdhttp.MethodGet, workspaceTasksURL(workspaceID), nil)
 		rec := httptest.NewRecorder()
@@ -334,7 +338,7 @@ func TestTaskHandler_List(t *testing.T) {
 		mockService.AddTask(task1)
 		mockService.AddTask(task2)
 
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		req := httptest.NewRequest(stdhttp.MethodGet, workspaceTasksURL(workspaceID)+"?status=todo", nil)
 		rec := httptest.NewRecorder()
@@ -360,7 +364,7 @@ func TestTaskHandler_List(t *testing.T) {
 			mockService.AddTask(createTestTaskReadModel(chatID, userID))
 		}
 
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		req := httptest.NewRequest(stdhttp.MethodGet, workspaceTasksURL(workspaceID)+"?page=2&per_page=10", nil)
 		rec := httptest.NewRecorder()
@@ -387,7 +391,7 @@ func TestTaskHandler_ChangeStatus(t *testing.T) {
 		testTask := createTestTaskReadModel(chatID, userID)
 		mockService.AddTask(testTask)
 
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		reqBody := `{"status": "in_progress"}`
 		req := httptest.NewRequest(
@@ -418,7 +422,7 @@ func TestTaskHandler_ChangeStatus(t *testing.T) {
 		testTask := createTestTaskReadModel(chatID, userID)
 		mockService.AddTask(testTask)
 
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		reqBody := `{"status": "invalid_status"}`
 		req := httptest.NewRequest(
@@ -446,7 +450,7 @@ func TestTaskHandler_ChangeStatus(t *testing.T) {
 		taskID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		reqBody := `{"status": "done"}`
 		req := httptest.NewRequest(
@@ -480,7 +484,7 @@ func TestTaskHandler_Assign(t *testing.T) {
 		testTask := createTestTaskReadModel(chatID, userID)
 		mockService.AddTask(testTask)
 
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		reqBody := `{"assignee_id": "` + assigneeID.String() + `"}`
 		req := httptest.NewRequest(
@@ -511,7 +515,7 @@ func TestTaskHandler_Assign(t *testing.T) {
 		testTask := createTestTaskReadModel(chatID, userID)
 		mockService.AddTask(testTask)
 
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		reqBody := `{"assignee_id": null}`
 		req := httptest.NewRequest(
@@ -542,7 +546,7 @@ func TestTaskHandler_Assign(t *testing.T) {
 		testTask := createTestTaskReadModel(chatID, userID)
 		mockService.AddTask(testTask)
 
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		reqBody := `{"assignee_id": "invalid-uuid"}`
 		req := httptest.NewRequest(
@@ -575,7 +579,7 @@ func TestTaskHandler_ChangePriority(t *testing.T) {
 		testTask := createTestTaskReadModel(chatID, userID)
 		mockService.AddTask(testTask)
 
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		reqBody := `{"priority": "high"}`
 		req := httptest.NewRequest(
@@ -606,7 +610,7 @@ func TestTaskHandler_ChangePriority(t *testing.T) {
 		testTask := createTestTaskReadModel(chatID, userID)
 		mockService.AddTask(testTask)
 
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		reqBody := `{"priority": ""}`
 		req := httptest.NewRequest(
@@ -639,7 +643,7 @@ func TestTaskHandler_SetDueDate(t *testing.T) {
 		testTask := createTestTaskReadModel(chatID, userID)
 		mockService.AddTask(testTask)
 
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		reqBody := `{"due_date": "2026-03-15"}`
 		req := httptest.NewRequest(
@@ -672,7 +676,7 @@ func TestTaskHandler_SetDueDate(t *testing.T) {
 		testTask.DueDate = &dueDate
 		mockService.AddTask(testTask)
 
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		reqBody := `{"due_date": null}`
 		req := httptest.NewRequest(
@@ -703,7 +707,7 @@ func TestTaskHandler_SetDueDate(t *testing.T) {
 		testTask := createTestTaskReadModel(chatID, userID)
 		mockService.AddTask(testTask)
 
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		reqBody := `{"due_date": "not-a-date"}`
 		req := httptest.NewRequest(
@@ -736,7 +740,7 @@ func TestTaskHandler_Delete(t *testing.T) {
 		testTask := createTestTaskReadModel(chatID, userID)
 		mockService.AddTask(testTask)
 
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		req := httptest.NewRequest(stdhttp.MethodDelete, taskURL(workspaceID, testTask.ID), nil)
 		rec := httptest.NewRecorder()
@@ -758,7 +762,7 @@ func TestTaskHandler_Delete(t *testing.T) {
 		taskID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		req := httptest.NewRequest(stdhttp.MethodDelete, taskURL(workspaceID, taskID), nil)
 		rec := httptest.NewRecorder()
@@ -779,7 +783,7 @@ func TestTaskHandler_Delete(t *testing.T) {
 		taskID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		req := httptest.NewRequest(stdhttp.MethodDelete, taskURL(workspaceID, taskID), nil)
 		rec := httptest.NewRecorder()
@@ -795,7 +799,7 @@ func TestTaskHandler_Delete(t *testing.T) {
 
 func TestNewTaskHandler(t *testing.T) {
 	mockService := httphandler.NewMockTaskService()
-	handler := httphandler.NewTaskHandler(mockService)
+	handler := newTaskHandlerWithAction(mockService)
 	assert.NotNil(t, handler)
 }
 
@@ -926,7 +930,7 @@ func TestTaskHandler_AddAttachment(t *testing.T) {
 		testTask := createTestTaskReadModel(chatID, userID)
 		mockService.AddTask(testTask)
 
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		reqBody := `{
 			"file_id": "` + fileID.String() + `",
@@ -963,7 +967,7 @@ func TestTaskHandler_AddAttachment(t *testing.T) {
 		workspaceID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		reqBody := `{"file_id": "` + uuid.NewUUID().String() +
 			`", "file_name": "f.txt", "file_size": 1, "mime_type": "text/plain"}`
@@ -992,7 +996,7 @@ func TestTaskHandler_AddAttachment(t *testing.T) {
 		taskID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		reqBody := `{"file_id": "not-a-uuid", "file_name": "f.txt", "file_size": 1, "mime_type": "text/plain"}`
 		req := httptest.NewRequest(stdhttp.MethodPost, taskURL(workspaceID, taskID)+"/attachments",
@@ -1016,7 +1020,7 @@ func TestTaskHandler_AddAttachment(t *testing.T) {
 		taskID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		reqBody := `{"file_id": "` + uuid.NewUUID().String() +
 			`", "file_name": "f.txt", "file_size": 1, "mime_type": "text/plain"}`
@@ -1044,7 +1048,7 @@ func TestTaskHandler_AddAttachment(t *testing.T) {
 		fileID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		reqBody := `{"file_id": "` + fileID.String() + `", "file_name": "f.txt", "file_size": 1, "mime_type": "text/plain"}`
 		req := httptest.NewRequest(stdhttp.MethodPost, taskURL(workspaceID, taskID)+"/attachments",
@@ -1075,7 +1079,7 @@ func TestTaskHandler_RemoveAttachment(t *testing.T) {
 		testTask := createTestTaskReadModel(chatID, userID)
 		mockService.AddTask(testTask)
 
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		req := httptest.NewRequest(
 			stdhttp.MethodDelete,
@@ -1106,7 +1110,7 @@ func TestTaskHandler_RemoveAttachment(t *testing.T) {
 		fileID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		req := httptest.NewRequest(stdhttp.MethodDelete,
 			"/api/v1/workspaces/"+workspaceID.String()+"/tasks/invalid/attachments/"+fileID.String(), nil)
@@ -1129,7 +1133,7 @@ func TestTaskHandler_RemoveAttachment(t *testing.T) {
 		taskID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		req := httptest.NewRequest(stdhttp.MethodDelete,
 			taskURL(workspaceID, taskID)+"/attachments/not-a-uuid", nil)
@@ -1152,7 +1156,7 @@ func TestTaskHandler_RemoveAttachment(t *testing.T) {
 		fileID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		req := httptest.NewRequest(stdhttp.MethodDelete,
 			taskURL(workspaceID, taskID)+"/attachments/"+fileID.String(), nil)
@@ -1174,7 +1178,7 @@ func TestTaskHandler_RemoveAttachment(t *testing.T) {
 		fileID := uuid.NewUUID()
 
 		mockService := httphandler.NewMockTaskService()
-		handler := httphandler.NewTaskHandler(mockService)
+		handler := newTaskHandlerWithAction(mockService)
 
 		req := httptest.NewRequest(stdhttp.MethodDelete,
 			taskURL(workspaceID, taskID)+"/attachments/"+fileID.String(), nil)

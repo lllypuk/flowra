@@ -117,8 +117,8 @@ func (p *ChatProjector) RebuildAll(ctx context.Context) error {
 // ProcessEvent applies a single event to the read model.
 func (p *ChatProjector) ProcessEvent(ctx context.Context, evt event.DomainEvent) error {
 	// Check if this is a chat event
-	if evt.AggregateType() != "chat" {
-		return fmt.Errorf("invalid aggregate type: expected 'chat', got '%s'", evt.AggregateType())
+	if !isAggregateType(evt.AggregateType(), aggregateTypeChat) {
+		return fmt.Errorf("invalid aggregate type: expected '%s', got '%s'", aggregateTypeChat, evt.AggregateType())
 	}
 
 	chatID, err := uuid.ParseUUID(evt.AggregateID())
@@ -209,46 +209,14 @@ func (p *ChatProjector) updateReadModel(ctx context.Context, chat *chatdomain.Ch
 	if chat.ID().IsZero() {
 		return errors.New("invalid chat ID")
 	}
-
-	// Convert participants to strings
-	participantStrs := make([]string, len(chat.Participants()))
-	for i, p := range chat.Participants() {
-		participantStrs[i] = p.UserID().String()
-	}
-
-	// Build read model document
-	doc := bson.M{
-		"chat_id":      chat.ID().String(),
-		"workspace_id": chat.WorkspaceID().String(),
-		"type":         string(chat.Type()),
-		"title":        chat.Title(),
-		"is_public":    chat.IsPublic(),
-		"created_by":   chat.CreatedBy().String(),
-		"created_at":   chat.CreatedAt(),
-		"participants": participantStrs,
-	}
-
-	// Add additional fields for typed chats (task/bug/epic)
-	if chat.Type() != chatdomain.TypeDiscussion {
-		doc["status"] = chat.Status()
-		doc["priority"] = chat.Priority()
-
-		if chat.AssigneeID() != nil {
-			doc["assigned_to"] = chat.AssigneeID().String()
-		}
-
-		if chat.DueDate() != nil {
-			doc["due_date"] = *chat.DueDate()
-		}
-
-		if chat.Type() == chatdomain.TypeBug {
-			doc["severity"] = chat.Severity()
-		}
-	}
+	setDoc, unsetDoc := buildChatReadModelMutation(chat)
 
 	// Upsert the document
 	filter := bson.M{"chat_id": chat.ID().String()}
-	update := bson.M{"$set": doc}
+	update := bson.M{"$set": setDoc}
+	if len(unsetDoc) > 0 {
+		update["$unset"] = unsetDoc
+	}
 	opts := options.UpdateOne().SetUpsert(true)
 
 	_, err := p.readModelColl.UpdateOne(ctx, filter, update, opts)
@@ -259,33 +227,63 @@ func (p *ChatProjector) updateReadModel(ctx context.Context, chat *chatdomain.Ch
 	return nil
 }
 
+func buildChatReadModelMutation(chat *chatdomain.Chat) (bson.M, bson.M) {
+	participantStrs := make([]string, len(chat.Participants()))
+	for i, p := range chat.Participants() {
+		participantStrs[i] = p.UserID().String()
+	}
+
+	setDoc := bson.M{
+		"chat_id":      chat.ID().String(),
+		"workspace_id": chat.WorkspaceID().String(),
+		"type":         string(chat.Type()),
+		"title":        chat.Title(),
+		"is_public":    chat.IsPublic(),
+		"created_by":   chat.CreatedBy().String(),
+		"created_at":   chat.CreatedAt(),
+		"participants": participantStrs,
+	}
+
+	unsetDoc := bson.M{}
+
+	if chat.Type() == chatdomain.TypeDiscussion {
+		unsetDoc["status"] = ""
+		unsetDoc["priority"] = ""
+		unsetDoc["assigned_to"] = ""
+		unsetDoc["due_date"] = ""
+		unsetDoc["severity"] = ""
+		return setDoc, unsetDoc
+	}
+
+	setDoc["status"] = chat.Status()
+	setDoc["priority"] = chat.Priority()
+
+	if assigneeID := chat.AssigneeID(); assigneeID != nil {
+		setDoc["assigned_to"] = assigneeID.String()
+	} else {
+		unsetDoc["assigned_to"] = ""
+	}
+
+	if dueDate := chat.DueDate(); dueDate != nil {
+		setDoc["due_date"] = *dueDate
+	} else {
+		unsetDoc["due_date"] = ""
+	}
+
+	if chat.Type() == chatdomain.TypeBug {
+		if severity := chat.Severity(); severity != "" {
+			setDoc["severity"] = severity
+		} else {
+			unsetDoc["severity"] = ""
+		}
+	} else {
+		unsetDoc["severity"] = ""
+	}
+
+	return setDoc, unsetDoc
+}
+
 // getAllAggregateIDs retrieves all unique chat IDs from the events collection.
 func (p *ChatProjector) getAllAggregateIDs(ctx context.Context) ([]uuid.UUID, error) {
-	// Get the events collection from the database
-	eventsDB := p.readModelColl.Database()
-	eventsColl := eventsDB.Collection("events")
-
-	// Use distinct to get unique aggregate IDs for chat type
-	filter := bson.M{"aggregate_type": "chat"}
-	result := eventsColl.Distinct(ctx, "aggregate_id", filter)
-
-	var aggregateIDs []uuid.UUID
-	var stringIDs []string
-	if err := result.Decode(&stringIDs); err != nil {
-		return nil, fmt.Errorf("failed to decode aggregate IDs: %w", err)
-	}
-
-	for _, idStr := range stringIDs {
-		id, err := uuid.ParseUUID(idStr)
-		if err != nil {
-			p.logger.WarnContext(ctx, "skipping invalid aggregate ID",
-				slog.String("aggregate_id", idStr),
-				slog.String("error", err.Error()),
-			)
-			continue
-		}
-		aggregateIDs = append(aggregateIDs, id)
-	}
-
-	return aggregateIDs, nil
+	return getAllAggregateIDsByType(ctx, p.readModelColl, aggregateTypeChat, "Chat", p.logger)
 }

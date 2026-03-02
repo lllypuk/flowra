@@ -137,12 +137,19 @@ func TestGetMemberIndexes(t *testing.T) {
 	require.NotNil(t, compoundIdx, "user+workspace unique compound index should exist")
 }
 
+func TestReadModelCollectionNames_AreCanonicalPlural(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "chats_read_model", mongodb.CollectionChatReadModel)
+	assert.Equal(t, "tasks_read_model", mongodb.CollectionTaskReadModel)
+}
+
 func TestGetChatReadModelIndexes(t *testing.T) {
 	t.Parallel()
 
 	indexes := mongodb.GetChatReadModelIndexes()
 
-	assert.Len(t, indexes, 9)
+	assert.Len(t, indexes, 10)
 
 	// Check chat_id unique index
 	chatIDIdx := findIndexByName(indexes, "idx_chats_id_unique")
@@ -415,6 +422,7 @@ func findIndexByName(indexes []mongodb.IndexDefinition, name string) *mongodb.In
 		"idx_chats_id_unique":           true,
 		"idx_chats_workspace_time":      true,
 		"idx_chats_workspace_type_time": true,
+		"idx_chats_type":                true,
 		"idx_chats_workspace_public":    true,
 		"idx_chats_participants":        true,
 		"idx_chats_created_by":          true,

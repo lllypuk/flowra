@@ -35,12 +35,16 @@ func (m *mockTaskActionTaskService) GetTask(
 
 // mockTaskActionService implements TaskActionService for testing.
 type mockTaskActionService struct {
-	lastChatID   uuid.UUID
-	lastStatus   string
-	lastPriority string
-	lastAssignee *uuid.UUID
-	lastDueDate  *time.Time
-	actionErr    error
+	lastChatID    uuid.UUID
+	lastStatus    string
+	lastPriority  string
+	lastAssignee  *uuid.UUID
+	lastDueDate   *time.Time
+	statusCalls   int
+	priorityCalls int
+	assigneeCalls int
+	dueDateCalls  int
+	actionErr     error
 }
 
 func (m *mockTaskActionService) ChangeStatus(
@@ -51,6 +55,7 @@ func (m *mockTaskActionService) ChangeStatus(
 ) (*appcore.ActionResult, error) {
 	m.lastChatID = chatID
 	m.lastStatus = newStatus
+	m.statusCalls++
 	return &appcore.ActionResult{Success: true}, m.actionErr
 }
 
@@ -62,6 +67,7 @@ func (m *mockTaskActionService) SetPriority(
 ) (*appcore.ActionResult, error) {
 	m.lastChatID = chatID
 	m.lastPriority = priority
+	m.priorityCalls++
 	return &appcore.ActionResult{Success: true}, m.actionErr
 }
 
@@ -73,6 +79,7 @@ func (m *mockTaskActionService) AssignUser(
 ) (*appcore.ActionResult, error) {
 	m.lastChatID = chatID
 	m.lastAssignee = assigneeID
+	m.assigneeCalls++
 	return &appcore.ActionResult{Success: true}, m.actionErr
 }
 
@@ -84,6 +91,7 @@ func (m *mockTaskActionService) SetDueDate(
 ) (*appcore.ActionResult, error) {
 	m.lastChatID = chatID
 	m.lastDueDate = dueDate
+	m.dueDateCalls++
 	return &appcore.ActionResult{Success: true}, m.actionErr
 }
 
@@ -144,6 +152,25 @@ func TestTaskActionHandler_ChangeStatus(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("idempotent when status unchanged", func(t *testing.T) {
+		taskWithStatus := &taskapp.ReadModel{
+			ID:     taskID,
+			ChatID: chatID,
+			Status: "In Progress",
+		}
+		taskSvc := &mockTaskActionTaskService{task: taskWithStatus}
+		actionSvc := &mockTaskActionService{}
+		h := httphandler.NewTaskActionHandler(taskSvc, actionSvc)
+
+		c, rec := newTestTaskActionContext(t, "status=In+Progress", taskID)
+
+		err := h.ChangeStatus(c)
+
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusNoContent, rec.Code)
+		assert.Equal(t, 0, actionSvc.statusCalls)
 	})
 
 	t.Run("task not found", func(t *testing.T) {
@@ -226,6 +253,25 @@ func TestTaskActionHandler_ChangePriority(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
+
+	t.Run("idempotent when priority unchanged", func(t *testing.T) {
+		taskWithPriority := &taskapp.ReadModel{
+			ID:       taskID,
+			ChatID:   chatID,
+			Priority: "High",
+		}
+		taskSvc := &mockTaskActionTaskService{task: taskWithPriority}
+		actionSvc := &mockTaskActionService{}
+		h := httphandler.NewTaskActionHandler(taskSvc, actionSvc)
+
+		c, rec := newTestTaskActionContext(t, "priority=High", taskID)
+
+		err := h.ChangePriority(c)
+
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusNoContent, rec.Code)
+		assert.Equal(t, 0, actionSvc.priorityCalls)
+	})
 }
 
 func TestTaskActionHandler_ChangeAssignee(t *testing.T) {
@@ -264,6 +310,26 @@ func TestTaskActionHandler_ChangeAssignee(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusNoContent, rec.Code)
 		assert.Nil(t, actionSvc.lastAssignee)
+	})
+
+	t.Run("idempotent when assignee unchanged", func(t *testing.T) {
+		taskWithAssignee := &taskapp.ReadModel{
+			ID:         taskID,
+			ChatID:     chatID,
+			AssignedTo: &assigneeID,
+		}
+		taskSvc := &mockTaskActionTaskService{task: taskWithAssignee}
+		actionSvc := &mockTaskActionService{}
+		h := httphandler.NewTaskActionHandler(taskSvc, actionSvc)
+
+		body := "assignee_id=" + assigneeID.String()
+		c, rec := newTestTaskActionContext(t, body, taskID)
+
+		err := h.ChangeAssignee(c)
+
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusNoContent, rec.Code)
+		assert.Equal(t, 0, actionSvc.assigneeCalls)
 	})
 
 	t.Run("invalid assignee_id format", func(t *testing.T) {
@@ -316,6 +382,26 @@ func TestTaskActionHandler_SetDueDate(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusNoContent, rec.Code)
 		assert.Nil(t, actionSvc.lastDueDate)
+	})
+
+	t.Run("idempotent when due date unchanged", func(t *testing.T) {
+		existing := time.Date(2026, 3, 15, 16, 30, 0, 0, time.UTC)
+		taskWithDueDate := &taskapp.ReadModel{
+			ID:      taskID,
+			ChatID:  chatID,
+			DueDate: &existing,
+		}
+		taskSvc := &mockTaskActionTaskService{task: taskWithDueDate}
+		actionSvc := &mockTaskActionService{}
+		h := httphandler.NewTaskActionHandler(taskSvc, actionSvc)
+
+		c, rec := newTestTaskActionContext(t, "due_date=2026-03-15", taskID)
+
+		err := h.SetDueDate(c)
+
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusNoContent, rec.Code)
+		assert.Equal(t, 0, actionSvc.dueDateCalls)
 	})
 
 	t.Run("invalid date format", func(t *testing.T) {

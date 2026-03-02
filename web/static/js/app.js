@@ -803,11 +803,33 @@
 
     // ===== WebSocket Reconnection =====
     function setupWebSocketReconnection() {
-        document.body.addEventListener('htmx:wsOpen', function() {
+        document.body.addEventListener('htmx:wsOpen', function(evt) {
             if (state.wsReconnectAttempts > 0) {
                 showToast('Connection restored', 'success');
             }
             resetReconnect();
+
+            // Workaround for htmx-ext-ws@2.0.0 bug: the wrapper's close()
+            // calls this.socket.close() without a null-check. Patch it so
+            // navigating away before the socket is fully initialised does
+            // not throw "Cannot read properties of undefined".
+            var elt = evt.detail && evt.detail.elt;
+            if (!elt) return;
+            var data = elt['htmx-internal-data'];
+            if (
+                data &&
+                data.webSocket &&
+                typeof data.webSocket.close === 'function' &&
+                !data.webSocket.__flowraClosePatched
+            ) {
+                var origClose = data.webSocket.close;
+                data.webSocket.close = function() {
+                    if (this.socket) {
+                        origClose.call(this);
+                    }
+                };
+                data.webSocket.__flowraClosePatched = true;
+            }
         });
 
         document.body.addEventListener('htmx:wsError', function(evt) {

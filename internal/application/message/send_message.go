@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/lllypuk/flowra/internal/application/appcore"
 	chatapp "github.com/lllypuk/flowra/internal/application/chat"
@@ -13,6 +14,8 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/tag"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
+
+const tagProcessingTimeout = 5 * time.Second
 
 // ChatRepository defines interface for access to chats (consumer-side interface)
 type ChatRepository interface {
@@ -135,10 +138,9 @@ func (uc *SendMessageUseCase) Execute(
 		)
 	}
 
-	// 7. async tag handling (do not block response)
-	// Use background context since HTTP request context will be canceled after response
+	// 7. tag handling
 	if uc.tagProcessor != nil && uc.tagExecutor != nil {
-		go uc.processTagsAsync(context.Background(), msg, cmd.AuthorID, chatReadModel.Type)
+		uc.processTagsDetached(msg, cmd.AuthorID, chatReadModel.Type)
 	}
 
 	return Result{
@@ -174,9 +176,22 @@ func (uc *SendMessageUseCase) isParticipant(chatReadModel *chatapp.ReadModel, us
 	return false
 }
 
-// processTagsAsync handles tags in message content asynchronously
-// executed in goroutine to not block main response
-func (uc *SendMessageUseCase) processTagsAsync(
+// processTagsDetached runs tag processing outside request lifecycle.
+func (uc *SendMessageUseCase) processTagsDetached(
+	msg *messagedomain.Message,
+	authorID uuid.UUID,
+	chatType chat.Type,
+) {
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), tagProcessingTimeout)
+		defer cancel()
+
+		uc.processTags(ctx, msg, authorID, chatType)
+	}()
+}
+
+// processTags handles tag parsing/execution with provided context.
+func (uc *SendMessageUseCase) processTags(
 	ctx context.Context,
 	msg *messagedomain.Message,
 	authorID uuid.UUID,

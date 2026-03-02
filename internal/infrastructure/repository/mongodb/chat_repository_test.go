@@ -9,6 +9,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/chat"
 	"github.com/lllypuk/flowra/internal/domain/errs"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
+	mongodbinfra "github.com/lllypuk/flowra/internal/infrastructure/mongodb"
 	"github.com/lllypuk/flowra/internal/infrastructure/repository/mongodb"
 	"github.com/lllypuk/flowra/tests/mocks"
 	"github.com/lllypuk/flowra/tests/testutil"
@@ -34,7 +35,7 @@ func setupTestRepository(t *testing.T) (
 
 	// ispolzuem testcontainers for MongoDB 6
 	_, db := testutil.SetupTestMongoDBWithClient(t)
-	readModelColl := db.Collection("chat_read_model")
+	readModelColl := db.Collection(mongodbinfra.CollectionChatReadModel)
 
 	// Creating indexes
 	ctx := context.Background()

@@ -36,6 +36,7 @@ func main() {
 		slog.String("version", "0.1.0"),
 		slog.String("environment", getEnvironment(cfg)),
 	)
+	config.LogDevRuntimeMode(logger, cfg, "api")
 
 	// Build DI container
 	container, err := NewContainer(cfg, WithLogger(logger))

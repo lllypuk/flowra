@@ -49,6 +49,7 @@ func main() {
 		slog.String("version", "0.1.0"),
 		slog.String("environment", getEnvironment(cfg)),
 	)
+	config.LogDevRuntimeMode(logger, cfg, "worker")
 
 	// Create a context that will be cancelled on shutdown signal
 	ctx, cancel := context.WithCancel(context.Background())
@@ -72,6 +73,14 @@ func main() {
 
 	// Setup repositories
 	db := mongoClient.Database(cfg.MongoDB.Database)
+	legacyCtx, legacyCancel := context.WithTimeout(ctx, cfg.MongoDB.Timeout)
+	if warnErr := mongodbinfra.WarnIfLegacyReadModelCollectionsContainData(legacyCtx, db, logger); warnErr != nil {
+		logger.WarnContext(legacyCtx, "failed to inspect legacy read model collections",
+			slog.String("error", warnErr.Error()),
+		)
+	}
+	legacyCancel()
+
 	userRepo := mongodb.NewMongoUserRepository(db.Collection("users"))
 
 	// Setup Redis for EventBus
@@ -335,7 +344,7 @@ func setupRepairWorker(
 	chatProjector := projector.NewChatProjector(eventStore, chatReadModelColl, logger)
 
 	taskReadModelColl := db.Collection(mongodbinfra.CollectionTaskReadModel)
-	taskProjector := projector.NewTaskProjector(eventStore, taskReadModelColl, logger)
+	taskProjector := projector.NewChatToTaskReadModelProjector(eventStore, taskReadModelColl, logger)
 
 	// Create repair worker
 	return worker.NewRepairWorker(

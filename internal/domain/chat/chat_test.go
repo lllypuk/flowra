@@ -611,6 +611,77 @@ func TestChat_SetSeverity(t *testing.T) {
 	})
 }
 
+func TestChat_Attachments(t *testing.T) {
+	t.Run("add attachment to typed chat", func(t *testing.T) {
+		c := createTypedChat(t, chat.TypeTask, "Test")
+		userID := uuid.NewUUID()
+		fileID := uuid.NewUUID()
+
+		err := c.AddAttachment(fileID, "report.pdf", 2048, "application/pdf", userID)
+
+		require.NoError(t, err)
+		require.Len(t, c.Attachments(), 1)
+		assert.Equal(t, fileID, c.Attachments()[0].FileID())
+
+		events := c.GetUncommittedEvents()
+		require.Len(t, events, 1)
+		assert.IsType(t, &chat.AttachmentAdded{}, events[0])
+	})
+
+	t.Run("remove attachment from typed chat", func(t *testing.T) {
+		c := createTypedChat(t, chat.TypeTask, "Test")
+		userID := uuid.NewUUID()
+		fileID := uuid.NewUUID()
+		require.NoError(t, c.AddAttachment(fileID, "report.pdf", 2048, "application/pdf", userID))
+		c.MarkEventsAsCommitted()
+
+		err := c.RemoveAttachment(fileID, userID)
+
+		require.NoError(t, err)
+		assert.Empty(t, c.Attachments())
+		events := c.GetUncommittedEvents()
+		require.Len(t, events, 1)
+		assert.IsType(t, &chat.AttachmentRemoved{}, events[0])
+	})
+
+	t.Run("cannot add attachment to discussion", func(t *testing.T) {
+		c, _ := chat.NewChat(uuid.NewUUID(), chat.TypeDiscussion, true, uuid.NewUUID())
+
+		err := c.AddAttachment(uuid.NewUUID(), "report.pdf", 2048, "application/pdf", uuid.NewUUID())
+
+		assert.ErrorIs(t, err, errs.ErrInvalidState)
+	})
+
+	t.Run("replay attachment events", func(t *testing.T) {
+		c := createTypedChat(t, chat.TypeTask, "Test")
+		userID := uuid.NewUUID()
+		fileID := uuid.NewUUID()
+
+		added := chat.NewAttachmentAdded(
+			c.ID(),
+			fileID,
+			"report.pdf",
+			2048,
+			"application/pdf",
+			userID,
+			c.Version()+1,
+			event.NewMetadata("", "", ""),
+		)
+		removed := chat.NewAttachmentRemoved(
+			c.ID(),
+			fileID,
+			userID,
+			c.Version()+2,
+			event.NewMetadata("", "", ""),
+		)
+
+		require.NoError(t, c.Apply(added))
+		require.Len(t, c.Attachments(), 1)
+		require.NoError(t, c.Apply(removed))
+		assert.Empty(t, c.Attachments())
+	})
+}
+
 func TestChat_EventSourcing_NewEvents(t *testing.T) {
 	t.Run("replay StatusChanged event", func(t *testing.T) {
 		c := createTypedChat(t, chat.TypeTask, "Test")

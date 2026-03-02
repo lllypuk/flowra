@@ -11,20 +11,21 @@ Browser-based end-to-end tests for the Flowra frontend using Playwright.
 
 2. **Start the application server and infrastructure:**
    
-   **Option A: Using Docker Compose (recommended)**
+   **Option A: Full-stack runtime (recommended)**
    ```bash
-   docker-compose up -d
+   make dev
    ```
    
-   **Option B: Manual setup**
+   **Option B: Manual split setup**
    ```bash
    # Start infrastructure
    docker-compose up -d mongodb redis keycloak
    
+   # Start worker (required for outbox/projection freshness)
+   FLOWRA_DEV_MODE=fullstack go run ./cmd/worker
+
    # Start API server
-   make dev
-   # or
-   go run cmd/api/main.go
+   FLOWRA_DEV_MODE=fullstack go run ./cmd/api
    ```
 
 3. **Verify server is running:**
@@ -37,6 +38,11 @@ Browser-based end-to-end tests for the Flowra frontend using Playwright.
 ### Run all frontend E2E tests
 ```bash
 make test-e2e-frontend
+```
+
+### Run board + sidebar smoke regression only
+```bash
+make test-e2e-frontend-smoke
 ```
 
 ### Run with visible browser (for debugging)
@@ -67,13 +73,16 @@ Frontend E2E tests cover:
 - ✅ Accessibility (Keyboard navigation, Skip links, ARIA)
 - ✅ Responsive design (Mobile, Tablet layouts)
 
+Manual smoke checklist for critical board + sidebar regression:
+- [`SMOKE_CHECKLIST.md`](./SMOKE_CHECKLIST.md)
+
 ## Troubleshooting
 
 ### Tests are skipped
 ```
 WARNING: Server is not available at http://localhost:8080
 ```
-**Solution:** Start the server with `docker-compose up` or `make dev`
+**Solution:** Start full stack with `make dev` (preferred) or run API+worker manually.
 
 ### Playwright not installed
 ```
@@ -94,7 +103,7 @@ const (
     baseURL          = "http://localhost:8080"
     defaultTimeout   = 30 * time.Second
     keycloakUser     = "testuser"
-    keycloakPassword = "password"
+    keycloakPassword = "test123"
 )
 ```
 

@@ -41,12 +41,13 @@ type Chat struct {
 	participants []Participant
 
 	// Fields for typed chats (Task/Bug/Epic)
-	title      string
-	status     string
-	priority   string
-	assigneeID *uuid.UUID
-	dueDate    *time.Time
-	severity   string // only for Bug
+	title       string
+	status      string
+	priority    string
+	assigneeID  *uuid.UUID
+	dueDate     *time.Time
+	severity    string // only for Bug
+	attachments []Attachment
 
 	// Soft delete
 	deleted   bool
@@ -63,6 +64,7 @@ type Chat struct {
 func NewEmptyChat() *Chat {
 	return &Chat{
 		participants:      make([]Participant, 0),
+		attachments:       make([]Attachment, 0),
 		uncommittedEvents: make([]event.DomainEvent, 0),
 		version:           0,
 	}
@@ -90,6 +92,7 @@ func NewChat(
 
 	chat := &Chat{
 		participants:      make([]Participant, 0),
+		attachments:       make([]Attachment, 0),
 		uncommittedEvents: make([]event.DomainEvent, 0),
 		version:           0,
 	}
@@ -430,6 +433,87 @@ func (c *Chat) SetDueDate(dueDate *time.Time, userID uuid.UUID) error {
 	return nil
 }
 
+// AddAttachment attaches a file to typed chat.
+func (c *Chat) AddAttachment(
+	fileID uuid.UUID,
+	fileName string,
+	fileSize int64,
+	mimeType string,
+	addedBy uuid.UUID,
+) error {
+	if c.chatType == TypeDiscussion {
+		return errs.ErrInvalidState
+	}
+	if addedBy.IsZero() {
+		return errs.ErrInvalidInput
+	}
+
+	attachment, err := NewAttachment(fileID, fileName, fileSize, mimeType)
+	if err != nil {
+		return err
+	}
+
+	// Idempotent: skip if attachment already exists.
+	for _, existing := range c.attachments {
+		if existing.FileID() == attachment.FileID() {
+			return nil
+		}
+	}
+
+	evt := NewAttachmentAdded(
+		c.id,
+		attachment.FileID(),
+		attachment.FileName(),
+		attachment.FileSize(),
+		attachment.MimeType(),
+		addedBy,
+		c.version+1,
+		event.Metadata{
+			CorrelationID: uuid.NewUUID().String(),
+			CausationID:   uuid.NewUUID().String(),
+			UserID:        addedBy.String(),
+		},
+	)
+	c.applyEvent(evt)
+	return nil
+}
+
+// RemoveAttachment detaches a file from typed chat.
+func (c *Chat) RemoveAttachment(fileID uuid.UUID, removedBy uuid.UUID) error {
+	if c.chatType == TypeDiscussion {
+		return errs.ErrInvalidState
+	}
+	if fileID.IsZero() || removedBy.IsZero() {
+		return errs.ErrInvalidInput
+	}
+
+	// Idempotent: nothing to remove.
+	found := false
+	for _, existing := range c.attachments {
+		if existing.FileID() == fileID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return nil
+	}
+
+	evt := NewAttachmentRemoved(
+		c.id,
+		fileID,
+		removedBy,
+		c.version+1,
+		event.Metadata{
+			CorrelationID: uuid.NewUUID().String(),
+			CausationID:   uuid.NewUUID().String(),
+			UserID:        removedBy.String(),
+		},
+	)
+	c.applyEvent(evt)
+	return nil
+}
+
 // Rename changes the chat title
 func (c *Chat) Rename(newTitle string, userID uuid.UUID) error {
 	if newTitle == "" {
@@ -635,6 +719,10 @@ func (c *Chat) Apply(e event.DomainEvent) error {
 		c.applyDueDateSet(evt)
 	case *DueDateRemoved:
 		c.applyDueDateRemoved(evt)
+	case *AttachmentAdded:
+		c.applyAttachmentAdded(evt)
+	case *AttachmentRemoved:
+		c.applyAttachmentRemoved(evt)
 	case *Renamed:
 		c.applyRenamed(evt)
 	case *SeveritySet:
@@ -718,6 +806,34 @@ func (c *Chat) applyDueDateSet(evt *DueDateSet) {
 
 func (c *Chat) applyDueDateRemoved(evt *DueDateRemoved) {
 	c.dueDate = nil
+	c.version = evt.Version()
+}
+
+func (c *Chat) applyAttachmentAdded(evt *AttachmentAdded) {
+	for _, existing := range c.attachments {
+		if existing.FileID() == evt.FileID {
+			c.version = evt.Version()
+			return
+		}
+	}
+
+	c.attachments = append(c.attachments, ReconstructAttachment(
+		evt.FileID,
+		evt.FileName,
+		evt.FileSize,
+		evt.MimeType,
+	))
+	c.version = evt.Version()
+}
+
+func (c *Chat) applyAttachmentRemoved(evt *AttachmentRemoved) {
+	filtered := make([]Attachment, 0, len(c.attachments))
+	for _, existing := range c.attachments {
+		if existing.FileID() != evt.FileID {
+			filtered = append(filtered, existing)
+		}
+	}
+	c.attachments = filtered
 	c.version = evt.Version()
 }
 
@@ -838,6 +954,13 @@ func (c *Chat) DueDate() *time.Time { return c.dueDate }
 
 // Severity returns severity for Bug
 func (c *Chat) Severity() string { return c.severity }
+
+// Attachments returns a copy of attached files.
+func (c *Chat) Attachments() []Attachment {
+	out := make([]Attachment, len(c.attachments))
+	copy(out, c.attachments)
+	return out
+}
 
 // IsDeleted returns priznak removing
 func (c *Chat) IsDeleted() bool { return c.deleted }

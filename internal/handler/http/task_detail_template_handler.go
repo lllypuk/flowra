@@ -12,6 +12,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	taskapp "github.com/lllypuk/flowra/internal/application/task"
+	chatdomain "github.com/lllypuk/flowra/internal/domain/chat"
 	"github.com/lllypuk/flowra/internal/domain/event"
 	"github.com/lllypuk/flowra/internal/domain/task"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
@@ -22,6 +23,7 @@ const (
 	defaultActivityLimit    = 50
 	dueSoonDays             = 3
 	maxMembersListLimitTask = 100
+	actionTextUpdatedTitle  = "updated title"
 )
 
 // TaskDetailService defines the interface for task operations needed by the detail view.
@@ -83,6 +85,7 @@ type TaskDetailViewData struct {
 	Type         string
 	Status       string
 	Priority     string
+	Severity     string
 	AssigneeID   string
 	DueDate      *time.Time
 	IsOverdue    bool
@@ -494,6 +497,7 @@ func (h *TaskDetailTemplateHandler) convertToDetailView(t *taskapp.ReadModel) Ta
 		Type:      string(t.EntityType),
 		Status:    string(t.Status),
 		Priority:  string(t.Priority),
+		Severity:  t.Severity,
 		DueDate:   t.DueDate,
 		CreatedAt: t.CreatedAt,
 	}
@@ -597,6 +601,34 @@ func (h *TaskDetailTemplateHandler) loadPaginatedActivities(
 // ChangedBy/CreatedBy fields over metadata (which may not have UserID set).
 func extractActorID(e event.DomainEvent) string {
 	switch te := e.(type) {
+	case *chatdomain.Created:
+		return te.CreatedBy.String()
+	case *chatdomain.TypeChanged:
+		return te.Metadata().UserID
+	case *chatdomain.StatusChanged:
+		return te.ChangedBy.String()
+	case *chatdomain.PrioritySet:
+		return te.ChangedBy.String()
+	case *chatdomain.UserAssigned:
+		return te.AssignedBy.String()
+	case *chatdomain.AssigneeRemoved:
+		return te.RemovedBy.String()
+	case *chatdomain.DueDateSet:
+		return te.ChangedBy.String()
+	case *chatdomain.DueDateRemoved:
+		return te.RemovedBy.String()
+	case *chatdomain.SeveritySet:
+		return te.ChangedBy.String()
+	case *chatdomain.AttachmentAdded:
+		return te.AddedBy.String()
+	case *chatdomain.AttachmentRemoved:
+		return te.RemovedBy.String()
+	case *chatdomain.Renamed:
+		return te.RenamedBy.String()
+	case *chatdomain.Closed:
+		return te.ClosedBy.String()
+	case *chatdomain.Reopened:
+		return te.ReopenedBy.String()
 	case *task.Created:
 		return te.CreatedBy.String()
 	case *task.StatusChanged:
@@ -617,6 +649,8 @@ func extractActorID(e event.DomainEvent) string {
 }
 
 // convertEventToActivity converts a single domain event to activity view data.
+//
+//nolint:cyclop,funlen // This is a domain event mapping table with intentionally broad branching.
 func (h *TaskDetailTemplateHandler) convertEventToActivity(ctx context.Context, e event.DomainEvent) *ActivityViewData {
 	actorID := extractActorID(e)
 	username := h.resolveUsername(ctx, actorID)
@@ -630,6 +664,53 @@ func (h *TaskDetailTemplateHandler) convertEventToActivity(ctx context.Context, 
 	}
 
 	switch te := e.(type) {
+	case *chatdomain.TypeChanged:
+		activity.ActionText = "created this task"
+	case *chatdomain.StatusChanged:
+		activity.ActionText = "changed status"
+		activity.Details = true
+		activity.OldValue = te.OldStatus
+		activity.NewValue = te.NewStatus
+	case *chatdomain.PrioritySet:
+		activity.ActionText = "changed priority"
+		activity.Details = true
+		activity.OldValue = te.OldPriority
+		activity.NewValue = te.NewPriority
+	case *chatdomain.UserAssigned:
+		activity.ActionText = "assigned this task"
+		activity.Details = true
+		activity.NewValue = h.resolveUsername(ctx, te.AssigneeID.String())
+	case *chatdomain.AssigneeRemoved:
+		activity.ActionText = "removed assignee"
+	case *chatdomain.DueDateSet:
+		activity.ActionText = "set due date"
+		activity.Details = true
+		activity.NewValue = te.NewDueDate.Format("Jan 2, 2006")
+		if te.OldDueDate != nil {
+			activity.OldValue = te.OldDueDate.Format("Jan 2, 2006")
+		}
+	case *chatdomain.DueDateRemoved:
+		activity.ActionText = "cleared due date"
+	case *chatdomain.SeveritySet:
+		activity.ActionText = "set severity"
+		activity.Details = true
+		activity.OldValue = te.OldSeverity
+		activity.NewValue = te.NewSeverity
+	case *chatdomain.AttachmentAdded:
+		activity.ActionText = "added attachment"
+		activity.Details = true
+		activity.NewValue = te.FileName
+	case *chatdomain.AttachmentRemoved:
+		activity.ActionText = "removed attachment"
+	case *chatdomain.Renamed:
+		activity.ActionText = actionTextUpdatedTitle
+		activity.Details = true
+		activity.OldValue = te.OldTitle
+		activity.NewValue = te.NewTitle
+	case *chatdomain.Closed:
+		activity.ActionText = "closed this task"
+	case *chatdomain.Reopened:
+		activity.ActionText = "reopened this task"
 	case *task.Created:
 		activity.ActionText = "created this task"
 	case *task.StatusChanged:
@@ -665,7 +746,7 @@ func (h *TaskDetailTemplateHandler) convertEventToActivity(ctx context.Context, 
 			activity.ActionText = "cleared due date"
 		}
 	case *task.Updated:
-		activity.ActionText = "updated title"
+		activity.ActionText = actionTextUpdatedTitle
 	case *task.Deleted:
 		activity.ActionText = "deleted this task"
 	case *task.AttachmentAdded:
@@ -678,7 +759,7 @@ func (h *TaskDetailTemplateHandler) convertEventToActivity(ctx context.Context, 
 		// Check by event type string for any events not matched by type assertion
 		switch e.EventType() {
 		case "task.title_updated":
-			activity.ActionText = "updated title"
+			activity.ActionText = actionTextUpdatedTitle
 		case "task.description_updated":
 			activity.ActionText = "updated description"
 		default:

@@ -47,7 +47,7 @@ func NewTestSuite(t *testing.T) *TestSuite {
 	suite.AddParticipant = chatapp.NewAddParticipantUseCase(suite.EventStore)
 	suite.ConvertToTask = chatapp.NewConvertToTaskUseCase(suite.EventStore)
 	suite.ChangeStatus = chatapp.NewChangeStatusUseCase(suite.EventStore)
-	suite.AssignUser = chatapp.NewAssignUserUseCase(suite.EventStore)
+	suite.AssignUser = chatapp.NewAssignUserUseCase(suite.EventStore, suite.UserRepo)
 
 	return suite
 }

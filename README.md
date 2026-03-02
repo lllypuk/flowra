@@ -5,9 +5,9 @@ A comprehensive chat system with integrated task tracker, help desk functionalit
 ## 📊 Current Project Status
 
 **Version:** 1.0.0-beta
-**Last Updated:** 2026-02-26
+**Last Updated:** 2026-03-02
 **Overall Progress:** ~98% to MVP
-**Status:** February 2026 Release Candidate
+**Status:** March 2026 Release Candidate
 
 ### Progress by Layer
 
@@ -41,6 +41,7 @@ A comprehensive chat system with integrated task tracker, help desk functionalit
 - ✅ **Tag Processing Test Coverage:** Concurrent integration tests + bot-response E2E scenarios
 - ✅ **Tag System Load Testing:** k6 script/profiles for tag-heavy message flows (`tests/load/tag-system`)
 - ✅ **Landing Page:** Redesigned with distinctive typography, scroll animations, responsive feature grid
+- ✅ **Chat=SoT Stabilization:** projection-safe typed mutations, strict assignee validation, frontend smoke regression coverage
 
 ### In Development 🔄
 
@@ -64,23 +65,14 @@ cd flowra
 make deps
 ```
 
-### 2. Start Infrastructure
+### 2. Start Full-Stack Runtime
 
 ```bash
-# Start MongoDB, Redis, Keycloak
-docker-compose up -d
-
-# Verify services
-docker-compose ps
-```
-
-### 3. Start the Application
-
-```bash
+# Starts infra (MongoDB, Redis, Keycloak) + worker + API
 make dev
 ```
 
-### 4. Verify
+### 3. Verify
 
 ```bash
 # Health check
@@ -91,7 +83,7 @@ curl http://localhost:8080/health
 open http://localhost:8080/docs
 ```
 
-### 5. Test Authentication
+### 4. Test Authentication
 
 Access Keycloak at http://localhost:8090 (admin/admin123) to configure OAuth.
 
@@ -101,20 +93,27 @@ Access Keycloak at http://localhost:8090 (admin/admin123) to configure OAuth.
 
 ```bash
 make help          # Show all available commands
-make dev                # Run in development mode
+make dev                # Run full-stack development mode (infra + worker + API)
+make dev-lite           # Run API-only development mode (limited: no worker)
 make build              # Build binaries
 make test               # Run all tests
 make test-unit          # Run unit tests only
 make test-integration   # Run integration tests (Docker/testcontainers)
 make test-e2e           # Run E2E API tests
 make test-e2e-frontend  # Run frontend browser E2E tests (requires running server)
+make test-e2e-frontend-smoke # Run focused board+sidebar smoke regression
 make test-load-tags     # Run k6 tag-system load test (requires k6 + AUTH_TOKEN)
 make lint               # Run linter and format code
 make docker-up          # Start Docker services
 make docker-down        # Stop Docker services
 make test-coverage      # Generate coverage report
 make playwright-install # Install Playwright browsers for frontend tests
+make reset-data         # Reset local/dev Chat=SoT data collections and recreate indexes
 ```
+
+When switching between branches around the Chat=SoT refactor, run:
+`make docker-up && make reset-data` before `make dev` to avoid stale
+event/read-model shape mismatches.
 
 ---
 
@@ -144,10 +143,10 @@ make playwright-install # Install Playwright browsers for frontend tests
 - **Capabilities**: Content, attachments, reactions, threading
 - **Operations**: Create, Edit, Delete, AddAttachment, AddReaction
 
-### Task Aggregate
-- **Types**: Task, Bug, Feature, Support
-- **States**: Todo, InProgress, Review, Done, Cancelled
-- **Priority**: Low, Medium, High, Critical
+### Typed Entities (Chat = SoT)
+- **Types**: Task, Bug, Epic (as typed chat variants)
+- **State Ownership**: status/priority/assignee/due date are written through Chat commands
+- **Events**: business writes emit `chat.*` events only
 
 ### Notification Aggregate
 - **Types**: Task, Chat, Mention, System
@@ -222,7 +221,7 @@ make playwright-install # Install Playwright browsers for frontend tests
 │   ├── domain/               # Domain models (48 files, 6 aggregates)
 │   │   ├── chat/             # Chat aggregate
 │   │   ├── message/          # Message aggregate
-│   │   ├── task/             # Task aggregate
+│   │   ├── task/             # Shared task entity state/event contracts (query-side support)
 │   │   ├── user/             # User aggregate
 │   │   ├── workspace/        # Workspace aggregate
 │   │   ├── notification/     # Notification aggregate
@@ -283,8 +282,11 @@ make test-coverage
 # Run E2E tests
 make test-e2e
 
-# Check coverage threshold (80%)
-make test-coverage-check
+# Run frontend browser E2E tests
+make test-e2e-frontend
+
+# Run focused board+sidebar smoke regression
+make test-e2e-frontend-smoke
 ```
 
 ### Test Coverage Targets
@@ -312,7 +314,7 @@ make test-coverage-check
 
 ## 📈 Roadmap
 
-### ✅ Completed (February 2026)
+### ✅ Completed (March 2026)
 
 - Full domain layer with event sourcing (6 aggregates, 30+ events)
 - Complete application layer with use cases (40+ use cases)
@@ -337,8 +339,14 @@ make test-coverage-check
 - Dark mode toggle UI
 - Workspace-wide global search
 - File uploads (attachments for messages and tasks)
+- Chat=SoT hardening for board/sidebar flows:
+  - projection-safe task chat creation and post-action sync
+  - unified task action execution path with consistent system messages
+  - mandatory assignee existence validation in chat write path
+  - startup warning for legacy read-model collections (`chat_read_model`, `task_read_model`)
+  - HTMX WebSocket close workaround and chat empty-state first-message fix
 
-### 🔄 In Progress (February 2026)
+### 🔄 In Progress (March 2026)
 
 - Mobile-responsive polish
 - Remaining frontend edge cases
@@ -363,4 +371,4 @@ MIT License - see [LICENSE](./LICENSE)
 
 ---
 
-*Last updated: February 15, 2026*
+*Last updated: March 2, 2026*

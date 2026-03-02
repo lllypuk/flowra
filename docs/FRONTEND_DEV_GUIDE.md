@@ -454,7 +454,7 @@ document.body.addEventListener("chat.message.posted", function(evt) {
 Check the server logs for template parsing errors:
 
 ```bash
-go run cmd/api/main.go 2>&1 | grep -i template
+go run ./cmd/api 2>&1 | grep -i template
 ```
 
 ## JavaScript Patterns

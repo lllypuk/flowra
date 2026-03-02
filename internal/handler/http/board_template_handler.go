@@ -53,18 +53,18 @@ type BoardMemberService interface {
 	ListWorkspaceMembers(ctx context.Context, workspaceID uuid.UUID, offset, limit int) ([]MemberViewData, error)
 }
 
-// BoardTaskCreator defines the interface for task creation operations.
-// Declared on the consumer side per project guidelines.
-type BoardTaskCreator interface {
-	// CreateTask creates a new task and returns its ID.
-	CreateTask(ctx context.Context, cmd taskapp.CreateTaskCommand) (*taskapp.TaskResult, error)
-}
-
 // BoardChatCreator defines the interface for chat creation operations.
 // Declared on the consumer side per project guidelines.
 type BoardChatCreator interface {
-	// CreateChat creates a new chat for task and returns its ID.
-	CreateChat(ctx context.Context, workspaceID, userID uuid.UUID, chatType, title string) (uuid.UUID, error)
+	// CreateChat creates a new typed chat and bootstraps task read model projection.
+	CreateChat(
+		ctx context.Context,
+		workspaceID, userID uuid.UUID,
+		chatType, title string,
+		priority task.Priority,
+		assigneeID *uuid.UUID,
+		dueDate *time.Time,
+	) (uuid.UUID, error)
 }
 
 // BoardViewData represents the data needed to render the board page.
@@ -148,7 +148,6 @@ type BoardTemplateHandler struct {
 	logger        *slog.Logger
 	taskService   BoardTaskService
 	memberService BoardMemberService
-	taskCreator   BoardTaskCreator
 	chatCreator   BoardChatCreator
 }
 
@@ -168,11 +167,6 @@ func NewBoardTemplateHandler(
 		taskService:   taskService,
 		memberService: memberService,
 	}
-}
-
-// SetTaskCreator sets the task creator service.
-func (h *BoardTemplateHandler) SetTaskCreator(tc BoardTaskCreator) {
-	h.taskCreator = tc
 }
 
 // SetChatCreator sets the chat creator service.
@@ -678,9 +672,9 @@ type taskCreateFormInput struct {
 	workspaceID uuid.UUID
 	title       string
 	taskType    string
-	priority    string
-	assigneeID  string
-	dueDate     string
+	priority    task.Priority
+	assigneeID  *uuid.UUID
+	dueDate     *time.Time
 }
 
 // TaskCreate handles task creation from the form.
@@ -695,11 +689,11 @@ func (h *BoardTemplateHandler) TaskCreate(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Invalid user ID")
 	}
 
-	if h.chatCreator == nil || h.taskCreator == nil {
+	if h.chatCreator == nil {
 		h.logger.Error("TaskCreate: services not configured")
 		return c.String(
 			http.StatusServiceUnavailable,
-			"Task creation is temporarily unavailable: required services are not configured",
+			"Task creation is temporarily unavailable: chat creation service is not configured",
 		)
 	}
 
@@ -710,20 +704,21 @@ func (h *BoardTemplateHandler) TaskCreate(c echo.Context) error {
 
 	// Create chat for the task
 	chatID, err := h.chatCreator.CreateChat(
-		c.Request().Context(), input.workspaceID, userID, input.taskType, input.title)
+		c.Request().Context(),
+		input.workspaceID,
+		userID,
+		input.taskType,
+		input.title,
+		input.priority,
+		input.assigneeID,
+		input.dueDate,
+	)
 	if err != nil {
 		h.logger.Error("TaskCreate: failed to create chat", "error", err)
 		return c.String(http.StatusInternalServerError, "Failed to create task chat")
 	}
 
-	// Create the task
-	cmd := h.buildCreateTaskCommand(chatID, userID, input)
-	if _, err = h.taskCreator.CreateTask(c.Request().Context(), cmd); err != nil {
-		h.logger.Error("TaskCreate: failed to create task", "error", err)
-		return c.String(http.StatusInternalServerError, "Failed to create task")
-	}
-
-	h.logger.Info("TaskCreate: task created", "chat_id", chatID.String(), "title", input.title)
+	h.logger.Info("TaskCreate: typed chat created", "chat_id", chatID.String(), "title", input.title)
 
 	// Return refreshed board columns.
 	// Preserve current board filters by accepting them from the request (query string or hidden inputs).
@@ -765,48 +760,41 @@ func (h *BoardTemplateHandler) parseTaskCreateForm(c echo.Context) (*taskCreateF
 		workspaceID: workspaceID,
 		title:       title,
 		taskType:    taskType,
-		priority:    strings.ToLower(c.FormValue("priority")),
-		assigneeID:  c.FormValue("assignee_id"),
-		dueDate:     c.FormValue("due_date"),
+		priority:    parsePriorityOrDefault(c.FormValue("priority")),
+		assigneeID:  parseOptionalUUID(c.FormValue("assignee_id")),
+		dueDate:     parseOptionalDate(c.FormValue("due_date")),
 	}, nil
 }
 
-// buildCreateTaskCommand builds the task creation command from parsed input.
-func (h *BoardTemplateHandler) buildCreateTaskCommand(
-	chatID, userID uuid.UUID,
-	input *taskCreateFormInput,
-) taskapp.CreateTaskCommand {
-	cmd := taskapp.CreateTaskCommand{
-		ChatID:    chatID,
-		Title:     input.title,
-		CreatedBy: userID,
+func parsePriorityOrDefault(raw string) task.Priority {
+	if p := parsePriorityFromString(raw); p != nil {
+		return *p
 	}
+	return task.PriorityMedium
+}
 
-	if et := parseEntityTypeFromString(input.taskType); et != nil {
-		cmd.EntityType = *et
-	} else {
-		cmd.EntityType = task.TypeTask
+func parseOptionalUUID(raw string) *uuid.UUID {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
 	}
-
-	if p := parsePriorityFromString(input.priority); p != nil {
-		cmd.Priority = *p
-	} else {
-		cmd.Priority = task.PriorityMedium
+	value, err := uuid.ParseUUID(raw)
+	if err != nil {
+		return nil
 	}
+	return &value
+}
 
-	if input.assigneeID != "" {
-		if assigneeID, err := uuid.ParseUUID(input.assigneeID); err == nil {
-			cmd.AssigneeID = &assigneeID
-		}
+func parseOptionalDate(raw string) *time.Time {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
 	}
-
-	if input.dueDate != "" {
-		if dueDate, err := time.Parse("2006-01-02", input.dueDate); err == nil {
-			cmd.DueDate = &dueDate
-		}
+	dueDate, err := time.Parse("2006-01-02", raw)
+	if err != nil {
+		return nil
 	}
-
-	return cmd
+	return &dueDate
 }
 
 // parseEntityTypeFromString converts a string to task.EntityType.
@@ -832,7 +820,7 @@ func parseEntityTypeFromString(s string) *task.EntityType {
 //
 
 func parsePriorityFromString(s string) *task.Priority {
-	switch strings.ToLower(s) {
+	switch strings.ToLower(strings.TrimSpace(s)) {
 	case priorityStringLow:
 		p := task.PriorityLow
 		return &p

@@ -110,6 +110,29 @@ type SetDueDateCommand struct {
 // CommandName returns the command name
 func (c SetDueDateCommand) CommandName() string { return "SetDueDate" }
 
+// AddAttachmentCommand contains data for attaching a file to typed chat.
+type AddAttachmentCommand struct {
+	ChatID   uuid.UUID
+	FileID   uuid.UUID
+	FileName string
+	FileSize int64
+	MimeType string
+	AddedBy  uuid.UUID
+}
+
+// CommandName returns the command name.
+func (c AddAttachmentCommand) CommandName() string { return "AddAttachment" }
+
+// RemoveAttachmentCommand contains data for removing a file from typed chat.
+type RemoveAttachmentCommand struct {
+	ChatID    uuid.UUID
+	FileID    uuid.UUID
+	RemovedBy uuid.UUID
+}
+
+// CommandName returns the command name.
+func (c RemoveAttachmentCommand) CommandName() string { return "RemoveAttachment" }
+
 // RenameChatCommand contains data for renaming a chat
 type RenameChatCommand struct {
 	ChatID    uuid.UUID

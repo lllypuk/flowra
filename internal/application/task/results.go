@@ -1,7 +1,6 @@
 package task
 
 import (
-	"github.com/lllypuk/flowra/internal/domain/event"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
@@ -16,9 +15,6 @@ type TaskResult struct {
 	// Version tekuschaya versiya aggregate after vypolneniya operatsii
 	Version int
 
-	// Events event, sgenerirovannye in rezultate vypolneniya operatsii
-	Events []event.DomainEvent
-
 	// Success flag uspeshnogo vypolneniya
 	Success bool
 
@@ -27,11 +23,10 @@ type TaskResult struct {
 }
 
 // NewSuccessResult creates result uspeshnogo vypolneniya
-func NewSuccessResult(taskID uuid.UUID, version int, events []event.DomainEvent) TaskResult {
+func NewSuccessResult(taskID uuid.UUID, version int) TaskResult {
 	return TaskResult{
 		TaskID:  taskID,
 		Version: version,
-		Events:  events,
 		Success: true,
 	}
 }
@@ -53,9 +48,4 @@ func (r TaskResult) IsSuccess() bool {
 // IsFailure returns true if operatsiya zavershilas s oshibkoy
 func (r TaskResult) IsFailure() bool {
 	return !r.Success
-}
-
-// EventCount returns count sgenerirovannyh events
-func (r TaskResult) EventCount() int {
-	return len(r.Events)
 }

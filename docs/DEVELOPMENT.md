@@ -69,10 +69,10 @@ go mod download
 go mod tidy
 ```
 
-### 3. Start Infrastructure Services
+### 3. Start Infrastructure Services (Optional)
 
 ```bash
-# Start MongoDB, Redis, and Keycloak
+# Start MongoDB, Redis, and Keycloak manually (optional)
 docker-compose up -d
 
 # Verify services are running
@@ -84,6 +84,9 @@ docker-compose ps
 # flowra-keycloak  running   0.0.0.0:8090->8080/tcp
 ```
 
+`make dev` already starts these services automatically. Manual startup is useful when you need to run `make reset-data`
+before launching the full stack.
+
 ### 4. Configure Application
 
 ```bash
@@ -91,17 +94,20 @@ docker-compose ps
 # Default values work for local development
 
 # Optionally, override via environment variables:
-export FLOWRA_LOG_LEVEL=debug
+export LOG_LEVEL=debug
 ```
 
 ### 5. Start the Application
 
 ```bash
-# Development mode
+# Full-stack development mode (infra + worker + API)
 make dev
 
-# Or directly
-go run cmd/api/main.go
+# Lightweight API-only mode (explicit opt-in, limited)
+make dev-lite
+
+# Or directly (API only)
+FLOWRA_DEV_MODE=lite go run ./cmd/api
 ```
 
 ### 6. Verify Setup
@@ -127,7 +133,8 @@ curl http://localhost:8080/ready
 make help
 
 # Common commands:
-make dev           # Run in development mode
+make dev           # Run full-stack development mode (infra + worker + API)
+make dev-lite      # Run lightweight API-only mode (no worker)
 make build         # Build binaries
 make test          # Run all tests
 make test-unit     # Run unit tests only
@@ -218,7 +225,7 @@ git push origin feature/my-feature
 │   ├── domain/           # Domain models and business logic
 │   │   ├── chat/         # Chat aggregate
 │   │   ├── message/      # Message aggregate
-│   │   ├── task/         # Task aggregate
+│   │   ├── task/         # Shared task entity state/event contracts (query-side support)
 │   │   ├── notification/ # Notification aggregate
 │   │   ├── user/         # User entity
 │   │   ├── workspace/    # Workspace entity
@@ -238,16 +245,16 @@ git push origin feature/my-feature
 │   ├── middleware/       # HTTP middleware
 │   └── config/           # Configuration
 │
-├── pkg/                   # Public packages (if any)
-│
 ├── web/                   # Frontend resources
 │   ├── templates/        # HTML templates
 │   ├── static/           # Static assets
 │   └── components/       # HTMX components
 │
 ├── tests/                # Test suites
-│   ├── e2e/             # End-to-end tests
+│   ├── e2e/             # End-to-end tests (API + frontend)
 │   ├── integration/     # Integration tests
+│   ├── load/            # Manual k6 load tests
+│   ├── mocks/           # Reusable mocks/fakes
 │   └── testutil/        # Test utilities
 │
 ├── configs/             # Configuration files
@@ -312,17 +319,20 @@ make test-unit
 # Run E2E tests (requires testcontainers)
 make test-e2e
 
-# Run E2E tests with docker-compose MongoDB
-make test-e2e-docker
+# Run frontend E2E tests (Playwright)
+make test-e2e-frontend
+
+# Run focused board+sidebar smoke regression
+make test-e2e-frontend-smoke
+
+# Run integration tests (requires Docker/testcontainers)
+make test-integration
 
 # Run specific test
 go test -v ./internal/domain/chat/...
 
 # Run with coverage
 make test-coverage
-
-# Check coverage threshold (80%)
-make test-coverage-check
 ```
 
 ### Writing Tests
@@ -550,8 +560,8 @@ Main MongoDB collections:
 - `users` - User read model
 - `workspaces` - Workspace read model
 - `workspace_members` - Workspace membership
-- `chat_read_model` - Chat read model
-- `task_read_model` - Task read model
+- `chats_read_model` - Chat read model
+- `tasks_read_model` - Task read model
 - `messages` - Message read model
 - `notifications` - Notification read model
 
@@ -580,7 +590,7 @@ slog.Error("failed to save",
 
 ```bash
 # Enable debug logging
-export FLOWRA_LOG_LEVEL=debug
+export LOG_LEVEL=debug
 make dev
 ```
 
@@ -628,7 +638,7 @@ dlv attach <pid>
             "mode": "auto",
             "program": "${workspaceFolder}/cmd/api",
             "env": {
-                "FLOWRA_LOG_LEVEL": "debug"
+                "LOG_LEVEL": "debug"
             }
         },
         {
@@ -696,4 +706,4 @@ Follow the project's interface design principles (see CLAUDE.md):
 
 ---
 
-*Last updated: February 2026*
+*Last updated: March 2026*

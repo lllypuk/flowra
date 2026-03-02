@@ -9,16 +9,19 @@ When starting work on this repository, include `CLAUDE.md` in the working contex
 ## Build, Test, and Development Commands
 Use `make` targets (see `Makefile`) for common workflows:
 
-- `make dev` - run the API locally (`go run ./cmd/api`)
+- `make dev` - run full-stack local runtime (`docker-compose` infra + worker + API)
+- `make dev-lite` - run API-only mode (`FLOWRA_DEV_MODE=lite go run ./cmd/api`)
 - `make build` - build `bin/api` and `bin/worker`
 - `make test` - full test suite with race detector and coverage profile
 - `make test-unit` - fast unit tests in `internal/...`
 - `make test-integration` - integration tests (`-tags=integration`, testcontainers)
 - `make test-e2e` / `make test-e2e-frontend` - end-to-end tests (`-tags=e2e`)
+- `make test-e2e-frontend-smoke` - targeted board+sidebar smoke regression test
 - `make test-load-tags` - manual k6 load test for tag-heavy message flows (requires `k6` and `AUTH_TOKEN`)
 - `make playwright-install` - install Chromium for frontend E2E
 - `make lint` - format + lint (`go fmt`, `golangci-lint --fix`)
 - `make docker-up` / `make docker-down` - local services (MongoDB, Redis, Keycloak)
+- `make reset-data` - reset Chat=SoT local collections and recreate indexes
 
 ## Coding Style & Naming Conventions
 Target Go `1.26` (`go.mod`). Follow standard Go formatting (`gofmt`) and imports (`goimports` via `golangci-lint`); keep lines under the configured `golines` limit (120). Use package-focused names, exported identifiers in `CamelCase`, unexported in `camelCase`, and files in `snake_case.go`. Keep tests in `*_test.go`. Prefer small, cohesive packages under the existing layer structure rather than cross-layer shortcuts.
