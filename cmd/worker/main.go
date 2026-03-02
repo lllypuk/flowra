@@ -73,6 +73,14 @@ func main() {
 
 	// Setup repositories
 	db := mongoClient.Database(cfg.MongoDB.Database)
+	legacyCtx, legacyCancel := context.WithTimeout(ctx, cfg.MongoDB.Timeout)
+	if warnErr := mongodbinfra.WarnIfLegacyReadModelCollectionsContainData(legacyCtx, db, logger); warnErr != nil {
+		logger.WarnContext(legacyCtx, "failed to inspect legacy read model collections",
+			slog.String("error", warnErr.Error()),
+		)
+	}
+	legacyCancel()
+
 	userRepo := mongodb.NewMongoUserRepository(db.Collection("users"))
 
 	// Setup Redis for EventBus

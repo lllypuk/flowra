@@ -39,6 +39,13 @@ All business write events for typed entities are `chat.*` events. This includes 
 - no new producers of `task.*` events;
 - existing consumers should migrate to `chat.*` contracts.
 
+### Legacy `task.*` Event Handling (Post-Refactor)
+
+- Existing historical `task.*` records in the event store are treated as legacy data.
+- Chat=SoT projectors rebuild `chats_read_model` and `tasks_read_model` from `chat.*` streams only.
+- Legacy `task.*` events are ignored by current read-model rebuild handlers and do not mutate current typed-chat state.
+- Operationally, if legacy read-model collections (`chat_read_model`, `task_read_model`) still contain data, startup logs warnings and operators should run `make reset-data` for a clean Chat=SoT state.
+
 ## Compatibility Strategy (Frontend and Query API)
 
 - Query/read endpoints may continue returning task-oriented DTOs for UI compatibility.

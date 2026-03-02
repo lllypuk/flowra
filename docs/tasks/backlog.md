@@ -91,21 +91,21 @@ Assumption: we optimize for a clean implementation, not for compatibility with l
 - [x] `P2` PR-26: Add concurrent-write regression coverage for one chat aggregate.
   - Scope: integration tests (`tests/integration`).
   - Done when: race-prone concurrent status/assignee/priority operations are covered and deterministic.
-- [ ] `P2` PR-27: Add failure-recovery tests for partial create/setup and projection rebuild errors.
+- [x] `P2` PR-27: Add failure-recovery tests for partial create/setup and projection rebuild errors.
   - Scope: integration tests around board/task creation flow.
   - Done when: failures after chat creation do not leave permanently inconsistent board/task read model.
-- [ ] `P2` PR-28: Add conversion-cycle projection consistency tests (`task -> bug -> epic -> discussion`).
+- [x] `P2` PR-28: Add conversion-cycle projection consistency tests (`task -> bug -> epic -> discussion`).
   - Scope: projector/integration tests.
   - Done when: `chats_read_model` and `tasks_read_model` stay consistent across type flips.
-- [ ] `P2` PR-29: Add typed-chat deletion projection regression test.
+- [x] `P2` PR-29: Add typed-chat deletion projection regression test.
   - Scope: projector/integration tests.
   - Done when: deleting typed chats reliably removes stale `tasks_read_model` docs.
-- [ ] `P2` PR-30: Add notification regression tests for chat-driven assignment/status flows.
+- [x] `P2` PR-30: Add notification regression tests for chat-driven assignment/status flows.
   - Scope: eventbus notification handler tests.
   - Done when: assignment/status notifications are asserted for current `chat.*` event model.
-- [ ] `P2` PR-31: Add startup warning when legacy read-model collections contain data.
+- [x] `P2` PR-31: Add startup warning when legacy read-model collections contain data.
   - Scope: startup/bootstrap checks.
   - Done when: non-empty `chat_read_model`/`task_read_model` are detected and logged with reset guidance.
-- [ ] `P3` PR-32: Document handling of legacy `task.*` events in Chat=SoT era.
+- [x] `P3` PR-32: Document handling of legacy `task.*` events in Chat=SoT era.
   - Scope: docs/architecture or operations docs.
   - Done when: behavior is explicitly documented for operators and developers.

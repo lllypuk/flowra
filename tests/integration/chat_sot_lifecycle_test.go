@@ -373,6 +373,182 @@ func TestChatSoT_ConcurrentTypedMutationsSingleAggregateRemainDeterministic(t *t
 	}
 }
 
+func TestChatSoT_BoardStyleCreatePartialSetupFailureCanBeRecoveredByProjectionRebuild(t *testing.T) {
+	ctx := context.Background()
+	env := newChatSoTTestEnv(t)
+
+	workspaceID := uuid.NewUUID()
+	actorID := uuid.NewUUID()
+
+	createResult, err := chatapp.NewCreateChatUseCase(env.chatRepo).Execute(ctx, chatapp.CreateChatCommand{
+		WorkspaceID: workspaceID,
+		Title:       "Board partial setup failure",
+		Type:        chatdomain.TypeTask,
+		IsPublic:    true,
+		CreatedBy:   actorID,
+	})
+	require.NoError(t, err)
+	chatID := createResult.Value.ID()
+
+	_, err = chatapp.NewSetPriorityUseCase(env.chatRepo).Execute(ctx, chatapp.SetPriorityCommand{
+		ChatID:   chatID,
+		Priority: string(taskdomain.PriorityHigh),
+		SetBy:    actorID,
+	})
+	require.NoError(t, err)
+
+	userRepo := mongorepo.NewMongoUserRepository(env.db.Collection("users"))
+	unknownUserID := uuid.NewUUID()
+
+	_, err = chatapp.NewAssignUserUseCase(env.chatRepo, userRepo).Execute(ctx, chatapp.AssignUserCommand{
+		ChatID:     chatID,
+		AssigneeID: &unknownUserID,
+		AssignedBy: actorID,
+	})
+	require.Error(t, err)
+
+	_, err = env.taskRepo.FindByID(ctx, chatID)
+	require.Error(t, err)
+
+	require.NoError(t, env.syncReadModels(ctx, chatID))
+
+	taskRM, err := env.taskRepo.FindByID(ctx, chatID)
+	require.NoError(t, err)
+	assert.Equal(t, taskdomain.TypeTask, taskRM.EntityType)
+	assert.Equal(t, taskdomain.PriorityHigh, taskRM.Priority)
+	assert.Nil(t, taskRM.AssignedTo)
+}
+
+func TestChatSoT_TaskProjectionRebuildFailureIsRecoverableOnRetry(t *testing.T) {
+	ctx := context.Background()
+	env := newChatSoTTestEnv(t)
+
+	workspaceID := uuid.NewUUID()
+	actorID := uuid.NewUUID()
+
+	createResult, err := chatapp.NewCreateChatUseCase(env.chatRepo).Execute(ctx, chatapp.CreateChatCommand{
+		WorkspaceID: workspaceID,
+		Title:       "Projection retry recovery",
+		Type:        chatdomain.TypeTask,
+		IsPublic:    true,
+		CreatedBy:   actorID,
+	})
+	require.NoError(t, err)
+	chatID := createResult.Value.ID()
+
+	cancelledCtx, cancel := context.WithCancel(ctx)
+	cancel()
+
+	err = env.taskProjector.RebuildOne(cancelledCtx, chatID)
+	require.Error(t, err)
+
+	count, err := env.db.Collection(mongoinfra.CollectionTaskReadModel).
+		CountDocuments(ctx, bson.M{"chat_id": chatID.String()})
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), count)
+
+	require.NoError(t, env.syncReadModels(ctx, chatID))
+
+	taskRM, err := env.taskRepo.FindByID(ctx, chatID)
+	require.NoError(t, err)
+	assert.Equal(t, chatID, taskRM.ID)
+	assert.Equal(t, taskdomain.TypeTask, taskRM.EntityType)
+}
+
+func TestChatSoT_TypeConversionCycleKeepsChatAndTaskReadModelsConsistent(t *testing.T) {
+	ctx := context.Background()
+	env := newChatSoTTestEnv(t)
+
+	workspaceID := uuid.NewUUID()
+	actorID := uuid.NewUUID()
+
+	createResult, err := chatapp.NewCreateChatUseCase(env.chatRepo).Execute(ctx, chatapp.CreateChatCommand{
+		WorkspaceID: workspaceID,
+		Title:       "Type conversion cycle",
+		Type:        chatdomain.TypeTask,
+		IsPublic:    true,
+		CreatedBy:   actorID,
+	})
+	require.NoError(t, err)
+	chatID := createResult.Value.ID()
+
+	require.NoError(t, env.syncReadModels(ctx, chatID))
+
+	transitions := []struct {
+		newType          chatdomain.Type
+		expectedTaskType taskdomain.EntityType
+		taskExists       bool
+	}{
+		{newType: chatdomain.TypeBug, expectedTaskType: taskdomain.TypeBug, taskExists: true},
+		{newType: chatdomain.TypeEpic, expectedTaskType: taskdomain.TypeEpic, taskExists: true},
+		{newType: chatdomain.TypeDiscussion, expectedTaskType: taskdomain.TypeDiscussion, taskExists: false},
+	}
+
+	currentType := chatdomain.TypeTask
+	for _, transition := range transitions {
+		require.NoError(t, appendTypeChangedEvent(ctx, env, chatID, currentType, transition.newType, actorID))
+		require.NoError(t, env.syncReadModels(ctx, chatID))
+
+		chatRM := env.mustFindChatReadModel(t, ctx, chatID)
+		assert.Equal(t, string(transition.newType), chatRM.Type)
+
+		if transition.taskExists {
+			taskRM, findErr := env.taskRepo.FindByID(ctx, chatID)
+			require.NoError(t, findErr)
+			assert.Equal(t, transition.expectedTaskType, taskRM.EntityType)
+		} else {
+			_, findErr := env.taskRepo.FindByID(ctx, chatID)
+			require.Error(t, findErr)
+			assert.True(t, errors.Is(findErr, domainerrs.ErrNotFound))
+
+			assert.Empty(t, chatRM.Status)
+			assert.Empty(t, chatRM.Priority)
+		}
+
+		currentType = transition.newType
+	}
+}
+
+func TestChatSoT_DeletingTypedChatRemovesTaskReadModelProjection(t *testing.T) {
+	ctx := context.Background()
+	env := newChatSoTTestEnv(t)
+
+	workspaceID := uuid.NewUUID()
+	actorID := uuid.NewUUID()
+
+	createResult, err := chatapp.NewCreateChatUseCase(env.chatRepo).Execute(ctx, chatapp.CreateChatCommand{
+		WorkspaceID: workspaceID,
+		Title:       "Typed chat delete projection cleanup",
+		Type:        chatdomain.TypeTask,
+		IsPublic:    true,
+		CreatedBy:   actorID,
+	})
+	require.NoError(t, err)
+	chatID := createResult.Value.ID()
+
+	require.NoError(t, env.syncReadModels(ctx, chatID))
+
+	_, err = env.taskRepo.FindByID(ctx, chatID)
+	require.NoError(t, err)
+
+	aggregate, err := env.chatRepo.Load(ctx, chatID)
+	require.NoError(t, err)
+	require.NoError(t, aggregate.Delete(actorID))
+	require.NoError(t, env.chatRepo.Save(ctx, aggregate))
+
+	require.NoError(t, env.syncReadModels(ctx, chatID))
+	require.NoError(t, env.syncReadModels(ctx, chatID))
+
+	_, err = env.taskRepo.FindByID(ctx, chatID)
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, domainerrs.ErrNotFound))
+
+	taskCount, err := env.db.Collection(mongoinfra.CollectionTaskReadModel).
+		CountDocuments(ctx, bson.M{"task_id": chatID.String()})
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), taskCount)
+}
+
 func newChatSoTTestEnv(t *testing.T) *chatSoTTestEnv {
 	t.Helper()
 
@@ -521,4 +697,29 @@ func retryOnOptimisticConflict(
 	}
 
 	return lastErr
+}
+
+func appendTypeChangedEvent(
+	ctx context.Context,
+	env *chatSoTTestEnv,
+	chatID uuid.UUID,
+	oldType chatdomain.Type,
+	newType chatdomain.Type,
+	actorID uuid.UUID,
+) error {
+	currentVersion, err := env.eventStore.GetVersion(ctx, chatID.String())
+	if err != nil {
+		return err
+	}
+
+	evt := chatdomain.NewChatTypeChanged(
+		chatID,
+		oldType,
+		newType,
+		"Type "+string(newType),
+		currentVersion+1,
+		event.NewMetadata(actorID.String(), uuid.NewUUID().String(), uuid.NewUUID().String()),
+	)
+
+	return env.eventStore.SaveEvents(ctx, chatID.String(), []event.DomainEvent{evt}, currentVersion)
 }

@@ -417,6 +417,15 @@ func (c *Container) setupMongoDB(ctx context.Context) error {
 
 	c.Logger.InfoContext(ctx, "MongoDB indexes created successfully")
 
+	legacyCtx, legacyCancel := context.WithTimeout(ctx, c.Config.MongoDB.Timeout)
+	defer legacyCancel()
+
+	if warnErr := mongodbinfra.WarnIfLegacyReadModelCollectionsContainData(legacyCtx, db, c.Logger); warnErr != nil {
+		c.Logger.WarnContext(legacyCtx, "failed to inspect legacy read model collections",
+			slog.String("error", warnErr.Error()),
+		)
+	}
+
 	return nil
 }
 

@@ -546,6 +546,65 @@ func TestNotificationHandler_HandleUserAssigned(t *testing.T) {
 	})
 }
 
+func TestNotificationHandler_ChatAssignmentStatusRegression(t *testing.T) {
+	t.Run("assignment emits notification while status change does not", func(t *testing.T) {
+		repo := newMockNotificationRepository()
+		uc := notification.NewCreateNotificationUseCase(repo)
+		handler := eventbus.NewNotificationHandler(uc)
+
+		assigneeID := uuid.NewUUID()
+		assignEvt := newTestPayloadEvent(
+			chat.EventTypeUserAssigned,
+			"chat-123",
+			map[string]any{
+				"assignee_id": assigneeID.String(),
+				"assigned_by": uuid.NewUUID().String(),
+			},
+		)
+
+		err := handler.Handle(context.Background(), assignEvt)
+		require.NoError(t, err)
+
+		statusEvt := newTestPayloadEvent(
+			chat.EventTypeStatusChanged,
+			"chat-123",
+			map[string]any{
+				"old_status": "To Do",
+				"new_status": "Done",
+				"changed_by": uuid.NewUUID().String(),
+			},
+		)
+
+		err = handler.Handle(context.Background(), statusEvt)
+		require.NoError(t, err)
+
+		notifications := repo.GetNotifications()
+		require.Len(t, notifications, 1)
+		assert.Equal(t, domainNotif.TypeTaskAssigned, notifications[0].Type())
+		assert.Equal(t, assigneeID, notifications[0].UserID())
+	})
+
+	t.Run("status change event alone does not create notification", func(t *testing.T) {
+		repo := newMockNotificationRepository()
+		uc := notification.NewCreateNotificationUseCase(repo)
+		handler := eventbus.NewNotificationHandler(uc)
+
+		statusEvt := newTestPayloadEvent(
+			chat.EventTypeStatusChanged,
+			"chat-123",
+			map[string]any{
+				"old_status": "In Progress",
+				"new_status": "Done",
+				"changed_by": uuid.NewUUID().String(),
+			},
+		)
+
+		err := handler.Handle(context.Background(), statusEvt)
+		require.NoError(t, err)
+		assert.Empty(t, repo.GetNotifications())
+	})
+}
+
 func TestNotificationHandler_HandleChatCreated(t *testing.T) {
 	t.Run("logs chat created event", func(t *testing.T) {
 		repo := newMockNotificationRepository()
