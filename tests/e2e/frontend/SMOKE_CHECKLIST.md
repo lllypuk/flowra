@@ -4,9 +4,10 @@ Use this checklist after switching branches in Chat=SoT refactor or after touchi
 
 ## Prerequisites
 
-1. Start infra and API: `docker-compose up -d` and `make dev`.
+1. Start infra: `make docker-up`.
 2. Reset local data: `make reset-data`.
-3. Login as `testuser / test123`.
+3. Start full-stack runtime: `make dev` (runs infra + API + worker).
+4. Login as `testuser / test123`.
 
 ## Smoke Flow
 

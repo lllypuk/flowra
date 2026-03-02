@@ -69,10 +69,10 @@ go mod download
 go mod tidy
 ```
 
-### 3. Start Infrastructure Services
+### 3. Start Infrastructure Services (Optional)
 
 ```bash
-# Start MongoDB, Redis, and Keycloak
+# Start MongoDB, Redis, and Keycloak manually (optional)
 docker-compose up -d
 
 # Verify services are running
@@ -84,6 +84,9 @@ docker-compose ps
 # flowra-keycloak  running   0.0.0.0:8090->8080/tcp
 ```
 
+`make dev` already starts these services automatically. Manual startup is useful when you need to run `make reset-data`
+before launching the full stack.
+
 ### 4. Configure Application
 
 ```bash
@@ -91,17 +94,20 @@ docker-compose ps
 # Default values work for local development
 
 # Optionally, override via environment variables:
-export FLOWRA_LOG_LEVEL=debug
+export LOG_LEVEL=debug
 ```
 
 ### 5. Start the Application
 
 ```bash
-# Development mode
+# Full-stack development mode (infra + worker + API)
 make dev
 
-# Or directly
-go run cmd/api/main.go
+# Lightweight API-only mode (explicit opt-in, limited)
+make dev-lite
+
+# Or directly (API only)
+FLOWRA_DEV_MODE=lite go run cmd/api/main.go
 ```
 
 ### 6. Verify Setup
@@ -127,7 +133,8 @@ curl http://localhost:8080/ready
 make help
 
 # Common commands:
-make dev           # Run in development mode
+make dev           # Run full-stack development mode (infra + worker + API)
+make dev-lite      # Run lightweight API-only mode (no worker)
 make build         # Build binaries
 make test          # Run all tests
 make test-unit     # Run unit tests only
@@ -580,7 +587,7 @@ slog.Error("failed to save",
 
 ```bash
 # Enable debug logging
-export FLOWRA_LOG_LEVEL=debug
+export LOG_LEVEL=debug
 make dev
 ```
 
@@ -628,7 +635,7 @@ dlv attach <pid>
             "mode": "auto",
             "program": "${workspaceFolder}/cmd/api",
             "env": {
-                "FLOWRA_LOG_LEVEL": "debug"
+                "LOG_LEVEL": "debug"
             }
         },
         {

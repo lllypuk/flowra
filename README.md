@@ -64,23 +64,14 @@ cd flowra
 make deps
 ```
 
-### 2. Start Infrastructure
+### 2. Start Full-Stack Runtime
 
 ```bash
-# Start MongoDB, Redis, Keycloak
-docker-compose up -d
-
-# Verify services
-docker-compose ps
-```
-
-### 3. Start the Application
-
-```bash
+# Starts infra (MongoDB, Redis, Keycloak) + worker + API
 make dev
 ```
 
-### 4. Verify
+### 3. Verify
 
 ```bash
 # Health check
@@ -91,7 +82,7 @@ curl http://localhost:8080/health
 open http://localhost:8080/docs
 ```
 
-### 5. Test Authentication
+### 4. Test Authentication
 
 Access Keycloak at http://localhost:8090 (admin/admin123) to configure OAuth.
 
@@ -101,7 +92,8 @@ Access Keycloak at http://localhost:8090 (admin/admin123) to configure OAuth.
 
 ```bash
 make help          # Show all available commands
-make dev                # Run in development mode
+make dev                # Run full-stack development mode (infra + worker + API)
+make dev-lite           # Run API-only development mode (limited: no worker)
 make build              # Build binaries
 make test               # Run all tests
 make test-unit          # Run unit tests only
@@ -117,8 +109,9 @@ make playwright-install # Install Playwright browsers for frontend tests
 make reset-data         # Reset local/dev Chat=SoT data collections and recreate indexes
 ```
 
-When switching between branches around the Chat=SoT refactor, run `make reset-data`
-before `make dev` to avoid stale event/read-model shape mismatches.
+When switching between branches around the Chat=SoT refactor, run:
+`make docker-up && make reset-data` before `make dev` to avoid stale
+event/read-model shape mismatches.
 
 ---
 

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -49,6 +50,7 @@ func main() {
 		slog.String("version", "0.1.0"),
 		slog.String("environment", getEnvironment(cfg)),
 	)
+	logDevRuntimeMode(logger, cfg)
 
 	// Create a context that will be cancelled on shutdown signal
 	ctx, cancel := context.WithCancel(context.Background())
@@ -222,6 +224,38 @@ func getEnvironment(cfg *config.Config) string {
 		return "production"
 	}
 	return "unknown"
+}
+
+// logDevRuntimeMode emits runtime mode diagnostics for local development workflows.
+func logDevRuntimeMode(logger *slog.Logger, cfg *config.Config) {
+	mode := strings.ToLower(strings.TrimSpace(os.Getenv("FLOWRA_DEV_MODE")))
+	if mode == "" {
+		mode = "unspecified"
+	}
+
+	logger.Info("runtime mode",
+		slog.String("component", "worker"),
+		slog.String("dev_mode", mode),
+		slog.Bool("outbox_enabled", cfg.Outbox.Enabled),
+	)
+
+	switch mode {
+	case "fullstack":
+		if !cfg.Outbox.Enabled {
+			logger.Warn("full-stack mode expects outbox to be enabled")
+		}
+	case "lite":
+		logger.Warn("worker started in dev-lite mode; dev-lite is intended for API-only runs")
+	case "unspecified":
+		if cfg.IsDevelopment() {
+			logger.Warn("dev mode is unspecified; use make dev for full-stack runtime")
+		}
+	default:
+		logger.Warn("unknown FLOWRA_DEV_MODE value",
+			slog.String("value", mode),
+			slog.String("expected", "fullstack|lite"),
+		)
+	}
 }
 
 // connectMongoDB establishes a connection to MongoDB.

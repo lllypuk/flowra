@@ -1,3 +1,4 @@
+//nolint:testpackage // Needs package access for buildChatReadModelMutation helper.
 package projector
 
 import (
@@ -21,7 +22,7 @@ func TestBuildChatReadModelMutation_TaskWithoutNullableFieldsUsesUnset(t *testin
 	assert.Equal(t, string(chatdomain.TypeTask), setDoc["type"])
 	assert.Equal(t, c.Status(), setDoc["status"])
 	assert.Equal(t, c.Priority(), setDoc["priority"])
-	assert.Equal(t, "", unsetDoc["assigned_to"])
-	assert.Equal(t, "", unsetDoc["due_date"])
-	assert.Equal(t, "", unsetDoc["severity"])
+	assert.Empty(t, unsetDoc["assigned_to"])
+	assert.Empty(t, unsetDoc["due_date"])
+	assert.Empty(t, unsetDoc["severity"])
 }

@@ -30,14 +30,14 @@ func TestMongoChatRepository_UpdateReadModel_AssigneeUnsetAfterClear(t *testing.
 	require.NoError(t, c.AssignUser(&assigneeID, userID))
 	require.NoError(t, commandRepo.Save(ctx, c))
 
-	doc := mustGetChatReadModelDoc(t, ctx, readModelColl, c.ID())
+	doc := mustGetChatReadModelDoc(ctx, t, readModelColl, c.ID())
 	require.Contains(t, doc, "assigned_to")
 	assert.Equal(t, assigneeID.String(), doc["assigned_to"])
 
 	require.NoError(t, c.AssignUser(nil, userID))
 	require.NoError(t, commandRepo.Save(ctx, c))
 
-	doc = mustGetChatReadModelDoc(t, ctx, readModelColl, c.ID())
+	doc = mustGetChatReadModelDoc(ctx, t, readModelColl, c.ID())
 	assert.NotContains(t, doc, "assigned_to")
 }
 
@@ -58,17 +58,17 @@ func TestMongoChatRepository_UpdateReadModel_DueDateUnsetAfterClear(t *testing.T
 	require.NoError(t, c.SetDueDate(&dueDate, userID))
 	require.NoError(t, commandRepo.Save(ctx, c))
 
-	doc := mustGetChatReadModelDoc(t, ctx, readModelColl, c.ID())
+	doc := mustGetChatReadModelDoc(ctx, t, readModelColl, c.ID())
 	require.Contains(t, doc, "due_date")
 
 	require.NoError(t, c.SetDueDate(nil, userID))
 	require.NoError(t, commandRepo.Save(ctx, c))
 
-	doc = mustGetChatReadModelDoc(t, ctx, readModelColl, c.ID())
+	doc = mustGetChatReadModelDoc(ctx, t, readModelColl, c.ID())
 	assert.NotContains(t, doc, "due_date")
 }
 
-func mustGetChatReadModelDoc(t *testing.T, ctx context.Context, coll *mongo.Collection, chatID uuid.UUID) bson.M {
+func mustGetChatReadModelDoc(ctx context.Context, t *testing.T, coll *mongo.Collection, chatID uuid.UUID) bson.M {
 	t.Helper()
 
 	var doc bson.M

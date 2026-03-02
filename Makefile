@@ -1,10 +1,13 @@
-.PHONY: help dev build test lint docker-up docker-down docker-logs clean deps test-unit test-integration test-e2e test-e2e-frontend test-coverage playwright-install test-load-tags reset-data
+.PHONY: help dev dev-lite build test lint docker-up docker-down docker-logs clean deps test-unit test-integration test-e2e test-e2e-frontend test-coverage playwright-install test-load-tags reset-data
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-dev: ## Run in development mode
-	go run ./cmd/api
+dev: ## Run full-stack development mode (infra + API + worker)
+	bash ./scripts/dev-full-stack.sh
+
+dev-lite: ## Run lightweight development mode (API only)
+	FLOWRA_DEV_MODE=lite go run ./cmd/api
 
 build: ## Build binaries
 	go build -o bin/api ./cmd/api

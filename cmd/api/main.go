@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -36,6 +37,7 @@ func main() {
 		slog.String("version", "0.1.0"),
 		slog.String("environment", getEnvironment(cfg)),
 	)
+	logDevRuntimeMode(logger, cfg)
 
 	// Build DI container
 	container, err := NewContainer(cfg, WithLogger(logger))
@@ -134,6 +136,40 @@ func getEnvironment(cfg *config.Config) string {
 		return "production"
 	}
 	return "unknown"
+}
+
+// logDevRuntimeMode emits runtime mode diagnostics for local development workflows.
+func logDevRuntimeMode(logger *slog.Logger, cfg *config.Config) {
+	mode := strings.ToLower(strings.TrimSpace(os.Getenv("FLOWRA_DEV_MODE")))
+	if mode == "" {
+		mode = "unspecified"
+	}
+
+	logger.Info("runtime mode",
+		slog.String("component", "api"),
+		slog.String("dev_mode", mode),
+		slog.Bool("outbox_enabled", cfg.Outbox.Enabled),
+	)
+
+	switch mode {
+	case "fullstack":
+		if !cfg.Outbox.Enabled {
+			logger.Warn("full-stack mode expects outbox to be enabled")
+		}
+	case "lite":
+		if cfg.Outbox.Enabled {
+			logger.Warn("dev-lite mode with outbox enabled requires worker for fresh projections")
+		}
+	case "unspecified":
+		if cfg.IsDevelopment() && cfg.Outbox.Enabled {
+			logger.Warn("dev mode is unspecified; use make dev (full-stack) or make dev-lite explicitly")
+		}
+	default:
+		logger.Warn("unknown FLOWRA_DEV_MODE value",
+			slog.String("value", mode),
+			slog.String("expected", "fullstack|lite"),
+		)
+	}
 }
 
 // gracefulShutdown handles graceful shutdown on OS signals.

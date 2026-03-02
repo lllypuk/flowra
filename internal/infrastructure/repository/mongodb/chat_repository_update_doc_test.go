@@ -1,3 +1,4 @@
+//nolint:testpackage // Needs package access for buildChatReadModelMutation helper.
 package mongodb
 
 import (
@@ -19,11 +20,11 @@ func TestBuildChatReadModelMutation_DiscussionUnsetsTypedFields(t *testing.T) {
 	setDoc, unsetDoc := buildChatReadModelMutation(c)
 
 	assert.Equal(t, string(chatdomain.TypeDiscussion), setDoc["type"])
-	assert.Equal(t, "", unsetDoc["status"])
-	assert.Equal(t, "", unsetDoc["priority"])
-	assert.Equal(t, "", unsetDoc["assigned_to"])
-	assert.Equal(t, "", unsetDoc["due_date"])
-	assert.Equal(t, "", unsetDoc["severity"])
+	assert.Empty(t, unsetDoc["status"])
+	assert.Empty(t, unsetDoc["priority"])
+	assert.Empty(t, unsetDoc["assigned_to"])
+	assert.Empty(t, unsetDoc["due_date"])
+	assert.Empty(t, unsetDoc["severity"])
 }
 
 func TestBuildChatReadModelMutation_TaskClearsNullableFields(t *testing.T) {
@@ -37,9 +38,9 @@ func TestBuildChatReadModelMutation_TaskClearsNullableFields(t *testing.T) {
 
 	assert.Equal(t, c.Status(), setDoc["status"])
 	assert.Equal(t, c.Priority(), setDoc["priority"])
-	assert.Equal(t, "", unsetDoc["assigned_to"])
-	assert.Equal(t, "", unsetDoc["due_date"])
-	assert.Equal(t, "", unsetDoc["severity"])
+	assert.Empty(t, unsetDoc["assigned_to"])
+	assert.Empty(t, unsetDoc["due_date"])
+	assert.Empty(t, unsetDoc["severity"])
 }
 
 func TestBuildChatReadModelMutation_BugKeepsSeverityWhenSet(t *testing.T) {
