@@ -8,6 +8,7 @@ import (
 	"github.com/lllypuk/flowra/internal/application/appcore"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 // ReadModelSyncChecker checks for ReadModel synchronization issues.
@@ -45,7 +46,7 @@ func (c *ReadModelSyncChecker) Name() string {
 // EventStore sampling functionality to compare versions between EventStore and ReadModel.
 func (c *ReadModelSyncChecker) Check(ctx context.Context) appcore.HealthStatus {
 	// For now, we just check if collections are accessible
-	chatCount, err := c.chatReadModel.CountDocuments(ctx, map[string]any{})
+	chatCount, err := c.chatReadModel.EstimatedDocumentCount(ctx)
 	if err != nil {
 		return appcore.HealthStatus{
 			Healthy:   false,
@@ -54,7 +55,7 @@ func (c *ReadModelSyncChecker) Check(ctx context.Context) appcore.HealthStatus {
 		}
 	}
 
-	taskCount, err := c.taskReadModel.CountDocuments(ctx, map[string]any{})
+	taskCount, err := c.taskReadModel.EstimatedDocumentCount(ctx)
 	if err != nil {
 		return appcore.HealthStatus{
 			Healthy:   false,
@@ -65,7 +66,7 @@ func (c *ReadModelSyncChecker) Check(ctx context.Context) appcore.HealthStatus {
 
 	typedChatCount, err := c.chatReadModel.CountDocuments(ctx, bson.M{
 		"type": bson.M{"$in": []string{"task", "bug", "epic"}},
-	})
+	}, options.Count().SetHint("idx_chats_type"))
 	if err != nil {
 		return appcore.HealthStatus{
 			Healthy:   false,

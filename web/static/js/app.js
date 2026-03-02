@@ -816,13 +816,19 @@
             var elt = evt.detail && evt.detail.elt;
             if (!elt) return;
             var data = elt['htmx-internal-data'];
-            if (data && data.webSocket && typeof data.webSocket.close === 'function') {
+            if (
+                data &&
+                data.webSocket &&
+                typeof data.webSocket.close === 'function' &&
+                !data.webSocket.__flowraClosePatched
+            ) {
                 var origClose = data.webSocket.close;
                 data.webSocket.close = function() {
                     if (this.socket) {
                         origClose.call(this);
                     }
                 };
+                data.webSocket.__flowraClosePatched = true;
             }
         });
 

@@ -235,6 +235,12 @@ func GetChatReadModelIndexes() []IndexDefinition {
 			Options: options.Index().SetName("idx_chats_workspace_type_time"),
 		},
 		{
+			// Index for global type-filtered scans (health/read-model sync checks)
+			Collection: CollectionChatReadModel,
+			Keys:       bson.D{{Key: "type", Value: 1}},
+			Options:    options.Index().SetName("idx_chats_type"),
+		},
+		{
 			// Index for public chats within workspace
 			Collection: CollectionChatReadModel,
 			Keys:       bson.D{{Key: "workspace_id", Value: 1}, {Key: "is_public", Value: 1}},
