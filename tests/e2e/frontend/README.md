@@ -39,6 +39,11 @@ Browser-based end-to-end tests for the Flowra frontend using Playwright.
 make test-e2e-frontend
 ```
 
+### Run board + sidebar smoke regression only
+```bash
+make test-e2e-frontend-smoke
+```
+
 ### Run with visible browser (for debugging)
 ```bash
 HEADLESS=false make test-e2e-frontend
@@ -97,7 +102,7 @@ const (
     baseURL          = "http://localhost:8080"
     defaultTimeout   = 30 * time.Second
     keycloakUser     = "testuser"
-    keycloakPassword = "password"
+    keycloakPassword = "test123"
 )
 ```
 

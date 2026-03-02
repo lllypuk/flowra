@@ -42,7 +42,7 @@ Assumption: we optimize for a clean implementation, not for compatibility with l
   - Details: [chat-sot-pr-10-chat-read-model-nullable-unset.md](/home/sasha/Project/flowra/docs/tasks/chat-sot-pr-10-chat-read-model-nullable-unset.md)
 - [x] `P1` PR-11: Make dev runtime full-stack by default.
   - Details: [chat-sot-pr-11-dev-runtime-outbox-contract.md](/home/sasha/Project/flowra/docs/tasks/chat-sot-pr-11-dev-runtime-outbox-contract.md)
-- [ ] `P1` PR-12: Add regression coverage for board+sidebar smoke critical path.
+- [x] `P1` PR-12: Add regression coverage for board+sidebar smoke critical path.
   - Details: [chat-sot-pr-12-smoke-regression-coverage.md](/home/sasha/Project/flowra/docs/tasks/chat-sot-pr-12-smoke-regression-coverage.md)
 
 ## Deployment Roadmap
