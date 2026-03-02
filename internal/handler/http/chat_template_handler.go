@@ -3,6 +3,7 @@ package httphandler
 import (
 	"context"
 	"fmt"
+	"html"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -758,7 +759,7 @@ func (h *ChatTemplateHandler) ChatCreate(c echo.Context) error {
 func (h *ChatTemplateHandler) modalError(c echo.Context, statusCode int, message string) error {
 	//nolint:canonicalheader // HTMX uses non-canonical header names
 	c.Response().Header().Set("HX-Retarget", "#modal-container")
-	return c.String(statusCode, `<div class="error">`+message+`</div>`)
+	return c.String(statusCode, `<div class="error">`+html.EscapeString(message)+`</div>`)
 }
 
 // ChatSearchPartial returns filtered chat list based on search query.

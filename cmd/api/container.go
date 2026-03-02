@@ -1660,9 +1660,18 @@ func (c *Container) createFullTaskService() httphandler.TaskService {
 			collection:     taskReadModelColl,
 			chatCollection: c.MongoDB.Database(c.MongoDBName).Collection(mongodbinfra.CollectionChatReadModel),
 		},
-		chatRepo:      c.ChatRepo,
-		userRepo:      c.UserRepo,
-		taskProjector: c.getTaskReadModelProjector(),
+		chatRepo:           c.ChatRepo,
+		userRepo:           c.UserRepo,
+		taskProjector:      c.getTaskReadModelProjector(),
+		convertToTaskUC:    chatapp.NewConvertToTaskUseCase(c.ChatRepo),
+		convertToBugUC:     chatapp.NewConvertToBugUseCase(c.ChatRepo),
+		convertToEpicUC:    chatapp.NewConvertToEpicUseCase(c.ChatRepo),
+		changeStatusUC:     chatapp.NewChangeStatusUseCase(c.ChatRepo),
+		assignUserUC:       chatapp.NewAssignUserUseCase(c.ChatRepo, c.UserRepo),
+		setPriorityUC:      chatapp.NewSetPriorityUseCase(c.ChatRepo),
+		setDueDateUC:       chatapp.NewSetDueDateUseCase(c.ChatRepo),
+		addAttachmentUC:    chatapp.NewAddAttachmentUseCase(c.ChatRepo),
+		removeAttachmentUC: chatapp.NewRemoveAttachmentUseCase(c.ChatRepo),
 	}
 }
 
@@ -1674,6 +1683,16 @@ type fullTaskServiceAdapter struct {
 	chatRepo      chatapp.CommandRepository
 	userRepo      appcore.UserRepository
 	taskProjector appcore.ReadModelProjector
+
+	convertToTaskUC    *chatapp.ConvertToTaskUseCase
+	convertToBugUC     *chatapp.ConvertToBugUseCase
+	convertToEpicUC    *chatapp.ConvertToEpicUseCase
+	changeStatusUC     *chatapp.ChangeStatusUseCase
+	assignUserUC       *chatapp.AssignUserUseCase
+	setPriorityUC      *chatapp.SetPriorityUseCase
+	setDueDateUC       *chatapp.SetDueDateUseCase
+	addAttachmentUC    *chatapp.AddAttachmentUseCase
+	removeAttachmentUC *chatapp.RemoveAttachmentUseCase
 }
 
 // CreateTask implements httphandler.TaskService.
@@ -1689,22 +1708,19 @@ func (a *fullTaskServiceAdapter) CreateTask(
 
 	switch cmd.EntityType {
 	case taskdomain.TypeBug:
-		convertUC := chatapp.NewConvertToBugUseCase(a.chatRepo)
-		result, err = convertUC.Execute(ctx, chatapp.ConvertToBugCommand{
+		result, err = a.convertToBugUC.Execute(ctx, chatapp.ConvertToBugCommand{
 			ChatID:      cmd.ChatID,
 			Title:       cmd.Title,
 			ConvertedBy: cmd.CreatedBy,
 		})
 	case taskdomain.TypeEpic:
-		convertUC := chatapp.NewConvertToEpicUseCase(a.chatRepo)
-		result, err = convertUC.Execute(ctx, chatapp.ConvertToEpicCommand{
+		result, err = a.convertToEpicUC.Execute(ctx, chatapp.ConvertToEpicCommand{
 			ChatID:      cmd.ChatID,
 			Title:       cmd.Title,
 			ConvertedBy: cmd.CreatedBy,
 		})
 	case taskdomain.TypeTask, "":
-		convertUC := chatapp.NewConvertToTaskUseCase(a.chatRepo)
-		result, err = convertUC.Execute(ctx, chatapp.ConvertToTaskCommand{
+		result, err = a.convertToTaskUC.Execute(ctx, chatapp.ConvertToTaskCommand{
 			ChatID:      cmd.ChatID,
 			Title:       cmd.Title,
 			ConvertedBy: cmd.CreatedBy,
@@ -1719,8 +1735,7 @@ func (a *fullTaskServiceAdapter) CreateTask(
 	}
 
 	if cmd.Priority != "" {
-		setPriorityUC := chatapp.NewSetPriorityUseCase(a.chatRepo)
-		if _, setErr := setPriorityUC.Execute(ctx, chatapp.SetPriorityCommand{
+		if _, setErr := a.setPriorityUC.Execute(ctx, chatapp.SetPriorityCommand{
 			ChatID:   cmd.ChatID,
 			Priority: string(cmd.Priority),
 			SetBy:    cmd.CreatedBy,
@@ -1730,8 +1745,7 @@ func (a *fullTaskServiceAdapter) CreateTask(
 	}
 
 	if cmd.AssigneeID != nil {
-		assignUC := chatapp.NewAssignUserUseCase(a.chatRepo, a.userRepo)
-		if _, assignErr := assignUC.Execute(ctx, chatapp.AssignUserCommand{
+		if _, assignErr := a.assignUserUC.Execute(ctx, chatapp.AssignUserCommand{
 			ChatID:     cmd.ChatID,
 			AssigneeID: cmd.AssigneeID,
 			AssignedBy: cmd.CreatedBy,
@@ -1741,8 +1755,7 @@ func (a *fullTaskServiceAdapter) CreateTask(
 	}
 
 	if cmd.DueDate != nil {
-		setDueDateUC := chatapp.NewSetDueDateUseCase(a.chatRepo)
-		if _, setErr := setDueDateUC.Execute(ctx, chatapp.SetDueDateCommand{
+		if _, setErr := a.setDueDateUC.Execute(ctx, chatapp.SetDueDateCommand{
 			ChatID:  cmd.ChatID,
 			DueDate: cmd.DueDate,
 			SetBy:   cmd.CreatedBy,
@@ -1764,8 +1777,7 @@ func (a *fullTaskServiceAdapter) ChangeStatus(
 	ctx context.Context,
 	cmd taskapp.ChangeStatusCommand,
 ) (taskapp.TaskResult, error) {
-	uc := chatapp.NewChangeStatusUseCase(a.chatRepo)
-	result, err := uc.Execute(ctx, chatapp.ChangeStatusCommand{
+	result, err := a.changeStatusUC.Execute(ctx, chatapp.ChangeStatusCommand{
 		ChatID:    cmd.TaskID,
 		Status:    string(cmd.NewStatus),
 		ChangedBy: cmd.ChangedBy,
@@ -1787,8 +1799,7 @@ func (a *fullTaskServiceAdapter) AssignTask(
 	ctx context.Context,
 	cmd taskapp.AssignTaskCommand,
 ) (taskapp.TaskResult, error) {
-	uc := chatapp.NewAssignUserUseCase(a.chatRepo, a.userRepo)
-	result, err := uc.Execute(ctx, chatapp.AssignUserCommand{
+	result, err := a.assignUserUC.Execute(ctx, chatapp.AssignUserCommand{
 		ChatID:     cmd.TaskID,
 		AssigneeID: cmd.AssigneeID,
 		AssignedBy: cmd.AssignedBy,
@@ -1810,8 +1821,7 @@ func (a *fullTaskServiceAdapter) ChangePriority(
 	ctx context.Context,
 	cmd taskapp.ChangePriorityCommand,
 ) (taskapp.TaskResult, error) {
-	uc := chatapp.NewSetPriorityUseCase(a.chatRepo)
-	result, err := uc.Execute(ctx, chatapp.SetPriorityCommand{
+	result, err := a.setPriorityUC.Execute(ctx, chatapp.SetPriorityCommand{
 		ChatID:   cmd.TaskID,
 		Priority: string(cmd.Priority),
 		SetBy:    cmd.ChangedBy,
@@ -1833,8 +1843,7 @@ func (a *fullTaskServiceAdapter) SetDueDate(
 	ctx context.Context,
 	cmd taskapp.SetDueDateCommand,
 ) (taskapp.TaskResult, error) {
-	uc := chatapp.NewSetDueDateUseCase(a.chatRepo)
-	result, err := uc.Execute(ctx, chatapp.SetDueDateCommand{
+	result, err := a.setDueDateUC.Execute(ctx, chatapp.SetDueDateCommand{
 		ChatID:  cmd.TaskID,
 		DueDate: cmd.DueDate,
 		SetBy:   cmd.ChangedBy,
@@ -1861,8 +1870,7 @@ func (a *fullTaskServiceAdapter) AddAttachment(
 	ctx context.Context,
 	cmd taskapp.AddAttachmentCommand,
 ) (taskapp.TaskResult, error) {
-	uc := chatapp.NewAddAttachmentUseCase(a.chatRepo)
-	result, err := uc.Execute(ctx, chatapp.AddAttachmentCommand{
+	result, err := a.addAttachmentUC.Execute(ctx, chatapp.AddAttachmentCommand{
 		ChatID:   cmd.TaskID,
 		FileID:   cmd.FileID,
 		FileName: cmd.FileName,
@@ -1886,8 +1894,7 @@ func (a *fullTaskServiceAdapter) RemoveAttachment(
 	ctx context.Context,
 	cmd taskapp.RemoveAttachmentCommand,
 ) (taskapp.TaskResult, error) {
-	uc := chatapp.NewRemoveAttachmentUseCase(a.chatRepo)
-	result, err := uc.Execute(ctx, chatapp.RemoveAttachmentCommand{
+	result, err := a.removeAttachmentUC.Execute(ctx, chatapp.RemoveAttachmentCommand{
 		ChatID:    cmd.TaskID,
 		FileID:    cmd.FileID,
 		RemovedBy: cmd.RemovedBy,

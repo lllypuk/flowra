@@ -148,6 +148,10 @@ func NewTaskHandler(taskService TaskService, actionServices ...TaskActionService
 	}
 }
 
+func (h *TaskHandler) ensureActionService() bool {
+	return h.actionService != nil
+}
+
 // RegisterRoutes registers task routes with the router.
 func (h *TaskHandler) RegisterRoutes(r *httpserver.Router) {
 	// Task creation (workspace-scoped)
@@ -336,62 +340,44 @@ func (h *TaskHandler) ChangeStatus(c echo.Context) error {
 			c, http.StatusBadRequest, "INVALID_STATUS", statusErr.Error())
 	}
 
-	if h.actionService != nil {
-		taskModel, getErr := h.taskService.GetTask(c.Request().Context(), taskID)
-		if getErr != nil {
-			return httpserver.RespondError(c, getErr)
-		}
-
-		// Idempotent no-op: requested status already set.
-		if taskModel.Status == status {
-			return httpserver.RespondOK(c, ToTaskResponseFromReadModel(taskModel))
-		}
-
-		if _, actionErr := h.actionService.ChangeStatus(
-			c.Request().Context(),
-			taskModel.ChatID,
-			string(status),
-			userID,
-		); actionErr != nil {
-			return httpserver.RespondError(c, actionErr)
-		}
-
-		// Best-effort read-back: action pipeline is asynchronous.
-		updatedTask, updatedErr := h.taskService.GetTask(c.Request().Context(), taskID)
-		if updatedErr != nil {
-			return httpserver.RespondOK(c, map[string]any{
-				"id":      taskID.String(),
-				"message": "status update queued",
-			})
-		}
-
-		return httpserver.RespondOK(c, ToTaskResponseFromReadModel(updatedTask))
-	}
-
-	cmd := taskapp.ChangeStatusCommand{
-		TaskID:    taskID,
-		NewStatus: status,
-		ChangedBy: userID,
-	}
-
-	result, err := h.taskService.ChangeStatus(c.Request().Context(), cmd)
-	if err != nil {
-		return httpserver.RespondError(c, err)
-	}
-
-	// Get updated task
-	taskModel, getErr := h.taskService.GetTask(c.Request().Context(), result.TaskID)
+	taskModel, getErr := h.taskService.GetTask(c.Request().Context(), taskID)
 	if getErr != nil {
-		// Return minimal response if get fails
+		return httpserver.RespondError(c, getErr)
+	}
+
+	// Idempotent no-op: requested status already set.
+	if taskModel.Status == status {
+		return httpserver.RespondOK(c, ToTaskResponseFromReadModel(taskModel))
+	}
+
+	if !h.ensureActionService() {
+		return httpserver.RespondErrorWithCode(
+			c,
+			http.StatusServiceUnavailable,
+			"SERVICE_UNAVAILABLE",
+			"task action service is not configured",
+		)
+	}
+
+	if _, actionErr := h.actionService.ChangeStatus(
+		c.Request().Context(),
+		taskModel.ChatID,
+		string(status),
+		userID,
+	); actionErr != nil {
+		return httpserver.RespondError(c, actionErr)
+	}
+
+	// Best-effort read-back: action pipeline is asynchronous.
+	updatedTask, updatedErr := h.taskService.GetTask(c.Request().Context(), taskID)
+	if updatedErr != nil {
 		return httpserver.RespondOK(c, map[string]any{
-			"id":      result.TaskID.String(),
-			"version": result.Version,
-			"message": "status updated successfully",
+			"id":      taskID.String(),
+			"message": "status update queued",
 		})
 	}
 
-	resp := ToTaskResponseFromReadModel(taskModel)
-	return httpserver.RespondOK(c, resp)
+	return httpserver.RespondOK(c, ToTaskResponseFromReadModel(updatedTask))
 }
 
 // Assign handles PUT /api/v1/tasks/:id/assign.
@@ -425,60 +411,43 @@ func (h *TaskHandler) Assign(c echo.Context) error {
 		assigneeID = &parsed
 	}
 
-	if h.actionService != nil {
-		taskModel, getErr := h.taskService.GetTask(c.Request().Context(), taskID)
-		if getErr != nil {
-			return httpserver.RespondError(c, getErr)
-		}
-
-		// Idempotent no-op: requested assignee already set.
-		if sameUUIDPtr(taskModel.AssignedTo, assigneeID) {
-			return httpserver.RespondOK(c, ToTaskResponseFromReadModel(taskModel))
-		}
-
-		if _, actionErr := h.actionService.AssignUser(
-			c.Request().Context(),
-			taskModel.ChatID,
-			assigneeID,
-			userID,
-		); actionErr != nil {
-			return httpserver.RespondError(c, actionErr)
-		}
-
-		updatedTask, updatedErr := h.taskService.GetTask(c.Request().Context(), taskID)
-		if updatedErr != nil {
-			return httpserver.RespondOK(c, map[string]any{
-				"id":      taskID.String(),
-				"message": "assignee update queued",
-			})
-		}
-
-		return httpserver.RespondOK(c, ToTaskResponseFromReadModel(updatedTask))
-	}
-
-	cmd := taskapp.AssignTaskCommand{
-		TaskID:     taskID,
-		AssigneeID: assigneeID,
-		AssignedBy: userID,
-	}
-
-	result, err := h.taskService.AssignTask(c.Request().Context(), cmd)
-	if err != nil {
-		return httpserver.RespondError(c, err)
-	}
-
-	// Get updated task
-	taskModel, getErr := h.taskService.GetTask(c.Request().Context(), result.TaskID)
+	taskModel, getErr := h.taskService.GetTask(c.Request().Context(), taskID)
 	if getErr != nil {
+		return httpserver.RespondError(c, getErr)
+	}
+
+	// Idempotent no-op: requested assignee already set.
+	if sameUUIDPtr(taskModel.AssignedTo, assigneeID) {
+		return httpserver.RespondOK(c, ToTaskResponseFromReadModel(taskModel))
+	}
+
+	if !h.ensureActionService() {
+		return httpserver.RespondErrorWithCode(
+			c,
+			http.StatusServiceUnavailable,
+			"SERVICE_UNAVAILABLE",
+			"task action service is not configured",
+		)
+	}
+
+	if _, actionErr := h.actionService.AssignUser(
+		c.Request().Context(),
+		taskModel.ChatID,
+		assigneeID,
+		userID,
+	); actionErr != nil {
+		return httpserver.RespondError(c, actionErr)
+	}
+
+	updatedTask, updatedErr := h.taskService.GetTask(c.Request().Context(), taskID)
+	if updatedErr != nil {
 		return httpserver.RespondOK(c, map[string]any{
-			"id":      result.TaskID.String(),
-			"version": result.Version,
-			"message": "assignee updated successfully",
+			"id":      taskID.String(),
+			"message": "assignee update queued",
 		})
 	}
 
-	resp := ToTaskResponseFromReadModel(taskModel)
-	return httpserver.RespondOK(c, resp)
+	return httpserver.RespondOK(c, ToTaskResponseFromReadModel(updatedTask))
 }
 
 // ChangePriority handles PUT /api/v1/tasks/:id/priority.
@@ -508,60 +477,43 @@ func (h *TaskHandler) ChangePriority(c echo.Context) error {
 			c, http.StatusBadRequest, "INVALID_PRIORITY", "priority must be Low, Medium, High, or Critical")
 	}
 
-	if h.actionService != nil {
-		taskModel, getErr := h.taskService.GetTask(c.Request().Context(), taskID)
-		if getErr != nil {
-			return httpserver.RespondError(c, getErr)
-		}
-
-		// Idempotent no-op: requested priority already set.
-		if taskModel.Priority == priority {
-			return httpserver.RespondOK(c, ToTaskResponseFromReadModel(taskModel))
-		}
-
-		if _, actionErr := h.actionService.SetPriority(
-			c.Request().Context(),
-			taskModel.ChatID,
-			string(priority),
-			userID,
-		); actionErr != nil {
-			return httpserver.RespondError(c, actionErr)
-		}
-
-		updatedTask, updatedErr := h.taskService.GetTask(c.Request().Context(), taskID)
-		if updatedErr != nil {
-			return httpserver.RespondOK(c, map[string]any{
-				"id":      taskID.String(),
-				"message": "priority update queued",
-			})
-		}
-
-		return httpserver.RespondOK(c, ToTaskResponseFromReadModel(updatedTask))
-	}
-
-	cmd := taskapp.ChangePriorityCommand{
-		TaskID:    taskID,
-		Priority:  priority,
-		ChangedBy: userID,
-	}
-
-	result, err := h.taskService.ChangePriority(c.Request().Context(), cmd)
-	if err != nil {
-		return httpserver.RespondError(c, err)
-	}
-
-	// Get updated task
-	taskModel, getErr := h.taskService.GetTask(c.Request().Context(), result.TaskID)
+	taskModel, getErr := h.taskService.GetTask(c.Request().Context(), taskID)
 	if getErr != nil {
+		return httpserver.RespondError(c, getErr)
+	}
+
+	// Idempotent no-op: requested priority already set.
+	if taskModel.Priority == priority {
+		return httpserver.RespondOK(c, ToTaskResponseFromReadModel(taskModel))
+	}
+
+	if !h.ensureActionService() {
+		return httpserver.RespondErrorWithCode(
+			c,
+			http.StatusServiceUnavailable,
+			"SERVICE_UNAVAILABLE",
+			"task action service is not configured",
+		)
+	}
+
+	if _, actionErr := h.actionService.SetPriority(
+		c.Request().Context(),
+		taskModel.ChatID,
+		string(priority),
+		userID,
+	); actionErr != nil {
+		return httpserver.RespondError(c, actionErr)
+	}
+
+	updatedTask, updatedErr := h.taskService.GetTask(c.Request().Context(), taskID)
+	if updatedErr != nil {
 		return httpserver.RespondOK(c, map[string]any{
-			"id":      result.TaskID.String(),
-			"version": result.Version,
-			"message": "priority updated successfully",
+			"id":      taskID.String(),
+			"message": "priority update queued",
 		})
 	}
 
-	resp := ToTaskResponseFromReadModel(taskModel)
-	return httpserver.RespondOK(c, resp)
+	return httpserver.RespondOK(c, ToTaskResponseFromReadModel(updatedTask))
 }
 
 // SetDueDate handles PUT /api/v1/tasks/:id/due-date.
@@ -595,60 +547,43 @@ func (h *TaskHandler) SetDueDate(c echo.Context) error {
 		dueDate = &parsed
 	}
 
-	if h.actionService != nil {
-		taskModel, getErr := h.taskService.GetTask(c.Request().Context(), taskID)
-		if getErr != nil {
-			return httpserver.RespondError(c, getErr)
-		}
-
-		// Idempotent no-op: requested due date already set.
-		if sameDate(taskModel.DueDate, dueDate) {
-			return httpserver.RespondOK(c, ToTaskResponseFromReadModel(taskModel))
-		}
-
-		if _, actionErr := h.actionService.SetDueDate(
-			c.Request().Context(),
-			taskModel.ChatID,
-			dueDate,
-			userID,
-		); actionErr != nil {
-			return httpserver.RespondError(c, actionErr)
-		}
-
-		updatedTask, updatedErr := h.taskService.GetTask(c.Request().Context(), taskID)
-		if updatedErr != nil {
-			return httpserver.RespondOK(c, map[string]any{
-				"id":      taskID.String(),
-				"message": "due date update queued",
-			})
-		}
-
-		return httpserver.RespondOK(c, ToTaskResponseFromReadModel(updatedTask))
-	}
-
-	cmd := taskapp.SetDueDateCommand{
-		TaskID:    taskID,
-		DueDate:   dueDate,
-		ChangedBy: userID,
-	}
-
-	result, err := h.taskService.SetDueDate(c.Request().Context(), cmd)
-	if err != nil {
-		return httpserver.RespondError(c, err)
-	}
-
-	// Get updated task
-	taskModel, getErr := h.taskService.GetTask(c.Request().Context(), result.TaskID)
+	taskModel, getErr := h.taskService.GetTask(c.Request().Context(), taskID)
 	if getErr != nil {
+		return httpserver.RespondError(c, getErr)
+	}
+
+	// Idempotent no-op: requested due date already set.
+	if sameDate(taskModel.DueDate, dueDate) {
+		return httpserver.RespondOK(c, ToTaskResponseFromReadModel(taskModel))
+	}
+
+	if !h.ensureActionService() {
+		return httpserver.RespondErrorWithCode(
+			c,
+			http.StatusServiceUnavailable,
+			"SERVICE_UNAVAILABLE",
+			"task action service is not configured",
+		)
+	}
+
+	if _, actionErr := h.actionService.SetDueDate(
+		c.Request().Context(),
+		taskModel.ChatID,
+		dueDate,
+		userID,
+	); actionErr != nil {
+		return httpserver.RespondError(c, actionErr)
+	}
+
+	updatedTask, updatedErr := h.taskService.GetTask(c.Request().Context(), taskID)
+	if updatedErr != nil {
 		return httpserver.RespondOK(c, map[string]any{
-			"id":      result.TaskID.String(),
-			"version": result.Version,
-			"message": "due date updated successfully",
+			"id":      taskID.String(),
+			"message": "due date update queued",
 		})
 	}
 
-	resp := ToTaskResponseFromReadModel(taskModel)
-	return httpserver.RespondOK(c, resp)
+	return httpserver.RespondOK(c, ToTaskResponseFromReadModel(updatedTask))
 }
 
 // Delete handles DELETE /api/v1/tasks/:id.

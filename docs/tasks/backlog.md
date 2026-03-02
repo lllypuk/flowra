@@ -67,16 +67,16 @@ Assumption: we optimize for a clean implementation, not for compatibility with l
 - [x] `P1` PR-18: Restore assignee existence validation in chat assignment write path.
   - Scope: chat assign flow (`AssignUserUseCase` / service adapters).
   - Done when: assigning a non-existent user fails with deterministic domain/application error.
-- [ ] `P2` PR-19: Stop constructing chat use cases on every task command call.
+- [x] `P2` PR-19: Stop constructing chat use cases on every task command call.
   - Scope: `fullTaskServiceAdapter` in `cmd/api/container.go`.
   - Done when: use cases are initialized once in adapter construction and reused.
-- [ ] `P2` PR-20: Unify mutation behavior in `TaskHandler` (`ActionService` vs direct `TaskService` branch).
+- [x] `P2` PR-20: Unify mutation behavior in `TaskHandler` (`ActionService` vs direct `TaskService` branch).
   - Scope: `internal/handler/http/task_handler.go`.
   - Done when: both execution paths have the same side effects and API semantics (including system-message behavior).
-- [ ] `P1` PR-21: Escape user-visible modal error content to prevent HTML injection.
+- [x] `P1` PR-21: Escape user-visible modal error content to prevent HTML injection.
   - Scope: `modalError` in `internal/handler/http/chat_template_handler.go`.
   - Done when: error message rendering uses safe escaping.
-- [ ] `P1` PR-22: Sync task projection after `ActionService.Close/Reopen`.
+- [x] `P1` PR-22: Sync task projection after `ActionService.Close/Reopen`.
   - Scope: `internal/service/action_service.go`.
   - Done when: close/reopen updates are immediately reflected in `tasks_read_model`.
 - [ ] `P3` PR-23: Remove duplicate aggregate ID collection logic.

@@ -282,6 +282,9 @@ func (s *ActionService) Close(
 	if err := s.executeTagCommand(ctx, chatID, actorID, "#close"); err != nil {
 		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
 	}
+	if err := s.syncTaskProjection(ctx, chatID); err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	}
 
 	actorName := s.getActorDisplayName(ctx, actorID)
 	var content string
@@ -300,6 +303,9 @@ func (s *ActionService) Reopen(
 	actorID uuid.UUID,
 ) (*appcore.ActionResult, error) {
 	if err := s.executeTagCommand(ctx, chatID, actorID, "#reopen"); err != nil {
+		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	}
+	if err := s.syncTaskProjection(ctx, chatID); err != nil {
 		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
 	}
 

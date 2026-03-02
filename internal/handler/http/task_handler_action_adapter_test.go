@@ -166,3 +166,43 @@ func TestTaskHandler_SetDueDate_IdempotentNoopWhenDateUnchanged(t *testing.T) {
 	assert.Equal(t, stdhttp.StatusOK, rec.Code)
 	assert.Equal(t, 0, actionSpy.dueDateCalls)
 }
+
+func TestTaskHandler_ChangeStatus_ReturnsServiceUnavailableWithoutActionService(t *testing.T) {
+	e := echo.New()
+	userID := uuid.NewUUID()
+	workspaceID := uuid.NewUUID()
+	chatID := uuid.NewUUID()
+
+	mockService := httphandler.NewMockTaskService()
+	testTask := &taskapp.ReadModel{
+		ID:         uuid.NewUUID(),
+		ChatID:     chatID,
+		Title:      "Task",
+		EntityType: task.TypeTask,
+		Status:     task.StatusToDo,
+		Priority:   task.PriorityMedium,
+		CreatedBy:  userID,
+		CreatedAt:  time.Now(),
+		Version:    1,
+	}
+	mockService.AddTask(testTask)
+
+	handler := httphandler.NewTaskHandler(mockService)
+
+	reqBody := `{"status":"done"}`
+	req := httptest.NewRequest(
+		stdhttp.MethodPut,
+		taskURL(workspaceID, testTask.ID)+"/status",
+		strings.NewReader(reqBody),
+	)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("workspace_id", "task_id")
+	c.SetParamValues(workspaceID.String(), testTask.ID.String())
+	setupTaskAuthContext(c, userID)
+
+	err := handler.ChangeStatus(c)
+	require.NoError(t, err)
+	assert.Equal(t, stdhttp.StatusServiceUnavailable, rec.Code)
+}
