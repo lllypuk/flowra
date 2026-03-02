@@ -223,6 +223,12 @@
         if (chatId === "{{.Data.Chat.ID}}" && messageId) {
             // Skip if already in DOM (e.g. re-delivered event)
             if (document.getElementById("message-" + messageId)) return;
+            // Remove empty-state placeholder before inserting the first message
+            var container = document.getElementById("messages-{{.Data.Chat.ID}}");
+            if (container) {
+                var empty = container.querySelector(".messages-empty");
+                if (empty) empty.remove();
+            }
             htmx.ajax("GET", "/partials/messages/" + messageId, {
                 target: "#messages-{{.Data.Chat.ID}}",
                 swap: "beforeend",
