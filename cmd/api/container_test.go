@@ -2,16 +2,22 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"testing"
 	"time"
 
+	"github.com/lllypuk/flowra/internal/application/appcore"
+	chatapp "github.com/lllypuk/flowra/internal/application/chat"
 	taskapp "github.com/lllypuk/flowra/internal/application/task"
 	"github.com/lllypuk/flowra/internal/config"
+	chatdomain "github.com/lllypuk/flowra/internal/domain/chat"
+	"github.com/lllypuk/flowra/internal/domain/event"
 	taskdomain "github.com/lllypuk/flowra/internal/domain/task"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 	"github.com/lllypuk/flowra/internal/infrastructure/httpserver"
 	mongodbinfra "github.com/lllypuk/flowra/internal/infrastructure/mongodb"
+	"github.com/lllypuk/flowra/internal/infrastructure/repair"
 	"github.com/lllypuk/flowra/internal/middleware"
 	"github.com/lllypuk/flowra/internal/service"
 	"github.com/lllypuk/flowra/tests/testutil"
@@ -19,6 +25,73 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
+
+type createChatExecutorFunc func(context.Context, chatapp.CreateChatCommand) (chatapp.Result, error)
+
+func (f createChatExecutorFunc) Execute(ctx context.Context, cmd chatapp.CreateChatCommand) (chatapp.Result, error) {
+	return f(ctx, cmd)
+}
+
+type setPriorityExecutorFunc func(context.Context, chatapp.SetPriorityCommand) (chatapp.Result, error)
+
+func (f setPriorityExecutorFunc) Execute(ctx context.Context, cmd chatapp.SetPriorityCommand) (chatapp.Result, error) {
+	return f(ctx, cmd)
+}
+
+type assignUserExecutorFunc func(context.Context, chatapp.AssignUserCommand) (chatapp.Result, error)
+
+func (f assignUserExecutorFunc) Execute(ctx context.Context, cmd chatapp.AssignUserCommand) (chatapp.Result, error) {
+	return f(ctx, cmd)
+}
+
+type setDueDateExecutorFunc func(context.Context, chatapp.SetDueDateCommand) (chatapp.Result, error)
+
+func (f setDueDateExecutorFunc) Execute(ctx context.Context, cmd chatapp.SetDueDateCommand) (chatapp.Result, error) {
+	return f(ctx, cmd)
+}
+
+type boardTaskProjectorMock struct {
+	rebuildOneCalls int
+	rebuildOneIDs   []uuid.UUID
+	rebuildOneErr   error
+}
+
+func (m *boardTaskProjectorMock) RebuildOne(_ context.Context, aggregateID uuid.UUID) error {
+	m.rebuildOneCalls++
+	m.rebuildOneIDs = append(m.rebuildOneIDs, aggregateID)
+	return m.rebuildOneErr
+}
+
+func (m *boardTaskProjectorMock) RebuildAll(context.Context) error { return nil }
+
+func (m *boardTaskProjectorMock) ProcessEvent(context.Context, event.DomainEvent) error { return nil }
+
+func (m *boardTaskProjectorMock) VerifyConsistency(context.Context, uuid.UUID) (bool, error) {
+	return true, nil
+}
+
+type repairQueueMock struct {
+	added  []repair.Task
+	addErr error
+}
+
+func (m *repairQueueMock) Add(_ context.Context, task repair.Task) error {
+	if m.addErr != nil {
+		return m.addErr
+	}
+	m.added = append(m.added, task)
+	return nil
+}
+
+func (m *repairQueueMock) Poll(context.Context, int) ([]repair.Task, error) { return nil, nil }
+
+func (m *repairQueueMock) MarkCompleted(context.Context, string) error { return nil }
+
+func (m *repairQueueMock) MarkFailed(context.Context, string, error) error { return nil }
+
+func (m *repairQueueMock) GetStats(context.Context) (*repair.QueueStats, error) {
+	return &repair.QueueStats{}, nil
+}
 
 func TestNewContainer_NilConfig(t *testing.T) {
 	// Container should handle nil config gracefully by panicking or returning error
@@ -254,6 +327,145 @@ func TestContainer_NoOpKeycloakClient(t *testing.T) {
 
 	err = client.RemoveUserFromGroup(ctx, "user", groupID)
 	require.NoError(t, err)
+}
+
+// ========== Board Chat Creator Adapter Tests ==========
+
+func TestBoardChatCreatorAdapter_CreateChat_PartialFailureStillSyncsProjection(t *testing.T) {
+	ctx := context.Background()
+	workspaceID := uuid.NewUUID()
+	userID := uuid.NewUUID()
+	assigneeID := uuid.NewUUID()
+
+	typedChat, err := chatdomain.NewChat(workspaceID, chatdomain.TypeTask, true, userID)
+	require.NoError(t, err)
+
+	projector := &boardTaskProjectorMock{}
+	assignErr := errors.New("assign failed")
+
+	adapter := &boardChatCreatorAdapter{
+		createUC: createChatExecutorFunc(func(context.Context, chatapp.CreateChatCommand) (chatapp.Result, error) {
+			return chatapp.Result{Result: appcore.Result[*chatdomain.Chat]{Value: typedChat}}, nil
+		}),
+		setPriorityUC: setPriorityExecutorFunc(
+			func(context.Context, chatapp.SetPriorityCommand) (chatapp.Result, error) {
+				return chatapp.Result{Result: appcore.Result[*chatdomain.Chat]{Value: typedChat}}, nil
+			},
+		),
+		assignUserUC: assignUserExecutorFunc(func(context.Context, chatapp.AssignUserCommand) (chatapp.Result, error) {
+			return chatapp.Result{}, assignErr
+		}),
+		setDueDateUC: setDueDateExecutorFunc(func(context.Context, chatapp.SetDueDateCommand) (chatapp.Result, error) {
+			return chatapp.Result{Result: appcore.Result[*chatdomain.Chat]{Value: typedChat}}, nil
+		}),
+		taskProjector: projector,
+	}
+
+	_, err = adapter.CreateChat(
+		ctx,
+		workspaceID,
+		userID,
+		"task",
+		"Partial failure test",
+		taskdomain.PriorityHigh,
+		&assigneeID,
+		nil,
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "assign failed")
+	assert.Equal(t, 1, projector.rebuildOneCalls)
+	require.Len(t, projector.rebuildOneIDs, 1)
+	assert.Equal(t, typedChat.ID(), projector.rebuildOneIDs[0])
+}
+
+func TestBoardChatCreatorAdapter_CreateChat_ProjectionFailureQueuesRepair(t *testing.T) {
+	ctx := context.Background()
+	workspaceID := uuid.NewUUID()
+	userID := uuid.NewUUID()
+
+	typedChat, err := chatdomain.NewChat(workspaceID, chatdomain.TypeTask, true, userID)
+	require.NoError(t, err)
+
+	projectionErr := errors.New("projection failed")
+	projector := &boardTaskProjectorMock{rebuildOneErr: projectionErr}
+	repairQ := &repairQueueMock{}
+
+	adapter := &boardChatCreatorAdapter{
+		createUC: createChatExecutorFunc(func(context.Context, chatapp.CreateChatCommand) (chatapp.Result, error) {
+			return chatapp.Result{Result: appcore.Result[*chatdomain.Chat]{Value: typedChat}}, nil
+		}),
+		setPriorityUC: setPriorityExecutorFunc(
+			func(context.Context, chatapp.SetPriorityCommand) (chatapp.Result, error) {
+				return chatapp.Result{Result: appcore.Result[*chatdomain.Chat]{Value: typedChat}}, nil
+			},
+		),
+		assignUserUC: assignUserExecutorFunc(func(context.Context, chatapp.AssignUserCommand) (chatapp.Result, error) {
+			return chatapp.Result{Result: appcore.Result[*chatdomain.Chat]{Value: typedChat}}, nil
+		}),
+		setDueDateUC: setDueDateExecutorFunc(func(context.Context, chatapp.SetDueDateCommand) (chatapp.Result, error) {
+			return chatapp.Result{Result: appcore.Result[*chatdomain.Chat]{Value: typedChat}}, nil
+		}),
+		taskProjector: projector,
+		repairQueue:   repairQ,
+	}
+
+	_, err = adapter.CreateChat(
+		ctx,
+		workspaceID,
+		userID,
+		"task",
+		"Projection failure test",
+		taskdomain.PriorityHigh,
+		nil,
+		nil,
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to project task read model")
+	assert.Equal(t, 1, projector.rebuildOneCalls)
+	require.Len(t, repairQ.added, 1)
+	assert.Equal(t, typedChat.ID().String(), repairQ.added[0].AggregateID)
+	assert.Equal(t, "chat", repairQ.added[0].AggregateType)
+	assert.Equal(t, repair.TaskTypeReadModelSync, repairQ.added[0].TaskType)
+}
+
+func TestBoardChatCreatorAdapter_CreateChat_FailsFastWhenProjectorMissing(t *testing.T) {
+	ctx := context.Background()
+	workspaceID := uuid.NewUUID()
+	userID := uuid.NewUUID()
+
+	createCalls := 0
+	adapter := &boardChatCreatorAdapter{
+		createUC: createChatExecutorFunc(func(context.Context, chatapp.CreateChatCommand) (chatapp.Result, error) {
+			createCalls++
+			return chatapp.Result{}, nil
+		}),
+		setPriorityUC: setPriorityExecutorFunc(
+			func(context.Context, chatapp.SetPriorityCommand) (chatapp.Result, error) {
+				return chatapp.Result{}, nil
+			},
+		),
+		assignUserUC: assignUserExecutorFunc(func(context.Context, chatapp.AssignUserCommand) (chatapp.Result, error) {
+			return chatapp.Result{}, nil
+		}),
+		setDueDateUC: setDueDateExecutorFunc(func(context.Context, chatapp.SetDueDateCommand) (chatapp.Result, error) {
+			return chatapp.Result{}, nil
+		}),
+		taskProjector: nil,
+	}
+
+	_, err := adapter.CreateChat(
+		ctx,
+		workspaceID,
+		userID,
+		"task",
+		"No projector",
+		taskdomain.PriorityMedium,
+		nil,
+		nil,
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "task read model projector is not configured")
+	assert.Equal(t, 0, createCalls)
 }
 
 func TestContainer_UserRepoAdapter(t *testing.T) {

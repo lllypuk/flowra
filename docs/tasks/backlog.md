@@ -49,3 +49,63 @@ Assumption: we optimize for a clean implementation, not for compatibility with l
 
 - [ ] `P2` PR-13: Move to self-hosted single-image Docker deployment.
   - Details: [chat-sot-pr-13-single-image-selfhost-deployment.md](/home/sasha/Project/flowra/docs/tasks/chat-sot-pr-13-single-image-selfhost-deployment.md)
+
+## Review Follow-Ups: `refactoring/chat-sot` vs `main` (2026-03-02)
+
+- [x] `P1` PR-14: Make board typed-chat creation failure-safe and projection-consistent.
+  - Scope: `boardChatCreatorAdapter.CreateChat` in `cmd/api/container.go`.
+  - Done when: partial failures after `CreateChat` cannot leave board state stale; projection rebuild/repair path is guaranteed.
+- [ ] `P1` PR-15: Decouple system tag execution from request lifecycle in `SendMessageUseCase`.
+  - Scope: `internal/application/message/send_message.go`.
+  - Done when: system tag side effects are resilient to HTTP context cancellation and method naming/behavior are aligned.
+- [ ] `P1` PR-16: Reuse a single `ChatToTaskReadModelProjector` instance across API container wiring.
+  - Scope: `cmd/api/container.go`.
+  - Done when: one shared projector is injected into all consumers instead of per-call/per-handler instantiation.
+- [ ] `P1` PR-17: Restore task assignment notifications for chat-driven events.
+  - Scope: `internal/infrastructure/eventbus/handlers.go` and handler registration.
+  - Done when: assignee changes emit `task.assigned` notifications with regression coverage.
+- [ ] `P1` PR-18: Restore assignee existence validation in chat assignment write path.
+  - Scope: chat assign flow (`AssignUserUseCase` / service adapters).
+  - Done when: assigning a non-existent user fails with deterministic domain/application error.
+- [ ] `P2` PR-19: Stop constructing chat use cases on every task command call.
+  - Scope: `fullTaskServiceAdapter` in `cmd/api/container.go`.
+  - Done when: use cases are initialized once in adapter construction and reused.
+- [ ] `P2` PR-20: Unify mutation behavior in `TaskHandler` (`ActionService` vs direct `TaskService` branch).
+  - Scope: `internal/handler/http/task_handler.go`.
+  - Done when: both execution paths have the same side effects and API semantics (including system-message behavior).
+- [ ] `P1` PR-21: Escape user-visible modal error content to prevent HTML injection.
+  - Scope: `modalError` in `internal/handler/http/chat_template_handler.go`.
+  - Done when: error message rendering uses safe escaping.
+- [ ] `P1` PR-22: Sync task projection after `ActionService.Close/Reopen`.
+  - Scope: `internal/service/action_service.go`.
+  - Done when: close/reopen updates are immediately reflected in `tasks_read_model`.
+- [ ] `P3` PR-23: Remove duplicate aggregate ID collection logic.
+  - Scope: `internal/infrastructure/projector/chat_to_task_read_model_projector.go`.
+  - Done when: projector reuses shared `getAllAggregateIDsByType`.
+- [ ] `P3` PR-24: Deduplicate `logDevRuntimeMode` helper.
+  - Scope: `cmd/api/main.go`, `cmd/worker/main.go`.
+  - Done when: one shared helper is used by both binaries.
+- [ ] `P3` PR-25: Define and enforce `TaskResult.Events` contract.
+  - Scope: `internal/application/task/results.go` and task service adapters.
+  - Done when: field is either correctly populated or explicitly removed/deprecated with tests.
+- [ ] `P2` PR-26: Add concurrent-write regression coverage for one chat aggregate.
+  - Scope: integration tests (`tests/integration`).
+  - Done when: race-prone concurrent status/assignee/priority operations are covered and deterministic.
+- [ ] `P2` PR-27: Add failure-recovery tests for partial create/setup and projection rebuild errors.
+  - Scope: integration tests around board/task creation flow.
+  - Done when: failures after chat creation do not leave permanently inconsistent board/task read model.
+- [ ] `P2` PR-28: Add conversion-cycle projection consistency tests (`task -> bug -> epic -> discussion`).
+  - Scope: projector/integration tests.
+  - Done when: `chats_read_model` and `tasks_read_model` stay consistent across type flips.
+- [ ] `P2` PR-29: Add typed-chat deletion projection regression test.
+  - Scope: projector/integration tests.
+  - Done when: deleting typed chats reliably removes stale `tasks_read_model` docs.
+- [ ] `P2` PR-30: Add notification regression tests for chat-driven assignment/status flows.
+  - Scope: eventbus notification handler tests.
+  - Done when: assignment/status notifications are asserted for current `chat.*` event model.
+- [ ] `P2` PR-31: Add startup warning when legacy read-model collections contain data.
+  - Scope: startup/bootstrap checks.
+  - Done when: non-empty `chat_read_model`/`task_read_model` are detected and logged with reset guidance.
+- [ ] `P3` PR-32: Document handling of legacy `task.*` events in Chat=SoT era.
+  - Scope: docs/architecture or operations docs.
+  - Done when: behavior is explicitly documented for operators and developers.

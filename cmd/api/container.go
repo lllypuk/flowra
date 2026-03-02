@@ -57,6 +57,8 @@ const (
 	redisPingTimeout       = 5 * time.Second
 	mongoDisconnectTimeout = 10 * time.Second
 	keycloakTokenBuffer    = 30 * time.Second
+	boardProjectionTimeout = 5 * time.Second
+	repairQueueTimeout     = 5 * time.Second
 )
 
 // Health check configuration constants.
@@ -1195,16 +1197,36 @@ func (c *Container) createBoardChatCreator() httphandler.BoardChatCreator {
 		assignUserUC:  chatapp.NewAssignUserUseCase(c.ChatRepo),
 		setDueDateUC:  chatapp.NewSetDueDateUseCase(c.ChatRepo),
 		taskProjector: projector.NewChatToTaskReadModelProjector(c.EventStore, taskReadModelColl, c.Logger),
+		repairQueue:   c.RepairQueue,
+		logger:        c.Logger,
 	}
 }
 
 // boardChatCreatorAdapter adapts chat use cases to BoardChatCreator.
 type boardChatCreatorAdapter struct {
-	createUC      *chatapp.CreateChatUseCase
-	setPriorityUC *chatapp.SetPriorityUseCase
-	assignUserUC  *chatapp.AssignUserUseCase
-	setDueDateUC  *chatapp.SetDueDateUseCase
+	createUC      createChatExecutor
+	setPriorityUC setPriorityExecutor
+	assignUserUC  assignUserExecutor
+	setDueDateUC  setDueDateExecutor
 	taskProjector appcore.ReadModelProjector
+	repairQueue   repair.Queue
+	logger        *slog.Logger
+}
+
+type createChatExecutor interface {
+	Execute(ctx context.Context, cmd chatapp.CreateChatCommand) (chatapp.Result, error)
+}
+
+type setPriorityExecutor interface {
+	Execute(ctx context.Context, cmd chatapp.SetPriorityCommand) (chatapp.Result, error)
+}
+
+type assignUserExecutor interface {
+	Execute(ctx context.Context, cmd chatapp.AssignUserCommand) (chatapp.Result, error)
+}
+
+type setDueDateExecutor interface {
+	Execute(ctx context.Context, cmd chatapp.SetDueDateCommand) (chatapp.Result, error)
 }
 
 // CreateChat implements BoardChatCreator.
@@ -1216,6 +1238,10 @@ func (a *boardChatCreatorAdapter) CreateChat(
 	assigneeID *uuid.UUID,
 	dueDate *time.Time,
 ) (uuid.UUID, error) {
+	if a.taskProjector == nil {
+		return "", errors.New("task read model projector is not configured")
+	}
+
 	// Map string chat type to domain type
 	var domainType chat.Type
 	switch chatType {
@@ -1246,50 +1272,94 @@ func (a *boardChatCreatorAdapter) CreateChat(
 	if typedChat == nil {
 		return "", errors.New("typed chat was not created")
 	}
+	createdChatID := typedChat.ID()
 
-	priorityResult, err := a.setPriorityUC.Execute(ctx, chatapp.SetPriorityCommand{
-		ChatID:   typedChat.ID(),
+	if _, err = a.setPriorityUC.Execute(ctx, chatapp.SetPriorityCommand{
+		ChatID:   createdChatID,
 		Priority: string(priority),
 		SetBy:    userID,
-	})
-	if err != nil {
-		return "", err
+	}); err != nil {
+		return a.finishCreateChat(createdChatID, err)
 	}
-	typedChat = priorityResult.Value
 
 	if assigneeID != nil {
-		assignResult, assignErr := a.assignUserUC.Execute(ctx, chatapp.AssignUserCommand{
-			ChatID:     typedChat.ID(),
+		if _, err = a.assignUserUC.Execute(ctx, chatapp.AssignUserCommand{
+			ChatID:     createdChatID,
 			AssigneeID: assigneeID,
 			AssignedBy: userID,
-		})
-		if assignErr != nil {
-			return "", assignErr
+		}); err != nil {
+			return a.finishCreateChat(createdChatID, err)
 		}
-		typedChat = assignResult.Value
 	}
 
 	if dueDate != nil {
-		dueDateResult, dueDateErr := a.setDueDateUC.Execute(ctx, chatapp.SetDueDateCommand{
-			ChatID:  typedChat.ID(),
+		if _, err = a.setDueDateUC.Execute(ctx, chatapp.SetDueDateCommand{
+			ChatID:  createdChatID,
 			DueDate: dueDate,
 			SetBy:   userID,
-		})
-		if dueDateErr != nil {
-			return "", dueDateErr
+		}); err != nil {
+			return a.finishCreateChat(createdChatID, err)
 		}
-		typedChat = dueDateResult.Value
 	}
 
-	if a.taskProjector == nil {
-		return "", errors.New("task read model projector is not configured")
+	return a.finishCreateChat(createdChatID, nil)
+}
+
+func (a *boardChatCreatorAdapter) finishCreateChat(createdChatID uuid.UUID, createErr error) (uuid.UUID, error) {
+	projectionErr := a.syncTaskProjection(createdChatID)
+	if projectionErr == nil {
+		if createErr != nil {
+			return "", createErr
+		}
+		return createdChatID, nil
 	}
 
-	if err = a.taskProjector.RebuildOne(ctx, typedChat.ID()); err != nil {
-		return "", fmt.Errorf("failed to project task read model: %w", err)
+	if createErr != nil {
+		return "", errors.Join(createErr, projectionErr)
+	}
+	return "", projectionErr
+}
+
+func (a *boardChatCreatorAdapter) syncTaskProjection(chatID uuid.UUID) error {
+	if chatID.IsZero() {
+		return nil
 	}
 
-	return typedChat.ID(), nil
+	projectionCtx, cancel := context.WithTimeout(context.Background(), boardProjectionTimeout)
+	defer cancel()
+
+	if err := a.taskProjector.RebuildOne(projectionCtx, chatID); err != nil {
+		projectionErr := fmt.Errorf("failed to project task read model: %w", err)
+		a.enqueueProjectionRepair(chatID, projectionErr)
+		return projectionErr
+	}
+
+	return nil
+}
+
+func (a *boardChatCreatorAdapter) enqueueProjectionRepair(chatID uuid.UUID, projectionErr error) {
+	if a.repairQueue == nil {
+		return
+	}
+
+	repairCtx, cancel := context.WithTimeout(context.Background(), repairQueueTimeout)
+	defer cancel()
+
+	if err := a.repairQueue.Add(repairCtx, repair.Task{
+		AggregateID:   chatID.String(),
+		AggregateType: "chat",
+		TaskType:      repair.TaskTypeReadModelSync,
+		Error:         projectionErr.Error(),
+	}); err != nil {
+		logger := a.logger
+		if logger == nil {
+			logger = slog.Default()
+		}
+		logger.ErrorContext(repairCtx, "failed to queue board task projection repair",
+			slog.String("chat_id", chatID.String()),
+			slog.String("error", err.Error()),
+		)
+	}
 }
 
 // createBoardTaskService creates a service implementing BoardTaskService.
