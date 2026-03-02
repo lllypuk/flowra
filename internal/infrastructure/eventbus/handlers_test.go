@@ -490,6 +490,62 @@ func TestNotificationHandler_HandleMessageCreated(t *testing.T) {
 	})
 }
 
+func TestNotificationHandler_HandleUserAssigned(t *testing.T) {
+	t.Run("creates task assignment notification for assignee", func(t *testing.T) {
+		repo := newMockNotificationRepository()
+		uc := notification.NewCreateNotificationUseCase(repo)
+		handler := eventbus.NewNotificationHandler(uc)
+
+		assigneeID := uuid.NewUUID()
+		evt := newTestPayloadEvent(
+			chat.EventTypeUserAssigned,
+			"chat-123",
+			map[string]any{
+				"assignee_id": assigneeID.String(),
+				"assigned_by": uuid.NewUUID().String(),
+			},
+		)
+
+		err := handler.Handle(context.Background(), evt)
+		require.NoError(t, err)
+
+		notifications := repo.GetNotifications()
+		require.Len(t, notifications, 1)
+		assert.Equal(t, assigneeID, notifications[0].UserID())
+		assert.Equal(t, domainNotif.TypeTaskAssigned, notifications[0].Type())
+		assert.Equal(t, "chat-123", notifications[0].ResourceID())
+	})
+
+	t.Run("skips notification for self-assignment", func(t *testing.T) {
+		repo := newMockNotificationRepository()
+		uc := notification.NewCreateNotificationUseCase(repo)
+		handler := eventbus.NewNotificationHandler(uc)
+
+		assigneeID := uuid.NewUUID()
+		payload := map[string]any{
+			"assignee_id": assigneeID.String(),
+			"assigned_by": assigneeID.String(),
+		}
+		data, _ := json.Marshal(payload)
+		evt := &testPayloadEvent{
+			BaseEvent: event.NewBaseEvent(
+				chat.EventTypeUserAssigned,
+				"chat-123",
+				"Chat",
+				1,
+				event.NewMetadata(assigneeID.String(), "corr-1", "cause-1"),
+			),
+			payload: data,
+		}
+
+		err := handler.Handle(context.Background(), evt)
+		require.NoError(t, err)
+
+		notifications := repo.GetNotifications()
+		assert.Empty(t, notifications)
+	})
+}
+
 func TestNotificationHandler_HandleChatCreated(t *testing.T) {
 	t.Run("logs chat created event", func(t *testing.T) {
 		repo := newMockNotificationRepository()
@@ -1016,6 +1072,7 @@ func TestHandlerRegistry_RegisterNotificationHandler(t *testing.T) {
 		// Check all expected events are subscribed
 		assert.Equal(t, 1, bus.HandlerCount(chat.EventTypeChatCreated))
 		assert.Equal(t, 1, bus.HandlerCount(chat.EventTypeParticipantAdded))
+		assert.Equal(t, 1, bus.HandlerCount(chat.EventTypeUserAssigned))
 		assert.Equal(t, 1, bus.HandlerCount(message.EventTypeMessageCreated))
 	})
 }
@@ -1057,6 +1114,7 @@ func TestRegisterAllHandlers(t *testing.T) {
 		// Notification handler events
 		assert.GreaterOrEqual(t, bus.HandlerCount(chat.EventTypeChatCreated), 1)
 		assert.GreaterOrEqual(t, bus.HandlerCount(chat.EventTypeParticipantAdded), 1)
+		assert.GreaterOrEqual(t, bus.HandlerCount(chat.EventTypeUserAssigned), 2)
 
 		// Logging handler events (should have 2 handlers - notification + logging)
 		assert.GreaterOrEqual(t, bus.HandlerCount(message.EventTypeMessageCreated), 2)

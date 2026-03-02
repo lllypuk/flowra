@@ -207,7 +207,7 @@ func newTagExecutorTestEnv(t *testing.T, repoOpts countingRepoOptions) *tagExecu
 
 	chatUseCases := &tag.ChatUseCases{
 		ChangeStatus: chatapp.NewChangeStatusUseCase(chatRepo),
-		AssignUser:   chatapp.NewAssignUserUseCase(chatRepo),
+		AssignUser:   chatapp.NewAssignUserUseCase(chatRepo, userRepo),
 		SetPriority:  chatapp.NewSetPriorityUseCase(chatRepo),
 		Rename:       chatapp.NewRenameChatUseCase(chatRepo),
 	}

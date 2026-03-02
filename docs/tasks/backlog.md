@@ -55,16 +55,16 @@ Assumption: we optimize for a clean implementation, not for compatibility with l
 - [x] `P1` PR-14: Make board typed-chat creation failure-safe and projection-consistent.
   - Scope: `boardChatCreatorAdapter.CreateChat` in `cmd/api/container.go`.
   - Done when: partial failures after `CreateChat` cannot leave board state stale; projection rebuild/repair path is guaranteed.
-- [ ] `P1` PR-15: Decouple system tag execution from request lifecycle in `SendMessageUseCase`.
+- [x] `P1` PR-15: Decouple system tag execution from request lifecycle in `SendMessageUseCase`.
   - Scope: `internal/application/message/send_message.go`.
   - Done when: system tag side effects are resilient to HTTP context cancellation and method naming/behavior are aligned.
-- [ ] `P1` PR-16: Reuse a single `ChatToTaskReadModelProjector` instance across API container wiring.
+- [x] `P1` PR-16: Reuse a single `ChatToTaskReadModelProjector` instance across API container wiring.
   - Scope: `cmd/api/container.go`.
   - Done when: one shared projector is injected into all consumers instead of per-call/per-handler instantiation.
-- [ ] `P1` PR-17: Restore task assignment notifications for chat-driven events.
+- [x] `P1` PR-17: Restore task assignment notifications for chat-driven events.
   - Scope: `internal/infrastructure/eventbus/handlers.go` and handler registration.
   - Done when: assignee changes emit `task.assigned` notifications with regression coverage.
-- [ ] `P1` PR-18: Restore assignee existence validation in chat assignment write path.
+- [x] `P1` PR-18: Restore assignee existence validation in chat assignment write path.
   - Scope: chat assign flow (`AssignUserUseCase` / service adapters).
   - Done when: assigning a non-existent user fails with deterministic domain/application error.
 - [ ] `P2` PR-19: Stop constructing chat use cases on every task command call.

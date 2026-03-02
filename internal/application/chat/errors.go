@@ -42,6 +42,8 @@ var (
 	ErrSeverityOnlyForBugs = errors.New("severity can only be set on bugs")
 	// ErrCannotModifyDiscussion indicates cannot modify properties of discussion chat
 	ErrCannotModifyDiscussion = errors.New("cannot modify properties of discussion chat")
+	// ErrAssigneeNotFound indicates requested assignee does not exist
+	ErrAssigneeNotFound = errors.New("assignee not found")
 )
 
 // Authorization errors

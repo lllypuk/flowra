@@ -94,6 +94,8 @@ func (h *NotificationHandler) Handle(ctx context.Context, evt event.DomainEvent)
 		return h.handleChatCreated(ctx, evt)
 	case chat.EventTypeParticipantAdded:
 		return h.handleParticipantAdded(ctx, evt)
+	case chat.EventTypeUserAssigned:
+		return h.handleUserAssigned(ctx, evt)
 	case message.EventTypeMessageCreated:
 		return h.handleMessageCreated(ctx, evt)
 	default:
@@ -207,6 +209,63 @@ func (h *NotificationHandler) handleMessageCreated(ctx context.Context, evt even
 			)
 			// Continue with other mentions even if one fails
 		}
+	}
+
+	return nil
+}
+
+// handleUserAssigned notifies users when they are assigned to a typed chat task.
+func (h *NotificationHandler) handleUserAssigned(ctx context.Context, evt event.DomainEvent) error {
+	payload, extractErr := h.extractPayload(evt)
+	if extractErr != nil {
+		h.logger.WarnContext(ctx, "failed to extract payload for user_assigned",
+			slog.String("error", extractErr.Error()),
+		)
+		return nil
+	}
+
+	var data struct {
+		AssigneeID      string `json:"assignee_id"`
+		AssigneeIDCamel string `json:"AssigneeID"`
+	}
+	if unmarshalErr := json.Unmarshal(payload, &data); unmarshalErr != nil {
+		h.logger.WarnContext(ctx, "failed to unmarshal user_assigned payload",
+			slog.String("error", unmarshalErr.Error()),
+		)
+		return nil
+	}
+
+	if data.AssigneeID == "" {
+		data.AssigneeID = data.AssigneeIDCamel
+	}
+	if data.AssigneeID == "" {
+		return nil
+	}
+
+	assigneeID, parseErr := uuid.ParseUUID(data.AssigneeID)
+	if parseErr != nil {
+		h.logger.WarnContext(ctx, "invalid assignee ID in user_assigned",
+			slog.String("assignee_id", data.AssigneeID),
+			slog.String("error", parseErr.Error()),
+		)
+		return nil
+	}
+
+	// Don't notify when user assigns task to themselves.
+	if evt.Metadata().UserID == assigneeID.String() {
+		return nil
+	}
+
+	cmd := notification.CreateNotificationCommand{
+		UserID:     assigneeID,
+		Type:       domainNotif.TypeTaskAssigned,
+		Title:      "Task assigned",
+		Message:    "You have been assigned to a task",
+		ResourceID: evt.AggregateID(),
+	}
+
+	if _, execErr := h.createNotifUC.Execute(ctx, cmd); execErr != nil {
+		return fmt.Errorf("failed to create notification for user assigned: %w", execErr)
 	}
 
 	return nil
@@ -530,6 +589,7 @@ func (r *HandlerRegistry) RegisterNotificationHandler(handler *NotificationHandl
 	eventTypes := []string{
 		chat.EventTypeChatCreated,
 		chat.EventTypeParticipantAdded,
+		chat.EventTypeUserAssigned,
 		message.EventTypeMessageCreated,
 	}
 

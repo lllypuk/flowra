@@ -99,6 +99,8 @@ type Container struct {
 	Broadcaster  *websocket.Broadcaster
 	NotifHandler *eventbus.NotificationHandler
 	LogHandler   *eventbus.LoggingHandler
+	// Shared projector instance reused across all API wiring.
+	TaskReadModelProjector appcore.ReadModelProjector
 
 	// Reliability components
 	DeadLetterHandler *eventbus.DeadLetterHandler
@@ -716,7 +718,7 @@ func (c *Container) createChatUseCasesForTags() *tag.ChatUseCases {
 
 		// Entity Management
 		ChangeStatus: chatapp.NewChangeStatusUseCase(c.ChatRepo),
-		AssignUser:   chatapp.NewAssignUserUseCase(c.ChatRepo),
+		AssignUser:   chatapp.NewAssignUserUseCase(c.ChatRepo, c.UserRepo),
 		SetPriority:  chatapp.NewSetPriorityUseCase(c.ChatRepo),
 		SetDueDate:   chatapp.NewSetDueDateUseCase(c.ChatRepo),
 		Rename:       chatapp.NewRenameChatUseCase(c.ChatRepo),
@@ -744,6 +746,19 @@ func (c *Container) setupEventHandlers() {
 	c.LogHandler = eventbus.NewLoggingHandler(c.Logger)
 
 	c.Logger.Debug("event handlers initialized")
+}
+
+func (c *Container) getTaskReadModelProjector() appcore.ReadModelProjector {
+	if c.TaskReadModelProjector != nil {
+		return c.TaskReadModelProjector
+	}
+	if c.EventStore == nil || c.MongoDB == nil {
+		return nil
+	}
+
+	taskReadModelColl := c.MongoDB.Database(c.MongoDBName).Collection(mongodbinfra.CollectionTaskReadModel)
+	c.TaskReadModelProjector = projector.NewChatToTaskReadModelProjector(c.EventStore, taskReadModelColl, c.Logger)
+	return c.TaskReadModelProjector
 }
 
 // setupTemplateRenderer initializes the template renderer and handler.
@@ -780,8 +795,11 @@ func (c *Container) registerEventHandlers() error {
 		return err
 	}
 
-	taskReadModelColl := c.MongoDB.Database(c.MongoDBName).Collection(mongodbinfra.CollectionTaskReadModel)
-	taskProjector := projector.NewChatToTaskReadModelProjector(c.EventStore, taskReadModelColl, c.Logger)
+	taskProjector := c.getTaskReadModelProjector()
+	if taskProjector == nil {
+		return errors.New("task read model projector is not configured")
+	}
+
 	taskProjectionHandler := eventbus.NewTaskReadModelProjectionHandler(taskProjector, c.RepairQueue, c.Logger)
 
 	if err := eventbus.RegisterTaskReadModelProjectionHandler(c.EventBus, taskProjectionHandler, c.Logger); err != nil {
@@ -882,15 +900,10 @@ func (c *Container) setupHTTPHandlers() {
 	c.setupMessageHandler()
 
 	// === 14. Action Service ===
-	actionTaskProjector := projector.NewChatToTaskReadModelProjector(
-		c.EventStore,
-		c.MongoDB.Database(c.MongoDBName).Collection(mongodbinfra.CollectionTaskReadModel),
-		c.Logger,
-	)
 	c.ActionService = service.NewActionService(
 		c.SendMessageUC,
 		c.UserRepo,
-		service.WithTaskProjectionSync(actionTaskProjector),
+		service.WithTaskProjectionSync(c.getTaskReadModelProjector()),
 	)
 	c.ChatActionHandler = httphandler.NewChatActionHandler(c.ActionService)
 	c.Logger.Debug("action service and chat action handler initialized")
@@ -1046,13 +1059,7 @@ func (c *Container) setupChatTemplateHandler() {
 		messageService,
 		taskService,
 	)
-	c.ChatTemplateHandler.SetTaskProjector(
-		projector.NewChatToTaskReadModelProjector(
-			c.EventStore,
-			c.MongoDB.Database(c.MongoDBName).Collection(mongodbinfra.CollectionTaskReadModel),
-			c.Logger,
-		),
-	)
+	c.ChatTemplateHandler.SetTaskProjector(c.getTaskReadModelProjector())
 	c.ChatTemplateHandler.SetUserLookup(c.createUserProfileLookup())
 	c.ChatTemplateHandler.SetMemberService(c.createBoardMemberService())
 
@@ -1189,14 +1196,12 @@ func (c *Container) setupBoardTemplateHandler() {
 
 // createBoardChatCreator creates a service implementing BoardChatCreator.
 func (c *Container) createBoardChatCreator() httphandler.BoardChatCreator {
-	taskReadModelColl := c.MongoDB.Database(c.MongoDBName).Collection(mongodbinfra.CollectionTaskReadModel)
-
 	return &boardChatCreatorAdapter{
 		createUC:      chatapp.NewCreateChatUseCase(c.ChatRepo),
 		setPriorityUC: chatapp.NewSetPriorityUseCase(c.ChatRepo),
-		assignUserUC:  chatapp.NewAssignUserUseCase(c.ChatRepo),
+		assignUserUC:  chatapp.NewAssignUserUseCase(c.ChatRepo, c.UserRepo),
 		setDueDateUC:  chatapp.NewSetDueDateUseCase(c.ChatRepo),
-		taskProjector: projector.NewChatToTaskReadModelProjector(c.EventStore, taskReadModelColl, c.Logger),
+		taskProjector: c.getTaskReadModelProjector(),
 		repairQueue:   c.RepairQueue,
 		logger:        c.Logger,
 	}
@@ -1656,7 +1661,8 @@ func (c *Container) createFullTaskService() httphandler.TaskService {
 			chatCollection: c.MongoDB.Database(c.MongoDBName).Collection(mongodbinfra.CollectionChatReadModel),
 		},
 		chatRepo:      c.ChatRepo,
-		taskProjector: projector.NewChatToTaskReadModelProjector(c.EventStore, taskReadModelColl, c.Logger),
+		userRepo:      c.UserRepo,
+		taskProjector: c.getTaskReadModelProjector(),
 	}
 }
 
@@ -1666,6 +1672,7 @@ type fullTaskServiceAdapter struct {
 	boardTaskServiceAdapter
 
 	chatRepo      chatapp.CommandRepository
+	userRepo      appcore.UserRepository
 	taskProjector appcore.ReadModelProjector
 }
 
@@ -1723,7 +1730,7 @@ func (a *fullTaskServiceAdapter) CreateTask(
 	}
 
 	if cmd.AssigneeID != nil {
-		assignUC := chatapp.NewAssignUserUseCase(a.chatRepo)
+		assignUC := chatapp.NewAssignUserUseCase(a.chatRepo, a.userRepo)
 		if _, assignErr := assignUC.Execute(ctx, chatapp.AssignUserCommand{
 			ChatID:     cmd.ChatID,
 			AssigneeID: cmd.AssigneeID,
@@ -1780,7 +1787,7 @@ func (a *fullTaskServiceAdapter) AssignTask(
 	ctx context.Context,
 	cmd taskapp.AssignTaskCommand,
 ) (taskapp.TaskResult, error) {
-	uc := chatapp.NewAssignUserUseCase(a.chatRepo)
+	uc := chatapp.NewAssignUserUseCase(a.chatRepo, a.userRepo)
 	result, err := uc.Execute(ctx, chatapp.AssignUserCommand{
 		ChatID:     cmd.TaskID,
 		AssigneeID: cmd.AssigneeID,
@@ -1906,6 +1913,9 @@ func (a *fullTaskServiceAdapter) syncTaskProjection(ctx context.Context, chatID 
 func mapTaskWriteError(err error) error {
 	if errors.Is(err, domainerrs.ErrNotFound) {
 		return taskapp.ErrTaskNotFound
+	}
+	if errors.Is(err, chatapp.ErrAssigneeNotFound) {
+		return taskapp.ErrUserNotFound
 	}
 	return err
 }

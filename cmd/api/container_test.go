@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"testing"
 	"time"
@@ -245,6 +246,27 @@ func TestContainer_StartHub_NilHub(t *testing.T) {
 	// This will panic because Hub is nil
 	// We can't easily test this without mocking
 	assert.Nil(t, c.Hub)
+}
+
+func TestContainer_GetTaskReadModelProjector_ReusesConfiguredInstance(t *testing.T) {
+	projectorMock := &boardTaskProjectorMock{}
+	c := &Container{
+		TaskReadModelProjector: projectorMock,
+	}
+
+	reused := c.getTaskReadModelProjector()
+	assert.Same(t, projectorMock, reused)
+}
+
+func TestContainer_GetTaskReadModelProjector_ReturnsNilWithoutDependencies(t *testing.T) {
+	c := &Container{}
+	assert.Nil(t, c.getTaskReadModelProjector())
+}
+
+func TestMapTaskWriteError_AssigneeNotFound(t *testing.T) {
+	wrapped := fmt.Errorf("wrapped: %w", chatapp.ErrAssigneeNotFound)
+	mapped := mapTaskWriteError(wrapped)
+	assert.Equal(t, taskapp.ErrUserNotFound, mapped)
 }
 
 // ========== Container Wiring Tests (Task 06) ==========
