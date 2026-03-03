@@ -43,13 +43,13 @@ This eliminates the need for a process supervisor in Docker.
 
 Multi-stage build: builder compiles Go binaries, runtime is a minimal image.
 
-- [ ] Create `Dockerfile` at repo root
+- [x] Create `Dockerfile` at repo root
   - Stage 1 (`builder`): `golang:1.26-alpine`, copy `go.mod`/`go.sum`, `go mod download`, copy source, build `bin/api` with CGO_ENABLED=0
   - Stage 2 (`runtime`): `alpine:3.21`, install `ca-certificates tzdata`, copy `bin/api` from builder, copy `configs/config.yaml` to `/etc/flowra/config.yaml`
   - `EXPOSE 8080`, `ENV FLOWRA_WORKER=true`
   - `ENTRYPOINT ["/app/api"]`
-- [ ] Create `.dockerignore` (exclude: `.git`, `bin/`, `tmp/`, `uploads/`, `tests/`, `*.md`, `.github/`, `docs/`)
-- [ ] Verify `docker build -t flowra:local .` succeeds
+- [x] Create `.dockerignore` (exclude: `.git`, `bin/`, `tmp/`, `uploads/`, `tests/`, `*.md`, `.github/`, `docs/`)
+- [x] Verify `docker build -t flowra:local .` succeeds
 
 ### Task 3: Create docker-compose.prod.yml
 
