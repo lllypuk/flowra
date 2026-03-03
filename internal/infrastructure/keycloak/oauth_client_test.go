@@ -461,4 +461,19 @@ func TestOAuthClient_AuthorizationURL(t *testing.T) {
 		assert.NotContains(t, url, "http://localhost:8080//realms")
 		assert.Contains(t, url, "http://localhost:8080/realms")
 	})
+
+	t.Run("uses public URL for browser authorization endpoint when configured", func(t *testing.T) {
+		client := keycloak.NewOAuthClient(keycloak.OAuthClientConfig{
+			KeycloakURL:  "http://keycloak:8080",
+			PublicURL:    "https://auth.example.com/",
+			Realm:        "test-realm",
+			ClientID:     "test-client",
+			ClientSecret: "test-secret",
+		})
+
+		url := client.AuthorizationURL("https://app.example.com/auth/callback", "test-state")
+
+		assert.Contains(t, url, "https://auth.example.com/realms/test-realm/protocol/openid-connect/auth")
+		assert.NotContains(t, url, "http://keycloak:8080")
+	})
 }

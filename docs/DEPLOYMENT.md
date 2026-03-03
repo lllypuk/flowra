@@ -124,6 +124,7 @@ redis:
 
 keycloak:
   url: "http://localhost:8090"
+  public_url: "http://localhost:8090"
   realm: "flowra"
   client_id: "flowra-backend"
   client_secret: "your-client-secret"
@@ -173,18 +174,21 @@ cp .env.example .env
 #    - KEYCLOAK_ADMIN_PASSWORD
 #    - KEYCLOAK_DB_PASSWORD
 #    - AUTH_JWT_SECRET
+# 3) Set public URLs for browser OAuth redirects
+#    - FLOWRA_PUBLIC_URL (for example http://localhost:8080 or https://app.example.com)
+#    - KEYCLOAK_PUBLIC_URL (for example http://localhost:8090 or https://auth.example.com)
 vim .env
 
-# 3) Start the full stack (MongoDB, Redis, Keycloak, Flowra app)
+# 4) Start the full stack (MongoDB, Redis, Keycloak, Flowra app)
 docker compose -f docker-compose.prod.yml up -d
 
-# 4) Verify health
+# 5) Verify health
 curl -sf http://localhost:8080/health
 
-# 5) View logs
+# 6) View logs
 docker compose -f docker-compose.prod.yml logs -f app
 
-# 6) Stop the stack
+# 7) Stop the stack
 docker compose -f docker-compose.prod.yml down
 ```
 
@@ -209,10 +213,11 @@ Data in these volumes survives `docker compose ... down`. Use `docker compose ..
 
 ### Keycloak Realm Import
 
-- `docker-compose.prod.yml` mounts `configs/keycloak-prod/realm-export.template.json` and renders `KEYCLOAK_CLIENT_SECRET` into a runtime import file.
+- `docker-compose.prod.yml` mounts `configs/keycloak-prod/realm-export.template.json` and renders `KEYCLOAK_CLIENT_SECRET` plus `FLOWRA_PUBLIC_URL` into a runtime import file.
 - The production realm template does not include pre-seeded users.
 - On first startup, Keycloak imports the `flowra` realm automatically.
 - On subsequent startups with existing Keycloak DB data (`keycloak_db_data` volume), Keycloak skips re-import.
+- Browser auth URLs use `KEYCLOAK_PUBLIC_URL`; backend service-to-service calls use `KEYCLOAK_URL`.
 
 ### Worker Runtime Mode
 
@@ -329,7 +334,9 @@ Flowra environment variable names do not use a `FLOWRA_` prefix (except runtime 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `KEYCLOAK_ENABLED` | `true` | Enable Keycloak integration |
-| `KEYCLOAK_URL` | `http://localhost:8090` | Keycloak URL |
+| `KEYCLOAK_URL` | `http://localhost:8090` | Internal Keycloak URL used by backend-to-Keycloak requests |
+| `KEYCLOAK_PUBLIC_URL` | `http://localhost:8090` | Public Keycloak URL used for browser OAuth redirects |
+| `FLOWRA_PUBLIC_URL` | `http://localhost:8080` | Public Flowra base URL injected into Keycloak realm redirect/logout settings |
 | `KEYCLOAK_REALM` | `flowra` | Keycloak realm |
 | `KEYCLOAK_CLIENT_ID` | `flowra-backend` | OAuth client ID |
 | `KEYCLOAK_CLIENT_SECRET` | `` | OAuth client secret |

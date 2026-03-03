@@ -243,12 +243,10 @@
       "clientAuthenticatorType": "client-secret",
       "secret": "__KEYCLOAK_CLIENT_SECRET__",
       "redirectUris": [
-        "http://localhost:8080/auth/callback",
-        "http://localhost:3000/auth/callback"
+        "__FLOWRA_PUBLIC_URL__/auth/callback"
       ],
       "webOrigins": [
-        "http://localhost:8080",
-        "http://localhost:3000"
+        "__FLOWRA_PUBLIC_URL__"
       ],
       "bearerOnly": false,
       "consentRequired": false,
@@ -261,8 +259,8 @@
       "protocol": "openid-connect",
       "attributes": {
         "backchannel.logout.session.required": "true",
-        "backchannel.logout.url": "http://localhost:8080/auth/logout/callback",
-        "post.logout.redirect.uris": "http://localhost:8080/+http://localhost:3000/"
+        "backchannel.logout.url": "__FLOWRA_PUBLIC_URL__/auth/logout/callback",
+        "post.logout.redirect.uris": "__FLOWRA_PUBLIC_URL__/*"
       },
       "fullScopeAllowed": true,
       "defaultClientScopes": [

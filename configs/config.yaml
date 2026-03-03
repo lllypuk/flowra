@@ -31,6 +31,7 @@ redis:
 keycloak:
   enabled: true # Set to true when Keycloak is running
   url: "http://localhost:8090"
+  public_url: "http://localhost:8090"
   realm: "flowra"
   client_id: "flowra-backend"
   client_secret: "flowra-dev-secret-change-in-production"

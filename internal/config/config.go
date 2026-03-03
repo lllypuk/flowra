@@ -137,6 +137,7 @@ type RedisConfig struct {
 type KeycloakConfig struct {
 	Enabled       bool      `yaml:"enabled" env:"KEYCLOAK_ENABLED"`
 	URL           string    `yaml:"url" env:"KEYCLOAK_URL"`
+	PublicURL     string    `yaml:"public_url" env:"KEYCLOAK_PUBLIC_URL"`
 	Realm         string    `yaml:"realm" env:"KEYCLOAK_REALM"`
 	ClientID      string    `yaml:"client_id" env:"KEYCLOAK_CLIENT_ID"`
 	ClientSecret  string    `yaml:"client_secret" env:"KEYCLOAK_CLIENT_SECRET"`
@@ -249,9 +250,10 @@ func DefaultConfig() *Config {
 			PoolSize: DefaultRedisPoolSize,
 		},
 		Keycloak: KeycloakConfig{
-			URL:      "http://localhost:8090",
-			Realm:    "flowra",
-			ClientID: "flowra-backend",
+			URL:       "http://localhost:8090",
+			PublicURL: "http://localhost:8090",
+			Realm:     "flowra",
+			ClientID:  "flowra-backend",
 			JWT: JWTConfig{
 				Leeway:          DefaultJWTLeeway,
 				RefreshInterval: DefaultJWTRefreshInterval,

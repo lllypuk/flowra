@@ -45,6 +45,7 @@ func TestDockerComposeProd_RequiredServicesAndEnv(t *testing.T) {
 		"MONGODB_DATABASE",
 		"REDIS_ADDR",
 		"KEYCLOAK_URL",
+		"KEYCLOAK_PUBLIC_URL",
 		"KEYCLOAK_REALM",
 		"KEYCLOAK_CLIENT_ID",
 		"KEYCLOAK_CLIENT_SECRET",
@@ -92,6 +93,8 @@ func TestEnvExample_RequiresExplicitSecrets(t *testing.T) {
 	require.Contains(t, envContent, "KEYCLOAK_CLIENT_SECRET=")
 	require.Contains(t, envContent, "KEYCLOAK_ADMIN_PASSWORD=")
 	require.Contains(t, envContent, "KEYCLOAK_DB_PASSWORD=")
+	require.Contains(t, envContent, "KEYCLOAK_PUBLIC_URL=")
+	require.Contains(t, envContent, "FLOWRA_PUBLIC_URL=")
 	require.Contains(t, envContent, "AUTH_JWT_SECRET=")
 	require.NotContains(t, envContent, "change-me-")
 }
@@ -121,6 +124,10 @@ func TestDockerComposeProd_KeycloakRealmImportAndAppDependency(t *testing.T) {
 	joinedCommand := strings.Join(stringifySlice(t, command), " ")
 	require.Contains(t, joinedCommand, "kc.sh start")
 	require.Contains(t, joinedCommand, "--import-realm")
+	require.Contains(t, joinedCommand, "json_escape")
+	require.Contains(t, joinedCommand, "__FLOWRA_PUBLIC_URL__")
+	require.Contains(t, joinedCommand, "--hostname-strict=true")
+	require.NotContains(t, joinedCommand, "--hostname-strict=false")
 	require.NotContains(t, joinedCommand, "start-dev")
 
 	volumes := mustSliceValue(t, keycloak["volumes"], "keycloak volumes must be a list")
@@ -143,6 +150,8 @@ func TestDockerComposeProd_KeycloakRealmImportAndAppDependency(t *testing.T) {
 		"${KEYCLOAK_CLIENT_SECRET:?KEYCLOAK_CLIENT_SECRET is required}",
 		keycloakEnv["KEYCLOAK_CLIENT_SECRET"],
 	)
+	require.Equal(t, "${FLOWRA_PUBLIC_URL:-http://localhost:8080}", keycloakEnv["FLOWRA_PUBLIC_URL"])
+	require.Equal(t, "${KEYCLOAK_PUBLIC_URL:-http://localhost:8090}", keycloakEnv["KEYCLOAK_PUBLIC_URL"])
 	keycloakAdminPassword, ok := keycloakEnv["KEYCLOAK_ADMIN_PASSWORD"].(string)
 	require.True(t, ok, "keycloak admin password value must be a string")
 
@@ -158,6 +167,7 @@ func TestDockerComposeProd_KeycloakRealmImportAndAppDependency(t *testing.T) {
 	appAdminPassword, ok := appEnv["KEYCLOAK_ADMIN_PASSWORD"].(string)
 	require.True(t, ok, "app keycloak admin password value must be a string")
 	require.Equal(t, keycloakAdminPassword, appAdminPassword)
+	require.Equal(t, "${KEYCLOAK_PUBLIC_URL:-http://localhost:8090}", appEnv["KEYCLOAK_PUBLIC_URL"])
 }
 
 func TestDockerComposeProd_MongoReplicaSetReadinessAndDependencies(t *testing.T) {
@@ -227,6 +237,8 @@ func TestDeploymentDocs_DockerSelfHostedSectionAndEnvNames(t *testing.T) {
 	require.Contains(t, content, "redis_data")
 	require.Contains(t, content, "keycloak_db_data")
 	require.Contains(t, content, "KEYCLOAK_DB_PASSWORD")
+	require.Contains(t, content, "KEYCLOAK_PUBLIC_URL")
+	require.Contains(t, content, "FLOWRA_PUBLIC_URL")
 	require.Contains(t, content, "configs/keycloak-prod/realm-export.template.json")
 	require.Contains(t, content, "FLOWRA_WORKER=true")
 	require.Contains(t, content, "--with-worker")
@@ -260,6 +272,7 @@ func TestComposeAndRealmTemplate_UsesRuntimeSecretAndNoSeededUsers(t *testing.T)
 	realmData, err := os.ReadFile(realmPath)
 	require.NoError(t, err)
 	require.Contains(t, string(realmData), "\"secret\": \"__KEYCLOAK_CLIENT_SECRET__\"")
+	require.Contains(t, string(realmData), "\"__FLOWRA_PUBLIC_URL__/auth/callback\"")
 	require.NotContains(t, string(realmData), "\"users\": [")
 }
 
