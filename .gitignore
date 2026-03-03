@@ -60,3 +60,6 @@ build/
 
 .claude/
 .entire/
+
+# ralphex progress logs
+.ralphex/progress/
