@@ -168,6 +168,18 @@ func TestShouldRunWorker(t *testing.T) {
 			expected: true,
 		},
 		{
+			name:     "flag value can be provided as next argument",
+			args:     []string{"--with-worker", "false"},
+			envValue: "true",
+			expected: false,
+		},
+		{
+			name:     "unknown flags are ignored",
+			args:     []string{"--some-unknown-flag", "--with-worker=true"},
+			envValue: "false",
+			expected: true,
+		},
+		{
 			name:     "invalid env value returns error",
 			args:     nil,
 			envValue: "invalid",

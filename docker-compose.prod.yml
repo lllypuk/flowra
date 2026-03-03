@@ -2,11 +2,26 @@ services:
   mongodb:
     image: mongo:6.0
     container_name: flowra-mongodb
-    command: ["--replSet", "rs0", "--bind_ip_all"]
+    command: ["--replSet", "rs0", "--bind_ip_all", "--auth"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USERNAME:?MONGODB_ROOT_USERNAME is required}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD:?MONGODB_ROOT_PASSWORD is required}
     volumes:
       - mongodb_data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "rs.status().ok"]
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--username",
+          "${MONGODB_ROOT_USERNAME:?MONGODB_ROOT_USERNAME is required}",
+          "--password",
+          "${MONGODB_ROOT_PASSWORD:?MONGODB_ROOT_PASSWORD is required}",
+          "--authenticationDatabase",
+          "admin",
+          "--eval",
+          "rs.status().ok",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -19,14 +34,17 @@ services:
     container_name: flowra-mongo-init
     depends_on:
       mongodb:
-        condition: service_started
+        condition: service_healthy
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USERNAME:?MONGODB_ROOT_USERNAME is required}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD:?MONGODB_ROOT_PASSWORD is required}
     command: >
       sh -c "
-        until mongosh --host mongodb:27017 --eval \"db.adminCommand('ping')\" >/dev/null 2>&1; do
+        until mongosh --host mongodb:27017 --username \"$${MONGO_INITDB_ROOT_USERNAME}\" --password \"$${MONGO_INITDB_ROOT_PASSWORD}\" --authenticationDatabase admin --eval \"db.adminCommand('ping')\" >/dev/null 2>&1; do
           echo 'Waiting for MongoDB to accept connections...';
           sleep 2;
         done;
-        mongosh --host mongodb:27017 --eval '
+        mongosh --host mongodb:27017 --username \"$${MONGO_INITDB_ROOT_USERNAME}\" --password \"$${MONGO_INITDB_ROOT_PASSWORD}\" --authenticationDatabase admin --eval '
           try {
             rs.status();
             print(\"Replica set already initialized\");
@@ -43,10 +61,11 @@ services:
   redis:
     image: redis:7-alpine
     container_name: flowra-redis
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}"]
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -167,13 +186,15 @@ services:
       keycloak:
         condition: service_healthy
     environment:
-      MONGODB_URI: mongodb://mongodb:27017/?replicaSet=rs0
+      MONGODB_URI: mongodb://${MONGODB_ROOT_USERNAME:?MONGODB_ROOT_USERNAME is required}:${MONGODB_ROOT_PASSWORD:?MONGODB_ROOT_PASSWORD is required}@mongodb:27017/?replicaSet=rs0&authSource=admin
       MONGODB_DATABASE: flowra
       REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       KEYCLOAK_URL: http://keycloak:8080
       KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL:?KEYCLOAK_PUBLIC_URL is required}
       KEYCLOAK_REALM: flowra
       KEYCLOAK_CLIENT_ID: flowra-backend
+      KEYCLOAK_JWT_AUDIENCE: ${KEYCLOAK_JWT_AUDIENCE:-flowra-backend}
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:?KEYCLOAK_CLIENT_SECRET is required}
       KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:?KEYCLOAK_ADMIN_USERNAME is required}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD is required}

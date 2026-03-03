@@ -251,7 +251,7 @@ func DefaultConfig() *Config {
 		},
 		Keycloak: KeycloakConfig{
 			URL:       "http://localhost:8090",
-			PublicURL: "http://localhost:8090",
+			PublicURL: "",
 			Realm:     "flowra",
 			ClientID:  "flowra-backend",
 			JWT: JWTConfig{
@@ -301,6 +301,7 @@ func (c *Config) Validate() error {
 	errs = c.validateServer(errs)
 	errs = c.validateMongoDB(errs)
 	errs = c.validateRedis(errs)
+	errs = c.validateKeycloak(errs)
 	errs = c.validateAuth(errs)
 	errs = c.validateLog(errs)
 	errs = c.validateEventBus(errs)
@@ -354,6 +355,19 @@ func (c *Config) validateRedis(errs []error) []error {
 	if c.Redis.Addr == "" {
 		errs = append(errs, errors.New("redis.addr is required"))
 	}
+	return errs
+}
+
+// validateKeycloak validates Keycloak configuration.
+func (c *Config) validateKeycloak(errs []error) []error {
+	if c.Keycloak.Enabled && c.Keycloak.URL == "" {
+		errs = append(errs, errors.New("keycloak.url is required when keycloak.enabled is true"))
+	}
+
+	if c.IsProduction() && c.Keycloak.Enabled && strings.TrimSpace(c.Keycloak.JWTAudience) == "" {
+		errs = append(errs, errors.New("keycloak.jwt_audience is required in production when keycloak is enabled"))
+	}
+
 	return errs
 }
 
@@ -484,12 +498,25 @@ func (l *Loader) Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("failed to load config from environment: %w", err)
 	}
 
+	l.applyDerivedDefaults(cfg)
+
 	// Validate the final configuration
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
 
 	return cfg, nil
+}
+
+// applyDerivedDefaults applies computed defaults after file and env loading.
+func (l *Loader) applyDerivedDefaults(cfg *Config) {
+	if cfg == nil {
+		return
+	}
+
+	if strings.TrimSpace(cfg.Keycloak.PublicURL) == "" {
+		cfg.Keycloak.PublicURL = cfg.Keycloak.URL
+	}
 }
 
 // loadFromFile loads configuration from a YAML file.

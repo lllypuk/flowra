@@ -170,25 +170,30 @@ Use the production compose stack when deploying Flowra as a single image with bu
 cp .env.example .env
 
 # 2) Set required secrets before first run
+#    - MONGODB_ROOT_PASSWORD
+#    - REDIS_PASSWORD
 #    - KEYCLOAK_CLIENT_SECRET
 #    - KEYCLOAK_ADMIN_PASSWORD
 #    - KEYCLOAK_DB_PASSWORD
 #    - AUTH_JWT_SECRET
-# 3) Set public URLs for browser OAuth redirects
+# 3) Set required usernames/audience for secure defaults
+#    - MONGODB_ROOT_USERNAME (for example flowra)
+#    - KEYCLOAK_JWT_AUDIENCE (for example flowra-backend)
+# 4) Set public URLs for browser OAuth redirects
 #    - FLOWRA_PUBLIC_URL (for example http://localhost:8080 or https://app.example.com)
 #    - KEYCLOAK_PUBLIC_URL (for example http://localhost:8090 or https://auth.example.com)
 vim .env
 
-# 4) Start the full stack (MongoDB, Redis, Keycloak, Flowra app)
+# 5) Start the full stack (MongoDB, Redis, Keycloak, Flowra app)
 docker compose -f docker-compose.prod.yml up -d
 
-# 5) Verify health
+# 6) Verify health
 curl -sf http://localhost:8080/health
 
-# 6) View logs
+# 7) View logs
 docker compose -f docker-compose.prod.yml logs -f app
 
-# 7) Stop the stack
+# 8) Stop the stack
 docker compose -f docker-compose.prod.yml down
 ```
 
@@ -343,7 +348,7 @@ Flowra environment variable names do not use a `FLOWRA_` prefix (except runtime 
 | `KEYCLOAK_ADMIN_USERNAME` | `` | Keycloak admin username (used for user sync/admin APIs) |
 | `KEYCLOAK_ADMIN_PASSWORD` | `` | Keycloak admin password (used for user sync/admin APIs) |
 | `KEYCLOAK_DB_PASSWORD` | `` | Keycloak PostgreSQL database password |
-| `KEYCLOAK_JWT_AUDIENCE` | `` | Optional expected JWT audience |
+| `KEYCLOAK_JWT_AUDIENCE` | `flowra-backend` | Expected JWT audience in production deployments |
 | `KEYCLOAK_JWT_LEEWAY` | `30s` | JWT validation clock skew leeway |
 | `KEYCLOAK_JWT_REFRESH_INTERVAL` | `1h` | JWKS/token validation metadata refresh interval |
 | `AUTH_JWT_SECRET` | `` | JWT signing secret |

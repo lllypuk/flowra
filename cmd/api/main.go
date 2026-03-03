@@ -4,9 +4,7 @@ package main
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -255,15 +253,35 @@ func shouldRunWorker(args []string, getenv func(string) string) (bool, error) {
 		defaultEnabled = enabled
 	}
 
-	flagSet := flag.NewFlagSet("api", flag.ContinueOnError)
-	flagSet.SetOutput(io.Discard)
+	withWorker := defaultEnabled
 
-	withWorker := flagSet.Bool("with-worker", defaultEnabled, "run worker loops in API process")
-	if err := flagSet.Parse(args); err != nil {
-		return false, err
+	for i := 0; i < len(args); i++ {
+		arg := strings.TrimSpace(args[i])
+		if arg == "" {
+			continue
+		}
+
+		switch {
+		case arg == "--with-worker":
+			withWorker = true
+			if i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
+				parsed, err := strconv.ParseBool(strings.TrimSpace(args[i+1]))
+				if err != nil {
+					return false, fmt.Errorf("parse --with-worker: %w", err)
+				}
+				withWorker = parsed
+				i++
+			}
+		case strings.HasPrefix(arg, "--with-worker="):
+			parsed, err := strconv.ParseBool(strings.TrimSpace(strings.TrimPrefix(arg, "--with-worker=")))
+			if err != nil {
+				return false, fmt.Errorf("parse --with-worker: %w", err)
+			}
+			withWorker = parsed
+		}
 	}
 
-	return *withWorker, nil
+	return withWorker, nil
 }
 
 func waitForWorkerShutdown(workerDone <-chan struct{}, timeout time.Duration, logger *slog.Logger) {

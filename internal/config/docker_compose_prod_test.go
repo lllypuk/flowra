@@ -44,10 +44,12 @@ func TestDockerComposeProd_RequiredServicesAndEnv(t *testing.T) {
 		"MONGODB_URI",
 		"MONGODB_DATABASE",
 		"REDIS_ADDR",
+		"REDIS_PASSWORD",
 		"KEYCLOAK_URL",
 		"KEYCLOAK_PUBLIC_URL",
 		"KEYCLOAK_REALM",
 		"KEYCLOAK_CLIENT_ID",
+		"KEYCLOAK_JWT_AUDIENCE",
 		"KEYCLOAK_CLIENT_SECRET",
 		"KEYCLOAK_ADMIN_USERNAME",
 		"KEYCLOAK_ADMIN_PASSWORD",
@@ -60,10 +62,15 @@ func TestDockerComposeProd_RequiredServicesAndEnv(t *testing.T) {
 	mongoURI, ok := environment["MONGODB_URI"].(string)
 	require.True(t, ok, "MONGODB_URI must be a string")
 	require.Contains(t, mongoURI, "replicaSet=rs0")
+	require.Contains(t, mongoURI, "authSource=admin")
+	require.Contains(t, mongoURI, "${MONGODB_ROOT_USERNAME:?MONGODB_ROOT_USERNAME is required}")
+	require.Contains(t, mongoURI, "${MONGODB_ROOT_PASSWORD:?MONGODB_ROOT_PASSWORD is required}")
 
 	redisAddr, ok := environment["REDIS_ADDR"].(string)
 	require.True(t, ok, "REDIS_ADDR must be a string")
 	require.Equal(t, "redis:6379", redisAddr)
+
+	require.Equal(t, "${REDIS_PASSWORD:?REDIS_PASSWORD is required}", environment["REDIS_PASSWORD"])
 
 	workerMode, ok := environment["FLOWRA_WORKER"].(string)
 	require.True(t, ok, "FLOWRA_WORKER must be a string")
@@ -93,6 +100,9 @@ func TestEnvExample_RequiresExplicitSecrets(t *testing.T) {
 	require.Contains(t, envContent, "KEYCLOAK_CLIENT_SECRET=")
 	require.Contains(t, envContent, "KEYCLOAK_ADMIN_PASSWORD=")
 	require.Contains(t, envContent, "KEYCLOAK_DB_PASSWORD=")
+	require.Contains(t, envContent, "MONGODB_ROOT_PASSWORD=")
+	require.Contains(t, envContent, "REDIS_PASSWORD=")
+	require.Contains(t, envContent, "KEYCLOAK_JWT_AUDIENCE=")
 	require.Contains(t, envContent, "KEYCLOAK_PUBLIC_URL=")
 	require.Contains(t, envContent, "FLOWRA_PUBLIC_URL=")
 	require.Contains(t, envContent, "AUTH_JWT_SECRET=")
@@ -191,12 +201,15 @@ func TestDockerComposeProd_MongoReplicaSetReadinessAndDependencies(t *testing.T)
 
 	healthcheck := mustMapValue(t, mongodb["healthcheck"], "mongodb healthcheck is required")
 	healthcheckCommand := mustSliceValue(t, healthcheck["test"], "mongodb healthcheck test must be a list")
-	require.Contains(t, stringifySlice(t, healthcheckCommand), "rs.status().ok")
+	joinedHealthcheck := strings.Join(stringifySlice(t, healthcheckCommand), " ")
+	require.Contains(t, joinedHealthcheck, "--authenticationDatabase")
+	require.Contains(t, joinedHealthcheck, "rs.status().ok")
 
 	mongoInit := mustMapValue(t, services["mongo-init"], "mongo-init service must be a map")
 	command, ok := mongoInit["command"].(string)
 	require.True(t, ok, "mongo-init command must be a string")
-	require.Contains(t, command, "until mongosh --host mongodb:27017 --eval")
+	require.Contains(t, command, "until mongosh --host mongodb:27017 --username")
+	require.Contains(t, command, "--authenticationDatabase admin")
 	require.Contains(t, command, "db.adminCommand('ping')")
 
 	app := mustMapValue(t, services["app"], "app service must be a map")
@@ -210,6 +223,9 @@ func TestDockerComposeProd_MongoReplicaSetReadinessAndDependencies(t *testing.T)
 	redis := mustMapValue(t, services["redis"], "redis service must be a map")
 	_, hasRedisPorts := redis["ports"]
 	require.False(t, hasRedisPorts, "redis should not expose host ports in production compose")
+
+	redisCommand := mustSliceValue(t, redis["command"], "redis command must be a list")
+	require.Contains(t, strings.Join(stringifySlice(t, redisCommand), " "), "--requirepass")
 }
 
 func TestMakefile_HasDockerProductionTargets(t *testing.T) {
@@ -277,6 +293,9 @@ func TestDeploymentDocs_DockerSelfHostedSectionAndEnvNames(t *testing.T) {
 	require.Contains(t, content, "redis_data")
 	require.Contains(t, content, "keycloak_db_data")
 	require.Contains(t, content, "KEYCLOAK_DB_PASSWORD")
+	require.Contains(t, content, "MONGODB_ROOT_PASSWORD")
+	require.Contains(t, content, "REDIS_PASSWORD")
+	require.Contains(t, content, "KEYCLOAK_JWT_AUDIENCE")
 	require.Contains(t, content, "KEYCLOAK_PUBLIC_URL")
 	require.Contains(t, content, "FLOWRA_PUBLIC_URL")
 	require.Contains(t, content, "configs/keycloak-prod/realm-export.template.json")

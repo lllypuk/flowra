@@ -28,7 +28,7 @@ keycloak:
   realm: "flowra"
   client_id: "flowra-backend"
   client_secret: ""
-  jwt_audience: ""
+  jwt_audience: "flowra-backend"
   admin_username: "admin"
   admin_password: ""
   jwt:
