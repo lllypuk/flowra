@@ -69,9 +69,9 @@ A single-file compose for self-hosted deployment: MongoDB (replica set), Redis, 
 
 Ensure Keycloak realm is configured automatically without manual setup scripts.
 
-- [ ] Mount `configs/keycloak/realm-export.json` into Keycloak container with `--import-realm` (already done in dev compose — verify it works in prod compose)
-- [ ] Add healthcheck for Keycloak readiness before app starts (depends_on + condition: service_healthy)
-- [ ] Document that on subsequent starts the realm is not re-imported (Keycloak skips existing realms)
+- [x] Mount `configs/keycloak/realm-export.json` into Keycloak container with `--import-realm` (already done in dev compose — verify it works in prod compose)
+- [x] Add healthcheck for Keycloak readiness before app starts (depends_on + condition: service_healthy)
+- [x] Document that on subsequent starts the realm is not re-imported (Keycloak skips existing realms)
 
 ### Task 5: MongoDB replica set init reliability
 

@@ -284,6 +284,11 @@ EOF
 docker-compose -f docker-compose.prod.yml up -d
 ```
 
+Keycloak realm auto-import behavior:
+- `docker-compose.prod.yml` mounts `configs/keycloak/realm-export.json` into Keycloak and starts it with `--import-realm`.
+- On first startup, the `flowra` realm is imported automatically.
+- On subsequent starts, Keycloak detects the existing realm and skips re-import.
+
 ---
 
 ## Manual Deployment
