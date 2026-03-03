@@ -23,7 +23,7 @@ func TestDockerComposeProd_RequiredServicesAndEnv(t *testing.T) {
 	services, ok := servicesRaw.(map[string]any)
 	require.True(t, ok, "services must be a map")
 
-	requiredServices := []string{"mongodb", "mongo-init", "redis", "keycloak", "app"}
+	requiredServices := []string{"mongodb", "mongo-init", "redis", "keycloak-db", "keycloak", "app"}
 	for _, name := range requiredServices {
 		require.Contains(t, services, name)
 	}
@@ -67,9 +67,21 @@ func TestDockerComposeProd_RequiredServicesAndEnv(t *testing.T) {
 	workerMode, ok := environment["FLOWRA_WORKER"].(string)
 	require.True(t, ok, "FLOWRA_WORKER must be a string")
 	require.Contains(t, workerMode, "true")
+
+	require.Equal(
+		t,
+		"${KEYCLOAK_CLIENT_SECRET:?KEYCLOAK_CLIENT_SECRET is required}",
+		environment["KEYCLOAK_CLIENT_SECRET"],
+	)
+	require.Equal(
+		t,
+		"${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD is required}",
+		environment["KEYCLOAK_ADMIN_PASSWORD"],
+	)
+	require.Equal(t, "${AUTH_JWT_SECRET:?AUTH_JWT_SECRET is required}", environment["AUTH_JWT_SECRET"])
 }
 
-func TestEnvExample_HasSecretPlaceholders(t *testing.T) {
+func TestEnvExample_RequiresExplicitSecrets(t *testing.T) {
 	t.Parallel()
 
 	envPath := filepath.Join(repoRoot(t), ".env.example")
@@ -77,9 +89,11 @@ func TestEnvExample_HasSecretPlaceholders(t *testing.T) {
 	require.NoError(t, err)
 
 	envContent := string(data)
-	require.Contains(t, envContent, "KEYCLOAK_CLIENT_SECRET=change-me-keycloak-client-secret")
-	require.Contains(t, envContent, "KEYCLOAK_ADMIN_PASSWORD=change-me-keycloak-admin-password")
-	require.Contains(t, envContent, "AUTH_JWT_SECRET=change-me-auth-jwt-secret")
+	require.Contains(t, envContent, "KEYCLOAK_CLIENT_SECRET=")
+	require.Contains(t, envContent, "KEYCLOAK_ADMIN_PASSWORD=")
+	require.Contains(t, envContent, "KEYCLOAK_DB_PASSWORD=")
+	require.Contains(t, envContent, "AUTH_JWT_SECRET=")
+	require.NotContains(t, envContent, "change-me-")
 }
 
 func TestDockerComposeProd_KeycloakRealmImportAndAppDependency(t *testing.T) {
@@ -90,15 +104,30 @@ func TestDockerComposeProd_KeycloakRealmImportAndAppDependency(t *testing.T) {
 
 	services := mustMapValue(t, composeData["services"], "services must be a map")
 	keycloak := mustMapValue(t, services["keycloak"], "keycloak service must be a map")
+	keycloakDB := mustMapValue(t, services["keycloak-db"], "keycloak-db service must be a map")
+
+	keycloakDBEnv := mustMapValue(t, keycloakDB["environment"], "keycloak-db environment is required")
+	require.Equal(
+		t,
+		"${KEYCLOAK_DB_PASSWORD:?KEYCLOAK_DB_PASSWORD is required}",
+		keycloakDBEnv["POSTGRES_PASSWORD"],
+	)
+
+	keycloakDependsOn := mustMapValue(t, keycloak["depends_on"], "keycloak depends_on is required")
+	keycloakDBDependency := mustMapValue(t, keycloakDependsOn["keycloak-db"], "keycloak must depend on keycloak-db")
+	require.Equal(t, "service_healthy", keycloakDBDependency["condition"])
 
 	command := mustSliceValue(t, keycloak["command"], "keycloak command must be a list")
-	require.Contains(t, stringifySlice(t, command), "--import-realm")
+	joinedCommand := strings.Join(stringifySlice(t, command), " ")
+	require.Contains(t, joinedCommand, "kc.sh start")
+	require.Contains(t, joinedCommand, "--import-realm")
+	require.NotContains(t, joinedCommand, "start-dev")
 
 	volumes := mustSliceValue(t, keycloak["volumes"], "keycloak volumes must be a list")
 	require.Contains(
 		t,
 		stringifySlice(t, volumes),
-		"./configs/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro",
+		"./configs/keycloak-prod/realm-export.template.json:/opt/keycloak/realm-template/realm-export.template.json:ro",
 	)
 
 	healthcheck := mustMapValue(t, keycloak["healthcheck"], "keycloak healthcheck is required")
@@ -108,6 +137,12 @@ func TestDockerComposeProd_KeycloakRealmImportAndAppDependency(t *testing.T) {
 	require.Contains(t, joinedHealthcheck, "200 OK")
 
 	keycloakEnv := mustMapValue(t, keycloak["environment"], "keycloak environment is required")
+	require.Equal(t, "postgres", keycloakEnv["KC_DB"])
+	require.Equal(
+		t,
+		"${KEYCLOAK_CLIENT_SECRET:?KEYCLOAK_CLIENT_SECRET is required}",
+		keycloakEnv["KEYCLOAK_CLIENT_SECRET"],
+	)
 	keycloakAdminPassword, ok := keycloakEnv["KEYCLOAK_ADMIN_PASSWORD"].(string)
 	require.True(t, ok, "keycloak admin password value must be a string")
 
@@ -123,8 +158,6 @@ func TestDockerComposeProd_KeycloakRealmImportAndAppDependency(t *testing.T) {
 	appAdminPassword, ok := appEnv["KEYCLOAK_ADMIN_PASSWORD"].(string)
 	require.True(t, ok, "app keycloak admin password value must be a string")
 	require.Equal(t, keycloakAdminPassword, appAdminPassword)
-
-	require.Contains(t, stringifySlice(t, volumes), "keycloak_data:/opt/keycloak/data")
 }
 
 func TestDockerComposeProd_MongoReplicaSetReadinessAndDependencies(t *testing.T) {
@@ -192,7 +225,9 @@ func TestDeploymentDocs_DockerSelfHostedSectionAndEnvNames(t *testing.T) {
 	require.Contains(t, content, "uploads_data")
 	require.Contains(t, content, "mongodb_data")
 	require.Contains(t, content, "redis_data")
-	require.Contains(t, content, "keycloak_data")
+	require.Contains(t, content, "keycloak_db_data")
+	require.Contains(t, content, "KEYCLOAK_DB_PASSWORD")
+	require.Contains(t, content, "configs/keycloak-prod/realm-export.template.json")
 	require.Contains(t, content, "FLOWRA_WORKER=true")
 	require.Contains(t, content, "--with-worker")
 
@@ -204,7 +239,7 @@ func TestDeploymentDocs_DockerSelfHostedSectionAndEnvNames(t *testing.T) {
 	require.NotContains(t, content, "FLOWRA_ENV")
 }
 
-func TestComposeAndRealmSecrets_AreAligned(t *testing.T) {
+func TestComposeAndRealmTemplate_UsesRuntimeSecretAndNoSeededUsers(t *testing.T) {
 	t.Parallel()
 
 	composePath := filepath.Join(repoRoot(t), "docker-compose.prod.yml")
@@ -215,17 +250,17 @@ func TestComposeAndRealmSecrets_AreAligned(t *testing.T) {
 	appEnv := mustMapValue(t, app["environment"], "app environment is required")
 	clientSecret, ok := appEnv["KEYCLOAK_CLIENT_SECRET"].(string)
 	require.True(t, ok, "KEYCLOAK_CLIENT_SECRET must be a string")
-	require.Equal(t, "${KEYCLOAK_CLIENT_SECRET:-change-me-keycloak-client-secret}", clientSecret)
+	require.Equal(t, "${KEYCLOAK_CLIENT_SECRET:?KEYCLOAK_CLIENT_SECRET is required}", clientSecret)
 
-	envPath := filepath.Join(repoRoot(t), ".env.example")
-	envData, err := os.ReadFile(envPath)
-	require.NoError(t, err)
-	require.Contains(t, string(envData), "KEYCLOAK_CLIENT_SECRET=change-me-keycloak-client-secret")
+	keycloak := mustMapValue(t, services["keycloak"], "keycloak service must be a map")
+	keycloakEnv := mustMapValue(t, keycloak["environment"], "keycloak environment is required")
+	require.Equal(t, clientSecret, keycloakEnv["KEYCLOAK_CLIENT_SECRET"])
 
-	realmPath := filepath.Join(repoRoot(t), "configs", "keycloak", "realm-export.json")
+	realmPath := filepath.Join(repoRoot(t), "configs", "keycloak-prod", "realm-export.template.json")
 	realmData, err := os.ReadFile(realmPath)
 	require.NoError(t, err)
-	require.Contains(t, string(realmData), "\"secret\": \"change-me-keycloak-client-secret\"")
+	require.Contains(t, string(realmData), "\"secret\": \"__KEYCLOAK_CLIENT_SECRET__\"")
+	require.NotContains(t, string(realmData), "\"users\": [")
 }
 
 func repoRoot(t *testing.T) string {

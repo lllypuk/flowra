@@ -168,7 +168,11 @@ Use the production compose stack when deploying Flowra as a single image with bu
 # 1) Prepare environment variables
 cp .env.example .env
 
-# 2) Edit secrets before first run
+# 2) Set required secrets before first run
+#    - KEYCLOAK_CLIENT_SECRET
+#    - KEYCLOAK_ADMIN_PASSWORD
+#    - KEYCLOAK_DB_PASSWORD
+#    - AUTH_JWT_SECRET
 vim .env
 
 # 3) Start the full stack (MongoDB, Redis, Keycloak, Flowra app)
@@ -199,15 +203,16 @@ make docker-prod-down
 - `uploads_data` mounted to `/app/uploads` in `app` for user file uploads
 - `mongodb_data` mounted to `/data/db` in `mongodb`
 - `redis_data` mounted to `/data` in `redis`
-- `keycloak_data` mounted to `/opt/keycloak/data` in `keycloak`
+- `keycloak_db_data` mounted to `/var/lib/postgresql/data` in `keycloak-db`
 
 Data in these volumes survives `docker compose ... down`. Use `docker compose ... down -v` only when intentionally resetting state.
 
 ### Keycloak Realm Import
 
-- `docker-compose.prod.yml` mounts `configs/keycloak/realm-export.json` into Keycloak and starts with `--import-realm`.
+- `docker-compose.prod.yml` mounts `configs/keycloak-prod/realm-export.template.json` and renders `KEYCLOAK_CLIENT_SECRET` into a runtime import file.
+- The production realm template does not include pre-seeded users.
 - On first startup, Keycloak imports the `flowra` realm automatically.
-- On subsequent startups with existing realm data (`keycloak_data` volume), Keycloak skips re-import.
+- On subsequent startups with existing Keycloak DB data (`keycloak_db_data` volume), Keycloak skips re-import.
 
 ### Worker Runtime Mode
 
@@ -330,6 +335,7 @@ Flowra environment variable names do not use a `FLOWRA_` prefix (except runtime 
 | `KEYCLOAK_CLIENT_SECRET` | `` | OAuth client secret |
 | `KEYCLOAK_ADMIN_USERNAME` | `` | Keycloak admin username (used for user sync/admin APIs) |
 | `KEYCLOAK_ADMIN_PASSWORD` | `` | Keycloak admin password (used for user sync/admin APIs) |
+| `KEYCLOAK_DB_PASSWORD` | `` | Keycloak PostgreSQL database password |
 | `KEYCLOAK_JWT_AUDIENCE` | `` | Optional expected JWT audience |
 | `KEYCLOAK_JWT_LEEWAY` | `30s` | JWT validation clock skew leeway |
 | `KEYCLOAK_JWT_REFRESH_INTERVAL` | `1h` | JWKS/token validation metadata refresh interval |

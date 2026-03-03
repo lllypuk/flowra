@@ -54,21 +54,61 @@ services:
     networks:
       - flowra-network
 
+  keycloak-db:
+    image: postgres:16-alpine
+    container_name: flowra-keycloak-db
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?KEYCLOAK_DB_PASSWORD is required}
+    volumes:
+      - keycloak_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - flowra-network
+
   keycloak:
     image: quay.io/keycloak/keycloak:23.0
     container_name: flowra-keycloak
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
     environment:
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USERNAME:-admin}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-change-me-keycloak-admin-password}
-      KC_DB: dev-file
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USERNAME:?KEYCLOAK_ADMIN_USERNAME is required}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD is required}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:?KEYCLOAK_CLIENT_SECRET is required}
+      KC_DB: postgres
+      KC_DB_URL_HOST: keycloak-db
+      KC_DB_URL_PORT: 5432
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?KEYCLOAK_DB_PASSWORD is required}
+      KC_HEALTH_ENABLED: "true"
     ports:
       - "8090:8080"
     volumes:
-      - ./configs/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
-      - keycloak_data:/opt/keycloak/data
+      - ./configs/keycloak-prod/realm-export.template.json:/opt/keycloak/realm-template/realm-export.template.json:ro
     command:
-      - start-dev
-      - --import-realm
+      - /bin/bash
+      - -ec
+      - |
+        for required_var in KEYCLOAK_CLIENT_SECRET KEYCLOAK_ADMIN_PASSWORD KEYCLOAK_DB_PASSWORD; do
+          value="${!required_var:-}"
+          if [[ -z "$value" || "$value" == change-me-* ]]; then
+            echo "$required_var must be set to a non-placeholder value" >&2
+            exit 1
+          fi
+        done
+        mkdir -p /opt/keycloak/data/import
+        sed "s|__KEYCLOAK_CLIENT_SECRET__|${KEYCLOAK_CLIENT_SECRET}|g" \
+          /opt/keycloak/realm-template/realm-export.template.json \
+          > /opt/keycloak/data/import/realm-export.json
+        exec /opt/keycloak/bin/kc.sh start --http-enabled=true --hostname-strict=false --import-realm
     healthcheck:
       test:
         [
@@ -104,10 +144,10 @@ services:
       KEYCLOAK_URL: http://keycloak:8080
       KEYCLOAK_REALM: flowra
       KEYCLOAK_CLIENT_ID: flowra-backend
-      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-change-me-keycloak-client-secret}
-      KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-admin}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-change-me-keycloak-admin-password}
-      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-change-me-auth-jwt-secret}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:?KEYCLOAK_CLIENT_SECRET is required}
+      KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:?KEYCLOAK_ADMIN_USERNAME is required}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD is required}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?AUTH_JWT_SECRET is required}
       FLOWRA_WORKER: ${FLOWRA_WORKER:-true}
       UPLOADS_DIR: /app/uploads
     ports:
@@ -127,7 +167,7 @@ services:
 volumes:
   mongodb_data:
   redis_data:
-  keycloak_data:
+  keycloak_db_data:
   uploads_data:
 
 networks:
