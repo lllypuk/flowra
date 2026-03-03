@@ -159,6 +159,27 @@ func TestMakefile_HasDockerProductionTargets(t *testing.T) {
 	)
 }
 
+func TestDeploymentDocs_DockerSelfHostedSectionAndEnvNames(t *testing.T) {
+	t.Parallel()
+
+	deploymentPath := filepath.Join(repoRoot(t), "docs", "DEPLOYMENT.md")
+	data, err := os.ReadFile(deploymentPath)
+	require.NoError(t, err)
+
+	content := string(data)
+	require.Contains(t, content, "## Docker (self-hosted)")
+	require.Contains(t, content, "docker compose -f docker-compose.prod.yml up -d")
+	require.Contains(t, content, "uploads_data")
+	require.Contains(t, content, "mongodb_data")
+	require.Contains(t, content, "redis_data")
+	require.Contains(t, content, "FLOWRA_WORKER=true")
+
+	require.NotContains(t, content, "FLOWRA_MONGODB_URI")
+	require.NotContains(t, content, "FLOWRA_REDIS_ADDR")
+	require.NotContains(t, content, "FLOWRA_KEYCLOAK_URL")
+	require.NotContains(t, content, "FLOWRA_AUTH_JWT_SECRET")
+}
+
 func repoRoot(t *testing.T) string {
 	t.Helper()
 

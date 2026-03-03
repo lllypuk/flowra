@@ -7,7 +7,7 @@ This guide covers deploying Flowra in various environments, from local developme
 1. [Prerequisites](#prerequisites)
 2. [Quick Start](#quick-start)
 3. [Configuration](#configuration)
-4. [Docker Compose Deployment](#docker-compose-deployment)
+4. [Docker (self-hosted)](#docker-self-hosted)
 5. [Manual Deployment](#manual-deployment)
 6. [Environment Variables](#environment-variables)
 7. [Health Checks](#health-checks)
@@ -158,136 +158,60 @@ websocket:
 
 ---
 
-## Docker Compose Deployment
+## Docker (self-hosted)
 
-### Development Environment
+Use the production compose stack when deploying Flowra as a single image with bundled API+worker runtime.
 
-```bash
-# Start all services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
-```
-
-### Production Environment
-
-Create `docker-compose.prod.yml`:
-
-```yaml
-version: "3.8"
-
-services:
-  api:
-    image: flowra/api:latest
-    ports:
-      - "8080:8080"
-    environment:
-      - FLOWRA_ENV=production
-      - FLOWRA_MONGODB_URI=mongodb://mongodb:27017
-      - FLOWRA_REDIS_ADDR=redis:6379
-    depends_on:
-      mongodb:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          cpus: '1'
-          memory: 1G
-
-  mongodb:
-    image: mongo:6.0
-    volumes:
-      - mongodb_data:/data/db
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-  redis:
-    image: redis:7-alpine
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-  keycloak:
-    image: quay.io/keycloak/keycloak:23.0
-    command: start
-    environment:
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
-      KC_DB_USERNAME: ${KC_DB_USER}
-      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
-      KC_HOSTNAME: auth.flowra.com
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
-    depends_on:
-      - keycloak-db
-    restart: unless-stopped
-
-  keycloak-db:
-    image: postgres:15-alpine
-    volumes:
-      - keycloak_db_data:/var/lib/postgresql/data
-    environment:
-      POSTGRES_DB: keycloak
-      POSTGRES_USER: ${KC_DB_USER}
-      POSTGRES_PASSWORD: ${KC_DB_PASSWORD}
-    restart: unless-stopped
-
-volumes:
-  mongodb_data:
-  redis_data:
-  keycloak_db_data:
-```
-
-### Start Production
+### Start and Stop
 
 ```bash
-# Create .env file with production values
-cat > .env << EOF
-MONGO_USER=flowra
-MONGO_PASSWORD=<secure-password>
-REDIS_PASSWORD=<secure-password>
-KC_DB_USER=keycloak
-KC_DB_PASSWORD=<secure-password>
-KEYCLOAK_ADMIN=admin
-KEYCLOAK_ADMIN_PASSWORD=<secure-password>
-EOF
+# 1) Prepare environment variables
+cp .env.example .env
 
-# Start production stack
-docker-compose -f docker-compose.prod.yml up -d
+# 2) Edit secrets before first run
+vim .env
+
+# 3) Start the full stack (MongoDB, Redis, Keycloak, Flowra app)
+docker compose -f docker-compose.prod.yml up -d
+
+# 4) Verify health
+curl -sf http://localhost:8080/health
+
+# 5) View logs
+docker compose -f docker-compose.prod.yml logs -f app
+
+# 6) Stop the stack
+docker compose -f docker-compose.prod.yml down
 ```
 
-Keycloak realm auto-import behavior:
-- `docker-compose.prod.yml` mounts `configs/keycloak/realm-export.json` into Keycloak and starts it with `--import-realm`.
-- On first startup, the `flowra` realm is imported automatically.
-- On subsequent starts, Keycloak detects the existing realm and skips re-import.
+Equivalent Make targets:
+
+```bash
+make docker-build
+make docker-prod-up
+make docker-prod-logs
+make docker-prod-down
+```
+
+### Persistent Volumes
+
+`docker-compose.prod.yml` uses named volumes for data persistence:
+- `uploads_data` mounted to `/app/uploads` in `app` for user file uploads
+- `mongodb_data` mounted to `/data/db` in `mongodb`
+- `redis_data` mounted to `/data` in `redis`
+
+Data in these volumes survives `docker compose ... down`. Use `docker compose ... down -v` only when intentionally resetting state.
+
+### Keycloak Realm Import
+
+- `docker-compose.prod.yml` mounts `configs/keycloak/realm-export.json` into Keycloak and starts with `--import-realm`.
+- On first startup, Keycloak imports the `flowra` realm automatically.
+- On subsequent startups with existing realm data, Keycloak skips re-import.
+
+### Worker Runtime Mode
+
+- Unified mode: set `FLOWRA_WORKER=true` to run API and background worker loops in the same `api` process (default in `docker-compose.prod.yml`).
+- Separate mode: set `FLOWRA_WORKER=false` for API-only process and run `./bin/worker` separately (used in manual/non-single-image deployments).
 
 ---
 
@@ -356,64 +280,76 @@ sudo systemctl status flowra-api
 
 ## Environment Variables
 
-All configuration options can be overridden via environment variables using the `FLOWRA_` prefix.
+Flowra environment variable names do not use a `FLOWRA_` prefix (except runtime toggles like `FLOWRA_WORKER` and `FLOWRA_DEV_MODE`).
+
+### Runtime Toggles
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `FLOWRA_WORKER` | `false` (compose sets `true`) | Run background worker loops inside the API process |
+| `FLOWRA_DEV_MODE` | `` | Development mode selector (`lite` for API-only local mode) |
 
 ### Server Configuration
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `FLOWRA_SERVER_HOST` | `0.0.0.0` | Server bind address |
-| `FLOWRA_SERVER_PORT` | `8080` | Server port |
-| `FLOWRA_SERVER_READ_TIMEOUT` | `30s` | Request read timeout |
-| `FLOWRA_SERVER_WRITE_TIMEOUT` | `30s` | Response write timeout |
-| `FLOWRA_SERVER_SHUTDOWN_TIMEOUT` | `10s` | Graceful shutdown timeout |
+| `SERVER_HOST` | `0.0.0.0` | Server bind address |
+| `SERVER_PORT` | `8080` | Server port |
+| `SERVER_READ_TIMEOUT` | `30s` | Request read timeout |
+| `SERVER_WRITE_TIMEOUT` | `30s` | Response write timeout |
+| `SERVER_SHUTDOWN_TIMEOUT` | `10s` | Graceful shutdown timeout |
 
-### Database Configuration
+### MongoDB Configuration
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `FLOWRA_MONGODB_URI` | `mongodb://localhost:27017` | MongoDB connection URI |
-| `FLOWRA_MONGODB_DATABASE` | `flowra` | Database name |
-| `FLOWRA_MONGODB_TIMEOUT` | `10s` | Connection timeout |
-| `FLOWRA_MONGODB_MAX_POOL_SIZE` | `100` | Max connection pool size |
+| `MONGODB_URI` | `mongodb://localhost:27017` | MongoDB connection URI |
+| `MONGODB_DATABASE` | `flowra` | Database name |
+| `MONGODB_TIMEOUT` | `10s` | Connection timeout |
+| `MONGODB_MAX_POOL_SIZE` | `100` | Max connection pool size |
 
 ### Redis Configuration
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `FLOWRA_REDIS_ADDR` | `localhost:6379` | Redis address |
-| `FLOWRA_REDIS_PASSWORD` | `` | Redis password |
-| `FLOWRA_REDIS_DB` | `0` | Redis database number |
-| `FLOWRA_REDIS_POOL_SIZE` | `10` | Connection pool size |
+| `REDIS_ADDR` | `localhost:6379` | Redis address |
+| `REDIS_PASSWORD` | `` | Redis password |
+| `REDIS_DB` | `0` | Redis database number |
+| `REDIS_POOL_SIZE` | `10` | Connection pool size |
 
-### Authentication Configuration
+### Keycloak and Auth Configuration
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `FLOWRA_KEYCLOAK_URL` | `http://localhost:8090` | Keycloak URL |
-| `FLOWRA_KEYCLOAK_REALM` | `flowra` | Keycloak realm |
-| `FLOWRA_KEYCLOAK_CLIENT_ID` | `flowra-backend` | OAuth client ID |
-| `FLOWRA_KEYCLOAK_CLIENT_SECRET` | `` | OAuth client secret |
-| `FLOWRA_AUTH_JWT_SECRET` | `` | JWT signing secret |
-| `FLOWRA_AUTH_ACCESS_TOKEN_TTL` | `15m` | Access token lifetime |
-| `FLOWRA_AUTH_REFRESH_TOKEN_TTL` | `7d` | Refresh token lifetime |
+| `KEYCLOAK_ENABLED` | `true` | Enable Keycloak integration |
+| `KEYCLOAK_URL` | `http://localhost:8090` | Keycloak URL |
+| `KEYCLOAK_REALM` | `flowra` | Keycloak realm |
+| `KEYCLOAK_CLIENT_ID` | `flowra-backend` | OAuth client ID |
+| `KEYCLOAK_CLIENT_SECRET` | `` | OAuth client secret |
+| `KEYCLOAK_ADMIN_USERNAME` | `` | Keycloak admin username (used for user sync/admin APIs) |
+| `KEYCLOAK_ADMIN_PASSWORD` | `` | Keycloak admin password (used for user sync/admin APIs) |
+| `KEYCLOAK_JWT_AUDIENCE` | `` | Optional expected JWT audience |
+| `KEYCLOAK_JWT_LEEWAY` | `30s` | JWT validation clock skew leeway |
+| `KEYCLOAK_JWT_REFRESH_INTERVAL` | `1h` | JWKS/token validation metadata refresh interval |
+| `AUTH_JWT_SECRET` | `` | JWT signing secret |
+| `AUTH_ACCESS_TOKEN_TTL` | `15m` | Access token lifetime |
+| `AUTH_REFRESH_TOKEN_TTL` | `7d` | Refresh token lifetime |
 
 ### Logging Configuration
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `FLOWRA_LOG_LEVEL` | `info` | Log level (debug/info/warn/error) |
-| `FLOWRA_LOG_FORMAT` | `json` | Log format (json/text) |
-| `FLOWRA_ENV` | `development` | Environment name |
+| `LOG_LEVEL` | `info` | Log level (`debug`, `info`, `warn`, `error`) |
+| `LOG_FORMAT` | `json` | Log format (`json` or `text`) |
 
 ### WebSocket Configuration
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `FLOWRA_WEBSOCKET_READ_BUFFER_SIZE` | `1024` | Read buffer size |
-| `FLOWRA_WEBSOCKET_WRITE_BUFFER_SIZE` | `1024` | Write buffer size |
-| `FLOWRA_WEBSOCKET_PING_INTERVAL` | `30s` | Ping interval |
-| `FLOWRA_WEBSOCKET_PONG_TIMEOUT` | `60s` | Pong timeout |
+| `WS_READ_BUFFER_SIZE` | `1024` | Read buffer size |
+| `WS_WRITE_BUFFER_SIZE` | `1024` | Write buffer size |
+| `WS_PING_INTERVAL` | `30s` | Ping interval |
+| `WS_PONG_TIMEOUT` | `60s` | Pong timeout |
 
 ---
 

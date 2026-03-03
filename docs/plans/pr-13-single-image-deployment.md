@@ -90,7 +90,7 @@ The current `mongo-init` sidecar uses `sleep 5` then `rs.initiate()`. Make it mo
 
 ### Task 7: Update docs/DEPLOYMENT.md
 
-- [ ] Add "Docker (self-hosted)" section with `docker compose -f docker-compose.prod.yml up -d` instructions
-- [ ] Document environment variables (actual names without `FLOWRA_` prefix — fix the incorrect docs)
-- [ ] Document volume mounts: `uploads/` for file persistence, MongoDB and Redis data volumes
-- [ ] Document the `FLOWRA_WORKER=true` env for unified mode vs separate worker
+- [x] Add "Docker (self-hosted)" section with `docker compose -f docker-compose.prod.yml up -d` instructions
+- [x] Document environment variables (actual names without `FLOWRA_` prefix — fix the incorrect docs)
+- [x] Document volume mounts: `uploads/` for file persistence, MongoDB and Redis data volumes
+- [x] Document the `FLOWRA_WORKER=true` env for unified mode vs separate worker
