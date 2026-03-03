@@ -91,7 +91,8 @@ func main() {
 	e.Server.WriteTimeout = cfg.Server.WriteTimeout
 
 	// Start graceful shutdown handler
-	go gracefulShutdown(ctx, cancel, e, container, workerDone, cfg.Server.ShutdownTimeout, logger)
+	shutdownDone := make(chan struct{})
+	go gracefulShutdown(ctx, cancel, e, container, workerDone, shutdownDone, cfg.Server.ShutdownTimeout, logger)
 
 	// Start server
 	logger.Info("server listening",
@@ -107,6 +108,8 @@ func main() {
 		_ = container.Close()
 		os.Exit(1)
 	}
+
+	waitForShutdownComplete(shutdownDone, cfg.Server.ShutdownTimeout, logger)
 
 	if runErr := workerRuntimeError(workerErrCh); runErr != nil {
 		logger.Error("worker runtime failed; exiting API process", slog.String("error", runErr.Error()))
@@ -171,9 +174,14 @@ func gracefulShutdown(
 	e *echo.Echo,
 	container *Container,
 	workerDone <-chan struct{},
+	shutdownDone chan<- struct{},
 	shutdownTimeout time.Duration,
 	logger *slog.Logger,
 ) {
+	if shutdownDone != nil {
+		defer close(shutdownDone)
+	}
+
 	// Listen for shutdown signals
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
@@ -217,6 +225,22 @@ func gracefulShutdown(
 	}
 
 	logger.InfoContext(shutdownCtx, "server shutdown complete")
+}
+
+func waitForShutdownComplete(shutdownDone <-chan struct{}, timeout time.Duration, logger *slog.Logger) {
+	if shutdownDone == nil {
+		return
+	}
+
+	waitCtx, waitCancel := context.WithTimeout(context.Background(), timeout)
+	defer waitCancel()
+
+	select {
+	case <-shutdownDone:
+		logger.Info("graceful shutdown completed")
+	case <-waitCtx.Done():
+		logger.Warn("graceful shutdown did not complete before timeout")
+	}
 }
 
 func shouldRunWorker(args []string, getenv func(string) string) (bool, error) {

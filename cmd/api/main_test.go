@@ -251,6 +251,35 @@ func TestWorkerRuntimeError(t *testing.T) {
 	})
 }
 
+func TestWaitForShutdownComplete(t *testing.T) {
+	t.Run("nil channel returns immediately", func(t *testing.T) {
+		start := time.Now()
+		waitForShutdownComplete(nil, 50*time.Millisecond, testLogger())
+		assert.Less(t, time.Since(start), 25*time.Millisecond)
+	})
+
+	t.Run("closed channel returns immediately", func(t *testing.T) {
+		done := make(chan struct{})
+		close(done)
+
+		start := time.Now()
+		waitForShutdownComplete(done, 50*time.Millisecond, testLogger())
+		assert.Less(t, time.Since(start), 25*time.Millisecond)
+	})
+
+	t.Run("waits until timeout when shutdown does not complete", func(t *testing.T) {
+		done := make(chan struct{})
+		timeout := 25 * time.Millisecond
+
+		start := time.Now()
+		waitForShutdownComplete(done, timeout, testLogger())
+		elapsed := time.Since(start)
+
+		assert.GreaterOrEqual(t, elapsed, timeout)
+		assert.Less(t, elapsed, 200*time.Millisecond)
+	})
+}
+
 func testLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }

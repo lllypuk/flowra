@@ -99,45 +99,45 @@ services:
       - /bin/bash
       - -ec
       - |
-        for required_var in KEYCLOAK_CLIENT_SECRET KEYCLOAK_ADMIN_PASSWORD KEYCLOAK_DB_PASSWORD FLOWRA_PUBLIC_URL KEYCLOAK_PUBLIC_URL; do
-          value="${!required_var:-}"
-          if [[ -z "$value" || "$value" == change-me-* ]]; then
-            echo "$required_var must be set to a non-placeholder value" >&2
+        for required_var in KEYCLOAK_CLIENT_SECRET KEYCLOAK_ADMIN_PASSWORD KC_DB_PASSWORD FLOWRA_PUBLIC_URL KEYCLOAK_PUBLIC_URL; do
+          value="$${!required_var:-}"
+          if [[ -z "$${value}" || "$${value}" == change-me-* ]]; then
+            echo "$${required_var} must be set to a non-placeholder value" >&2
             exit 1
           fi
         done
-        FLOWRA_PUBLIC_URL="${FLOWRA_PUBLIC_URL%/}"
-        KEYCLOAK_PUBLIC_URL="${KEYCLOAK_PUBLIC_URL%/}"
-        KEYCLOAK_HOSTNAME="${KEYCLOAK_PUBLIC_URL#http://}"
-        KEYCLOAK_HOSTNAME="${KEYCLOAK_HOSTNAME#https://}"
-        KEYCLOAK_HOSTNAME="${KEYCLOAK_HOSTNAME%%/*}"
-        if [[ -z "$KEYCLOAK_HOSTNAME" ]]; then
+        FLOWRA_PUBLIC_URL="$${FLOWRA_PUBLIC_URL%/}"
+        KEYCLOAK_PUBLIC_URL="$${KEYCLOAK_PUBLIC_URL%/}"
+        KEYCLOAK_HOSTNAME="$${KEYCLOAK_PUBLIC_URL#http://}"
+        KEYCLOAK_HOSTNAME="$${KEYCLOAK_HOSTNAME#https://}"
+        KEYCLOAK_HOSTNAME="$${KEYCLOAK_HOSTNAME%%/*}"
+        if [[ -z "$${KEYCLOAK_HOSTNAME}" ]]; then
           echo "KEYCLOAK_PUBLIC_URL must include a hostname" >&2
           exit 1
         fi
         json_escape() {
-          local value="$1"
-          value="${value//\\/\\\\}"
-          value="${value//\"/\\\"}"
-          value="${value//$'\n'/\\n}"
-          value="${value//$'\r'/\\r}"
-          value="${value//$'\t'/\\t}"
-          printf '%s' "$value"
+          local value="$$1"
+          value="$${value//\\/\\\\}"
+          value="$${value//\"/\\\"}"
+          value="$${value//$$'\n'/\\n}"
+          value="$${value//$$'\r'/\\r}"
+          value="$${value//$$'\t'/\\t}"
+          printf '%s' "$${value}"
         }
         sed_escape() {
-          local value="$1"
-          value="${value//&/\\&}"
-          value="${value//|/\\|}"
-          printf '%s' "$value"
+          local value="$$1"
+          value="$${value//&/\\&}"
+          value="$${value//|/\\|}"
+          printf '%s' "$${value}"
         }
-        escaped_client_secret="$(sed_escape "$(json_escape "$KEYCLOAK_CLIENT_SECRET")")"
-        escaped_flowra_public_url="$(sed_escape "$(json_escape "$FLOWRA_PUBLIC_URL")")"
+        escaped_client_secret="$$(sed_escape "$$(json_escape "$${KEYCLOAK_CLIENT_SECRET}")")"
+        escaped_flowra_public_url="$$(sed_escape "$$(json_escape "$${FLOWRA_PUBLIC_URL}")")"
         mkdir -p /opt/keycloak/data/import
-        sed -e "s|__KEYCLOAK_CLIENT_SECRET__|${escaped_client_secret}|g" \
-          -e "s|__FLOWRA_PUBLIC_URL__|${escaped_flowra_public_url}|g" \
+        sed -e "s|__KEYCLOAK_CLIENT_SECRET__|$${escaped_client_secret}|g" \
+          -e "s|__FLOWRA_PUBLIC_URL__|$${escaped_flowra_public_url}|g" \
           /opt/keycloak/realm-template/realm-export.template.json \
           > /opt/keycloak/data/import/realm-export.json
-        exec /opt/keycloak/bin/kc.sh start --http-enabled=true --hostname="${KEYCLOAK_HOSTNAME}" --hostname-strict=true --import-realm
+        exec /opt/keycloak/bin/kc.sh start --http-enabled=true --hostname="$${KEYCLOAK_HOSTNAME}" --hostname-strict=true --import-realm
     healthcheck:
       test:
         [

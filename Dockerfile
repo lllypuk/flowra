@@ -17,6 +17,7 @@ RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
 
 RUN addgroup -S flowra && adduser -S -G flowra -u 10001 flowra
+RUN mkdir -p /app/uploads && chown -R flowra:flowra /app
 
 COPY --from=builder --chown=flowra:flowra /out/api /app/api
 COPY --from=builder --chown=flowra:flowra /out/worker /app/worker
