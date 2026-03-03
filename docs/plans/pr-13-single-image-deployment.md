@@ -55,15 +55,15 @@ Multi-stage build: builder compiles Go binaries, runtime is a minimal image.
 
 A single-file compose for self-hosted deployment: MongoDB (replica set), Redis, Keycloak, and the Flowra app.
 
-- [ ] Create `docker-compose.prod.yml` with services:
+- [x] Create `docker-compose.prod.yml` with services:
   - `mongodb` — `mongo:6.0`, replica set `rs0`, named volume, healthcheck
   - `mongo-init` — one-shot `rs.initiate()` (same as current dev compose)
   - `redis` — `redis:7-alpine`, named volume, healthcheck
   - `keycloak` — `quay.io/keycloak/keycloak:23.0`, imports realm, healthcheck
   - `app` — `build: .` (or `image: flowra:latest`), depends on all three, env vars pointing to container hostnames, volume for `uploads/`, healthcheck on `/health`
-- [ ] Environment variables for `app` service: `MONGODB_URI`, `MONGODB_DATABASE`, `REDIS_ADDR`, `KEYCLOAK_URL`, `KEYCLOAK_REALM`, `KEYCLOAK_CLIENT_ID`, `KEYCLOAK_CLIENT_SECRET`, `KEYCLOAK_ADMIN_USERNAME`, `KEYCLOAK_ADMIN_PASSWORD`, `AUTH_JWT_SECRET`
-- [ ] Add `.env.example` with placeholder values for all secrets
-- [ ] Verify `docker compose -f docker-compose.prod.yml up -d` brings up the full stack
+- [x] Environment variables for `app` service: `MONGODB_URI`, `MONGODB_DATABASE`, `REDIS_ADDR`, `KEYCLOAK_URL`, `KEYCLOAK_REALM`, `KEYCLOAK_CLIENT_ID`, `KEYCLOAK_CLIENT_SECRET`, `KEYCLOAK_ADMIN_USERNAME`, `KEYCLOAK_ADMIN_PASSWORD`, `AUTH_JWT_SECRET`
+- [x] Add `.env.example` with placeholder values for all secrets
+- [x] Verify `docker compose -f docker-compose.prod.yml up -d` brings up the full stack
 
 ### Task 4: Keycloak realm auto-import on first start
 

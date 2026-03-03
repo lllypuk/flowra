@@ -1,0 +1,120 @@
+services:
+  mongodb:
+    image: mongo:6.0
+    container_name: flowra-mongodb
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - flowra-network
+
+  mongo-init:
+    image: mongo:6.0
+    container_name: flowra-mongo-init
+    depends_on:
+      - mongodb
+    command: >
+      sh -c "sleep 5 && mongosh --host mongodb:27017 --eval '
+        try {
+          rs.status();
+          print(\"Replica set already initialized\");
+        } catch (e) {
+          rs.initiate({ _id: \"rs0\", members: [{ _id: 0, host: \"mongodb:27017\" }] });
+          print(\"Replica set initialized\");
+        }
+      '"
+    restart: "no"
+    networks:
+      - flowra-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: flowra-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - flowra-network
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    container_name: flowra-keycloak
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USERNAME:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin123}
+      KC_DB: dev-file
+    ports:
+      - "8090:8080"
+    volumes:
+      - ./configs/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    command:
+      - start-dev
+      - --import-realm
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - flowra-network
+
+  app:
+    build: .
+    container_name: flowra-app
+    depends_on:
+      - mongodb
+      - mongo-init
+      - redis
+      - keycloak
+    environment:
+      MONGODB_URI: mongodb://mongodb:27017/?replicaSet=rs0
+      MONGODB_DATABASE: flowra
+      REDIS_ADDR: redis:6379
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: flowra
+      KEYCLOAK_CLIENT_ID: flowra-backend
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-change-me-keycloak-client-secret}
+      KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-change-me-keycloak-admin-password}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-change-me-auth-jwt-secret}
+      FLOWRA_WORKER: ${FLOWRA_WORKER:-true}
+      UPLOADS_DIR: /app/uploads
+    ports:
+      - "8080:8080"
+    volumes:
+      - uploads_data:/app/uploads
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health > /dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - flowra-network
+
+volumes:
+  mongodb_data:
+  redis_data:
+  uploads_data:
+
+networks:
+  flowra-network:
+    driver: bridge
