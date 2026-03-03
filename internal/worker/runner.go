@@ -125,23 +125,6 @@ func setupUserSyncWorker(
 	userRepo *mongorepo.MongoUserRepository,
 	logger *slog.Logger,
 ) (*UserSyncWorker, UserSyncConfig, error) {
-	if cfg.Keycloak.URL == "" || cfg.Keycloak.AdminUsername == "" {
-		return nil, UserSyncConfig{}, errors.New("keycloak configuration is required for user sync worker")
-	}
-
-	tokenManager := keycloak.NewAdminTokenManager(keycloak.AdminTokenConfig{
-		KeycloakURL: cfg.Keycloak.URL,
-		Realm:       masterRealm,
-		ClientID:    "admin-cli",
-		Username:    cfg.Keycloak.AdminUsername,
-		Password:    cfg.Keycloak.AdminPassword,
-	})
-
-	userClient := keycloak.NewUserClient(keycloak.UserClientConfig{
-		KeycloakURL: cfg.Keycloak.URL,
-		Realm:       cfg.Keycloak.Realm,
-	}, tokenManager)
-
 	syncConfig := DefaultUserSyncConfig()
 
 	if interval := os.Getenv("USER_SYNC_INTERVAL"); interval != "" {
@@ -158,7 +141,33 @@ func setupUserSyncWorker(
 
 	if isEnvBoolTrue("USER_SYNC_DISABLED") {
 		syncConfig.Enabled = false
+
+		workerInstance := NewUserSyncWorker(
+			nil,
+			userRepo,
+			logger,
+			syncConfig,
+		)
+
+		return workerInstance, syncConfig, nil
 	}
+
+	if cfg.Keycloak.URL == "" || cfg.Keycloak.AdminUsername == "" {
+		return nil, UserSyncConfig{}, errors.New("keycloak configuration is required for user sync worker")
+	}
+
+	tokenManager := keycloak.NewAdminTokenManager(keycloak.AdminTokenConfig{
+		KeycloakURL: cfg.Keycloak.URL,
+		Realm:       masterRealm,
+		ClientID:    "admin-cli",
+		Username:    cfg.Keycloak.AdminUsername,
+		Password:    cfg.Keycloak.AdminPassword,
+	})
+
+	userClient := keycloak.NewUserClient(keycloak.UserClientConfig{
+		KeycloakURL: cfg.Keycloak.URL,
+		Realm:       cfg.Keycloak.Realm,
+	}, tokenManager)
 
 	workerInstance := NewUserSyncWorker(
 		userClient,

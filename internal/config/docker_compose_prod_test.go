@@ -120,15 +120,18 @@ func TestDockerComposeProd_KeycloakRealmImportAndAppDependency(t *testing.T) {
 	keycloakDBDependency := mustMapValue(t, keycloakDependsOn["keycloak-db"], "keycloak must depend on keycloak-db")
 	require.Equal(t, "service_healthy", keycloakDBDependency["condition"])
 
-	command := mustSliceValue(t, keycloak["command"], "keycloak command must be a list")
-	joinedCommand := strings.Join(stringifySlice(t, command), " ")
-	require.Contains(t, joinedCommand, "kc.sh start")
-	require.Contains(t, joinedCommand, "--import-realm")
-	require.Contains(t, joinedCommand, "json_escape")
-	require.Contains(t, joinedCommand, "__FLOWRA_PUBLIC_URL__")
-	require.Contains(t, joinedCommand, "--hostname-strict=true")
-	require.NotContains(t, joinedCommand, "--hostname-strict=false")
-	require.NotContains(t, joinedCommand, "start-dev")
+	entrypoint := mustSliceValue(t, keycloak["entrypoint"], "keycloak entrypoint must be a list")
+	require.Equal(t, []string{"/bin/bash", "-ec"}, stringifySlice(t, entrypoint))
+
+	command, ok := keycloak["command"].(string)
+	require.True(t, ok, "keycloak command must be a string")
+	require.Contains(t, command, "kc.sh start")
+	require.Contains(t, command, "--import-realm")
+	require.Contains(t, command, "json_escape")
+	require.Contains(t, command, "__FLOWRA_PUBLIC_URL__")
+	require.Contains(t, command, "--hostname-strict=true")
+	require.NotContains(t, command, "--hostname-strict=false")
+	require.NotContains(t, command, "start-dev")
 
 	volumes := mustSliceValue(t, keycloak["volumes"], "keycloak volumes must be a list")
 	require.Contains(
@@ -150,8 +153,8 @@ func TestDockerComposeProd_KeycloakRealmImportAndAppDependency(t *testing.T) {
 		"${KEYCLOAK_CLIENT_SECRET:?KEYCLOAK_CLIENT_SECRET is required}",
 		keycloakEnv["KEYCLOAK_CLIENT_SECRET"],
 	)
-	require.Equal(t, "${FLOWRA_PUBLIC_URL:-http://localhost:8080}", keycloakEnv["FLOWRA_PUBLIC_URL"])
-	require.Equal(t, "${KEYCLOAK_PUBLIC_URL:-http://localhost:8090}", keycloakEnv["KEYCLOAK_PUBLIC_URL"])
+	require.Equal(t, "${FLOWRA_PUBLIC_URL:?FLOWRA_PUBLIC_URL is required}", keycloakEnv["FLOWRA_PUBLIC_URL"])
+	require.Equal(t, "${KEYCLOAK_PUBLIC_URL:?KEYCLOAK_PUBLIC_URL is required}", keycloakEnv["KEYCLOAK_PUBLIC_URL"])
 	keycloakAdminPassword, ok := keycloakEnv["KEYCLOAK_ADMIN_PASSWORD"].(string)
 	require.True(t, ok, "keycloak admin password value must be a string")
 
@@ -167,7 +170,7 @@ func TestDockerComposeProd_KeycloakRealmImportAndAppDependency(t *testing.T) {
 	appAdminPassword, ok := appEnv["KEYCLOAK_ADMIN_PASSWORD"].(string)
 	require.True(t, ok, "app keycloak admin password value must be a string")
 	require.Equal(t, keycloakAdminPassword, appAdminPassword)
-	require.Equal(t, "${KEYCLOAK_PUBLIC_URL:-http://localhost:8090}", appEnv["KEYCLOAK_PUBLIC_URL"])
+	require.Equal(t, "${KEYCLOAK_PUBLIC_URL:?KEYCLOAK_PUBLIC_URL is required}", appEnv["KEYCLOAK_PUBLIC_URL"])
 }
 
 func TestDockerComposeProd_MongoReplicaSetReadinessAndDependencies(t *testing.T) {
