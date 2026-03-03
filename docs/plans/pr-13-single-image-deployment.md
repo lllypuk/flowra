@@ -83,10 +83,10 @@ The current `mongo-init` sidecar uses `sleep 5` then `rs.initiate()`. Make it mo
 
 ### Task 6: Makefile targets
 
-- [ ] Add `make docker-build` — `docker build -t flowra:latest .`
-- [ ] Add `make docker-prod-up` — `docker compose -f docker-compose.prod.yml up -d --build`
-- [ ] Add `make docker-prod-down` — `docker compose -f docker-compose.prod.yml down`
-- [ ] Add `make docker-prod-logs` — `docker compose -f docker-compose.prod.yml logs -f`
+- [x] Add `make docker-build` — `docker build -t flowra:latest .`
+- [x] Add `make docker-prod-up` — `docker compose -f docker-compose.prod.yml up -d --build`
+- [x] Add `make docker-prod-down` — `docker compose -f docker-compose.prod.yml down`
+- [x] Add `make docker-prod-logs` — `docker compose -f docker-compose.prod.yml logs -f`
 
 ### Task 7: Update docs/DEPLOYMENT.md
 

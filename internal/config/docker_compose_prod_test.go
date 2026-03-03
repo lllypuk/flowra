@@ -133,6 +133,32 @@ func TestDockerComposeProd_MongoReplicaSetReadinessAndDependencies(t *testing.T)
 	require.Equal(t, "service_healthy", condition)
 }
 
+func TestMakefile_HasDockerProductionTargets(t *testing.T) {
+	t.Parallel()
+
+	makefilePath := filepath.Join(repoRoot(t), "Makefile")
+	data, err := os.ReadFile(makefilePath)
+	require.NoError(t, err)
+
+	content := string(data)
+	require.Contains(t, content, "docker-build: ## Build production Docker image\n\tdocker build -t flowra:latest .")
+	require.Contains(
+		t,
+		content,
+		"docker-prod-up: ## Start production Docker stack\n\tdocker compose -f docker-compose.prod.yml up -d --build",
+	)
+	require.Contains(
+		t,
+		content,
+		"docker-prod-down: ## Stop production Docker stack\n\tdocker compose -f docker-compose.prod.yml down",
+	)
+	require.Contains(
+		t,
+		content,
+		"docker-prod-logs: ## Show production Docker logs\n\tdocker compose -f docker-compose.prod.yml logs -f",
+	)
+}
+
 func repoRoot(t *testing.T) string {
 	t.Helper()
 

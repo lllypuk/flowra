@@ -1,4 +1,4 @@
-.PHONY: help dev dev-lite build test lint docker-up docker-down docker-logs clean deps test-unit test-integration test-e2e test-e2e-frontend test-e2e-frontend-smoke test-coverage playwright-install test-load-tags reset-data
+.PHONY: help dev dev-lite build test lint docker-up docker-down docker-logs docker-build docker-prod-up docker-prod-down docker-prod-logs clean deps test-unit test-integration test-e2e test-e2e-frontend test-e2e-frontend-smoke test-coverage playwright-install test-load-tags reset-data
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -57,6 +57,18 @@ docker-down: ## Stop Docker services
 
 docker-logs: ## Show Docker logs
 	docker-compose logs -f
+
+docker-build: ## Build production Docker image
+	docker build -t flowra:latest .
+
+docker-prod-up: ## Start production Docker stack
+	docker compose -f docker-compose.prod.yml up -d --build
+
+docker-prod-down: ## Stop production Docker stack
+	docker compose -f docker-compose.prod.yml down
+
+docker-prod-logs: ## Show production Docker logs
+	docker compose -f docker-compose.prod.yml logs -f
 
 clean: ## Clean build artifacts and test cache
 	rm -rf bin/
