@@ -8,7 +8,7 @@ services:
     volumes:
       - mongodb_data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD", "mongosh", "--eval", "rs.status().ok"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -20,17 +20,24 @@ services:
     image: mongo:6.0
     container_name: flowra-mongo-init
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_started
     command: >
-      sh -c "sleep 5 && mongosh --host mongodb:27017 --eval '
-        try {
-          rs.status();
-          print(\"Replica set already initialized\");
-        } catch (e) {
-          rs.initiate({ _id: \"rs0\", members: [{ _id: 0, host: \"mongodb:27017\" }] });
-          print(\"Replica set initialized\");
-        }
-      '"
+      sh -c "
+        until mongosh --host mongodb:27017 --eval \"db.adminCommand('ping')\" >/dev/null 2>&1; do
+          echo 'Waiting for MongoDB to accept connections...';
+          sleep 2;
+        done;
+        mongosh --host mongodb:27017 --eval '
+          try {
+            rs.status();
+            print(\"Replica set already initialized\");
+          } catch (e) {
+            rs.initiate({ _id: \"rs0\", members: [{ _id: 0, host: \"mongodb:27017\" }] });
+            print(\"Replica set initialized\");
+          }
+        '
+      "
     restart: "no"
     networks:
       - flowra-network
@@ -86,7 +93,7 @@ services:
     container_name: flowra-app
     depends_on:
       mongodb:
-        condition: service_started
+        condition: service_healthy
       mongo-init:
         condition: service_started
       redis:

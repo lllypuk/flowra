@@ -77,9 +77,9 @@ Ensure Keycloak realm is configured automatically without manual setup scripts.
 
 The current `mongo-init` sidecar uses `sleep 5` then `rs.initiate()`. Make it more robust.
 
-- [ ] Replace `sleep` with a retry loop that waits for `mongosh --eval "db.adminCommand('ping')"` to succeed
-- [ ] Add healthcheck to `mongodb` service (`mongosh --eval "rs.status().ok"`)
-- [ ] Ensure `app` service `depends_on` mongodb with `condition: service_healthy`
+- [x] Replace `sleep` with a retry loop that waits for `mongosh --eval "db.adminCommand('ping')"` to succeed
+- [x] Add healthcheck to `mongodb` service (`mongosh --eval "rs.status().ok"`)
+- [x] Ensure `app` service `depends_on` mongodb with `condition: service_healthy`
 
 ### Task 6: Makefile targets
 

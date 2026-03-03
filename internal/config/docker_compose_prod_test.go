@@ -105,6 +105,34 @@ func TestDockerComposeProd_KeycloakRealmImportAndAppDependency(t *testing.T) {
 	require.Equal(t, "service_healthy", condition)
 }
 
+func TestDockerComposeProd_MongoReplicaSetReadinessAndDependencies(t *testing.T) {
+	t.Parallel()
+
+	composePath := filepath.Join(repoRoot(t), "docker-compose.prod.yml")
+	composeData := readYAMLMap(t, composePath)
+
+	services := mustMapValue(t, composeData["services"], "services must be a map")
+	mongodb := mustMapValue(t, services["mongodb"], "mongodb service must be a map")
+
+	healthcheck := mustMapValue(t, mongodb["healthcheck"], "mongodb healthcheck is required")
+	healthcheckCommand := mustSliceValue(t, healthcheck["test"], "mongodb healthcheck test must be a list")
+	require.Contains(t, stringifySlice(t, healthcheckCommand), "rs.status().ok")
+
+	mongoInit := mustMapValue(t, services["mongo-init"], "mongo-init service must be a map")
+	command, ok := mongoInit["command"].(string)
+	require.True(t, ok, "mongo-init command must be a string")
+	require.Contains(t, command, "until mongosh --host mongodb:27017 --eval")
+	require.Contains(t, command, "db.adminCommand('ping')")
+
+	app := mustMapValue(t, services["app"], "app service must be a map")
+	dependsOn := mustMapValue(t, app["depends_on"], "app depends_on must be a map")
+	mongodbDependency := mustMapValue(t, dependsOn["mongodb"], "app must depend on mongodb")
+
+	condition, ok := mongodbDependency["condition"].(string)
+	require.True(t, ok, "mongodb dependency condition must be a string")
+	require.Equal(t, "service_healthy", condition)
+}
+
 func repoRoot(t *testing.T) string {
 	t.Helper()
 
