@@ -1,8 +1,11 @@
 package main
 
 import (
+	"errors"
+	"io"
 	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/lllypuk/flowra/internal/config"
 	"github.com/stretchr/testify/assert"
@@ -198,4 +201,56 @@ func TestShouldRunWorker(t *testing.T) {
 			assert.Equal(t, tt.expected, enabled)
 		})
 	}
+}
+
+func TestWaitForWorkerShutdown(t *testing.T) {
+	t.Run("nil channel returns immediately", func(t *testing.T) {
+		start := time.Now()
+		waitForWorkerShutdown(nil, 50*time.Millisecond, testLogger())
+		assert.Less(t, time.Since(start), 25*time.Millisecond)
+	})
+
+	t.Run("closed channel returns immediately", func(t *testing.T) {
+		done := make(chan struct{})
+		close(done)
+
+		start := time.Now()
+		waitForWorkerShutdown(done, 50*time.Millisecond, testLogger())
+		assert.Less(t, time.Since(start), 25*time.Millisecond)
+	})
+
+	t.Run("waits until timeout when worker does not stop", func(t *testing.T) {
+		done := make(chan struct{})
+		timeout := 25 * time.Millisecond
+
+		start := time.Now()
+		waitForWorkerShutdown(done, timeout, testLogger())
+		elapsed := time.Since(start)
+
+		assert.GreaterOrEqual(t, elapsed, timeout)
+		assert.Less(t, elapsed, 200*time.Millisecond)
+	})
+}
+
+func TestWorkerRuntimeError(t *testing.T) {
+	t.Run("nil channel", func(t *testing.T) {
+		assert.NoError(t, workerRuntimeError(nil))
+	})
+
+	t.Run("empty channel", func(t *testing.T) {
+		errCh := make(chan error, 1)
+		assert.NoError(t, workerRuntimeError(errCh))
+	})
+
+	t.Run("channel with error", func(t *testing.T) {
+		errCh := make(chan error, 1)
+		expected := errors.New("worker failed")
+		errCh <- expected
+
+		assert.ErrorIs(t, workerRuntimeError(errCh), expected)
+	})
+}
+
+func testLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }

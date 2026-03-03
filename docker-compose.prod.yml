@@ -3,8 +3,6 @@ services:
     image: mongo:6.0
     container_name: flowra-mongodb
     command: ["--replSet", "rs0", "--bind_ip_all"]
-    ports:
-      - "27017:27017"
     volumes:
       - mongodb_data:/data/db
     healthcheck:
@@ -45,8 +43,6 @@ services:
   redis:
     image: redis:7-alpine
     container_name: flowra-redis
-    ports:
-      - "6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -63,12 +59,13 @@ services:
     container_name: flowra-keycloak
     environment:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USERNAME:-admin}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin123}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-change-me-keycloak-admin-password}
       KC_DB: dev-file
     ports:
       - "8090:8080"
     volumes:
       - ./configs/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+      - keycloak_data:/opt/keycloak/data
     command:
       - start-dev
       - --import-realm
@@ -97,7 +94,7 @@ services:
       mongo-init:
         condition: service_started
       redis:
-        condition: service_started
+        condition: service_healthy
       keycloak:
         condition: service_healthy
     environment:
@@ -130,6 +127,7 @@ services:
 volumes:
   mongodb_data:
   redis_data:
+  keycloak_data:
   uploads_data:
 
 networks:

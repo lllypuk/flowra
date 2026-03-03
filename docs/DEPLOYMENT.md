@@ -42,8 +42,8 @@ This guide covers deploying Flowra in various environments, from local developme
 
 - Port 8080: API server
 - Port 8090: Keycloak admin console
-- Port 27017: MongoDB
-- Port 6379: Redis
+- Port 27017: MongoDB (only if exposed for external admin/debug access)
+- Port 6379: Redis (only if exposed for external admin/debug access)
 
 ---
 
@@ -199,6 +199,7 @@ make docker-prod-down
 - `uploads_data` mounted to `/app/uploads` in `app` for user file uploads
 - `mongodb_data` mounted to `/data/db` in `mongodb`
 - `redis_data` mounted to `/data` in `redis`
+- `keycloak_data` mounted to `/opt/keycloak/data` in `keycloak`
 
 Data in these volumes survives `docker compose ... down`. Use `docker compose ... down -v` only when intentionally resetting state.
 
@@ -206,12 +207,13 @@ Data in these volumes survives `docker compose ... down`. Use `docker compose ..
 
 - `docker-compose.prod.yml` mounts `configs/keycloak/realm-export.json` into Keycloak and starts with `--import-realm`.
 - On first startup, Keycloak imports the `flowra` realm automatically.
-- On subsequent startups with existing realm data, Keycloak skips re-import.
+- On subsequent startups with existing realm data (`keycloak_data` volume), Keycloak skips re-import.
 
 ### Worker Runtime Mode
 
-- Unified mode: set `FLOWRA_WORKER=true` to run API and background worker loops in the same `api` process (default in `docker-compose.prod.yml`).
+- Unified mode: set `FLOWRA_WORKER=true` to run API and background worker loops in the same `api` process (enabled by default in `Dockerfile` and `docker-compose.prod.yml`).
 - Separate mode: set `FLOWRA_WORKER=false` for API-only process and run `./bin/worker` separately (used in manual/non-single-image deployments).
+- CLI override: run `./bin/api --with-worker` (or `--with-worker=false`) to override `FLOWRA_WORKER`.
 
 ---
 
@@ -255,7 +257,7 @@ WorkingDirectory=/opt/flowra
 ExecStart=/opt/flowra/bin/api
 Restart=always
 RestartSec=5
-Environment=FLOWRA_ENV=production
+Environment=LOG_LEVEL=info
 EnvironmentFile=/opt/flowra/.env
 
 # Security hardening
@@ -286,7 +288,7 @@ Flowra environment variable names do not use a `FLOWRA_` prefix (except runtime 
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `FLOWRA_WORKER` | `false` (compose sets `true`) | Run background worker loops inside the API process |
+| `FLOWRA_WORKER` | `false` in app config (`true` in Dockerfile/compose) | Run background worker loops inside the API process |
 | `FLOWRA_DEV_MODE` | `` | Development mode selector (`lite` for API-only local mode) |
 
 ### Server Configuration
@@ -542,8 +544,8 @@ curl http://localhost:8080/debug/pprof/heap > heap.prof
 go tool pprof heap.prof
 
 # Tune connection pools
-# Reduce FLOWRA_MONGODB_MAX_POOL_SIZE
-# Reduce FLOWRA_REDIS_POOL_SIZE
+# Reduce MONGODB_MAX_POOL_SIZE
+# Reduce REDIS_POOL_SIZE
 ```
 
 #### 6. Slow API Responses
@@ -573,7 +575,7 @@ Enable debug logging for detailed troubleshooting:
 
 ```bash
 # Via environment variable
-export FLOWRA_LOG_LEVEL=debug
+export LOG_LEVEL=debug
 ./bin/api
 
 # Or in config.yaml
@@ -666,4 +668,4 @@ cp /var/lib/redis/dump.rdb /backup/redis/dump.rdb.$(date +%Y%m%d)
 
 ---
 
-*Last updated: January 2026*
+*Last updated: March 2026*

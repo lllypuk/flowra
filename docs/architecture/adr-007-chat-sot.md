@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-02-27
 - Owners: Backend Team
-- Related backlog item: [PR-01 Architecture Contract (`Chat = SoT`)](/home/sasha/Project/flowra/docs/tasks/chat-sot-pr-01-architecture-contract.md)
+- Related backlog item: [Chat=SoT Roadmap](/home/sasha/Project/flowra/docs/tasks/backlog.md)
 
 ## Context
 

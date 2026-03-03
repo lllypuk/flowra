@@ -71,26 +71,14 @@ func main() {
 	// Start WebSocket Hub
 	container.StartHub(ctx)
 
-	var workerDone <-chan struct{}
-	if withWorker {
-		logger.Info("starting unified API + worker mode")
-		done := make(chan struct{})
-		workerDone = done
-		go func() {
-			defer close(done)
-
-			db := container.MongoDB.Database(container.MongoDBName)
-			if runErr := worker.Run(
-				ctx,
-				cfg,
-				db,
-				container.Redis,
-			); runErr != nil &&
-				!errors.Is(runErr, context.Canceled) {
-				logger.Error("worker runtime stopped with error", slog.String("error", runErr.Error()))
-			}
-		}()
-	}
+	workerDone, workerErrCh := startWorkerRuntime(
+		ctx,
+		cancel,
+		cfg,
+		container,
+		logger,
+		withWorker,
+	)
 
 	// Setup routes
 	router := SetupRoutes(container)
@@ -117,6 +105,11 @@ func main() {
 		cancel()
 		waitForWorkerShutdown(workerDone, cfg.Server.ShutdownTimeout, logger)
 		_ = container.Close()
+		os.Exit(1)
+	}
+
+	if runErr := workerRuntimeError(workerErrCh); runErr != nil {
+		logger.Error("worker runtime failed; exiting API process", slog.String("error", runErr.Error()))
 		os.Exit(1)
 	}
 }
@@ -263,4 +256,57 @@ func waitForWorkerShutdown(workerDone <-chan struct{}, timeout time.Duration, lo
 	case <-waitCtx.Done():
 		logger.Warn("worker runtime did not stop before shutdown timeout")
 	}
+}
+
+func workerRuntimeError(workerErrCh <-chan error) error {
+	if workerErrCh == nil {
+		return nil
+	}
+
+	select {
+	case runErr := <-workerErrCh:
+		return runErr
+	default:
+		return nil
+	}
+}
+
+func startWorkerRuntime(
+	ctx context.Context,
+	cancel context.CancelFunc,
+	cfg *config.Config,
+	container *Container,
+	logger *slog.Logger,
+	withWorker bool,
+) (<-chan struct{}, <-chan error) {
+	if !withWorker {
+		return nil, nil
+	}
+
+	logger.InfoContext(ctx, "starting unified API + worker mode")
+	done := make(chan struct{})
+	errCh := make(chan error, 1)
+
+	go func() {
+		defer close(done)
+		defer close(errCh)
+
+		db := container.MongoDB.Database(container.MongoDBName)
+		if runErr := worker.Run(
+			ctx,
+			cfg,
+			db,
+			container.Redis,
+		); runErr != nil &&
+			!errors.Is(runErr, context.Canceled) {
+			logger.Error("worker runtime stopped with error", slog.String("error", runErr.Error()))
+			select {
+			case errCh <- runErr:
+			default:
+			}
+			cancel()
+		}
+	}()
+
+	return done, errCh
 }

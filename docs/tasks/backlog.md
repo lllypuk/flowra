@@ -12,5 +12,5 @@ This file tracks non-urgent work that is valuable but not yet scheduled.
 
 ## Deployment Roadmap
 
-- [ ] `P2` PR-13: Move to self-hosted single-image Docker deployment.
+- [x] `P2` PR-13: Move to self-hosted single-image Docker deployment.
   - Details:

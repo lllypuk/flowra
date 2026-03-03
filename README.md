@@ -106,10 +106,20 @@ make test-load-tags     # Run k6 tag-system load test (requires k6 + AUTH_TOKEN)
 make lint               # Run linter and format code
 make docker-up          # Start Docker services
 make docker-down        # Stop Docker services
+make docker-build       # Build production image (flowra:latest)
+make docker-prod-up     # Start self-hosted production compose stack
+make docker-prod-logs   # Tail production compose logs
+make docker-prod-down   # Stop production compose stack
 make test-coverage      # Generate coverage report
 make playwright-install # Install Playwright browsers for frontend tests
 make reset-data         # Reset local/dev Chat=SoT data collections and recreate indexes
 ```
+
+Runtime mode toggles for `./bin/api`:
+
+- `FLOWRA_WORKER=true` enables unified API + worker loops in the API process.
+- `FLOWRA_WORKER=false` runs API-only mode.
+- `--with-worker` / `--with-worker=false` CLI flag overrides `FLOWRA_WORKER`.
 
 When switching between branches around the Chat=SoT refactor, run:
 `make docker-up && make reset-data` before `make dev` to avoid stale

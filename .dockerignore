@@ -1,4 +1,6 @@
 .git
+.env
+.env.*
 bin/
 tmp/
 uploads/
@@ -6,3 +8,5 @@ tests/
 *.md
 .github/
 docs/
+*.pem
+*.key
