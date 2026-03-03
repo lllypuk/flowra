@@ -6,6 +6,7 @@ import (
 
 	"github.com/lllypuk/flowra/internal/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseLogLevel(t *testing.T) {
@@ -123,4 +124,78 @@ func TestSetupLogger_AllLevels(t *testing.T) {
 func TestGracefulShutdownSleepConstant(t *testing.T) {
 	// Verify the constant is set to a reasonable value
 	assert.Equal(t, int64(100), gracefulShutdownSleep.Milliseconds())
+}
+
+func TestShouldRunWorker(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []string
+		envValue string
+		expected bool
+		wantErr  bool
+	}{
+		{
+			name:     "disabled by default",
+			args:     nil,
+			envValue: "",
+			expected: false,
+		},
+		{
+			name:     "enabled from env",
+			args:     nil,
+			envValue: "true",
+			expected: true,
+		},
+		{
+			name:     "flag enables worker",
+			args:     []string{"--with-worker"},
+			envValue: "",
+			expected: true,
+		},
+		{
+			name:     "flag overrides env true to false",
+			args:     []string{"--with-worker=false"},
+			envValue: "true",
+			expected: false,
+		},
+		{
+			name:     "flag overrides env false to true",
+			args:     []string{"--with-worker=true"},
+			envValue: "false",
+			expected: true,
+		},
+		{
+			name:     "invalid env value returns error",
+			args:     nil,
+			envValue: "invalid",
+			wantErr:  true,
+		},
+		{
+			name:     "invalid flag returns error",
+			args:     []string{"--with-worker=maybe"},
+			envValue: "",
+			wantErr:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			getenv := func(key string) string {
+				if key == "FLOWRA_WORKER" {
+					return tt.envValue
+				}
+
+				return ""
+			}
+
+			enabled, err := shouldRunWorker(tt.args, getenv)
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, enabled)
+		})
+	}
 }

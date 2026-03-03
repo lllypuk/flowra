@@ -33,11 +33,11 @@ Add a `--with-worker` flag (or `FLOWRA_WORKER=true` env) to `cmd/api/main.go` th
 starts worker goroutines (UserSync, Outbox, Repair) inside the api process.
 This eliminates the need for a process supervisor in Docker.
 
-- [ ] Extract worker setup from `cmd/worker/main.go` into a reusable `internal/worker/runner.go` function `Run(ctx, cfg, mongoDB, redisCli)`
-- [ ] In `cmd/api/main.go`, check `FLOWRA_WORKER` env / `--with-worker` flag; if set, call `worker.Run()` in a goroutine before starting Echo
-- [ ] Ensure graceful shutdown tears down both api and worker goroutines
-- [ ] Keep `cmd/worker/main.go` working standalone (it calls the same `worker.Run()`)
-- [ ] Add unit test for the flag parsing / env check
+- [x] Extract worker setup from `cmd/worker/main.go` into a reusable `internal/worker/runner.go` function `Run(ctx, cfg, mongoDB, redisCli)`
+- [x] In `cmd/api/main.go`, check `FLOWRA_WORKER` env / `--with-worker` flag; if set, call `worker.Run()` in a goroutine before starting Echo
+- [x] Ensure graceful shutdown tears down both api and worker goroutines
+- [x] Keep `cmd/worker/main.go` working standalone (it calls the same `worker.Run()`)
+- [x] Add unit test for the flag parsing / env check
 
 ### Task 2: Create Dockerfile
 

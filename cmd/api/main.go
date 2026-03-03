@@ -4,15 +4,21 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
+	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/lllypuk/flowra/internal/config"
+	"github.com/lllypuk/flowra/internal/worker"
 )
 
 // Shutdown constants.
@@ -38,6 +44,12 @@ func main() {
 	)
 	config.LogDevRuntimeMode(logger, cfg, "api")
 
+	withWorker, err := shouldRunWorker(os.Args[1:], os.Getenv)
+	if err != nil {
+		logger.Error("failed to parse worker mode", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+
 	// Build DI container
 	container, err := NewContainer(cfg, WithLogger(logger))
 	if err != nil {
@@ -59,6 +71,27 @@ func main() {
 	// Start WebSocket Hub
 	container.StartHub(ctx)
 
+	var workerDone <-chan struct{}
+	if withWorker {
+		logger.Info("starting unified API + worker mode")
+		done := make(chan struct{})
+		workerDone = done
+		go func() {
+			defer close(done)
+
+			db := container.MongoDB.Database(container.MongoDBName)
+			if runErr := worker.Run(
+				ctx,
+				cfg,
+				db,
+				container.Redis,
+			); runErr != nil &&
+				!errors.Is(runErr, context.Canceled) {
+				logger.Error("worker runtime stopped with error", slog.String("error", runErr.Error()))
+			}
+		}()
+	}
+
 	// Setup routes
 	router := SetupRoutes(container)
 
@@ -70,7 +103,7 @@ func main() {
 	e.Server.WriteTimeout = cfg.Server.WriteTimeout
 
 	// Start graceful shutdown handler
-	go gracefulShutdown(ctx, cancel, e, container, cfg.Server.ShutdownTimeout, logger)
+	go gracefulShutdown(ctx, cancel, e, container, workerDone, cfg.Server.ShutdownTimeout, logger)
 
 	// Start server
 	logger.Info("server listening",
@@ -82,6 +115,7 @@ func main() {
 	if serverErr := e.Start(cfg.Server.Address()); serverErr != nil && !errors.Is(serverErr, http.ErrServerClosed) {
 		logger.Error("server error", slog.String("error", serverErr.Error()))
 		cancel()
+		waitForWorkerShutdown(workerDone, cfg.Server.ShutdownTimeout, logger)
 		_ = container.Close()
 		os.Exit(1)
 	}
@@ -143,6 +177,7 @@ func gracefulShutdown(
 	cancel context.CancelFunc,
 	e *echo.Echo,
 	container *Container,
+	workerDone <-chan struct{},
 	shutdownTimeout time.Duration,
 	logger *slog.Logger,
 ) {
@@ -178,6 +213,7 @@ func gracefulShutdown(
 
 	// 2. Cancel the main context to stop background services
 	cancel()
+	waitForWorkerShutdown(workerDone, shutdownTimeout, logger)
 
 	// Give background services a moment to clean up
 	time.Sleep(gracefulShutdownSleep)
@@ -188,4 +224,43 @@ func gracefulShutdown(
 	}
 
 	logger.InfoContext(shutdownCtx, "server shutdown complete")
+}
+
+func shouldRunWorker(args []string, getenv func(string) string) (bool, error) {
+	envValue := strings.TrimSpace(getenv("FLOWRA_WORKER"))
+	defaultEnabled := false
+
+	if envValue != "" {
+		enabled, err := strconv.ParseBool(envValue)
+		if err != nil {
+			return false, fmt.Errorf("parse FLOWRA_WORKER: %w", err)
+		}
+		defaultEnabled = enabled
+	}
+
+	flagSet := flag.NewFlagSet("api", flag.ContinueOnError)
+	flagSet.SetOutput(io.Discard)
+
+	withWorker := flagSet.Bool("with-worker", defaultEnabled, "run worker loops in API process")
+	if err := flagSet.Parse(args); err != nil {
+		return false, err
+	}
+
+	return *withWorker, nil
+}
+
+func waitForWorkerShutdown(workerDone <-chan struct{}, timeout time.Duration, logger *slog.Logger) {
+	if workerDone == nil {
+		return
+	}
+
+	waitCtx, waitCancel := context.WithTimeout(context.Background(), timeout)
+	defer waitCancel()
+
+	select {
+	case <-workerDone:
+		logger.Info("worker runtime stopped")
+	case <-waitCtx.Done():
+		logger.Warn("worker runtime did not stop before shutdown timeout")
+	}
 }
