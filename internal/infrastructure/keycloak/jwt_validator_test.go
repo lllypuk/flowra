@@ -302,6 +302,44 @@ func TestJWTValidator_Validate(t *testing.T) {
 	})
 }
 
+func TestJWTValidator_ValidateWithSeparateIssuerURL(t *testing.T) {
+	keys := generateTestKeys(t)
+	server := setupMockKeycloak(t, keys)
+	issuerURL := "https://auth.example.com/realms/test-realm"
+
+	validator, err := keycloak.NewJWTValidator(keycloak.JWTValidatorConfig{
+		KeycloakURL: server.URL,
+		IssuerURL:   "https://auth.example.com",
+		Realm:       "test-realm",
+		ClientID:    "test-client",
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = validator.Close() })
+
+	ctx := context.Background()
+
+	t.Run("accepts token with public issuer when jwks is fetched from internal url", func(t *testing.T) {
+		claims := standardClaims(issuerURL)
+		tokenString := createTestToken(t, keys, claims)
+
+		result, validateErr := validator.Validate(ctx, tokenString)
+		require.NoError(t, validateErr)
+		require.NotNil(t, result)
+		assert.Equal(t, "user-123", result.UserID)
+	})
+
+	t.Run("rejects token that uses internal issuer url", func(t *testing.T) {
+		internalIssuer := server.URL + "/realms/test-realm"
+		claims := standardClaims(internalIssuer)
+		tokenString := createTestToken(t, keys, claims)
+
+		result, validateErr := validator.Validate(ctx, tokenString)
+		require.Error(t, validateErr)
+		require.Nil(t, result)
+		assert.ErrorIs(t, validateErr, keycloak.ErrInvalidIssuer)
+	})
+}
+
 func TestJWTValidator_ValidateWithoutAudience(t *testing.T) {
 	keys := generateTestKeys(t)
 	server := setupMockKeycloak(t, keys)

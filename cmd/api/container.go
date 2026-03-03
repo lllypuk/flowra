@@ -2277,6 +2277,7 @@ func (c *Container) setupTokenValidator() {
 		// JWTAudience is separate from ClientID: empty = skip audience validation
 		jwtValidator, err := keycloak.NewJWTValidator(keycloak.JWTValidatorConfig{
 			KeycloakURL:     c.Config.Keycloak.URL,
+			IssuerURL:       c.Config.Keycloak.PublicURL,
 			Realm:           c.Config.Keycloak.Realm,
 			ClientID:        c.Config.Keycloak.JWTAudience, // Use JWTAudience for validation, not OAuth ClientID
 			Leeway:          c.Config.Keycloak.JWT.Leeway,

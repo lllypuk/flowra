@@ -222,6 +222,38 @@ func TestMakefile_HasDockerProductionTargets(t *testing.T) {
 	require.Contains(t, content, "docker compose -f docker-compose.prod.yml logs -f")
 }
 
+func TestDockerfile_UsesProductionConfig(t *testing.T) {
+	t.Parallel()
+
+	dockerfilePath := filepath.Join(repoRoot(t), "Dockerfile")
+	data, err := os.ReadFile(dockerfilePath)
+	require.NoError(t, err)
+
+	content := string(data)
+	require.Contains(t, content, "configs/config.prod.yaml /etc/flowra/config.yaml")
+	require.NotContains(t, content, "configs/config.yaml /etc/flowra/config.yaml")
+}
+
+func TestConfigProd_HasNoBakedSecrets(t *testing.T) {
+	t.Parallel()
+
+	configPath := filepath.Join(repoRoot(t), "configs", "config.prod.yaml")
+	configData := readYAMLMap(t, configPath)
+
+	auth := mustMapValue(t, configData["auth"], "auth section is required")
+	require.Empty(t, auth["jwt_secret"])
+
+	keycloak := mustMapValue(t, configData["keycloak"], "keycloak section is required")
+	require.Empty(t, keycloak["client_secret"])
+	require.Empty(t, keycloak["admin_password"])
+
+	rawConfig, err := os.ReadFile(configPath)
+	require.NoError(t, err)
+	raw := string(rawConfig)
+	require.NotContains(t, raw, "dev-secret-change-in-production")
+	require.NotContains(t, raw, "admin123")
+}
+
 func TestDeploymentDocs_DockerSelfHostedSectionAndEnvNames(t *testing.T) {
 	t.Parallel()
 
@@ -273,6 +305,8 @@ func TestComposeAndRealmTemplate_UsesRuntimeSecretAndNoSeededUsers(t *testing.T)
 	require.NoError(t, err)
 	require.Contains(t, string(realmData), "\"secret\": \"__KEYCLOAK_CLIENT_SECRET__\"")
 	require.Contains(t, string(realmData), "\"__FLOWRA_PUBLIC_URL__/auth/callback\"")
+	require.Contains(t, string(realmData), "\"registrationAllowed\": false")
+	require.Contains(t, string(realmData), "\"verifyEmail\": true")
 	require.NotContains(t, string(realmData), "\"users\": [")
 }
 

@@ -21,7 +21,7 @@ RUN mkdir -p /app/uploads && chown -R flowra:flowra /app
 
 COPY --from=builder --chown=flowra:flowra /out/api /app/api
 COPY --from=builder --chown=flowra:flowra /out/worker /app/worker
-COPY --chown=flowra:flowra configs/config.yaml /etc/flowra/config.yaml
+COPY --chown=flowra:flowra configs/config.prod.yaml /etc/flowra/config.yaml
 
 EXPOSE 8080
 ENV FLOWRA_WORKER=true

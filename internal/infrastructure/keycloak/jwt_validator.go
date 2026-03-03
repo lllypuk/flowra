@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/MicahParks/jwkset"
@@ -51,6 +52,7 @@ type JWTValidator interface {
 // JWTValidatorConfig contains configuration for JWTValidator.
 type JWTValidatorConfig struct {
 	KeycloakURL     string
+	IssuerURL       string
 	Realm           string
 	ClientID        string        // Expected audience
 	Leeway          time.Duration // Clock skew tolerance
@@ -95,8 +97,14 @@ func NewJWTValidator(config JWTValidatorConfig) (JWTValidator, error) {
 		logger = slog.Default()
 	}
 
-	issuerURL := fmt.Sprintf("%s/realms/%s", config.KeycloakURL, config.Realm)
-	jwksURL := fmt.Sprintf("%s/protocol/openid-connect/certs", issuerURL)
+	keycloakURL := strings.TrimSuffix(config.KeycloakURL, "/")
+	issuerBaseURL := strings.TrimSuffix(config.IssuerURL, "/")
+	if issuerBaseURL == "" {
+		issuerBaseURL = keycloakURL
+	}
+
+	issuerURL := fmt.Sprintf("%s/realms/%s", issuerBaseURL, config.Realm)
+	jwksURL := fmt.Sprintf("%s/realms/%s/protocol/openid-connect/certs", keycloakURL, config.Realm)
 
 	logger.Info("initializing JWT validator",
 		slog.String("jwks_url", jwksURL),
