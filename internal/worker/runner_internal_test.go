@@ -39,3 +39,19 @@ func TestSetupUserSyncWorker_EnabledRequiresKeycloakConfig(t *testing.T) {
 	require.Equal(t, UserSyncConfig{}, syncConfig)
 	require.EqualError(t, err, "keycloak configuration is required for user sync worker")
 }
+
+func TestSetupUserSyncWorker_EnabledRequiresAdminPassword(t *testing.T) {
+	t.Setenv("USER_SYNC_DISABLED", "false")
+	t.Setenv("USER_SYNC_INTERVAL", "")
+
+	cfg := config.DefaultConfig()
+	cfg.Keycloak.URL = "http://keycloak:8080"
+	cfg.Keycloak.AdminUsername = "admin"
+	cfg.Keycloak.AdminPassword = ""
+
+	userSyncWorker, syncConfig, err := setupUserSyncWorker(cfg, nil, slog.Default())
+	require.Error(t, err)
+	require.Nil(t, userSyncWorker)
+	require.Equal(t, UserSyncConfig{}, syncConfig)
+	require.EqualError(t, err, "keycloak configuration is required for user sync worker")
+}

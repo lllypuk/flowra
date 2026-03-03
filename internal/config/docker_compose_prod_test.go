@@ -121,17 +121,22 @@ func TestDockerComposeProd_KeycloakRealmImportAndAppDependency(t *testing.T) {
 	require.Equal(t, "service_healthy", keycloakDBDependency["condition"])
 
 	entrypoint := mustSliceValue(t, keycloak["entrypoint"], "keycloak entrypoint must be a list")
-	require.Equal(t, []string{"/bin/bash", "-ec"}, stringifySlice(t, entrypoint))
+	entrypointValues := stringifySlice(t, entrypoint)
+	require.GreaterOrEqual(t, len(entrypointValues), 3)
+	require.Equal(t, "/bin/bash", entrypointValues[0])
+	require.Equal(t, "-ec", entrypointValues[1])
 
-	command, ok := keycloak["command"].(string)
-	require.True(t, ok, "keycloak command must be a string")
-	require.Contains(t, command, "kc.sh start")
-	require.Contains(t, command, "--import-realm")
-	require.Contains(t, command, "json_escape")
-	require.Contains(t, command, "__FLOWRA_PUBLIC_URL__")
-	require.Contains(t, command, "--hostname-strict=true")
-	require.NotContains(t, command, "--hostname-strict=false")
-	require.NotContains(t, command, "start-dev")
+	commandScript := entrypointValues[2]
+	require.Contains(t, commandScript, "kc.sh start")
+	require.Contains(t, commandScript, "--import-realm")
+	require.Contains(t, commandScript, "json_escape")
+	require.Contains(t, commandScript, "__FLOWRA_PUBLIC_URL__")
+	require.Contains(t, commandScript, "--hostname-strict=true")
+	require.NotContains(t, commandScript, "--hostname-strict=false")
+	require.NotContains(t, commandScript, "start-dev")
+
+	_, hasCommand := keycloak["command"]
+	require.False(t, hasCommand, "keycloak command should not be split from the bash script entrypoint")
 
 	volumes := mustSliceValue(t, keycloak["volumes"], "keycloak volumes must be a list")
 	require.Contains(

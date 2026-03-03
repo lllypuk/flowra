@@ -152,7 +152,7 @@ func setupUserSyncWorker(
 		return workerInstance, syncConfig, nil
 	}
 
-	if cfg.Keycloak.URL == "" || cfg.Keycloak.AdminUsername == "" {
+	if cfg.Keycloak.URL == "" || cfg.Keycloak.AdminUsername == "" || cfg.Keycloak.AdminPassword == "" {
 		return nil, UserSyncConfig{}, errors.New("keycloak configuration is required for user sync worker")
 	}
 
