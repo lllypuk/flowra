@@ -20,7 +20,7 @@ services:
           "--authenticationDatabase",
           "admin",
           "--eval",
-          "rs.status().ok",
+          "db.adminCommand('ping').ok",
         ]
       interval: 10s
       timeout: 5s
@@ -127,9 +127,7 @@ services:
         done
         FLOWRA_PUBLIC_URL="$${FLOWRA_PUBLIC_URL%/}"
         KEYCLOAK_PUBLIC_URL="$${KEYCLOAK_PUBLIC_URL%/}"
-        KEYCLOAK_HOSTNAME="$${KEYCLOAK_PUBLIC_URL#http://}"
-        KEYCLOAK_HOSTNAME="$${KEYCLOAK_HOSTNAME#https://}"
-        KEYCLOAK_HOSTNAME="$${KEYCLOAK_HOSTNAME%%/*}"
+        KEYCLOAK_HOSTNAME="$${KEYCLOAK_PUBLIC_URL}"
         if [[ -z "$${KEYCLOAK_HOSTNAME}" ]]; then
           echo "KEYCLOAK_PUBLIC_URL must include a hostname" >&2
           exit 1
@@ -156,14 +154,14 @@ services:
           -e "s|__FLOWRA_PUBLIC_URL__|$${escaped_flowra_public_url}|g" \
           /opt/keycloak/realm-template/realm-export.template.json \
           > /opt/keycloak/data/import/realm-export.json
-        exec /opt/keycloak/bin/kc.sh start --http-enabled=true --hostname="$${KEYCLOAK_HOSTNAME}" --hostname-strict=true --import-realm
+        exec /opt/keycloak/bin/kc.sh start --http-enabled=true --hostname="$${KEYCLOAK_HOSTNAME}" --hostname-strict=true --proxy-headers=xforwarded --import-realm
     healthcheck:
       test:
         [
           "CMD",
           "bash",
           "-c",
-          "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /realms/flowra/.well-known/openid-configuration HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q '200 OK' <&3",
+          "{ printf 'HEAD /health/ready HTTP/1.0\\r\\n\\r\\n' >&0; grep -q 'HTTP/1.0 200'; } 0<>/dev/tcp/127.0.0.1/9000",
         ]
       interval: 30s
       timeout: 10s
@@ -180,7 +178,7 @@ services:
       mongodb:
         condition: service_healthy
       mongo-init:
-        condition: service_started
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
       keycloak:
