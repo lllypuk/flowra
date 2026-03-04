@@ -47,6 +47,7 @@ type UserInfo struct {
 // OAuthClientConfig contains configuration for OAuthClient.
 type OAuthClientConfig struct {
 	KeycloakURL  string
+	PublicURL    string
 	Realm        string
 	ClientID     string
 	ClientSecret string
@@ -57,6 +58,7 @@ type OAuthClientConfig struct {
 // OAuthClient handles OAuth2 operations with Keycloak.
 type OAuthClient struct {
 	keycloakURL  string
+	publicURL    string
 	realm        string
 	clientID     string
 	clientSecret string
@@ -82,8 +84,15 @@ func NewOAuthClient(cfg OAuthClientConfig) *OAuthClient {
 		logger = slog.Default()
 	}
 
+	keycloakURL := strings.TrimSuffix(cfg.KeycloakURL, "/")
+	publicURL := strings.TrimSuffix(cfg.PublicURL, "/")
+	if publicURL == "" {
+		publicURL = keycloakURL
+	}
+
 	return &OAuthClient{
-		keycloakURL:  strings.TrimSuffix(cfg.KeycloakURL, "/"),
+		keycloakURL:  keycloakURL,
+		publicURL:    publicURL,
 		realm:        cfg.Realm,
 		clientID:     cfg.ClientID,
 		clientSecret: cfg.ClientSecret,
@@ -258,7 +267,7 @@ func (c *OAuthClient) AuthorizationURL(redirectURI, state string) string {
 
 	return fmt.Sprintf(
 		"%s/realms/%s/protocol/openid-connect/auth?%s",
-		c.keycloakURL,
+		c.publicURL,
 		c.realm,
 		params.Encode(),
 	)

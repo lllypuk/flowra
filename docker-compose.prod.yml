@@ -1,0 +1,224 @@
+services:
+  mongodb:
+    image: mongo:6.0
+    container_name: flowra-mongodb
+    command: ["--replSet", "rs0", "--bind_ip_all", "--auth"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USERNAME:?MONGODB_ROOT_USERNAME is required}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD:?MONGODB_ROOT_PASSWORD is required}
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--username",
+          "${MONGODB_ROOT_USERNAME:?MONGODB_ROOT_USERNAME is required}",
+          "--password",
+          "${MONGODB_ROOT_PASSWORD:?MONGODB_ROOT_PASSWORD is required}",
+          "--authenticationDatabase",
+          "admin",
+          "--eval",
+          "db.adminCommand('ping').ok",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - flowra-network
+
+  mongo-init:
+    image: mongo:6.0
+    container_name: flowra-mongo-init
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USERNAME:?MONGODB_ROOT_USERNAME is required}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD:?MONGODB_ROOT_PASSWORD is required}
+    command: >
+      sh -c "
+        until mongosh --host mongodb:27017 --username \"$${MONGO_INITDB_ROOT_USERNAME}\" --password \"$${MONGO_INITDB_ROOT_PASSWORD}\" --authenticationDatabase admin --eval \"db.adminCommand('ping')\" >/dev/null 2>&1; do
+          echo 'Waiting for MongoDB to accept connections...';
+          sleep 2;
+        done;
+        mongosh --host mongodb:27017 --username \"$${MONGO_INITDB_ROOT_USERNAME}\" --password \"$${MONGO_INITDB_ROOT_PASSWORD}\" --authenticationDatabase admin --eval '
+          try {
+            rs.status();
+            print(\"Replica set already initialized\");
+          } catch (e) {
+            rs.initiate({ _id: \"rs0\", members: [{ _id: 0, host: \"mongodb:27017\" }] });
+            print(\"Replica set initialized\");
+          }
+        '
+      "
+    restart: "no"
+    networks:
+      - flowra-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: flowra-redis
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - flowra-network
+
+  keycloak-db:
+    image: postgres:16-alpine
+    container_name: flowra-keycloak-db
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?KEYCLOAK_DB_PASSWORD is required}
+    volumes:
+      - keycloak_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - flowra-network
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    container_name: flowra-keycloak
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USERNAME:?KEYCLOAK_ADMIN_USERNAME is required}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD is required}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:?KEYCLOAK_CLIENT_SECRET is required}
+      FLOWRA_PUBLIC_URL: ${FLOWRA_PUBLIC_URL:?FLOWRA_PUBLIC_URL is required}
+      KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL:?KEYCLOAK_PUBLIC_URL is required}
+      KC_DB: postgres
+      KC_DB_URL_HOST: keycloak-db
+      KC_DB_URL_PORT: 5432
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?KEYCLOAK_DB_PASSWORD is required}
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "8090:8080"
+    volumes:
+      - ./configs/keycloak-prod/realm-export.template.json:/opt/keycloak/realm-template/realm-export.template.json:ro
+    entrypoint:
+      - /bin/bash
+      - -ec
+      - |
+        for required_var in KEYCLOAK_CLIENT_SECRET KEYCLOAK_ADMIN_PASSWORD KC_DB_PASSWORD FLOWRA_PUBLIC_URL KEYCLOAK_PUBLIC_URL; do
+          value="$${!required_var:-}"
+          if [[ -z "$${value}" || "$${value}" == change-me-* ]]; then
+            echo "$${required_var} must be set to a non-placeholder value" >&2
+            exit 1
+          fi
+        done
+        FLOWRA_PUBLIC_URL="$${FLOWRA_PUBLIC_URL%/}"
+        KEYCLOAK_PUBLIC_URL="$${KEYCLOAK_PUBLIC_URL%/}"
+        KEYCLOAK_HOSTNAME="$${KEYCLOAK_PUBLIC_URL}"
+        if [[ -z "$${KEYCLOAK_HOSTNAME}" ]]; then
+          echo "KEYCLOAK_PUBLIC_URL must include a hostname" >&2
+          exit 1
+        fi
+        json_escape() {
+          local value="$$1"
+          value="$${value//\\/\\\\}"
+          value="$${value//\"/\\\"}"
+          value="$${value//$$'\n'/\\n}"
+          value="$${value//$$'\r'/\\r}"
+          value="$${value//$$'\t'/\\t}"
+          printf '%s' "$${value}"
+        }
+        sed_escape() {
+          local value="$$1"
+          value="$${value//&/\\&}"
+          value="$${value//|/\\|}"
+          printf '%s' "$${value}"
+        }
+        escaped_client_secret="$$(sed_escape "$$(json_escape "$${KEYCLOAK_CLIENT_SECRET}")")"
+        escaped_flowra_public_url="$$(sed_escape "$$(json_escape "$${FLOWRA_PUBLIC_URL}")")"
+        mkdir -p /opt/keycloak/data/import
+        sed -e "s|__KEYCLOAK_CLIENT_SECRET__|$${escaped_client_secret}|g" \
+          -e "s|__FLOWRA_PUBLIC_URL__|$${escaped_flowra_public_url}|g" \
+          /opt/keycloak/realm-template/realm-export.template.json \
+          > /opt/keycloak/data/import/realm-export.json
+        exec /opt/keycloak/bin/kc.sh start --http-enabled=true --hostname="$${KEYCLOAK_HOSTNAME}" --hostname-strict=true --proxy-headers=xforwarded --import-realm
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bash",
+          "-c",
+          "{ printf 'HEAD /health/ready HTTP/1.0\\r\\n\\r\\n' >&0; grep -q 'HTTP/1.0 200'; } 0<>/dev/tcp/127.0.0.1/9000",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - flowra-network
+
+  app:
+    build: .
+    container_name: flowra-app
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      mongo-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    environment:
+      MONGODB_URI: mongodb://${MONGODB_ROOT_USERNAME:?MONGODB_ROOT_USERNAME is required}:${MONGODB_ROOT_PASSWORD:?MONGODB_ROOT_PASSWORD is required}@mongodb:27017/?replicaSet=rs0&authSource=admin
+      MONGODB_DATABASE: flowra
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL:?KEYCLOAK_PUBLIC_URL is required}
+      KEYCLOAK_REALM: flowra
+      KEYCLOAK_CLIENT_ID: flowra-backend
+      KEYCLOAK_JWT_AUDIENCE: ${KEYCLOAK_JWT_AUDIENCE:-flowra-backend}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:?KEYCLOAK_CLIENT_SECRET is required}
+      KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:?KEYCLOAK_ADMIN_USERNAME is required}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD is required}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?AUTH_JWT_SECRET is required}
+      FLOWRA_WORKER: ${FLOWRA_WORKER:-true}
+      UPLOADS_DIR: /app/uploads
+    ports:
+      - "8080:8080"
+    volumes:
+      - uploads_data:/app/uploads
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health > /dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - flowra-network
+
+volumes:
+  mongodb_data:
+  redis_data:
+  keycloak_db_data:
+  uploads_data:
+
+networks:
+  flowra-network:
+    driver: bridge

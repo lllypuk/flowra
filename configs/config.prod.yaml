@@ -1,9 +1,67 @@
+app:
+  mode: "real"
+  name: "flowra"
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+  read_timeout: 30s
+  write_timeout: 30s
+  shutdown_timeout: 10s
+
+mongodb:
+  uri: "mongodb://mongodb:27017/?replicaSet=rs0"
+  database: "flowra"
+  timeout: 10s
+  max_pool_size: 100
+
+redis:
+  addr: "redis:6379"
+  password: ""
+  db: 0
+  pool_size: 10
+
+keycloak:
+  enabled: true
+  url: "http://keycloak:8080"
+  public_url: "http://localhost:8090"
+  realm: "flowra"
+  client_id: "flowra-backend"
+  client_secret: ""
+  jwt_audience: "flowra-backend"
+  admin_username: "admin"
+  admin_password: ""
+  jwt:
+    leeway: "30s"
+    refresh_interval: "1h"
+
+auth:
+  jwt_secret: ""
+  access_token_ttl: 15m
+  refresh_token_ttl: 7d
+
+eventbus:
+  type: "redis"
+  redis_channel_prefix: "events."
+
 log:
   level: "info"
   format: "json"
 
-auth:
-  jwt_secret: "${JWT_SECRET}" # from environment variable
+websocket:
+  read_buffer_size: 1024
+  write_buffer_size: 1024
+  ping_interval: 30s
+  pong_timeout: 60s
 
-keycloak:
-  client_secret: "${KEYCLOAK_CLIENT_SECRET}"
+outbox:
+  enabled: true
+  poll_interval: 100ms
+  batch_size: 100
+  max_retries: 5
+  cleanup_age: 168h
+  cleanup_interval: 1h
+
+uploads:
+  dir: "/app/uploads"
+  max_file_size: 10485760

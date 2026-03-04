@@ -1,11 +1,15 @@
 package main
 
 import (
+	"errors"
+	"io"
 	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/lllypuk/flowra/internal/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseLogLevel(t *testing.T) {
@@ -123,4 +127,171 @@ func TestSetupLogger_AllLevels(t *testing.T) {
 func TestGracefulShutdownSleepConstant(t *testing.T) {
 	// Verify the constant is set to a reasonable value
 	assert.Equal(t, int64(100), gracefulShutdownSleep.Milliseconds())
+}
+
+func TestShouldRunWorker(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []string
+		envValue string
+		expected bool
+		wantErr  bool
+	}{
+		{
+			name:     "disabled by default",
+			args:     nil,
+			envValue: "",
+			expected: false,
+		},
+		{
+			name:     "enabled from env",
+			args:     nil,
+			envValue: "true",
+			expected: true,
+		},
+		{
+			name:     "flag enables worker",
+			args:     []string{"--with-worker"},
+			envValue: "",
+			expected: true,
+		},
+		{
+			name:     "flag overrides env true to false",
+			args:     []string{"--with-worker=false"},
+			envValue: "true",
+			expected: false,
+		},
+		{
+			name:     "flag overrides env false to true",
+			args:     []string{"--with-worker=true"},
+			envValue: "false",
+			expected: true,
+		},
+		{
+			name:     "flag value can be provided as next argument",
+			args:     []string{"--with-worker", "false"},
+			envValue: "true",
+			expected: false,
+		},
+		{
+			name:     "unknown flags are ignored",
+			args:     []string{"--some-unknown-flag", "--with-worker=true"},
+			envValue: "false",
+			expected: true,
+		},
+		{
+			name:     "invalid env value returns error",
+			args:     nil,
+			envValue: "invalid",
+			wantErr:  true,
+		},
+		{
+			name:     "invalid flag returns error",
+			args:     []string{"--with-worker=maybe"},
+			envValue: "",
+			wantErr:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			getenv := func(key string) string {
+				if key == "FLOWRA_WORKER" {
+					return tt.envValue
+				}
+
+				return ""
+			}
+
+			enabled, err := shouldRunWorker(tt.args, getenv)
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, enabled)
+		})
+	}
+}
+
+func TestWaitForWorkerShutdown(t *testing.T) {
+	t.Run("nil channel returns immediately", func(t *testing.T) {
+		start := time.Now()
+		waitForWorkerShutdown(nil, 50*time.Millisecond, testLogger())
+		assert.Less(t, time.Since(start), 25*time.Millisecond)
+	})
+
+	t.Run("closed channel returns immediately", func(t *testing.T) {
+		done := make(chan struct{})
+		close(done)
+
+		start := time.Now()
+		waitForWorkerShutdown(done, 50*time.Millisecond, testLogger())
+		assert.Less(t, time.Since(start), 25*time.Millisecond)
+	})
+
+	t.Run("waits until timeout when worker does not stop", func(t *testing.T) {
+		done := make(chan struct{})
+		timeout := 25 * time.Millisecond
+
+		start := time.Now()
+		waitForWorkerShutdown(done, timeout, testLogger())
+		elapsed := time.Since(start)
+
+		assert.GreaterOrEqual(t, elapsed, timeout)
+		assert.Less(t, elapsed, 200*time.Millisecond)
+	})
+}
+
+func TestWorkerRuntimeError(t *testing.T) {
+	t.Run("nil channel", func(t *testing.T) {
+		assert.NoError(t, workerRuntimeError(nil))
+	})
+
+	t.Run("empty channel", func(t *testing.T) {
+		errCh := make(chan error, 1)
+		assert.NoError(t, workerRuntimeError(errCh))
+	})
+
+	t.Run("channel with error", func(t *testing.T) {
+		errCh := make(chan error, 1)
+		expected := errors.New("worker failed")
+		errCh <- expected
+
+		assert.ErrorIs(t, workerRuntimeError(errCh), expected)
+	})
+}
+
+func TestWaitForShutdownComplete(t *testing.T) {
+	t.Run("nil channel returns immediately", func(t *testing.T) {
+		start := time.Now()
+		waitForShutdownComplete(nil, 50*time.Millisecond, testLogger())
+		assert.Less(t, time.Since(start), 25*time.Millisecond)
+	})
+
+	t.Run("closed channel returns immediately", func(t *testing.T) {
+		done := make(chan struct{})
+		close(done)
+
+		start := time.Now()
+		waitForShutdownComplete(done, 50*time.Millisecond, testLogger())
+		assert.Less(t, time.Since(start), 25*time.Millisecond)
+	})
+
+	t.Run("waits until timeout when shutdown does not complete", func(t *testing.T) {
+		done := make(chan struct{})
+		timeout := 25 * time.Millisecond
+
+		start := time.Now()
+		waitForShutdownComplete(done, timeout, testLogger())
+		elapsed := time.Since(start)
+
+		assert.GreaterOrEqual(t, elapsed, timeout)
+		assert.Less(t, elapsed, 200*time.Millisecond)
+	})
+}
+
+func testLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }

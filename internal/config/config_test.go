@@ -35,6 +35,10 @@ func TestDefaultConfig(t *testing.T) {
 	assert.Equal(t, 0, cfg.Redis.DB)
 	assert.Equal(t, config.DefaultRedisPoolSize, cfg.Redis.PoolSize)
 
+	// Keycloak defaults
+	assert.Equal(t, "http://localhost:8090", cfg.Keycloak.URL)
+	assert.Empty(t, cfg.Keycloak.PublicURL)
+
 	// Auth defaults
 	assert.Equal(t, "dev-secret-change-in-production", cfg.Auth.JWTSecret)
 	assert.Equal(t, config.DefaultAccessTokenTTL, cfg.Auth.AccessTokenTTL)
@@ -321,6 +325,9 @@ auth:
   access_token_ttl: 30m
   refresh_token_ttl: 24h
 
+keycloak:
+  jwt_audience: "flowra-backend"
+
 log:
   level: "debug"
   format: "text"
@@ -402,6 +409,7 @@ func TestLoader_LoadFromEnv(t *testing.T) {
 	t.Setenv("MONGODB_URI", "mongodb://env-mongo:27017")
 	t.Setenv("REDIS_ADDR", "env-redis:6379")
 	t.Setenv("AUTH_JWT_SECRET", "env-jwt-secret")
+	t.Setenv("KEYCLOAK_JWT_AUDIENCE", "flowra-backend")
 	t.Setenv("LOG_LEVEL", "warn")
 
 	// Create a minimal config file
@@ -469,6 +477,8 @@ websocket:
   write_buffer_size: 1024
   ping_interval: 30s
   pong_timeout: 60s
+keycloak:
+  jwt_audience: "flowra-backend"
 `
 	err := os.WriteFile(configPath, []byte(configContent), 0o644)
 	require.NoError(t, err)
@@ -654,6 +664,7 @@ func TestConfig_Validate_MockModeInProduction(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.App.Mode = config.AppModeMock
 	cfg.Auth.JWTSecret = "production-secret-not-dev" // Makes IsProduction() return true
+	cfg.Keycloak.JWTAudience = "flowra-backend"
 
 	err := cfg.Validate()
 	require.Error(t, err)
@@ -673,4 +684,57 @@ func TestConfig_Validate_MockModeInDevelopment(t *testing.T) {
 func TestAppModeConstants(t *testing.T) {
 	assert.Equal(t, config.AppModeReal, config.AppMode("real"))
 	assert.Equal(t, config.AppModeMock, config.AppMode("mock"))
+}
+
+func TestLoadFromPath_KeycloakPublicURLFallsBackToKeycloakURL(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	configContent := `
+keycloak:
+  url: "https://sso.example.com"
+  public_url: ""
+auth:
+  jwt_secret: "dev-secret-change-in-production"
+`
+	err := os.WriteFile(configPath, []byte(configContent), 0o644)
+	require.NoError(t, err)
+
+	cfg, err := config.LoadFromPath(configPath)
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+	assert.Equal(t, "https://sso.example.com", cfg.Keycloak.PublicURL)
+}
+
+func TestLoadFromPath_KeycloakPublicURLFallsBackWhenOnlyEnvURLIsSet(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	configContent := `
+auth:
+  jwt_secret: "dev-secret-change-in-production"
+`
+	err := os.WriteFile(configPath, []byte(configContent), 0o644)
+	require.NoError(t, err)
+
+	t.Setenv("KEYCLOAK_URL", "https://sso.example.com")
+	t.Setenv("KEYCLOAK_PUBLIC_URL", "")
+
+	cfg, err := config.LoadFromPath(configPath)
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+	assert.Equal(t, "https://sso.example.com", cfg.Keycloak.PublicURL)
+}
+
+func TestConfig_Validate_ProductionRequiresKeycloakJWTAudience(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.Auth.JWTSecret = "production-secret-not-dev"
+	cfg.Keycloak.Enabled = true
+	cfg.Keycloak.URL = "https://sso.example.com"
+	cfg.Keycloak.JWTAudience = ""
+
+	err := cfg.Validate()
+	require.Error(t, err)
+	require.ErrorIs(t, err, config.ErrConfigInvalid)
+	assert.Contains(t, err.Error(), "keycloak.jwt_audience is required in production when keycloak is enabled")
 }

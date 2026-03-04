@@ -54,6 +54,12 @@ make dev
 # API-only development mode (explicit opt-in)
 make dev-lite
 
+# Production/self-hosted helpers
+make docker-build
+make docker-prod-up
+make docker-prod-logs
+make docker-prod-down
+
 # Reset local/dev data when switching Chat=SoT branches
 make reset-data
 ```
@@ -68,6 +74,10 @@ make dev
 # Manual split mode
 make docker-up                          # Start infrastructure
 FLOWRA_DEV_MODE=lite go run ./cmd/api  # Start API only
+
+# Unified runtime mode in API process
+FLOWRA_WORKER=true go run ./cmd/api
+go run ./cmd/api --with-worker=false    # CLI flag overrides env
 
 # Alternative: build and run
 go build -o /tmp/flowra-api ./cmd/api
@@ -192,6 +202,8 @@ docs/                         # Documentation (9+ files)
 - Production config: `configs/config.prod.yaml`
 - Environment-specific values override via environment variables
 - Docker services configured in `docker-compose.yml`
+- Self-hosted deployment stack configured in `docker-compose.prod.yml`
+- API runtime toggle: `FLOWRA_WORKER` (override via `--with-worker`)
 - Comprehensive settings for database, Redis, JWT, OAuth, email, etc.
 
 ## Index Management
