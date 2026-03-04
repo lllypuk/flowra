@@ -1,7 +1,18 @@
 # Repository Guidelines
 
 ## Context Requirements
-**CRITICAL**: When starting work on this repository, **always read `CLAUDE.md` first** for comprehensive project context, architecture, and development guidelines.
+`AGENTS.md` is the single source of contributor guidance for this repository.
+
+## Project Overview
+
+Flowra is a chat-centric collaboration system with integrated task management and help desk capabilities.
+
+Core stack:
+- Backend: Go 1.26+ with Echo v4.
+- Data: MongoDB 6+ (Go Driver v2) + Redis.
+- Frontend: HTMX 2+, Pico CSS v2, vanilla JS modules.
+- Auth: Keycloak SSO.
+- Runtime: Docker Compose for local/dev and self-hosted helpers.
 
 ## Project Structure & Module Organization
 `flowra` is a Go monorepo using clean architecture with event sourcing:
@@ -79,7 +90,73 @@ make deps                  # go mod download && go mod tidy
 
 # Playwright setup (for frontend E2E)
 make playwright-install    # Install Chromium browser
+
+# Self-hosted/production helpers
+make docker-build          # Build production image
+make docker-prod-up        # Start self-hosted production stack
+make docker-prod-logs      # Tail production stack logs
+make docker-prod-down      # Stop production stack
 ```
+
+## Runtime & Access
+
+- Main local app URL: `http://localhost:8080`
+- API docs: `http://localhost:8080/docs`
+- Health: `http://localhost:8080/health`
+- Keycloak admin: `http://localhost:8090` (`admin/admin123`)
+- Test user login: `testuser` / `test123`
+
+Runtime toggles for API binary:
+- `FLOWRA_WORKER=true` enables unified API + worker loops.
+- `FLOWRA_WORKER=false` runs API-only mode.
+- `--with-worker` / `--with-worker=false` overrides env value.
+
+When switching branches around Chat=SoT changes, run `make reset-data` after bringing infra up.
+
+## Configuration & Indexes
+
+- Main configs: `configs/config.yaml`, `configs/config.dev.yaml`, `configs/config.prod.yaml`
+- Local runtime stack: `docker-compose.yml`
+- Self-hosted stack: `docker-compose.prod.yml`
+- MongoDB indexes are managed in code at `internal/infrastructure/mongodb/indexes.go`
+- Indexes are created on API startup and in integration test setup (no standalone migration runner required)
+
+## Chat=SoT Guardrails
+
+For typed entities (`task`, `bug`, `epic`) follow ADR-007 (`docs/architecture/adr-007-chat-sot.md`):
+- Do not add new write handlers/commands under `internal/application/task`.
+- Do not emit new `task.*` business write events.
+- Typed entity writes must emit `chat.*` events only.
+- Keep compatibility adapters on read/query side only.
+- Keep assignee writes validated against real users.
+- Do not re-introduce `TaskResult.Events`; task side effects are handled centrally in services.
+
+Current authoritative read-model collections:
+- `chats_read_model`
+- `tasks_read_model`
+
+Legacy collections (`chat_read_model`, `task_read_model`) are non-authoritative and should be cleaned for local/dev via `make reset-data`.
+
+## Frontend & HTMX Operational Notes
+
+- HTMX v2 WebSocket socket path is `el['htmx-internal-data'].webSocket.socket`; do not use legacy `el.__htmx_ws`.
+- WS event `data` payload can contain PascalCase domain field names (for example `ChatID`) in addition to snake_case fallback handling.
+- Keep HTMX close-safety guard in `web/static/js/app.js` (`htmx:wsOpen` patch) when updating websocket behavior.
+- Keep first-message empty-state removal behavior in `web/templates/chat/view.html` to prevent stale placeholders.
+- Echo request bind structs in handlers must include both `json:` and `form:` tags (HTMX form requests rely on `form:`).
+- Task sidebar has two templates that must stay behaviorally aligned:
+  - `web/templates/task/sidebar.html`
+  - `web/templates/chat/task-sidebar.html`
+- Chat action routes are workspace-scoped; always include `workspace_id` in path.
+- JS loaded with `hx-boost` must use IIFE + global guard to avoid double initialization and redeclaration errors.
+
+## Interface Design Rules
+
+Follow idiomatic Go interface ownership:
+- Declare interfaces on consumer side (application/domain that depends on behavior).
+- Infrastructure packages implement interfaces but should not be the source of shared interface contracts.
+- Keep interfaces focused and small unless consumer truly needs a larger surface.
+- Prefer concrete return types and interface-typed dependencies in constructors/use cases.
 
 ## Code Style Guidelines
 
@@ -185,6 +262,11 @@ const (
   - No init functions
   - Exhaustive switch statements for enums
   - Shadow variable detection enabled
+
+### Additional Style Rules
+- Avoid reflection unless it is strictly necessary for dynamic external data handling.
+- Prefer type assertions, type switches, interfaces, or generics over `reflect`.
+- Keep code, comments, docs, error messages, and commit messages in English.
 
 ## Testing Guidelines
 
@@ -327,3 +409,9 @@ docs: update API documentation for chat endpoints
 - [ ] New code has test coverage
 - [ ] No commented-out code or debug statements
 - [ ] Documentation updated if needed
+
+## Documentation Update Rules
+
+- Update existing docs intentionally (`README.md`, guides, API docs) when behavior changes.
+- Do not create unsolicited ad-hoc summary markdown files unless explicitly requested.
+- In task-tracking markdown, do not include time estimates; track scope, dependencies, priority, and status instead.

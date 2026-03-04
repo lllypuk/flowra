@@ -5,7 +5,7 @@ A comprehensive chat system with integrated task tracker, help desk functionalit
 ## 📊 Current Project Status
 
 **Version:** 1.0.0-beta
-**Last Updated:** 2026-03-02
+**Last Updated:** 2026-03-05
 **Overall Progress:** ~98% to MVP
 **Status:** March 2026 Release Candidate
 
@@ -80,6 +80,10 @@ curl http://localhost:8080/health
 # Expected: {"status":"healthy"}
 
 # API documentation
+# Linux
+xdg-open http://localhost:8080/docs
+
+# macOS
 open http://localhost:8080/docs
 ```
 
@@ -87,12 +91,14 @@ open http://localhost:8080/docs
 
 Access Keycloak at http://localhost:8090 (admin/admin123) to configure OAuth.
 
+Test user for app login: `testuser` / `test123`.
+
 ---
 
 ## 🔧 Development Commands
 
 ```bash
-make help          # Show all available commands
+make help               # Show all available commands
 make dev                # Run full-stack development mode (infra + worker + API)
 make dev-lite           # Run API-only development mode (limited: no worker)
 make build              # Build binaries
@@ -134,7 +140,7 @@ event/read-model shape mismatches.
 - **Task management** with state machine for statuses
 - **Help Desk** functionality with SLA tracking
 - **Keycloak integration** for SSO and user management
-- **HTMX + Alpine.js** for minimal JavaScript usage
+- **HTMX + vanilla JS modules** for dynamic UI behavior
 - **WebSocket** for real-time updates
 - **Event Sourcing** for complete change history
 - **Tag Processing** - command processing system via message tags
@@ -202,12 +208,12 @@ event/read-model shape mismatches.
 | **Redis** | Cache/Pub-Sub | 7+ |
 | **Keycloak** | Authentication | 23+ |
 
-### Frontend (Planned)
+### Frontend
 | Technology | Purpose | Version |
 |------------|---------|---------|
 | **HTMX** | Dynamic updates | 2+ |
 | **Pico CSS** | Styling | v2 |
-| **Alpine.js** | Interactions | 3+ |
+| **Vanilla JS (ES Modules)** | Client interactions | Built-in |
 
 ---
 
@@ -314,7 +320,8 @@ make test-e2e-frontend-smoke
 
 | Service | URL | Credentials |
 |---------|-----|-------------|
-| **API Server** | http://localhost:8080 | JWT Token |
+| **Web App (SSO)** | http://localhost:8080 | `testuser` / `test123` |
+| **API Server** | http://localhost:8080 | Bearer JWT token |
 | **API Docs** | http://localhost:8080/docs | - |
 | **Keycloak** | http://localhost:8090 | admin/admin123 |
 | **MongoDB** | localhost:27017 | admin/admin123 |
@@ -381,4 +388,4 @@ MIT License - see [LICENSE](./LICENSE)
 
 ---
 
-*Last updated: March 2, 2026*
+*Last updated: March 5, 2026*

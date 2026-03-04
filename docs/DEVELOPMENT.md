@@ -688,7 +688,7 @@ chore: update dependencies
 
 ### Interface Guidelines
 
-Follow the project's interface design principles (see CLAUDE.md):
+Follow the project's interface design principles (see AGENTS.md):
 
 - Declare interfaces on the consumer side
 - Keep interfaces small and focused

@@ -695,7 +695,7 @@ Aggregates are rebuilt from event stream:
 |------------|---------|---------|
 | **HTMX** | Dynamic updates | 2+ |
 | **Pico CSS** | Styling | v2 |
-| **Alpine.js** | Minimal JS interactions | 3+ |
+| **Vanilla JS (ES Modules)** | Client interactions | Built-in |
 
 ### Infrastructure
 
