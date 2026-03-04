@@ -227,7 +227,7 @@
       "description": "OAuth2 client for Flowra application",
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
-      "secret": "change-me-keycloak-client-secret",
+      "secret": "flowra-dev-secret-change-in-production",
       "redirectUris": [
         "http://localhost:8080/auth/callback",
         "http://localhost:3000/auth/callback"

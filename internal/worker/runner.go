@@ -90,7 +90,7 @@ func Run(ctx context.Context, cfg *config.Config, mongoDB *mongo.Database, redis
 		slog.Duration("user_sync_interval", syncConfig.Interval),
 		slog.Bool("outbox_enabled", outboxConfig.Enabled),
 		slog.Duration("outbox_poll_interval", outboxConfig.PollInterval),
-		slog.Bool("repair_enabled", repairWorker != nil),
+		slog.Bool("repair_enabled", repairWorker.config.Enabled),
 	)
 
 	var wg sync.WaitGroup
