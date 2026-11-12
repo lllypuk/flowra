@@ -306,6 +306,9 @@ func (c *Container) validateAuthComponents(errs []error) []error {
 	if c.AccessChecker == nil {
 		errs = append(errs, errors.New("access checker not initialized"))
 	}
+	if _, isMock := c.AccessChecker.(*middleware.MockWorkspaceAccessChecker); isMock && !c.Config.App.IsMockMode() {
+		errs = append(errs, errors.New("mock access checker is allowed only in app.mode mock"))
+	}
 	return errs
 }
 
@@ -326,12 +329,6 @@ func (c *Container) validateHandlers(errs []error) []error {
 	}
 	if c.WSHandler == nil {
 		errs = append(errs, errors.New("websocket handler not initialized in real mode"))
-	}
-
-	if !c.Config.App.IsMockMode() && c.AccessChecker != nil {
-		if _, isMock := c.AccessChecker.(*middleware.MockWorkspaceAccessChecker); isMock {
-			errs = append(errs, errors.New("mock access checker is allowed only in app.mode mock"))
-		}
 	}
 
 	return errs

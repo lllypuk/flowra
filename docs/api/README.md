@@ -246,7 +246,8 @@ For the current protocol (message types, payload envelope, HTMX integration, and
 ### Connection
 
 ```javascript
-const ws = new WebSocket('ws://localhost:8080/api/v1/ws?token=<token>');
+// Browsers authenticate with the session cookie; other clients send Authorization: Bearer <token>.
+const ws = new WebSocket('ws://127.0.0.1:8080/api/v1/ws');
 ```
 
 ### Client Messages

@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
@@ -44,12 +43,11 @@ var (
 	ErrMissingAuthHeader       = errors.New("missing authorization header")
 	ErrInvalidAuthHeader       = errors.New("invalid authorization header format")
 	ErrInvalidToken            = errors.New("invalid token")
-	ErrTokenExpired            = errors.New("token expired")
 	ErrUserNotFound            = errors.New("user not found")
 	ErrInsufficientPermissions = errors.New("insufficient permissions")
 )
 
-// TokenClaims represents the claims extracted from a JWT token.
+// TokenClaims describes the identity an access token resolves to.
 type TokenClaims struct {
 	// UserID is the internal user ID.
 	UserID uuid.UUID
@@ -68,14 +66,11 @@ type TokenClaims struct {
 
 	// IsSystemAdmin indicates if the user is a system administrator.
 	IsSystemAdmin bool
-
-	// ExpiresAt is the token expiration time.
-	ExpiresAt time.Time
 }
 
-// TokenValidator defines the interface for validating JWT tokens.
+// TokenValidator checks an access token and returns the identity it resolves to.
 type TokenValidator interface {
-	// ValidateToken validates a JWT token and returns the claims.
+	// ValidateToken checks the token and returns its claims.
 	ValidateToken(ctx context.Context, token string) (*TokenClaims, error)
 }
 
@@ -90,7 +85,7 @@ type AuthConfig struct {
 	// Logger is the structured logger for auth events.
 	Logger *slog.Logger
 
-	// TokenValidator validates JWT tokens.
+	// TokenValidator checks access tokens.
 	TokenValidator TokenValidator
 
 	// UserResolver resolves users from external IDs.
@@ -237,9 +232,6 @@ func respondAuthError(c echo.Context, err error) error {
 		message = "Missing authorization header"
 	case errors.Is(err, ErrInvalidAuthHeader):
 		message = "Invalid authorization header format"
-	case errors.Is(err, ErrTokenExpired):
-		message = "Token has expired"
-		code = "TOKEN_EXPIRED"
 	case errors.Is(err, ErrInvalidToken):
 		message = "Invalid token"
 	case errors.Is(err, ErrUserNotFound):

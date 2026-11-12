@@ -127,9 +127,6 @@ func (v *E2ETokenValidator) ValidateToken(_ context.Context, token string) (*mid
 	if !ok {
 		return nil, middleware.ErrInvalidToken
 	}
-	if claims.ExpiresAt.Before(time.Now()) {
-		return claims, middleware.ErrTokenExpired
-	}
 	return claims, nil
 }
 
@@ -446,7 +443,6 @@ func (s *E2ETestSuite) CreateTestUser(username string) *TestUser {
 		Username:       username,
 		Email:          email,
 		Roles:          []string{"user"},
-		ExpiresAt:      time.Now().Add(24 * time.Hour),
 	})
 
 	s.MockUserRepo.AddUser(u)

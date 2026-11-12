@@ -216,11 +216,10 @@ func (s *WSTestSuite) CreateTestUser(username string) *TestUser {
 
 	// Register token
 	s.TokenValidator.RegisterToken(testUser.Token, &middleware.TokenClaims{
-		UserID:    id,
-		Username:  username,
-		Email:     email,
-		Roles:     []string{"user"},
-		ExpiresAt: time.Now().Add(24 * time.Hour),
+		UserID:   id,
+		Username: username,
+		Email:    email,
+		Roles:    []string{"user"},
 	})
 
 	s.usersMu.Lock()

@@ -922,14 +922,9 @@ The web form `POST /login` checks the token the same way and stores it in the `f
 
 ### WebSocket Authentication
 
-WebSocket doesn't support custom headers after handshake. Solution: pass token at connection time.
-
-```javascript
-const wsURL = `ws://localhost:8080/ws?token=${accessToken}`;
-const ws = new WebSocket(wsURL);
-```
-
-Backend validates the token from the query parameter or the session cookie, resolves the user and registers the client.
+`/api/v1/ws` sits behind the same auth middleware as the API: the browser connects with its `flowra_session`
+cookie, other clients send `Authorization: Bearer <token>` on the handshake. A token in the query string is not
+accepted, and the request log redacts a `token` parameter.
 
 ### Security Best Practices
 

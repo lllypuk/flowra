@@ -25,10 +25,8 @@ The WebSocket endpoint requires authentication.
 
 Server-side behavior (`internal/handler/websocket/handler.go`):
 
-- First tries authenticated user ID from middleware context (when connecting through the authenticated route group).
-- If missing, falls back to token validation from:
-  - query param `?token=<token>`
-  - `Authorization: Bearer <token>` header
+- The route is behind the auth middleware: the browser sends its `flowra_session` cookie, other clients send
+  `Authorization: Bearer <token>` on the handshake. A token in the query string is not accepted.
 
 If authentication fails, the server returns `401` JSON (no upgrade).
 
@@ -270,7 +268,7 @@ document.body.addEventListener("chat.message.posted", function (evt) {
 Typical pattern:
 
 ```html
-<div hx-ext="ws" ws-connect="/api/v1/ws?token={{.Token}}">
+<div hx-ext="ws" ws-connect="/api/v1/ws">
   ...
 </div>
 ```
@@ -335,7 +333,8 @@ Because subscriptions are per connection, clients should re-send `subscribe` for
 1. Connect:
 
 ```text
-GET /api/v1/ws?token=<token>
+GET /api/v1/ws
+Authorization: Bearer <token>
 ```
 
 2. Subscribe to a chat:

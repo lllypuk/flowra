@@ -54,8 +54,7 @@ const (
 	// This is the default mode and should be used in production.
 	AppModeReal AppMode = "real"
 
-	// AppModeMock uses mock implementations for development/testing.
-	// This mode is NOT allowed in production environments.
+	// AppModeMock relaxes the handler wiring checks and allows the mock workspace access checker; tests only.
 	AppModeMock AppMode = "mock"
 )
 
@@ -75,8 +74,7 @@ type Config struct {
 
 // AppConfig holds application-level configuration.
 type AppConfig struct {
-	// Mode controls dependency wiring: "real" (default) or "mock".
-	// In production, only "real" mode is allowed.
+	// Mode controls dependency wiring: "real" (default) or "mock"; nothing refuses mock, keep it out of real runs.
 	Mode AppMode `yaml:"mode" env:"APP_MODE"`
 
 	// Name is the application name used in logs and metrics.
@@ -106,7 +104,7 @@ type ServerConfig struct {
 
 // Address returns the full server address (host:port).
 func (c ServerConfig) Address() string {
-	return fmt.Sprintf("%s:%d", c.Host, c.Port)
+	return net.JoinHostPort(c.Host, strconv.Itoa(c.Port))
 }
 
 // MongoDBConfig holds MongoDB connection configuration.

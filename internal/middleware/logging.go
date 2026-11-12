@@ -3,6 +3,7 @@ package middleware
 import (
 	"errors"
 	"log/slog"
+	"net/url"
 	"time"
 
 	"github.com/google/uuid"
@@ -104,8 +105,7 @@ func Logging(config LoggingConfig) echo.MiddlewareFunc {
 				slog.String("user_agent", req.UserAgent()),
 			}
 
-			// Add query string if present
-			if query := req.URL.RawQuery; query != "" {
+			if query := redactQuery(req.URL.Query()); query != "" {
 				attrs = append(attrs, slog.String("query", query))
 			}
 
@@ -152,4 +152,12 @@ func GetRequestID(c echo.Context) string {
 		return id
 	}
 	return ""
+}
+
+// redactQuery hides a token sent in the query string: owner tokens do not expire, so a logged one is a sign-in.
+func redactQuery(values url.Values) string {
+	if values.Has("token") {
+		values.Set("token", "REDACTED")
+	}
+	return values.Encode()
 }

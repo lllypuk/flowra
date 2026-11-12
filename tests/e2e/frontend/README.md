@@ -18,11 +18,14 @@ Browser-based end-to-end tests for the Flowra frontend using Playwright.
    
    `make dev` needs `AUTH_OWNER_TOKEN_SHA256`; pass the token itself to the tests as `E2E_TOKEN`:
    ```bash
-   token=$(openssl rand -hex 32)
-   export AUTH_OWNER_TOKEN_SHA256=$(printf %s "$token" | sha256sum | cut -d' ' -f1)
-   make dev                       # in one terminal
-   E2E_TOKEN=$token make test-e2e-frontend   # in another
+   # terminal 1: make dev holds the terminal
+   openssl rand -hex 32 > /tmp/flowra-e2e-token
+   AUTH_OWNER_TOKEN_SHA256=$(tr -d '\n' < /tmp/flowra-e2e-token | sha256sum | cut -d' ' -f1) make dev
+
+   # terminal 2
+   E2E_TOKEN=$(cat /tmp/flowra-e2e-token) make test-e2e-frontend
    ```
+   Without `E2E_TOKEN` every test that signs in is skipped and the run still passes.
 
 3. **Verify server is running:**
    ```bash

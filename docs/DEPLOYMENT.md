@@ -207,10 +207,24 @@ Data in these volumes survives `docker compose ... down`. Use `docker compose ..
 ### Migrating a database from the Keycloak era
 
 Users created through Keycloak store its subject in `keycloak_id`; every token now resolves to the identity
-`owner`. Point the owner user at it once, or the server creates a new user without workspaces:
+`owner`. Point the owner user at it once, before the first start of this version:
 
 ```bash
-mongosh flowra --eval 'db.users.updateOne({username: "<owner username>"}, {$set: {keycloak_id: "owner"}})'
+docker compose -f docker-compose.prod.yml up -d mongodb
+docker compose -f docker-compose.prod.yml exec mongodb mongosh \
+  -u "$MONGODB_ROOT_USERNAME" -p "$MONGODB_ROOT_PASSWORD" --authenticationDatabase admin flowra \
+  --eval 'db.users.updateOne({username: "<old owner username>"}, {$set: {keycloak_id: "owner"}})'
+```
+
+Without it, the first sign-in looks for an existing user with the `auth.owner.username`: if the old owner has
+that username, it is used (with an error logged on every request until the step is done); otherwise a new user
+without workspaces is created. If the server already ran and created that user, unset its link first, then run the
+step above:
+
+```bash
+docker compose -f docker-compose.prod.yml exec mongodb mongosh \
+  -u "$MONGODB_ROOT_USERNAME" -p "$MONGODB_ROOT_PASSWORD" --authenticationDatabase admin flowra \
+  --eval 'db.users.updateOne({keycloak_id: "owner", username: {$ne: "<old owner username>"}}, {$unset: {keycloak_id: ""}})'
 ```
 
 Leftover `keycloak_group_id` fields and the `idx_workspaces_keycloak_unique` index on workspaces are harmless.

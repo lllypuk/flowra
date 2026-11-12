@@ -266,6 +266,19 @@ func TestLoggingWithQueryString(t *testing.T) {
 	assert.Contains(t, logBuffer.String(), "q=test")
 }
 
+func TestLoggingRedactsQueryToken(t *testing.T) {
+	var logBuffer bytes.Buffer
+	e := echo.New()
+	e.Use(middleware.Logging(middleware.LoggingConfig{Logger: slog.New(slog.NewJSONHandler(&logBuffer, nil))}))
+	e.GET("/ws", func(c echo.Context) error { return c.NoContent(http.StatusUnauthorized) })
+
+	e.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/ws?token=owner-secret&v=1", nil))
+
+	assert.NotContains(t, logBuffer.String(), "owner-secret")
+	assert.Contains(t, logBuffer.String(), "token=REDACTED")
+	assert.Contains(t, logBuffer.String(), "v=1")
+}
+
 func TestLoggingUserAgent(t *testing.T) {
 	var logBuffer bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&logBuffer, nil))

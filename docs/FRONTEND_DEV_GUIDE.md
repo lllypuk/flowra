@@ -159,7 +159,7 @@ See also:
 
 ```html
 <div hx-ext="ws"
-     ws-connect="/api/v1/ws?token={{.Token}}"
+     ws-connect="/api/v1/ws"
      ws-send>
 
     <!-- Messages container -->

@@ -1,8 +1,6 @@
 # Application configuration
 app:
-  # Wiring mode: "real" (default) or "mock"
-  # In production, only "real" mode is allowed.
-  # Use "mock" only for development/testing without external dependencies.
+  # Wiring mode: "real" (default) or "mock". Mock relaxes wiring checks for tests and is not refused anywhere.
   mode: "real"
   name: "flowra"
 

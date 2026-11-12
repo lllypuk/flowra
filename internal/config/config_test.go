@@ -79,6 +79,12 @@ func TestServerConfig_Address(t *testing.T) {
 			port:     9090,
 			expected: "192.168.1.100:9090",
 		},
+		{
+			name:     "ipv6 loopback",
+			host:     "::1",
+			port:     8080,
+			expected: "[::1]:8080",
+		},
 	}
 
 	for _, tt := range tests {

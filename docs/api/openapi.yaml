@@ -1910,9 +1910,8 @@ paths:
       description: |
         Establishes a WebSocket connection for real-time updates.
 
-        Authentication can be provided via:
-        - Query parameter: `?token=<token>`
-        - Authorization header: `Authorization: Bearer <token>`
+        Authentication: the `flowra_session` cookie or `Authorization: Bearer <token>` on the handshake.
+        A token in the query string is not accepted.
 
         ## Message Types
 
@@ -1935,12 +1934,6 @@ paths:
         - `error` - Error message
         - `pong` - Keepalive response
       operationId: websocketConnect
-      parameters:
-        - name: token
-          in: query
-          description: Owner access token
-          schema:
-            type: string
       responses:
         "101":
           description: WebSocket connection established

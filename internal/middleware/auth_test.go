@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
@@ -164,7 +163,6 @@ func TestAuth_ValidToken(t *testing.T) {
 		Email:          "test@example.com",
 		Roles:          []string{"user", "admin"},
 		IsSystemAdmin:  false,
-		ExpiresAt:      time.Now().Add(time.Hour),
 	}
 
 	validator := &mockTokenValidator{
@@ -225,33 +223,6 @@ func TestAuth_TokenValidationFailed(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "Invalid token")
 }
 
-func TestAuth_TokenExpired(t *testing.T) {
-	e := echo.New()
-
-	validator := &mockTokenValidator{
-		err: middleware.ErrTokenExpired,
-	}
-
-	config := middleware.AuthConfig{
-		TokenValidator: validator,
-	}
-
-	e.Use(middleware.Auth(config))
-	e.GET("/test", func(c echo.Context) error {
-		return c.String(http.StatusOK, "ok")
-	})
-
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	req.Header.Set(echo.HeaderAuthorization, "Bearer expired-token")
-	rec := httptest.NewRecorder()
-
-	e.ServeHTTP(rec, req)
-
-	assert.Equal(t, http.StatusUnauthorized, rec.Code)
-	assert.Contains(t, rec.Body.String(), "TOKEN_EXPIRED")
-	assert.Contains(t, rec.Body.String(), "Token has expired")
-}
-
 func TestAuth_WithUserResolver(t *testing.T) {
 	e := echo.New()
 
@@ -260,7 +231,6 @@ func TestAuth_WithUserResolver(t *testing.T) {
 		ExternalUserID: "ext-123",
 		Username:       "testuser",
 		Email:          "test@example.com",
-		ExpiresAt:      time.Now().Add(time.Hour),
 	}
 
 	validator := &mockTokenValidator{
@@ -301,7 +271,6 @@ func TestAuth_UserResolverFailed(t *testing.T) {
 		ExternalUserID: "ext-123",
 		Username:       "testuser",
 		Email:          "test@example.com",
-		ExpiresAt:      time.Now().Add(time.Hour),
 	}
 
 	validator := &mockTokenValidator{
@@ -602,7 +571,6 @@ func TestAuth_ContextEnrichment(t *testing.T) {
 		Email:          "context@example.com",
 		Roles:          []string{"reader", "writer"},
 		IsSystemAdmin:  true,
-		ExpiresAt:      time.Now().Add(time.Hour),
 	}
 
 	validator := &mockTokenValidator{

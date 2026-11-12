@@ -15,7 +15,7 @@ type User struct {
 	email         string
 	displayName   string
 	isSystemAdmin bool
-	isActive      bool // inactive users are kept but treated as removed
+	isActive      bool // stored only: sign-in does not check it
 	createdAt     time.Time
 	updatedAt     time.Time
 }

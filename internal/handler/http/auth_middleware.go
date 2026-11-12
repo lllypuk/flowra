@@ -18,7 +18,7 @@ const (
 
 // PageAuthConfig holds configuration for page authentication middleware.
 type PageAuthConfig struct {
-	// TokenValidator validates JWT tokens from session cookies.
+	// TokenValidator checks the access token stored in the session cookie.
 	TokenValidator middleware.TokenValidator
 
 	// UserResolver resolves users from external IDs.
@@ -86,7 +86,7 @@ func OptionalAuth(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
-// validateAndSetUserContext validates the JWT token and sets user info in context.
+// validateAndSetUserContext checks the session token and sets user info in context.
 func validateAndSetUserContext(c echo.Context, token string) error {
 	config := globalPageAuthConfig
 
