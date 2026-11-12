@@ -1,6 +1,6 @@
 # Flowra User Guide
 
-Welcome to Flowra! This guide will help you get started with team collaboration and task management.
+Flowra is a task tracker and messenger for the owner's development agents. This guide covers the web UI: the lead feed and owner questions are the current features; workspaces, chats and the board are kept from the earlier product and are not developed.
 
 ## Getting Started
 

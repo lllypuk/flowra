@@ -5,7 +5,9 @@
 
 ## Project Overview
 
-Flowra is a chat-centric collaboration system with integrated task management and help desk capabilities.
+Flowra is a task tracker and messenger for one owner's development agents; later, a small team of people and many
+agents. It is not a team chat or a help desk, and has no SSO (Keycloak was removed). Workspaces and chats are kept from
+the earlier product and are not developed further.
 
 Core stack:
 - Backend: Go 1.26+ with Echo v4.
@@ -37,6 +39,21 @@ Core stack:
   - `testutil/`: Test utilities and helpers
 - **`configs/`**: Configuration files
 - **`docs/`**: Documentation (architecture, API specs, guides)
+
+## Working Rules
+
+- Public repository: no names of the owner's other projects and no real correspondence (letters, questions,
+  answers); fixtures are synthetic.
+- An always-on install runs from a separate working copy, `flowra-live`. Do not develop in it. It occupies
+  `127.0.0.1:8080`, `27017` and `6379`: local runs (API, stands, load tests) use other ports and their own database.
+- The Compose project is named `flowra`, so `make dev` and `docker-compose up` from this copy touch the same
+  containers and volumes as the live install.
+
+## Mandatory Checks
+
+Before handing work over, all of these must pass: `go build ./...`, `go vet ./...`, `go test ./...`,
+`go test -tags=integration ./tests/integration/...`, `go test -tags=e2e ./tests/e2e/`, and the CI lint (below) with
+0 issues.
 
 ## Build, Test, and Development Commands
 
@@ -89,7 +106,7 @@ make test-load-tags
 # Format and lint (ALWAYS run before committing)
 make lint                  # go fmt + golangci-lint --fix
 
-# CI lint, exactly as .github/workflows/tests.yml runs it: must report 0 issues before handing work over.
+# CI lint, exactly as .github/workflows/tests.yml runs it: golangci-lint v2.10.1 built on Go 1.26.
 # Other linter versions report a different set; a binary built with Go 1.27 fails to load packages.
 GOTOOLCHAIN=go1.26.0 GOBIN=$HOME/.local/opt/golangci-lint-2.10.1 \
   go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.10.1
@@ -155,7 +172,7 @@ Legacy collections (`chat_read_model`, `task_read_model`) are non-authoritative 
 
 ## Lead Feed Boundary
 
-The lead feed (`internal/application/leadfeed`, collections `leadfeed_*`, routes `/feed` and `/api/v1/feed`) is an external read projection, not part of the Chat write model:
+The lead feed (`internal/application/leadfeed`, collections `leadfeed_*`, routes `/feed` and `/api/v1/feed`) is an external read projection, not part of the Chat write model. The lead's journal is the source of tasks and questions; Flowra never writes it except through `lead-task answer`, invoked by `leadfeed deliver`:
 - Do not import feed data into Chat, Task or Message aggregates, and do not pass feed text to `internal/domain/tag`.
 - The feed itself changes only through `cmd/leadfeed import`. The one write route (API and the `/feed` form, same service and origin check), the owner's answer to a question, goes to `owner_answers` outside the projection: never write answers into `leadfeed_*`, and an import never touches `owner_answers`.
 - A publication replaces the whole feed in one MongoDB transaction; keep the freshness check inside that transaction.

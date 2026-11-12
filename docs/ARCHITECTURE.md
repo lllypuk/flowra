@@ -21,7 +21,7 @@ This document provides a comprehensive overview of the Flowra system architectur
 
 ## System Overview
 
-Flowra is a **Chat System with Task Management** designed for team collaboration. It combines real-time messaging with integrated task tracking, supporting both traditional chat workflows and help desk scenarios.
+Flowra is a task tracker and messenger for one owner's development agents (later, a small team of people and many agents). The lead feed (a read projection of the lead's journal, with owner questions) is the current work; workspaces, chats, WebSocket and the board are kept from the earlier chat product and are not developed. See the [README](../README.md).
 
 ### Key Capabilities
 
@@ -329,7 +329,7 @@ func (r *MongoChatRepository) Save(ctx context.Context, chat *chat.Chat) error {
 |-------|---------|----------|
 | `ChatCreated` | New chat | Notification, Analytics |
 | `MessagePosted` | New message | WebSocket, Notification |
-| `TaskStatusChanged` | Status update | WebSocket, Notification, SLA |
+| `TaskStatusChanged` | Status update | WebSocket, Notification |
 | `UserMentioned` | @mention in message | Notification |
 
 ---
@@ -599,7 +599,7 @@ Channel: events.TaskCreated
 
 ### Delivery Guarantees
 
-**MVP: At-most-once**
+**Now: at-most-once**
 - Redis Pub/Sub doesn't guarantee delivery
 - If subscriber is offline, event is lost
 - **Mitigation:** Events stored in Event Store; state can be rebuilt

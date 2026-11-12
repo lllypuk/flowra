@@ -1,6 +1,6 @@
 # Flowra API Documentation
 
-This directory contains the complete API documentation for the Flowra Chat System with Task Management.
+This directory contains the complete API documentation for Flowra. The feed and owner-question routes are the current surface ([feed-questions.md](feed-questions.md)); workspace and chat routes are kept from the earlier product.
 
 ## Overview
 
