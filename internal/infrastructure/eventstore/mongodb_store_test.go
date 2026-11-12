@@ -11,10 +11,14 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/lllypuk/flowra/internal/application/appcore"
+	chatdomain "github.com/lllypuk/flowra/internal/domain/chat"
 	"github.com/lllypuk/flowra/internal/domain/event"
 	"github.com/lllypuk/flowra/internal/infrastructure/eventstore"
 	"github.com/lllypuk/flowra/tests/testutil"
 )
+
+// storedEventType must be a type the serializer can load back.
+const storedEventType = chatdomain.EventTypeChatRenamed
 
 func TestMongoEventStore_SaveAndLoadEvents(t *testing.T) {
 	// Setup
@@ -26,7 +30,7 @@ func TestMongoEventStore_SaveAndLoadEvents(t *testing.T) {
 	// Prepare test data
 	aggregateID := "test-agg-123"
 	metadata := event.NewMetadata("user-123", "corr-456", "")
-	baseEvent := event.NewBaseEvent("TestEventCreated", aggregateID, "TestAggregate", 1, metadata)
+	baseEvent := event.NewBaseEvent(storedEventType, aggregateID, "TestAggregate", 1, metadata)
 	testEvent := &TestEvent{
 		BaseEvent: baseEvent,
 		TestData:  "test value",
@@ -43,7 +47,7 @@ func TestMongoEventStore_SaveAndLoadEvents(t *testing.T) {
 	// Assert
 	assert.Len(t, loadedEvents, 1)
 	assert.Equal(t, aggregateID, loadedEvents[0].AggregateID())
-	assert.Equal(t, "TestEventCreated", loadedEvents[0].EventType())
+	assert.Equal(t, storedEventType, loadedEvents[0].EventType())
 	assert.Equal(t, "TestAggregate", loadedEvents[0].AggregateType())
 	assert.Equal(t, 1, loadedEvents[0].Version())
 }
@@ -62,7 +66,7 @@ func TestMongoEventStore_SaveMultipleEvents(t *testing.T) {
 	for i := 1; i <= 3; i++ {
 		metadata := event.NewMetadata("user-123", "corr-456", "")
 		baseEvent := event.NewBaseEvent(
-			"TestEventCreated",
+			storedEventType,
 			aggregateID,
 			"TestAggregate",
 			i,
@@ -99,7 +103,7 @@ func TestMongoEventStore_OptimisticLocking_ConflictDetected(t *testing.T) {
 	// Prepare test data
 	aggregateID := "test-agg-123"
 	metadata := event.NewMetadata("user-123", "corr-456", "")
-	baseEvent := event.NewBaseEvent("TestEventCreated", aggregateID, "TestAggregate", 1, metadata)
+	baseEvent := event.NewBaseEvent(storedEventType, aggregateID, "TestAggregate", 1, metadata)
 	testEvent := &TestEvent{
 		BaseEvent: baseEvent,
 		TestData:  "test value",
@@ -110,7 +114,7 @@ func TestMongoEventStore_OptimisticLocking_ConflictDetected(t *testing.T) {
 	require.NoError(t, err)
 
 	// Act: Try to save with wrong expectedVersion (should fail)
-	baseEvent2 := event.NewBaseEvent("TestEventCreated", aggregateID, "TestAggregate", 2, metadata)
+	baseEvent2 := event.NewBaseEvent(storedEventType, aggregateID, "TestAggregate", 2, metadata)
 	testEvent2 := &TestEvent{
 		BaseEvent: baseEvent2,
 		TestData:  "test value 2",
@@ -133,7 +137,7 @@ func TestMongoEventStore_OptimisticLocking_CorrectExpectedVersion(t *testing.T) 
 	metadata := event.NewMetadata("user-123", "corr-456", "")
 
 	// First event
-	baseEvent := event.NewBaseEvent("TestEventCreated", aggregateID, "TestAggregate", 1, metadata)
+	baseEvent := event.NewBaseEvent(storedEventType, aggregateID, "TestAggregate", 1, metadata)
 	testEvent := &TestEvent{
 		BaseEvent: baseEvent,
 		TestData:  "test value",
@@ -144,7 +148,7 @@ func TestMongoEventStore_OptimisticLocking_CorrectExpectedVersion(t *testing.T) 
 	require.NoError(t, err)
 
 	// Second event with correct expectedVersion
-	baseEvent2 := event.NewBaseEvent("TestEventCreated", aggregateID, "TestAggregate", 2, metadata)
+	baseEvent2 := event.NewBaseEvent(storedEventType, aggregateID, "TestAggregate", 2, metadata)
 	testEvent2 := &TestEvent{
 		BaseEvent: baseEvent2,
 		TestData:  "test value 2",
@@ -185,7 +189,7 @@ func TestMongoEventStore_GetVersion_ExistingAggregate(t *testing.T) {
 	// Prepare test data
 	aggregateID := "test-agg-123"
 	metadata := event.NewMetadata("user-123", "corr-456", "")
-	baseEvent := event.NewBaseEvent("TestEventCreated", aggregateID, "TestAggregate", 1, metadata)
+	baseEvent := event.NewBaseEvent(storedEventType, aggregateID, "TestAggregate", 1, metadata)
 	testEvent := &TestEvent{
 		BaseEvent: baseEvent,
 		TestData:  "test value",
@@ -248,7 +252,7 @@ func TestMongoEventStore_SaveEventsInOrder(t *testing.T) {
 		// nemnogo zaderzhki for raznyh vremennyh metok
 		metadata.Timestamp = time.Now().Add(time.Duration(i) * time.Millisecond)
 		baseEvent := event.NewBaseEvent(
-			"TestEventCreated",
+			storedEventType,
 			aggregateID,
 			"TestAggregate",
 			i,
@@ -298,7 +302,7 @@ func TestMongoEventStore_ConcurrentSaves(t *testing.T) {
 
 	// First save
 	metadata := event.NewMetadata("user-123", "corr-456", "")
-	baseEvent := event.NewBaseEvent("TestEventCreated", aggregateID, "TestAggregate", 1, metadata)
+	baseEvent := event.NewBaseEvent(storedEventType, aggregateID, "TestAggregate", 1, metadata)
 	testEvent := &TestEvent{
 		BaseEvent: baseEvent,
 		TestData:  "value 1",
@@ -308,7 +312,7 @@ func TestMongoEventStore_ConcurrentSaves(t *testing.T) {
 	require.NoError(t, err)
 
 	// Second concurrent save with different expected version
-	baseEvent2 := event.NewBaseEvent("TestEventCreated", aggregateID, "TestAggregate", 2, metadata)
+	baseEvent2 := event.NewBaseEvent(storedEventType, aggregateID, "TestAggregate", 2, metadata)
 	testEvent2 := &TestEvent{
 		BaseEvent: baseEvent2,
 		TestData:  "value 2",
