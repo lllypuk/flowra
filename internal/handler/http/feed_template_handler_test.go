@@ -130,6 +130,7 @@ func TestFeedList_GroupsByWhoIsWaited(t *testing.T) {
 	}
 
 	assert.Contains(t, content, "Ждут владельца")
+	assert.Contains(t, content, `У агента <span class="feed-muted">· 1</span>`, "group headings carry their task count")
 	assert.Contains(t, content, "ждёт тебя")
 	assert.Contains(t, content, "wait_user", "source status is shown next to its label")
 	assert.Contains(t, content, "2 ч 05 мин", "status age is measured to the snapshot time")

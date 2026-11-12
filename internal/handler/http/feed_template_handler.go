@@ -91,6 +91,7 @@ type FeedTaskRowView struct {
 type FeedGroupView struct {
 	Key   string
 	Title string
+	Count int
 	Tasks []FeedTaskRowView
 }
 
@@ -168,7 +169,9 @@ func (h *FeedTemplateHandler) FeedList(c echo.Context) error {
 	}
 	for _, group := range feedGroupOrder() {
 		if tasks := byGroup[group.Key]; len(tasks) > 0 {
-			view.Groups = append(view.Groups, FeedGroupView{Key: group.Key, Title: group.Title, Tasks: tasks})
+			view.Groups = append(view.Groups, FeedGroupView{
+				Key: group.Key, Title: group.Title, Count: len(tasks), Tasks: tasks,
+			})
 		}
 	}
 

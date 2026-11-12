@@ -39,6 +39,11 @@
     .feed-group h2 { font-size: 1rem; margin-bottom: 0.4rem; }
     .feed-table { font-size: 0.92rem; }
     .feed-table td, .feed-table th { padding: 0.45rem 0.6rem; vertical-align: top; }
+    .feed-list-table { table-layout: fixed; width: 100%; min-width: 46rem; }
+    .feed-list-table th:nth-child(1) { width: 5.5rem; }
+    .feed-list-table th:nth-child(2) { width: 9.5rem; }
+    .feed-list-table th:nth-child(4) { width: 15rem; }
+    .feed-list-table th:nth-child(5) { width: 7.5rem; }
     .feed-nowrap { white-space: nowrap; }
     .feed-derived {
         font-size: 0.75rem;
@@ -83,9 +88,9 @@
 
     {{range .Data.Groups}}
     <section class="feed-group" data-feed-group="{{.Key}}">
-        <h2>{{.Title}} <span class="feed-muted">· {{len .Tasks}}</span></h2>
+        <h2>{{.Title}} <span class="feed-muted">· {{.Count}}</span></h2>
         <div class="overflow-auto">
-            <table class="feed-table">
+            <table class="feed-table feed-list-table">
                 <thead>
                     <tr>
                         <th scope="col">№</th>

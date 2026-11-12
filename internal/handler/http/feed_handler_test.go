@@ -272,3 +272,28 @@ func TestFeedHandler_Errors(t *testing.T) {
 		})
 	}
 }
+
+func TestFeedTime_FixedMilliseconds(t *testing.T) {
+	tests := []struct {
+		name string
+		at   time.Time
+		want string
+	}{
+		{name: "trailing zero is kept", at: time.Date(2026, 11, 12, 4, 0, 17, 920_000_000, time.UTC), want: `"2026-11-12T04:00:17.920Z"`},
+		{name: "whole second", at: time.Date(2026, 11, 12, 4, 0, 17, 0, time.UTC), want: `"2026-11-12T04:00:17.000Z"`},
+		{name: "other zone is converted to UTC",
+			at: time.Date(2026, 11, 12, 9, 0, 17, 5_000_000, time.FixedZone("YEKT", 5*3600)), want: `"2026-11-12T04:00:17.005Z"`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			raw, err := json.Marshal(httphandler.FeedTime{Time: tt.at})
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, string(raw))
+
+			var back httphandler.FeedTime
+			require.NoError(t, json.Unmarshal(raw, &back))
+			assert.True(t, back.Equal(tt.at))
+		})
+	}
+}

@@ -35,6 +35,9 @@ const (
 	connectTimeout    = 10 * time.Second
 	disconnectTimeout = 5 * time.Second
 	stdinPath         = "-"
+
+	// timeLayout matches the fixed milliseconds of the source and of the feed API.
+	timeLayout = "2006-01-02T15:04:05.000Z"
 )
 
 const usage = `usage:
@@ -176,7 +179,7 @@ func runImport(
 	}
 
 	fmt.Fprintf(stdout, "%s revision=%s as_of=%s tasks=%d records=%d\n",
-		result.Outcome, result.Revision, result.AsOf.UTC().Format(time.RFC3339Nano), result.Tasks, result.Records)
+		result.Outcome, result.Revision, result.AsOf.UTC().Format(timeLayout), result.Tasks, result.Records)
 	if result.PreviousEpoch != "" {
 		fmt.Fprintf(stdout, "source journal changed: previous epoch %s\n", result.PreviousEpoch)
 	}
@@ -215,8 +218,8 @@ func runStatus(ctx context.Context, repo *mongorepo.MongoLeadFeedRepository, std
 		fmt.Fprintln(stdout, "published: nothing yet")
 	} else {
 		fmt.Fprintf(stdout, "published: revision=%s as_of=%s tasks=%d records=%d source=%s epoch=%s at=%s\n",
-			state.Revision, state.AsOf.Format(time.RFC3339Nano), state.Tasks, state.Records,
-			state.Source, state.Epoch, state.PublishedAt.Format(time.RFC3339Nano))
+			state.Revision, state.AsOf.Format(timeLayout), state.Tasks, state.Records,
+			state.Source, state.Epoch, state.PublishedAt.Format(timeLayout))
 	}
 
 	if attempt == nil {
@@ -224,7 +227,7 @@ func runStatus(ctx context.Context, repo *mongorepo.MongoLeadFeedRepository, std
 		return exitOK
 	}
 	fmt.Fprintf(stdout, "last attempt: %s at=%s revision=%s\n",
-		attempt.Outcome, attempt.At.Format(time.RFC3339Nano), attempt.Revision)
+		attempt.Outcome, attempt.At.Format(timeLayout), attempt.Revision)
 	if attempt.Error != "" {
 		fmt.Fprintf(stdout, "last error: %s\n", attempt.Error)
 	}

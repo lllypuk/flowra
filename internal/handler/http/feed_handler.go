@@ -53,19 +53,40 @@ func (h *FeedHandler) RegisterRoutes(r *httpserver.Router) {
 	r.Auth().GET("/feed/tasks/:id/records", h.ListRecords)
 }
 
+// FeedTime is a UTC instant printed with fixed millisecond precision, the way the source prints it.
+type FeedTime struct {
+	time.Time
+}
+
+const feedTimeJSONLayout = `"2006-01-02T15:04:05.000Z"`
+
+// MarshalJSON prints RFC 3339 UTC with exactly three fractional digits.
+func (t FeedTime) MarshalJSON() ([]byte, error) {
+	return []byte(t.UTC().Format(feedTimeJSONLayout)), nil
+}
+
+// UnmarshalJSON accepts any RFC 3339 time.
+func (t *FeedTime) UnmarshalJSON(data []byte) error {
+	return t.Time.UnmarshalJSON(data)
+}
+
+func feedTime(t time.Time) FeedTime { return FeedTime{Time: t} }
+
+func feedTimePtr(t time.Time) *FeedTime { return &FeedTime{Time: t} }
+
 // FeedMetaResponse names the snapshot a response was read from; revision is empty before the first import.
 type FeedMetaResponse struct {
-	Revision string     `json:"revision"`
-	AsOf     *time.Time `json:"as_of"`
+	Revision string    `json:"revision"`
+	AsOf     *FeedTime `json:"as_of"`
 }
 
 // FeedAttemptResponse is the last import attempt.
 type FeedAttemptResponse struct {
-	At            time.Time `json:"at"`
-	Outcome       string    `json:"outcome"`
-	Error         string    `json:"error,omitempty"`
-	Revision      string    `json:"revision,omitempty"`
-	PreviousEpoch string    `json:"previous_epoch,omitempty"`
+	At            FeedTime `json:"at"`
+	Outcome       string   `json:"outcome"`
+	Error         string   `json:"error,omitempty"`
+	Revision      string   `json:"revision,omitempty"`
+	PreviousEpoch string   `json:"previous_epoch,omitempty"`
 }
 
 // FeedStatusResponse is the health of the projection.
@@ -78,7 +99,7 @@ type FeedStatusResponse struct {
 	Epoch       string               `json:"epoch,omitempty"`
 	Tasks       int                  `json:"tasks"`
 	Records     int                  `json:"records"`
-	PublishedAt *time.Time           `json:"published_at"`
+	PublishedAt *FeedTime            `json:"published_at"`
 	LastAttempt *FeedAttemptResponse `json:"last_attempt"`
 }
 
@@ -92,10 +113,10 @@ type FeedSpentResponse struct {
 
 // FeedTransitionResponse is one status change of a task.
 type FeedTransitionResponse struct {
-	At      time.Time `json:"at"`
-	Status  string    `json:"status"`
-	Cause   *string   `json:"cause"`
-	Derived bool      `json:"derived"`
+	At      FeedTime `json:"at"`
+	Status  string   `json:"status"`
+	Cause   *string  `json:"cause"`
+	Derived bool     `json:"derived"`
 }
 
 // FeedTaskResponse is a lead task. Status is the source value; StatusLabel and Group are for display only.
@@ -104,12 +125,12 @@ type FeedTaskResponse struct {
 	Title       string                   `json:"title"`
 	Project     string                   `json:"project"`
 	Agent       string                   `json:"agent"`
-	CreatedAt   time.Time                `json:"created_at"`
+	CreatedAt   FeedTime                 `json:"created_at"`
 	Status      string                   `json:"status"`
 	StatusLabel string                   `json:"status_label"`
 	Group       string                   `json:"group"`
 	WaitingOn   *string                  `json:"waiting_on"`
-	StatusSince time.Time                `json:"status_since"`
+	StatusSince FeedTime                 `json:"status_since"`
 	Note        string                   `json:"note"`
 	Returns     int                      `json:"returns"`
 	Spent       FeedSpentResponse        `json:"spent"`
@@ -127,7 +148,7 @@ type FeedRecordResponse struct {
 	ID           string             `json:"id"`
 	Task         string             `json:"task"`
 	Kind         string             `json:"kind"`
-	At           time.Time          `json:"at"`
+	At           FeedTime           `json:"at"`
 	Order        int                `json:"order"`
 	Actor        string             `json:"actor"`
 	ActorDerived bool               `json:"actor_derived"`
@@ -171,15 +192,15 @@ func (h *FeedHandler) Status(c echo.Context) error {
 
 	resp := FeedStatusResponse{Healthy: status.Healthy()}
 	if state := status.State; state != nil {
-		resp.FeedMetaResponse = FeedMetaResponse{Revision: state.Revision, AsOf: &state.AsOf}
+		resp.FeedMetaResponse = FeedMetaResponse{Revision: state.Revision, AsOf: feedTimePtr(state.AsOf)}
 		resp.Published = true
 		resp.Source, resp.Epoch = state.Source, state.Epoch
 		resp.Tasks, resp.Records = state.Tasks, state.Records
-		resp.PublishedAt = &state.PublishedAt
+		resp.PublishedAt = feedTimePtr(state.PublishedAt)
 	}
 	if attempt := status.LastAttempt; attempt != nil {
 		resp.LastAttempt = &FeedAttemptResponse{
-			At:            attempt.At,
+			At:            feedTime(attempt.At),
 			Outcome:       attempt.Outcome,
 			Error:         attempt.Error,
 			Revision:      attempt.Revision,
@@ -296,14 +317,14 @@ func toFeedMeta(meta leadfeed.Meta) FeedMetaResponse {
 	if meta.Revision == "" {
 		return FeedMetaResponse{}
 	}
-	return FeedMetaResponse{Revision: meta.Revision, AsOf: &meta.AsOf}
+	return FeedMetaResponse{Revision: meta.Revision, AsOf: feedTimePtr(meta.AsOf)}
 }
 
 func toFeedTaskResponse(task *leadfeed.Task) FeedTaskResponse {
 	transitions := make([]FeedTransitionResponse, 0, len(task.Transitions))
 	for _, tr := range task.Transitions {
 		transitions = append(transitions, FeedTransitionResponse{
-			At:      tr.At,
+			At:      feedTime(tr.At),
 			Status:  tr.Status,
 			Cause:   tr.Cause,
 			Derived: tr.Derived,
@@ -314,12 +335,12 @@ func toFeedTaskResponse(task *leadfeed.Task) FeedTaskResponse {
 		Title:       task.Title,
 		Project:     task.Project,
 		Agent:       task.Agent,
-		CreatedAt:   task.CreatedAt,
+		CreatedAt:   feedTime(task.CreatedAt),
 		Status:      task.Status,
 		StatusLabel: leadfeed.StatusLabel(task.Status),
 		Group:       leadfeed.StatusGroup(task.Status),
 		WaitingOn:   task.WaitingOn,
-		StatusSince: task.StatusSince,
+		StatusSince: feedTime(task.StatusSince),
 		Note:        task.Note,
 		Returns:     task.Returns,
 		Spent: FeedSpentResponse{
@@ -337,7 +358,7 @@ func toFeedRecordResponse(rec *leadfeed.Record) FeedRecordResponse {
 		ID:           rec.ID,
 		Task:         rec.Task,
 		Kind:         rec.Kind,
-		At:           rec.At,
+		At:           feedTime(rec.At),
 		Order:        rec.Order,
 		Actor:        rec.Actor,
 		ActorDerived: rec.ActorDerived,
