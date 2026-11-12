@@ -104,6 +104,43 @@ type leadFeedRecordDoc struct {
 	BodyDerived  bool      `bson:"body_derived"`
 	BodyMissing  *string   `bson:"body_missing"`
 	Format       string    `bson:"format"`
+	// Every field of leadfeed.Record is copied by hand: one added there and missed here is dropped on publication.
+	Question *leadFeedQuestionDoc `bson:"question,omitempty"`
+}
+
+type leadFeedOptionDoc struct {
+	ID    string `bson:"id"`
+	Label string `bson:"label"`
+}
+
+type leadFeedRecommendationDoc struct {
+	OptionID *string `bson:"option_id"`
+	Why      string  `bson:"why"`
+}
+
+type leadFeedAnswerDoc struct {
+	AnswerID   string    `bson:"answer_id"`
+	OptionID   *string   `bson:"option_id"`
+	Text       string    `bson:"text"`
+	AnsweredAt time.Time `bson:"answered_at"`
+	Late       bool      `bson:"late"`
+	Delivered  bool      `bson:"delivered"`
+}
+
+type leadFeedResolvedDoc struct {
+	At        time.Time `bson:"at"`
+	Note      string    `bson:"note"`
+	Elsewhere bool      `bson:"elsewhere"`
+}
+
+type leadFeedQuestionDoc struct {
+	QID            string                     `bson:"qid"`
+	FP             string                     `bson:"fp"`
+	Options        []leadFeedOptionDoc        `bson:"options"`
+	Recommendation *leadFeedRecommendationDoc `bson:"recommendation"`
+	Scope          string                     `bson:"scope"`
+	Answer         *leadFeedAnswerDoc         `bson:"answer"`
+	Resolved       *leadFeedResolvedDoc       `bson:"resolved"`
 }
 
 type leadFeedStateDoc struct {
@@ -408,6 +445,19 @@ func (v leadFeedView) Records(
 	return records, nil
 }
 
+func (v leadFeedView) Question(ctx context.Context, qid string) (*leadfeed.Record, error) {
+	var doc leadFeedRecordDoc
+	err := v.repo.records.FindOne(ctx, bson.M{"question.qid": qid}).Decode(&doc)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return nil, leadfeed.ErrQuestionNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("find feed question: %w", err)
+	}
+	rec := leadFeedRecordFromDoc(&doc)
+	return &rec, nil
+}
+
 // mongoTime drops sub-millisecond precision so that stored and compared times agree.
 func mongoTime(t time.Time) time.Time {
 	return t.UTC().Truncate(time.Millisecond)
@@ -488,6 +538,7 @@ func leadFeedRecordToDoc(rec *leadfeed.Record) leadFeedRecordDoc {
 		BodyDerived:  rec.BodyDerived,
 		BodyMissing:  rec.BodyMissing,
 		Format:       rec.Format,
+		Question:     leadFeedQuestionToDoc(rec.Question),
 	}
 }
 
@@ -505,5 +556,56 @@ func leadFeedRecordFromDoc(doc *leadFeedRecordDoc) leadfeed.Record {
 		BodyDerived:  doc.BodyDerived,
 		BodyMissing:  doc.BodyMissing,
 		Format:       doc.Format,
+		Question:     leadFeedQuestionFromDoc(doc.Question),
 	}
+}
+
+func leadFeedQuestionToDoc(q *leadfeed.Question) *leadFeedQuestionDoc {
+	if q == nil {
+		return nil
+	}
+	doc := &leadFeedQuestionDoc{
+		QID: q.QID, FP: q.FP, Scope: q.Scope, Options: make([]leadFeedOptionDoc, 0, len(q.Options)),
+	}
+	for _, opt := range q.Options {
+		doc.Options = append(doc.Options, leadFeedOptionDoc{ID: opt.ID, Label: opt.Label})
+	}
+	if q.Recommendation != nil {
+		doc.Recommendation = &leadFeedRecommendationDoc{OptionID: q.Recommendation.OptionID, Why: q.Recommendation.Why}
+	}
+	if a := q.Answer; a != nil {
+		doc.Answer = &leadFeedAnswerDoc{
+			AnswerID: a.AnswerID, OptionID: a.OptionID, Text: a.Text,
+			AnsweredAt: mongoTime(a.AnsweredAt), Late: a.Late, Delivered: a.Delivered,
+		}
+	}
+	if r := q.Resolved; r != nil {
+		doc.Resolved = &leadFeedResolvedDoc{At: mongoTime(r.At), Note: r.Note, Elsewhere: r.Elsewhere}
+	}
+	return doc
+}
+
+func leadFeedQuestionFromDoc(doc *leadFeedQuestionDoc) *leadfeed.Question {
+	if doc == nil {
+		return nil
+	}
+	q := &leadfeed.Question{
+		QID: doc.QID, FP: doc.FP, Scope: doc.Scope, Options: make([]leadfeed.Option, 0, len(doc.Options)),
+	}
+	for _, opt := range doc.Options {
+		q.Options = append(q.Options, leadfeed.Option{ID: opt.ID, Label: opt.Label})
+	}
+	if doc.Recommendation != nil {
+		q.Recommendation = &leadfeed.Recommendation{OptionID: doc.Recommendation.OptionID, Why: doc.Recommendation.Why}
+	}
+	if a := doc.Answer; a != nil {
+		q.Answer = &leadfeed.Answer{
+			AnswerID: a.AnswerID, OptionID: a.OptionID, Text: a.Text,
+			AnsweredAt: a.AnsweredAt.UTC(), Late: a.Late, Delivered: a.Delivered,
+		}
+	}
+	if r := doc.Resolved; r != nil {
+		q.Resolved = &leadfeed.Resolved{At: r.At.UTC(), Note: r.Note, Elsewhere: r.Elsewhere}
+	}
+	return q
 }

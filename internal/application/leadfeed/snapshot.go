@@ -15,8 +15,15 @@ import (
 	"time"
 )
 
-// SchemaVersion is the only snapshot schema this build accepts.
-const SchemaVersion = 1
+// Snapshot schemas this build accepts. The source writes SchemaQuestions only when the export holds a question,
+// so that a build which predates questions rejects the whole snapshot instead of silently dropping them.
+const (
+	SchemaBase      = 1
+	SchemaQuestions = 2
+)
+
+// KindQuestion is the record kind that carries a Question.
+const KindQuestion = "question"
 
 const (
 	lineHeader = "header"
@@ -88,6 +95,46 @@ type Source struct {
 	Ref  string `json:"ref"`
 }
 
+// Option is one answer choice offered with a question.
+type Option struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+}
+
+// Recommendation is the lead's own pick; OptionID is nil when the question has no options.
+type Recommendation struct {
+	OptionID *string `json:"option_id"`
+	Why      string  `json:"why"`
+}
+
+// Answer is the owner's answer as the lead's journal recorded it; Delivered means the lead's mailbox accepted it.
+type Answer struct {
+	AnswerID   string    `json:"answer_id"`
+	OptionID   *string   `json:"option_id"`
+	Text       string    `json:"text"`
+	AnsweredAt time.Time `json:"answered_at"`
+	Late       bool      `json:"late"`
+	Delivered  bool      `json:"delivered"`
+}
+
+// Resolved marks a question the lead closed; Elsewhere means the owner answered outside Flowra.
+type Resolved struct {
+	At        time.Time `json:"at"`
+	Note      string    `json:"note"`
+	Elsewhere bool      `json:"elsewhere"`
+}
+
+// Question is immutable after it is asked; FP is the source's SHA-256 over text, options and scope.
+type Question struct {
+	QID            string          `json:"qid"`
+	FP             string          `json:"fp"`
+	Options        []Option        `json:"options"`
+	Recommendation *Recommendation `json:"recommendation"`
+	Scope          string          `json:"scope"`
+	Answer         *Answer         `json:"answer"`
+	Resolved       *Resolved       `json:"resolved"`
+}
+
 // Record is one thread entry. ID is stable across snapshots; Order is not.
 type Record struct {
 	ID           string    `json:"id"`
@@ -102,6 +149,8 @@ type Record struct {
 	BodyDerived  bool      `json:"body_derived"`
 	BodyMissing  *string   `json:"body_missing"`
 	Format       string    `json:"format"`
+	// Question is set exactly for records of KindQuestion.
+	Question *Question `json:"question,omitempty"`
 }
 
 // Snapshot is a fully validated export.
@@ -207,8 +256,8 @@ func (p *parser) readHeader() error {
 	if err = p.decode(line, h); err != nil {
 		return err
 	}
-	if h.Schema != SchemaVersion {
-		return fmt.Errorf("%w: schema %d, want %d", ErrSnapshotSchema, h.Schema, SchemaVersion)
+	if h.Schema != SchemaBase && h.Schema != SchemaQuestions {
+		return fmt.Errorf("%w: schema %d, want %d or %d", ErrSnapshotSchema, h.Schema, SchemaBase, SchemaQuestions)
 	}
 	if h.Source == "" || h.Epoch == "" || h.Revision == "" || h.AsOf.IsZero() {
 		return fmt.Errorf("%w: header needs source, epoch, revision and as_of", ErrSnapshotMalformed)
@@ -326,7 +375,9 @@ func (p *parser) checkTasks() (map[string]struct{}, error) {
 
 func (p *parser) checkRecords(tasks map[string]struct{}) (map[string]struct{}, error) {
 	records := make(map[string]struct{}, len(p.snap.Records))
-	for _, rec := range p.snap.Records {
+	qids := make(map[string]struct{})
+	for i := range p.snap.Records {
+		rec := &p.snap.Records[i]
 		if rec.ID == "" || rec.Kind == "" {
 			return nil, fmt.Errorf("%w: record needs id and kind", ErrSnapshotMalformed)
 		}
@@ -343,9 +394,82 @@ func (p *parser) checkRecords(tasks map[string]struct{}) (map[string]struct{}, e
 				rec.ID,
 			)
 		}
+		if err := p.checkQuestion(rec, qids); err != nil {
+			return nil, err
+		}
 		records[rec.ID] = struct{}{}
 	}
 	return records, nil
+}
+
+func (p *parser) checkQuestion(rec *Record, qids map[string]struct{}) error {
+	if rec.Kind != KindQuestion {
+		if rec.Question != nil {
+			return fmt.Errorf("%w: record %q of kind %q carries a question", ErrSnapshotMalformed, rec.ID, rec.Kind)
+		}
+		return nil
+	}
+
+	q := rec.Question
+	switch {
+	case p.snap.Header.Schema < SchemaQuestions:
+		return fmt.Errorf("%w: question record %q in schema %d", ErrSnapshotMalformed, rec.ID, p.snap.Header.Schema)
+	case q == nil:
+		return fmt.Errorf("%w: question record %q has no question object", ErrSnapshotMalformed, rec.ID)
+	case rec.Body == nil || *rec.Body == "" || rec.BodyMissing != nil:
+		return fmt.Errorf("%w: question record %q needs a non-empty body", ErrSnapshotMalformed, rec.ID)
+	case q.QID == "" || q.Scope == "":
+		return fmt.Errorf("%w: question record %q needs qid and scope", ErrSnapshotMalformed, rec.ID)
+	}
+	if _, dup := qids[q.QID]; dup {
+		return fmt.Errorf("%w: duplicate question %q", ErrSnapshotMalformed, q.QID)
+	}
+	qids[q.QID] = struct{}{}
+
+	if fp, err := hex.DecodeString(q.FP); err != nil || len(fp) != sha256.Size {
+		return fmt.Errorf("%w: question %q fp is not a SHA-256 hex digest", ErrSnapshotMalformed, q.QID)
+	}
+
+	options, err := checkOptions(q)
+	if err != nil {
+		return err
+	}
+	if q.Recommendation != nil {
+		if err = checkOptionRef(q.QID, "recommendation", q.Recommendation.OptionID, options); err != nil {
+			return err
+		}
+	}
+	if q.Answer != nil {
+		if q.Answer.AnswerID == "" {
+			return fmt.Errorf("%w: question %q answer has no answer_id", ErrSnapshotMalformed, q.QID)
+		}
+		return checkOptionRef(q.QID, "answer", q.Answer.OptionID, options)
+	}
+	return nil
+}
+
+func checkOptions(q *Question) (map[string]struct{}, error) {
+	options := make(map[string]struct{}, len(q.Options))
+	for _, opt := range q.Options {
+		if opt.ID == "" {
+			return nil, fmt.Errorf("%w: question %q has an option without id", ErrSnapshotMalformed, q.QID)
+		}
+		if _, dup := options[opt.ID]; dup {
+			return nil, fmt.Errorf("%w: question %q has duplicate option %q", ErrSnapshotMalformed, q.QID, opt.ID)
+		}
+		options[opt.ID] = struct{}{}
+	}
+	return options, nil
+}
+
+func checkOptionRef(qid, what string, ref *string, options map[string]struct{}) error {
+	if ref == nil {
+		return nil
+	}
+	if _, ok := options[*ref]; !ok {
+		return fmt.Errorf("%w: question %q %s refers to unknown option %q", ErrSnapshotMalformed, qid, what, *ref)
+	}
+	return nil
 }
 
 func (p *parser) checkCauses(records map[string]struct{}) error {

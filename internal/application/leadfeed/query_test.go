@@ -56,6 +56,17 @@ func (v memView) Records(_ context.Context, taskID string, offset, limit int) ([
 	return window(v.feed.records[taskID], offset, limit), nil
 }
 
+func (v memView) Question(_ context.Context, qid string) (*leadfeed.Record, error) {
+	for _, recs := range v.feed.records {
+		for i := range recs {
+			if recs[i].Question != nil && recs[i].Question.QID == qid {
+				return &recs[i], nil
+			}
+		}
+	}
+	return nil, leadfeed.ErrQuestionNotFound
+}
+
 func window[T any](items []T, offset, limit int) []T {
 	if offset >= len(items) {
 		return nil

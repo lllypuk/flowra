@@ -23,6 +23,8 @@ var (
 	// ErrCommitUnknown means the feed holds either the old or the new snapshot in full; which one is not known.
 	ErrCommitUnknown = errors.New("publication commit result is unknown")
 	ErrTaskNotFound  = errors.New("feed task not found")
+	// ErrQuestionNotFound means the published feed has no question with that qid.
+	ErrQuestionNotFound = errors.New("feed question not found")
 )
 
 // State describes the published snapshot.
@@ -79,4 +81,6 @@ type View interface {
 	// Task returns ErrTaskNotFound for an unknown id.
 	Task(ctx context.Context, id string) (*Task, error)
 	Records(ctx context.Context, taskID string, offset, limit int) ([]Record, error)
+	// Question returns the record of kind question with that qid, or ErrQuestionNotFound.
+	Question(ctx context.Context, qid string) (*Record, error)
 }

@@ -538,6 +538,12 @@ func GetLeadFeedIndexes() []IndexDefinition {
 			Keys:       bson.D{{Key: "task", Value: 1}, {Key: "order", Value: 1}},
 			Options:    options.Index().SetName("idx_leadfeed_records_task_order"),
 		},
+		{
+			Collection: CollectionLeadFeedRecords,
+			Keys:       bson.D{{Key: "question.qid", Value: 1}},
+			Options: options.Index().SetUnique(true).SetName("idx_leadfeed_records_question_qid").
+				SetPartialFilterExpression(bson.M{"question.qid": bson.M{"$type": "string"}}),
+		},
 	}
 }
 

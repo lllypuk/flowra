@@ -500,7 +500,7 @@ func TestGetLeadFeedIndexes(t *testing.T) {
 		assert.NotNil(t, idx.Options)
 	}
 	assert.Equal(t, 1, byCollection[mongodb.CollectionLeadFeedTasks])
-	assert.Equal(t, 1, byCollection[mongodb.CollectionLeadFeedRecords])
+	assert.Equal(t, 2, byCollection[mongodb.CollectionLeadFeedRecords])
 }
 
 func TestCreateCollectionIndexes_LeadFeed(t *testing.T) {
@@ -511,6 +511,10 @@ func TestCreateCollectionIndexes_LeadFeed(t *testing.T) {
 
 	for _, collName := range []string{mongodb.CollectionLeadFeedTasks, mongodb.CollectionLeadFeedRecords} {
 		require.NoError(t, mongodb.CreateCollectionIndexes(ctx, db, collName))
-		assert.Len(t, getCollectionIndexes(ctx, t, db, collName), 2, "collection %s", collName)
+		want := 2
+		if collName == mongodb.CollectionLeadFeedRecords {
+			want = 3
+		}
+		assert.Len(t, getCollectionIndexes(ctx, t, db, collName), want, "collection %s", collName)
 	}
 }

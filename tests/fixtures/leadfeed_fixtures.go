@@ -51,6 +51,31 @@ func LeadFeedLetter(id, taskID, body string, order int) leadfeed.Record {
 	}
 }
 
+// LeadFeedQuestion builds a synthetic question record with options a and b, recommending a, still waiting for an answer.
+func LeadFeedQuestion(id, taskID, qid string, order int) leadfeed.Record {
+	body := "Synthetic question " + qid
+	a := "a"
+	fp := sha256.Sum256([]byte(qid))
+	return leadfeed.Record{
+		ID:     id,
+		Task:   taskID,
+		Kind:   leadfeed.KindQuestion,
+		At:     LeadFeedBase.Add(time.Duration(order) * time.Second),
+		Order:  order,
+		Actor:  "lead",
+		Source: leadfeed.Source{Kind: "journal", Ref: id},
+		Body:   &body,
+		Format: "text",
+		Question: &leadfeed.Question{
+			QID:            qid,
+			FP:             hex.EncodeToString(fp[:]),
+			Options:        []leadfeed.Option{{ID: "a", Label: "Option A"}, {ID: "b", Label: "Option B"}},
+			Recommendation: &leadfeed.Recommendation{OptionID: &a, Why: "Synthetic reason"},
+			Scope:          "Synthetic scope: applies to the demo only",
+		},
+	}
+}
+
 // LeadFeedSnapshotJSONL encodes a snapshot the way the lead tool exports it, with a matching revision and footer.
 func LeadFeedSnapshotJSONL(asOf time.Time, tasks []leadfeed.Task, records []leadfeed.Record) ([]byte, error) {
 	lines := make([][]byte, 0, len(tasks)+len(records))
@@ -80,8 +105,15 @@ func LeadFeedSnapshotJSONL(asOf time.Time, tasks []leadfeed.Task, records []lead
 	sum := sha256.Sum256(bytes.Join(lines, []byte("\n")))
 	revision := hex.EncodeToString(sum[:])[:leadFeedRevisionHexLen]
 
+	schema := leadfeed.SchemaBase
+	for i := range records {
+		if records[i].Question != nil {
+			schema = leadfeed.SchemaQuestions
+		}
+	}
+
 	header, err := json.Marshal(map[string]any{
-		"type": "header", "schema": leadfeed.SchemaVersion, "source": "lead-task", "epoch": "feedfacecafe",
+		"type": "header", "schema": schema, "source": "lead-task", "epoch": "feedfacecafe",
 		"revision": revision, "as_of": asOf.UTC().Format(time.RFC3339Nano), "derivation": 1,
 		"complete": true, "errors": []string{},
 	})

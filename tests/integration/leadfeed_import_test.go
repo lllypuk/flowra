@@ -147,7 +147,7 @@ func TestLeadFeedImport_RejectedInputKeepsPublishedFeed(t *testing.T) {
 		{name: "truncated", input: bytes.Join(lines[:len(lines)-1], []byte("\n")), wantErr: leadfeed.ErrSnapshotTruncated},
 		{name: "marked incomplete", input: bytes.Replace(valid, []byte(`"complete":true`), []byte(`"complete":false`), 1),
 			wantErr: leadfeed.ErrSnapshotIncomplete},
-		{name: "unknown schema", input: bytes.Replace(valid, []byte(`"schema":1`), []byte(`"schema":2`), 1),
+		{name: "unknown schema", input: bytes.Replace(valid, []byte(`"schema":1`), []byte(`"schema":3`), 1),
 			wantErr: leadfeed.ErrSnapshotSchema},
 		{name: "content edited under the same revision", input: bytes.Replace(valid, []byte("T-0002"), []byte("T-0003"), 1),
 			wantErr: leadfeed.ErrSnapshotRevision},

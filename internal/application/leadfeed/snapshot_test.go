@@ -175,7 +175,7 @@ func TestParseSnapshot_Rejects(t *testing.T) {
 		{
 			name: "unknown schema",
 			mutate: func(t *testing.T, l []string) []string {
-				l[0] = edit(t, l[0], func(h map[string]any) { h["schema"] = 2 })
+				l[0] = edit(t, l[0], func(h map[string]any) { h["schema"] = 3 })
 				return l
 			},
 			wantErr: leadfeed.ErrSnapshotSchema,

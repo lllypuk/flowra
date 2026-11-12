@@ -397,14 +397,15 @@ HTTPS только внутри частной сети и проксирует 
 - Modify: `internal/application/leadfeed/store.go`
 - Modify: `internal/infrastructure/repository/mongodb/leadfeed_repository.go`, `leadfeed_repository_test.go`
 - Modify: `internal/infrastructure/mongodb/indexes.go`, `indexes_test.go`
-- Modify: `tests/fixtures/leadfeed/full.jsonl`, `tests/fixtures/leadfeed_fixtures.go`
+- Create: `tests/fixtures/leadfeed/questions.jsonl` (`full.jsonl` остаётся схемой 1)
+- Modify: `tests/fixtures/leadfeed_fixtures.go`
 
-- [ ] `schema: 2`: парсер принимает 1 и 2, запись `question` — только во 2; тип `Question` и поле `Record.Question`; проверки парсера
-- [ ] `leadFeedRecordDoc` хранит объект вопроса; `View` получает вопрос по `qid`; индекс по `question.qid`
-- [ ] фикстура: вопрос ждёт ответа, с подтверждённым и неподтверждённым ответом, закрытый с ответом и без, поздний ответ, без вариантов
-- [ ] тесты: разбор — успех и каждый вид отказа, вопрос в схеме 1 — отказ, снимок схемы 1 разбирается как раньше; на testcontainers — вопрос переживает публикацию и чтение без потери полей
-- [ ] образец лида `snapshot-3-questions.jsonl` разбирается при `LEADFEED_SAMPLE_DIR=~/projects/lead/tasks/samples` (тест пропускается без переменной; образец в репозиторий не копируется)
-- [ ] прогнать обязательные проверки
+- [x] `schema: 2`: парсер принимает 1 и 2, запись `question` — только во 2; тип `Question` и поле `Record.Question`; проверки парсера
+- [x] `leadFeedRecordDoc` хранит объект вопроса; `View` получает вопрос по `qid`; индекс по `question.qid`
+- [x] фикстура (отдельный файл `questions.jsonl`, чтобы `full.jsonl` и его тесты остались схемой 1): вопрос ждёт ответа, с подтверждённым и неподтверждённым ответом, закрытый с ответом и без, поздний ответ, без вариантов
+- [x] тесты: разбор — успех и каждый вид отказа, вопрос в схеме 1 — отказ, снимок схемы 1 разбирается как раньше; на testcontainers — вопрос переживает публикацию и чтение без потери полей
+- [x] образец лида `snapshot-3-questions.jsonl` разбирается при `LEADFEED_SAMPLE_DIR=~/projects/lead/tasks/samples` (тест пропускается без переменной; образец в репозиторий не копируется)
+- [x] прогнать обязательные проверки (`go build`, `go vet`, unit, integration и e2e ленты, линтер CI — 0 замечаний; полный набор — в Task 9)
 
 ### Task 4: Хранилище ответов
 

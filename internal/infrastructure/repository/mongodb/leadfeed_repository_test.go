@@ -3,6 +3,7 @@ package mongodb_test
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/lllypuk/flowra/internal/application/leadfeed"
 	"github.com/lllypuk/flowra/internal/infrastructure/repository/mongodb"
+	"github.com/lllypuk/flowra/tests/fixtures"
 	"github.com/lllypuk/flowra/tests/testutil"
 )
 
@@ -26,7 +28,7 @@ func setupLeadFeedRepository(t *testing.T) *mongodb.MongoLeadFeedRepository {
 // feedSnapshot builds a snapshot whose every task title carries the revision, so a mixed read is visible.
 func feedSnapshot(revision string, asOfSeconds int, taskIDs ...string) *leadfeed.Snapshot {
 	snap := &leadfeed.Snapshot{Header: leadfeed.Header{
-		Schema:   leadfeed.SchemaVersion,
+		Schema:   leadfeed.SchemaBase,
 		Source:   "lead-task",
 		Epoch:    "epoch-1",
 		Revision: revision,
@@ -423,4 +425,63 @@ func TestLeadFeedRepository_ReadDuringReplaceSeesOneSnapshot(t *testing.T) {
 	require.NoError(t, writeErr)
 	assert.Positive(t, reads)
 	assert.Equal(t, fmt.Sprintf("rev-%d", rounds), readFeed(t, repo).state.Revision)
+}
+
+func TestLeadFeedRepository_QuestionSurvivesPublication(t *testing.T) {
+	repo := setupLeadFeedRepository(t)
+	ctx := context.Background()
+
+	f, err := os.Open("../../../../tests/fixtures/leadfeed/questions.jsonl")
+	require.NoError(t, err)
+	defer f.Close()
+	snap, err := leadfeed.ParseSnapshot(f)
+	require.NoError(t, err)
+
+	_, err = repo.Publish(ctx, snap, feedBase())
+	require.NoError(t, err)
+
+	asked := 0
+	err = repo.Read(ctx, func(ctx context.Context, view leadfeed.View) error {
+		for i := range snap.Records {
+			want := snap.Records[i]
+			if want.Question == nil {
+				continue
+			}
+			asked++
+			got, qErr := view.Question(ctx, want.Question.QID)
+			require.NoError(t, qErr)
+			assert.Equal(t, want, *got, "question %s", want.Question.QID)
+		}
+
+		_, missingErr := view.Question(ctx, "Q-9999")
+		require.ErrorIs(t, missingErr, leadfeed.ErrQuestionNotFound)
+
+		letter, letterErr := view.Records(ctx, "T-0001", 0, 1)
+		require.NoError(t, letterErr)
+		require.Len(t, letter, 1)
+		assert.Nil(t, letter[0].Question)
+		return nil
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 7, asked)
+}
+
+func TestLeadFeedRepository_QuestionFollowsReplacement(t *testing.T) {
+	repo := setupLeadFeedRepository(t)
+	ctx := context.Background()
+
+	withQuestion := feedSnapshot("rev-a", 10, "T-0001")
+	withQuestion.Header.Schema = leadfeed.SchemaQuestions
+	withQuestion.Records = append(withQuestion.Records, fixtures.LeadFeedQuestion("j:q", "T-0001", "Q-0001", 5))
+	_, err := repo.Publish(ctx, withQuestion, feedBase())
+	require.NoError(t, err)
+
+	_, err = repo.Publish(ctx, feedSnapshot("rev-b", 20, "T-0001"), feedBase())
+	require.NoError(t, err)
+
+	err = repo.Read(ctx, func(ctx context.Context, view leadfeed.View) error {
+		_, qErr := view.Question(ctx, "Q-0001")
+		return qErr
+	})
+	require.ErrorIs(t, err, leadfeed.ErrQuestionNotFound)
 }
