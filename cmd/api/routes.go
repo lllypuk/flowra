@@ -81,6 +81,7 @@ func SetupRoutes(c *Container) *httpserver.Router {
 	registerTaskRoutes(router, c)
 	registerNotificationRoutes(router, c)
 	registerUserRoutes(router, c)
+	registerFeedRoutes(router, c)
 	registerWebSocketRoutes(router, c)
 
 	// Log all registered routes in debug mode
@@ -89,6 +90,13 @@ func SetupRoutes(c *Container) *httpserver.Router {
 	}
 
 	return router
+}
+
+// registerFeedRoutes registers the read-only lead feed API.
+func registerFeedRoutes(r *httpserver.Router, c *Container) {
+	if c.FeedHandler != nil {
+		c.FeedHandler.RegisterRoutes(r)
+	}
 }
 
 // registerAuthRoutes registers authentication-related routes.

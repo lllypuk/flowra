@@ -18,6 +18,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
+	"github.com/lllypuk/flowra/internal/application/leadfeed"
 	"github.com/lllypuk/flowra/internal/config"
 	"github.com/lllypuk/flowra/internal/domain/user"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
@@ -52,6 +53,7 @@ type E2ETestSuite struct {
 	// Infrastructure
 	MongoClient *mongo.Client
 	MongoDB     *mongo.Database
+	FeedRepo    *mongodb.MongoLeadFeedRepository
 	Redis       *redis.Client
 
 	// Application components
@@ -308,6 +310,14 @@ func (s *E2ETestSuite) setupServer() {
 	api.PUT("/workspaces/:workspace_id/tasks/:task_id/priority", taskHandler.ChangePriority)
 	api.PUT("/workspaces/:workspace_id/tasks/:task_id/due-date", taskHandler.SetDueDate)
 	api.DELETE("/workspaces/:workspace_id/tasks/:task_id", taskHandler.Delete)
+
+	// Lead feed routes: the real handler over the real store, read-only
+	s.FeedRepo = mongodb.NewMongoLeadFeedRepository(s.MongoClient, s.MongoDB)
+	feedHandler := httphandler.NewFeedHandler(leadfeed.NewQueryService(s.FeedRepo), logger)
+	api.GET("/feed/status", feedHandler.Status)
+	api.GET("/feed/tasks", feedHandler.ListTasks)
+	api.GET("/feed/tasks/:id", feedHandler.GetTask)
+	api.GET("/feed/tasks/:id/records", feedHandler.ListRecords)
 
 	// WebSocket route (simplified for testing)
 	api.GET("/ws", func(c echo.Context) error {

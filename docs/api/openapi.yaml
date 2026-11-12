@@ -63,6 +63,8 @@ tags:
     description: Task management and workflow operations
   - name: Notifications
     description: User notification management
+  - name: Feed
+    description: Read-only projection of the lead's task journal. GET only; nothing here changes data.
   - name: WebSocket
     description: Real-time communication endpoints
 
@@ -266,6 +268,32 @@ paths:
       description: Returns a user's public profile by their ID
       operationId: getUserById
       parameters:
+    FeedTaskIdPath:
+      name: id
+      in: path
+      required: true
+      description: Task id as issued by the lead tool
+      schema:
+        type: string
+        example: "T-0007"
+
+    FeedLimitQuery:
+      name: limit
+      in: query
+      description: Page size; values above 200 are clamped
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+
+    FeedCursorQuery:
+      name: cursor
+      in: query
+      description: Opaque `next_cursor` of the previous page
+      schema:
+        type: string
+
         - $ref: "#/components/parameters/UserIdPath"
       responses:
         "200":
@@ -1703,6 +1731,122 @@ paths:
           $ref: "#/components/responses/NotFoundError"
 
   # ============================================
+  # Lead Feed Endpoints (read-only)
+  # ============================================
+  /feed/status:
+    get:
+      tags:
+        - Feed
+      summary: Get feed status
+      description: >-
+        Returns the published snapshot and the last import attempt. `healthy` is false when the last
+        attempt did not confirm the feed; the published snapshot is still served in that case.
+      operationId: getFeedStatus
+      responses:
+        "200":
+          description: Feed status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedStatusResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "503":
+          $ref: "#/components/responses/FeedUnavailableError"
+
+  /feed/tasks:
+    get:
+      tags:
+        - Feed
+      summary: List feed tasks
+      description: >-
+        Tasks of the published snapshot, newest first. A cursor is bound to the revision it was issued
+        for: after the feed is republished it is refused with 409 and paging restarts without a cursor.
+      operationId: listFeedTasks
+      parameters:
+        - name: status
+          in: query
+          description: Source status, matched verbatim
+          schema:
+            type: string
+        - name: waiting_on
+          in: query
+          description: Who is expected to act; `none` selects tasks waiting on nobody
+          schema:
+            type: string
+            examples: [owner, lead, agent, none]
+        - $ref: "#/components/parameters/FeedLimitQuery"
+        - $ref: "#/components/parameters/FeedCursorQuery"
+      responses:
+        "200":
+          description: Page of tasks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedTaskListResponse"
+        "400":
+          $ref: "#/components/responses/FeedBadPagingError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "409":
+          $ref: "#/components/responses/FeedRevisionChangedError"
+        "503":
+          $ref: "#/components/responses/FeedUnavailableError"
+
+  /feed/tasks/{id}:
+    get:
+      tags:
+        - Feed
+      summary: Get a feed task
+      operationId: getFeedTask
+      parameters:
+        - $ref: "#/components/parameters/FeedTaskIdPath"
+      responses:
+        "200":
+          description: Task with its status transitions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedTaskDetailResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "503":
+          $ref: "#/components/responses/FeedUnavailableError"
+
+  /feed/tasks/{id}/records:
+    get:
+      tags:
+        - Feed
+      summary: List the thread of a feed task
+      description: >-
+        Records in source order. Text is returned verbatim with its `format`; it is never executed as
+        tag commands. A record carries exactly one of `body` and `body_missing`.
+      operationId: listFeedTaskRecords
+      parameters:
+        - $ref: "#/components/parameters/FeedTaskIdPath"
+        - $ref: "#/components/parameters/FeedLimitQuery"
+        - $ref: "#/components/parameters/FeedCursorQuery"
+      responses:
+        "200":
+          description: Page of thread records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedRecordListResponse"
+        "400":
+          $ref: "#/components/responses/FeedBadPagingError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/FeedRevisionChangedError"
+        "503":
+          $ref: "#/components/responses/FeedUnavailableError"
+
+  # ============================================
   # Health Check Endpoints
   # ============================================
   /health:
@@ -1903,6 +2047,42 @@ components:
   # Responses
   # ============================================
   responses:
+    FeedBadPagingError:
+      description: Invalid `limit` or `cursor`
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            success: false
+            error:
+              code: "INVALID_CURSOR"
+              message: "invalid cursor"
+
+    FeedRevisionChangedError:
+      description: The feed was republished after the cursor was issued
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            success: false
+            error:
+              code: "FEED_REVISION_CHANGED"
+              message: "the feed was republished; restart paging without a cursor"
+
+    FeedUnavailableError:
+      description: The feed could not be read; retry
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            success: false
+            error:
+              code: "FEED_UNAVAILABLE"
+              message: "the feed could not be read; retry"
+
     UnauthorizedError:
       description: Authentication required
       content:
@@ -2889,3 +3069,219 @@ components:
               type: integer
               description: Number of notifications marked as read
               example: 10
+
+    FeedMeta:
+      type: object
+      description: The snapshot a response was read from. `revision` is empty before the first import.
+      properties:
+        revision:
+          type: string
+          example: "5a2f1c9a52dd9417"
+        as_of:
+          type: [string, "null"]
+          format: date-time
+          description: Source time of the snapshot, RFC 3339 UTC
+
+    FeedStatusResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          allOf:
+            - $ref: "#/components/schemas/FeedMeta"
+            - type: object
+              properties:
+                published:
+                  type: boolean
+                healthy:
+                  type: boolean
+                source:
+                  type: string
+                epoch:
+                  type: string
+                tasks:
+                  type: integer
+                records:
+                  type: integer
+                published_at:
+                  type: [string, "null"]
+                  format: date-time
+                  description: Time of the last successful publication
+                last_attempt:
+                  oneOf:
+                    - type: "null"
+                    - type: object
+                      properties:
+                        at:
+                          type: string
+                          format: date-time
+                        outcome:
+                          type: string
+                          enum: [published, refreshed, rejected, failed, unknown]
+                        error:
+                          type: string
+                        revision:
+                          type: string
+                        previous_epoch:
+                          type: string
+
+    FeedTask:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "T-0007"
+        title:
+          type: string
+        project:
+          type: string
+        agent:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        status:
+          type: string
+          description: Source status, verbatim; unknown values are passed through
+          example: "wait_user"
+        status_label:
+          type: string
+          description: Display label only
+        group:
+          type: string
+          description: Display group only
+          enum: [owner, lead, agent, closed, unknown]
+        waiting_on:
+          type: [string, "null"]
+          description: Computed by the source; null for closed tasks
+        status_since:
+          type: string
+          format: date-time
+        note:
+          type: string
+        returns:
+          type: integer
+        spent:
+          type: object
+          description: Whole seconds per waiting band, computed by the source at `as_of`
+          properties:
+            queued:
+              type: integer
+            work:
+              type: integer
+            lead:
+              type: integer
+            user:
+              type: integer
+        transitions:
+          type: array
+          items:
+            type: object
+            properties:
+              at:
+                type: string
+                format: date-time
+              status:
+                type: string
+              cause:
+                type: [string, "null"]
+                description: Id of the record that caused the change
+              derived:
+                type: boolean
+                description: True when the source inferred the change rather than recorded it
+
+    FeedRecord:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Stable across snapshots
+          example: "j:14"
+        task:
+          type: string
+        kind:
+          type: string
+          example: "letter"
+        at:
+          type: string
+          format: date-time
+        order:
+          type: integer
+          description: Position in the thread within this snapshot; not stable across snapshots
+        actor:
+          type: string
+        actor_derived:
+          type: boolean
+        source:
+          type: object
+          properties:
+            kind:
+              type: string
+            ref:
+              type: string
+        body:
+          type: [string, "null"]
+        body_derived:
+          type: boolean
+        body_missing:
+          type: [string, "null"]
+          description: Why there is no text
+        format:
+          type: string
+          example: "text"
+
+    FeedTaskListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          allOf:
+            - $ref: "#/components/schemas/FeedMeta"
+            - type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/FeedTask"
+                next_cursor:
+                  type: string
+                  description: Empty on the last page
+
+    FeedTaskDetailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          allOf:
+            - $ref: "#/components/schemas/FeedMeta"
+            - type: object
+              properties:
+                task:
+                  $ref: "#/components/schemas/FeedTask"
+
+    FeedRecordListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          allOf:
+            - $ref: "#/components/schemas/FeedMeta"
+            - type: object
+              properties:
+                task_id:
+                  type: string
+                items:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/FeedRecord"
+                next_cursor:
+                  type: string
+                  description: Empty on the last page

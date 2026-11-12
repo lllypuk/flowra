@@ -10,6 +10,7 @@ import (
 
 	"github.com/lllypuk/flowra/internal/application/appcore"
 	chatapp "github.com/lllypuk/flowra/internal/application/chat"
+	"github.com/lllypuk/flowra/internal/application/leadfeed"
 	messageapp "github.com/lllypuk/flowra/internal/application/message"
 	"github.com/lllypuk/flowra/internal/application/notification"
 	taskapp "github.com/lllypuk/flowra/internal/application/task"
@@ -161,6 +162,10 @@ type Container struct {
 	ChatTemplateHandler         *httphandler.ChatTemplateHandler
 	BoardTemplateHandler        *httphandler.BoardTemplateHandler
 	TaskDetailTemplateHandler   *httphandler.TaskDetailTemplateHandler
+
+	// Lead feed: read-only projection of the lead's task journal
+	FeedService *leadfeed.QueryService
+	FeedHandler *httphandler.FeedHandler
 
 	// Auth middleware components
 	TokenValidator middleware.TokenValidator
@@ -904,6 +909,8 @@ func (c *Container) setupHTTPHandlers() {
 	// === 9. Notification Service and Template Handler ===
 	c.setupNotificationTemplateHandler()
 
+	c.setupLeadFeed()
+
 	// === 10. Chat Template Handler ===
 	c.setupChatTemplateHandler()
 
@@ -1047,6 +1054,14 @@ func (c *Container) createAuthService() httphandler.AuthService {
 		UserRepo:    c.UserRepo,
 		Logger:      c.Logger,
 	})
+}
+
+// setupLeadFeed wires the read-only lead feed. Imports are done by cmd/leadfeed, never by the API.
+func (c *Container) setupLeadFeed() {
+	feedRepo := mongodb.NewMongoLeadFeedRepository(c.MongoDB, c.MongoDB.Database(c.MongoDBName))
+	c.FeedService = leadfeed.NewQueryService(feedRepo)
+	c.FeedHandler = httphandler.NewFeedHandler(c.FeedService, c.Logger)
+	c.Logger.Debug("lead feed handlers initialized")
 }
 
 // setupNotificationTemplateHandler creates the notification template handler with all dependencies.

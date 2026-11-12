@@ -5,10 +5,12 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/labstack/echo/v4"
 	"github.com/lllypuk/flowra/internal/config"
+	httphandler "github.com/lllypuk/flowra/internal/handler/http"
 	"github.com/lllypuk/flowra/internal/infrastructure/httpserver"
 	"github.com/lllypuk/flowra/internal/infrastructure/websocket"
 	"github.com/lllypuk/flowra/internal/middleware"
@@ -370,4 +372,45 @@ func TestCreatePlaceholderHandler(t *testing.T) {
 	assert.Equal(t, http.StatusNotImplemented, rec.Code)
 	assert.Contains(t, rec.Body.String(), "NOT_IMPLEMENTED")
 	assert.Contains(t, rec.Body.String(), "Test service not available")
+}
+
+func TestSetupRoutes_FeedRoutesAreReadOnly(t *testing.T) {
+	cfg := config.DefaultConfig()
+
+	c := &Container{
+		Config:         cfg,
+		Logger:         slog.Default(),
+		TokenValidator: middleware.NewStaticTokenValidator(cfg.Auth.JWTSecret),
+		AccessChecker:  middleware.NewMockWorkspaceAccessChecker(),
+		Hub:            websocket.NewHub(),
+		FeedHandler:    httphandler.NewFeedHandler(nil, slog.Default()),
+	}
+
+	e := SetupRoutes(c).Echo()
+
+	feedRoutes := map[string][]string{}
+	for _, r := range e.Routes() {
+		if strings.HasPrefix(r.Path, "/api/v1/feed") {
+			feedRoutes[r.Path] = append(feedRoutes[r.Path], r.Method)
+		}
+	}
+
+	assert.Equal(t, map[string][]string{
+		"/api/v1/feed/status":            {http.MethodGet},
+		"/api/v1/feed/tasks":             {http.MethodGet},
+		"/api/v1/feed/tasks/:id":         {http.MethodGet},
+		"/api/v1/feed/tasks/:id/records": {http.MethodGet},
+	}, feedRoutes)
+
+	for _, method := range []string{http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
+		for path := range feedRoutes {
+			req := httptest.NewRequest(method, strings.ReplaceAll(path, ":id", "T-0001"), nil)
+			req.Header.Set("Authorization", "Bearer dev-token-1")
+			rec := httptest.NewRecorder()
+
+			e.ServeHTTP(rec, req)
+
+			assert.Contains(t, []int{http.StatusNotFound, http.StatusMethodNotAllowed}, rec.Code, "%s %s", method, path)
+		}
+	}
 }
