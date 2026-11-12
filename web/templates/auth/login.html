@@ -46,6 +46,20 @@
                     <article class="flash flash-error">{{.Error}}</article>
                     {{end}}
 
+                    {{if .TokenLogin}}
+                    <form method="post" action="/login" hx-boost="false" autocomplete="off">
+                        <input type="hidden" name="state" value="{{.State}}" />
+                        <label for="token">Access token</label>
+                        <input
+                            type="password"
+                            id="token"
+                            name="token"
+                            required
+                            autofocus
+                        />
+                        <button type="submit" class="login-button">Sign in</button>
+                    </form>
+                    {{else}}
                     <p class="text-center text-muted">
                         Sign in with your organization account
                     </p>
@@ -58,6 +72,7 @@
                     >
                         Sign in with SSO
                     </a>
+                    {{end}}
 
                     <hr />
 

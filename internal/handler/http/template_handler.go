@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -265,6 +266,13 @@ type TemplateHandler struct {
 	oauthClient      OAuthClient
 	userLookup       UserProfileLookup
 	userSearcher     UserSearcher
+	tokenLogin       *TokenLogin
+}
+
+// TokenLogin switches the login page to a token form; the OAuth callback and its mock path stop working.
+type TokenLogin struct {
+	Validator  middleware.TokenValidator
+	SessionTTL time.Duration
 }
 
 // NewTemplateHandler creates a new template handler.
@@ -295,6 +303,11 @@ func (h *TemplateHandler) SetServices(workspaceService WorkspaceService, memberS
 // SetOAuthClient sets the OAuth client for authentication.
 func (h *TemplateHandler) SetOAuthClient(client OAuthClient) {
 	h.oauthClient = client
+}
+
+// SetTokenLogin enables sign-in with an owner token.
+func (h *TemplateHandler) SetTokenLogin(login TokenLogin) {
+	h.tokenLogin = &login
 }
 
 // SetUserLookup sets the user lookup service for resolving user profiles.
@@ -410,6 +423,10 @@ func (h *TemplateHandler) LoginPage(c echo.Context) error {
 	state := generateState()
 	setStateCookie(c, state)
 
+	if h.tokenLogin != nil {
+		return h.renderTokenLogin(c, http.StatusOK, state, c.QueryParam("error"))
+	}
+
 	// Build auth URL
 	var authURL string
 	redirectURI := GetRedirectURI(c)
@@ -434,8 +451,59 @@ func (h *TemplateHandler) LoginPage(c echo.Context) error {
 	return h.renderer.Render(c.Response().Writer, "auth/login.html", data, c)
 }
 
+func (h *TemplateHandler) renderTokenLogin(c echo.Context, status int, state, errorMsg string) error {
+	data := map[string]any{
+		"Title":      "Login",
+		"TokenLogin": true,
+		"State":      state,
+		"Error":      errorMsg,
+		"User":       nil,
+	}
+	c.Response().WriteHeader(status)
+	return h.renderer.Render(c.Response().Writer, "auth/login.html", data, c)
+}
+
+// LoginSubmit handles the token form; the token itself is never logged.
+func (h *TemplateHandler) LoginSubmit(c echo.Context) error {
+	if h.tokenLogin == nil {
+		return c.NoContent(http.StatusNotFound)
+	}
+
+	expectedState := getStateCookie(c)
+	clearStateCookie(c)
+	if expectedState == "" || c.FormValue("state") != expectedState {
+		return h.retryTokenLogin(c, http.StatusBadRequest, "The sign-in form expired. Please try again.")
+	}
+
+	token := strings.TrimSpace(c.FormValue("token"))
+	if _, err := h.tokenLogin.Validator.ValidateToken(c.Request().Context(), token); err != nil {
+		h.logger.Warn("token sign-in rejected", slog.String("remote_ip", c.RealIP()))
+		return h.retryTokenLogin(c, http.StatusUnauthorized, "Invalid token.")
+	}
+
+	setSessionCookie(c, token, int(h.tokenLogin.SessionTTL.Seconds()))
+
+	redirectURL := getRedirectCookie(c)
+	if redirectURL == "" {
+		redirectURL = "/workspaces"
+	}
+	clearRedirectCookie(c)
+
+	return c.Redirect(http.StatusSeeOther, redirectURL)
+}
+
+func (h *TemplateHandler) retryTokenLogin(c echo.Context, status int, errorMsg string) error {
+	state := generateState()
+	setStateCookie(c, state)
+	return h.renderTokenLogin(c, status, state, errorMsg)
+}
+
 // AuthCallback handles OAuth callback from the authentication provider.
 func (h *TemplateHandler) AuthCallback(c echo.Context) error {
+	if h.tokenLogin != nil {
+		return c.Redirect(http.StatusFound, "/login")
+	}
+
 	code := c.QueryParam("code")
 	state := c.QueryParam("state")
 	errorParam := c.QueryParam("error")
@@ -643,6 +711,7 @@ func (h *TemplateHandler) SetupPageRoutes(e *echo.Echo) {
 	// Public pages
 	e.GET("/", h.Home)
 	e.GET("/login", h.LoginPage)
+	e.POST("/login", h.LoginSubmit)
 
 	// Auth pages
 	e.GET("/auth/callback", h.AuthCallback)

@@ -866,6 +866,13 @@ func (c *Container) setupHTTPHandlers() {
 	c.setupTokenValidator()
 	c.setupUserResolver()
 
+	if c.Config.Auth.IsTokenMode() && c.TemplateHandler != nil && c.TokenValidator != nil {
+		c.TemplateHandler.SetTokenLogin(httphandler.TokenLogin{
+			Validator:  c.TokenValidator,
+			SessionTTL: c.Config.Auth.SessionTTL,
+		})
+	}
+
 	// === 8. WebSocket Handler ===
 	c.WSHandler = wshandler.NewHandler(
 		c.Hub,

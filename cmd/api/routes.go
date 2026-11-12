@@ -280,6 +280,7 @@ func registerPageRoutes(e *echo.Echo, c *Container) {
 
 	// Auth pages (public)
 	e.GET("/login", c.TemplateHandler.LoginPage)
+	e.POST("/login", c.TemplateHandler.LoginSubmit)
 	e.GET("/auth/callback", c.TemplateHandler.AuthCallback)
 
 	// Auth actions
