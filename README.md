@@ -15,7 +15,7 @@ It is not a team chat with a help desk, and it has no SSO: Keycloak was removed
 - **Owner questions.** The lead asks through its journal, the owner answers at `/feed/questions` or via
   `POST /api/v1/feed/questions/{qid}/answer`, and `leadfeed deliver` hands the answer back
   ([API](./docs/api/feed-questions.md)).
-- **Task actions with a defined outcome.** `Idempotency-Key`; the answer is applied, no-op or unknown
+- **Task actions with a defined outcome.** `Idempotency-Key`; every answer is applied, not applied, or unknown
   ([API](./docs/api/action-endpoints.md)).
 - **Tags.** `#status`, `#assignee` and the rest run only from messages of type `user`; system and bot messages are
   never parsed ([guide](./docs/TAGS_USER_GUIDE.md)).
@@ -38,7 +38,7 @@ make install-units  # always-on: systemd user units, feed sync every minute
 
 | Port | Service |
 |---|---|
-| `127.0.0.1:8080` | API and web (`/health`, `/login`, `/docs`) |
+| `127.0.0.1:8080` | API and web (`/health`, `/login`, `/feed`) |
 | `127.0.0.1:27017` | MongoDB |
 | `127.0.0.1:6379` | Redis |
 
