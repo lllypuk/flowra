@@ -253,7 +253,8 @@ func TestGetAllIndexDefinitions(t *testing.T) {
 		len(mongodb.GetOutboxIndexes()) +
 		len(mongodb.GetRepairQueueIndexes()) +
 		len(mongodb.GetFileMetadataIndexes()) +
-		len(mongodb.GetLeadFeedIndexes())
+		len(mongodb.GetLeadFeedIndexes()) +
+		len(mongodb.GetOwnerAnswerIndexes())
 
 	assert.Len(t, indexes, expectedTotal)
 
@@ -517,4 +518,15 @@ func TestCreateCollectionIndexes_LeadFeed(t *testing.T) {
 		}
 		assert.Len(t, getCollectionIndexes(ctx, t, db, collName), want, "collection %s", collName)
 	}
+}
+
+func TestCreateCollectionIndexes_OwnerAnswers(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.SetupTestMongoDB(t)
+	ctx := context.Background()
+
+	require.NoError(t, mongodb.CreateCollectionIndexes(ctx, db, mongodb.CollectionOwnerAnswers))
+	// _id plus the two declared indexes
+	assert.Len(t, getCollectionIndexes(ctx, t, db, mongodb.CollectionOwnerAnswers), 3)
 }

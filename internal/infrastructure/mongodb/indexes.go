@@ -27,6 +27,7 @@ const (
 	CollectionLeadFeedTasks   = "leadfeed_tasks"
 	CollectionLeadFeedRecords = "leadfeed_records"
 	CollectionLeadFeedState   = "leadfeed_state"
+	CollectionOwnerAnswers    = "owner_answers"
 )
 
 // IndexDefinition describes a MongoDB index to be created.
@@ -84,6 +85,7 @@ func GetAllIndexDefinitions() []IndexDefinition {
 	indexes = append(indexes, GetRepairQueueIndexes()...)
 	indexes = append(indexes, GetFileMetadataIndexes()...)
 	indexes = append(indexes, GetLeadFeedIndexes()...)
+	indexes = append(indexes, GetOwnerAnswerIndexes()...)
 
 	return indexes
 }
@@ -547,6 +549,22 @@ func GetLeadFeedIndexes() []IndexDefinition {
 	}
 }
 
+// GetOwnerAnswerIndexes returns index definitions for owner answers; _id is (source, epoch, qid).
+func GetOwnerAnswerIndexes() []IndexDefinition {
+	return []IndexDefinition{
+		{
+			Collection: CollectionOwnerAnswers,
+			Keys:       bson.D{{Key: "command_id", Value: 1}},
+			Options:    options.Index().SetUnique(true).SetName("idx_owner_answers_command_id_unique"),
+		},
+		{
+			Collection: CollectionOwnerAnswers,
+			Keys:       bson.D{{Key: "source", Value: 1}, {Key: "epoch", Value: 1}, {Key: "answered_at", Value: 1}},
+			Options:    options.Index().SetName("idx_owner_answers_epoch_answered"),
+		},
+	}
+}
+
 // CreateCollectionIndexes creates indexes for a specific collection only.
 // Useful for targeted index creation or testing.
 func CreateCollectionIndexes(ctx context.Context, db *mongo.Database, collectionName string) error {
@@ -575,6 +593,8 @@ func CreateCollectionIndexes(ctx context.Context, db *mongo.Database, collection
 		indexes = GetRepairQueueIndexes()
 	case CollectionFileMetadata:
 		indexes = GetFileMetadataIndexes()
+	case CollectionOwnerAnswers:
+		indexes = GetOwnerAnswerIndexes()
 	case CollectionLeadFeedTasks, CollectionLeadFeedRecords:
 		for _, idx := range GetLeadFeedIndexes() {
 			if idx.Collection == collectionName {
