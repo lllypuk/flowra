@@ -48,8 +48,15 @@ make dev                    # Docker infra + worker + API
 # Start API only (no worker, limited features)
 make dev-lite              # FLOWRA_DEV_MODE=lite go run ./cmd/api
 
+# Start without Keycloak: owner-token auth, loopback only (needs AUTH_OWNER_TOKEN_SHA256)
+make dev-local
+
 # Build binaries
-make build                 # Creates bin/api and bin/worker
+make build                 # Creates bin/api, bin/worker and bin/leadfeed
+
+# Lead feed (read-only projection of the lead's task journal)
+make feed-sync             # Export, validate and publish a snapshot
+make feed-status           # Published revision and last import attempt
 
 # Manage infrastructure
 make docker-up            # Start MongoDB, Redis, Keycloak
@@ -136,6 +143,19 @@ Current authoritative read-model collections:
 - `tasks_read_model`
 
 Legacy collections (`chat_read_model`, `task_read_model`) are non-authoritative and should be cleaned for local/dev via `make reset-data`.
+
+## Lead Feed Boundary
+
+The lead feed (`internal/application/leadfeed`, collections `leadfeed_*`, routes `/feed` and `/api/v1/feed`) is an external read projection, not part of the Chat write model:
+- Do not import feed data into Chat, Task or Message aggregates, and do not pass feed text to `internal/domain/tag`.
+- Do not add write routes or forms to the feed; it changes only through `cmd/leadfeed import`.
+- A publication replaces the whole feed in one MongoDB transaction; keep the freshness check inside that transaction.
+- Source statuses are stored and returned verbatim; labels and groups are display-only (`leadfeed.StatusLabel`, `leadfeed.StatusGroup`).
+- Real exports contain private text: keep them out of the repository, fixtures are synthetic.
+
+## Token Auth Mode
+
+With `auth.mode: token` only configured owner tokens are accepted. Do not add fallbacks to `StaticTokenValidator`, the mock session or `MockAuthService` in this mode, and keep the loopback-only check in config validation.
 
 ## Frontend & HTMX Operational Notes
 

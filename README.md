@@ -93,6 +93,32 @@ Access Keycloak at http://localhost:8090 (admin/admin123) to configure OAuth.
 
 Test user for app login: `testuser` / `test123`.
 
+### Run Without Keycloak (single owner)
+
+`make dev-local` starts MongoDB, Redis, the worker and the API on `127.0.0.1:8080` with owner-token auth
+(`configs/config.token.yaml`). The server keeps only the SHA-256 of the token:
+
+```bash
+token=$(openssl rand -hex 32); echo "$token"          # keep it: it is the sign-in secret
+export AUTH_OWNER_TOKEN_SHA256=$(printf %s "$token" | sha256sum | cut -d' ' -f1)
+make dev-local
+```
+
+Sign in at http://127.0.0.1:8080/login with the token, or send it as `Authorization: Bearer <token>`.
+
+### Lead Feed (read-only)
+
+The feed shows the lead's task journal as a list and per-task threads. Flowra never writes to the journal;
+the feed is replaced as a whole from a snapshot produced by `lead-task export`:
+
+```bash
+make feed-sync      # export, validate, publish; the previous feed stays on any failure
+make feed-status    # published revision and the last import attempt
+```
+
+Pages: `/feed`, `/feed/tasks/{id}`. API: `GET /api/v1/feed/status|tasks|tasks/{id}|tasks/{id}/records`.
+Timer unit examples are in `scripts/leadfeed-sync.*.example`.
+
 ---
 
 ## 🔧 Development Commands

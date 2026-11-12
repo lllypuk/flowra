@@ -122,6 +122,46 @@ curl http://localhost:8080/ready
 # Expected: {"status":"ready","components":{...}}
 ```
 
+### 7. Run Without Keycloak
+
+Token mode is for a single owner on one machine. It refuses to start on a non-loopback `server.host`,
+and nothing in it falls back to mock or development auth.
+
+```bash
+token=$(openssl rand -hex 32)
+export AUTH_OWNER_TOKEN_SHA256=$(printf %s "$token" | sha256sum | cut -d' ' -f1)
+make dev-local        # MongoDB + Redis + worker + API, config: configs/config.token.yaml
+```
+
+- Web: http://127.0.0.1:8080/login takes the token and sets an HttpOnly session cookie.
+- API: `Authorization: Bearer <token>`.
+- More tokens (one per device) go under `auth.tokens` in the config as `name` + `sha256`; every token
+  resolves to the same `owner` user, so rotating a token does not change the user.
+
+### 8. Lead Feed
+
+The feed is a read-only projection of the lead's task journal, kept apart from chats and tasks.
+
+```bash
+make feed-sync                         # lead-task export -> temp file -> bin/leadfeed import
+make feed-status
+bin/leadfeed import snapshot.jsonl     # or from stdin: ... | bin/leadfeed import
+```
+
+`scripts/leadfeed-sync.sh` imports only after the exporter has exited with success. Exit codes of
+`leadfeed import`: `0` published or confirmed, `1` not published (the previous feed is intact),
+`3` commit result unknown (the feed holds the old or the new snapshot in full).
+
+A snapshot is refused when it is truncated, marked incomplete, of an unknown schema, larger than
+`-max-bytes`, edited under an unchanged revision, or older than the published one. The reason is shown
+by `make feed-status`, by `GET /api/v1/feed/status` and on the feed pages.
+
+To run the parser against real exports, which must stay out of the repository:
+
+```bash
+LEADFEED_SAMPLE_DIR=~/projects/lead/tasks/samples go test ./internal/application/leadfeed/
+```
+
 ---
 
 ## Development Workflow
