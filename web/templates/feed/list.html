@@ -3,7 +3,7 @@
 {{end}}
 
 {{define "feed-banner"}}
-<aside class="feed-banner {{if or (not .Healthy) .Stale}}feed-banner-problem{{end}}" data-feed-banner>
+<aside class="feed-banner {{if or (or (not .Healthy) .Stale) .UnconfirmedWarn}}feed-banner-problem{{end}}" data-feed-banner>
     {{if .Published}}
     <span>Снимок от <strong>{{.AsOf}}</strong> ({{.AsOfAge}} назад)</span>
     <span>опубликован {{.PublishedAt}}</span>
@@ -13,6 +13,14 @@
     {{end}}
     {{if .Stale}}
     <span class="feed-banner-error" data-feed-stale>Снимок устарел: синхронизация не обновляет ленту.</span>
+    {{end}}
+    {{if .Unconfirmed}}
+    <span {{if .UnconfirmedWarn}}class="feed-banner-error" data-feed-undelivered-warn{{end}} data-feed-undelivered>
+        Ответов без подтверждения лида: {{.Unconfirmed}}{{if .UnconfirmedAge}}, старейшему {{.UnconfirmedAge}}{{end}}{{if .UnconfirmedWarn}} — ответ не доходит до лида{{end}}.
+    </span>
+    {{end}}
+    {{if .DeliveryError}}
+    <span class="feed-banner-error" data-feed-delivery-error>Доставка ответов: {{.DeliveryError}}</span>
     {{end}}
     {{if .ShowError}}
     <span class="feed-banner-error" data-feed-error>

@@ -489,3 +489,44 @@ func TestLeadFeedRepository_QuestionFollowsReplacement(t *testing.T) {
 	})
 	require.ErrorIs(t, err, leadfeed.ErrQuestionNotFound)
 }
+
+func TestLeadFeedRepository_DeliverySurvivesPublicationAndReplacesItself(t *testing.T) {
+	repo := setupLeadFeedRepository(t)
+	ctx := context.Background()
+	readDelivery := func() *leadfeed.Delivery {
+		var got *leadfeed.Delivery
+		require.NoError(t, repo.Read(ctx, func(ctx context.Context, view leadfeed.View) error {
+			var err error
+			got, err = view.Delivery(ctx)
+			return err
+		}))
+		return got
+	}
+	assert.Nil(t, readDelivery())
+
+	oldest := feedBase().Add(time.Minute)
+	require.NoError(t, repo.RecordDelivery(ctx, leadfeed.Delivery{
+		At: feedBase().Add(time.Hour), Sent: 1, Failed: 2, Unconfirmed: 3, OldestUnconfirmedAt: &oldest,
+		OtherEpoch: 4, LastError: "Q-0001: exited with 3",
+	}))
+	_, err := repo.Publish(ctx, feedSnapshot("rev-a", 10, "T-0001"), feedBase())
+	require.NoError(t, err)
+	_, err = repo.Publish(ctx, feedSnapshot("rev-b", 20, "T-0001"), feedBase())
+	require.NoError(t, err)
+
+	got := readDelivery()
+	require.NotNil(t, got, "a publication must not erase the delivery state")
+	assert.Equal(t, 1, got.Sent)
+	assert.Equal(t, 2, got.Failed)
+	assert.Equal(t, 3, got.Unconfirmed)
+	assert.Equal(t, 4, got.OtherEpoch)
+	assert.Equal(t, "Q-0001: exited with 3", got.LastError)
+	require.NotNil(t, got.OldestUnconfirmedAt)
+	assert.True(t, got.OldestUnconfirmedAt.Equal(oldest))
+
+	require.NoError(t, repo.RecordDelivery(ctx, leadfeed.Delivery{At: feedBase().Add(2 * time.Hour)}))
+	got = readDelivery()
+	assert.Zero(t, got.Unconfirmed)
+	assert.Nil(t, got.OldestUnconfirmedAt)
+	assert.Empty(t, got.LastError)
+}

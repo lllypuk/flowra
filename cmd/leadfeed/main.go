@@ -42,7 +42,8 @@ const (
 
 const usage = `usage:
   leadfeed [flags] import [file|-]   publish a snapshot (stdin by default)
-  leadfeed [flags] status            show the published snapshot and the last attempt
+  leadfeed [flags] deliver --lead-task PATH   pass unconfirmed owner answers to the lead's journal
+  leadfeed [flags] status            show the published snapshot, the last attempt and the last delivery
   leadfeed [flags] fail <reason>     record that the source could not produce a snapshot
 
 flags:
@@ -85,25 +86,45 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 		if len(rest) == 2 { //nolint:mnd // command plus path
 			path = rest[1]
 		}
-		return withRepo(ctx, *mongoURI, *mongoDB, stderr, func(repo *mongorepo.MongoLeadFeedRepository) int {
-			return runImport(ctx, repo, path, *maxBytes, stdin, stdout, stderr)
-		})
+		return withRepo(
+			ctx,
+			*mongoURI,
+			*mongoDB,
+			stderr,
+			func(repo *mongorepo.MongoLeadFeedRepository, _ *mongo.Database) int {
+				return runImport(ctx, repo, path, *maxBytes, stdin, stdout, stderr)
+			},
+		)
 	case "status":
 		if len(rest) != 1 {
 			flags.Usage()
 			return exitUsage
 		}
-		return withRepo(ctx, *mongoURI, *mongoDB, stderr, func(repo *mongorepo.MongoLeadFeedRepository) int {
-			return runStatus(ctx, repo, stdout, stderr)
-		})
+		return withRepo(
+			ctx,
+			*mongoURI,
+			*mongoDB,
+			stderr,
+			func(repo *mongorepo.MongoLeadFeedRepository, _ *mongo.Database) int {
+				return runStatus(ctx, repo, stdout, stderr)
+			},
+		)
+	case "deliver":
+		return runDeliverCommand(ctx, rest[1:], *mongoURI, *mongoDB, stdout, stderr, flags.Usage)
 	case "fail":
 		if len(rest) != 2 { //nolint:mnd // command plus reason
 			flags.Usage()
 			return exitUsage
 		}
-		return withRepo(ctx, *mongoURI, *mongoDB, stderr, func(repo *mongorepo.MongoLeadFeedRepository) int {
-			return runFail(ctx, repo, rest[1], stderr)
-		})
+		return withRepo(
+			ctx,
+			*mongoURI,
+			*mongoDB,
+			stderr,
+			func(repo *mongorepo.MongoLeadFeedRepository, _ *mongo.Database) int {
+				return runFail(ctx, repo, rest[1], stderr)
+			},
+		)
 	default:
 		fmt.Fprintf(stderr, "leadfeed: unknown command %q\n", rest[0])
 		flags.Usage()
@@ -118,11 +139,14 @@ func envOr(name, fallback string) string {
 	return fallback
 }
 
+// repoAction runs a command against the opened database; db serves commands that reach beyond the feed.
+type repoAction func(repo *mongorepo.MongoLeadFeedRepository, db *mongo.Database) int
+
 func withRepo(
 	ctx context.Context,
 	uri, dbName string,
 	stderr io.Writer,
-	fn func(repo *mongorepo.MongoLeadFeedRepository) int,
+	fn repoAction,
 ) int {
 	client, err := mongo.Connect(options.Client().SetServerSelectionTimeout(connectTimeout).ApplyURI(uri))
 	if err != nil {
@@ -145,7 +169,7 @@ func withRepo(
 		}
 	}
 
-	return fn(mongorepo.NewMongoLeadFeedRepository(client, db))
+	return fn(mongorepo.NewMongoLeadFeedRepository(client, db), db)
 }
 
 func runImport(
@@ -198,15 +222,19 @@ func runFail(ctx context.Context, repo *mongorepo.MongoLeadFeedRepository, reaso
 
 func runStatus(ctx context.Context, repo *mongorepo.MongoLeadFeedRepository, stdout, stderr io.Writer) int {
 	var (
-		state   *leadfeed.State
-		attempt *leadfeed.Attempt
+		state    *leadfeed.State
+		attempt  *leadfeed.Attempt
+		delivery *leadfeed.Delivery
 	)
 	err := repo.Read(ctx, func(readCtx context.Context, view leadfeed.View) error {
 		var readErr error
 		if state, readErr = view.State(readCtx); readErr != nil {
 			return readErr
 		}
-		attempt, readErr = view.LastAttempt(readCtx)
+		if attempt, readErr = view.LastAttempt(readCtx); readErr != nil {
+			return readErr
+		}
+		delivery, readErr = view.Delivery(readCtx)
 		return readErr
 	})
 	if err != nil {
@@ -224,12 +252,22 @@ func runStatus(ctx context.Context, repo *mongorepo.MongoLeadFeedRepository, std
 
 	if attempt == nil {
 		fmt.Fprintln(stdout, "last attempt: none")
+	} else {
+		fmt.Fprintf(stdout, "last attempt: %s at=%s revision=%s\n",
+			attempt.Outcome, attempt.At.Format(timeLayout), attempt.Revision)
+		if attempt.Error != "" {
+			fmt.Fprintf(stdout, "last error: %s\n", attempt.Error)
+		}
+	}
+
+	if delivery == nil {
+		fmt.Fprintln(stdout, "last delivery: none")
 		return exitOK
 	}
-	fmt.Fprintf(stdout, "last attempt: %s at=%s revision=%s\n",
-		attempt.Outcome, attempt.At.Format(timeLayout), attempt.Revision)
-	if attempt.Error != "" {
-		fmt.Fprintf(stdout, "last error: %s\n", attempt.Error)
+	fmt.Fprintf(stdout, "last delivery: at=%s sent=%d failed=%d unconfirmed=%d other_epoch=%d\n",
+		delivery.At.Format(timeLayout), delivery.Sent, delivery.Failed, delivery.Unconfirmed, delivery.OtherEpoch)
+	if delivery.LastError != "" {
+		fmt.Fprintf(stdout, "last delivery error: %s\n", delivery.LastError)
 	}
 	return exitOK
 }

@@ -231,6 +231,40 @@ func TestFeedList_Banner(t *testing.T) {
 		assert.Contains(t, content, "T-0003", "tasks of the previous snapshot are still listed")
 	})
 
+	t.Run("unconfirmed answers show their age and warn after five minutes", func(t *testing.T) {
+		now := pageAsOf().Add(5 * time.Minute)
+		render := func(oldestAgo time.Duration) string {
+			board := feedBoard()
+			oldest := now.Add(-oldestAgo)
+			board.Status.Delivery = &leadfeed.Delivery{
+				At: now, Unconfirmed: 2, OldestUnconfirmedAt: &oldest, Failed: 1,
+				LastError: "Q-0001: exited with 3 <b>",
+			}
+			return feedContent(t, getPage(newFeedPages(t, &fakeFeedPages{board: board}), "/feed", true).Body.String())
+		}
+
+		fresh := render(4 * time.Minute)
+		assert.Contains(t, fresh, "data-feed-undelivered")
+		assert.Contains(t, fresh, "Ответов без подтверждения лида: 2, старейшему 4 мин")
+		assert.NotContains(t, fresh, "data-feed-undelivered-warn")
+		assert.NotContains(t, fresh, "feed-banner-problem")
+		assert.Contains(t, fresh, "Q-0001: exited with 3 &lt;b&gt;")
+
+		old := render(5*time.Minute + time.Second)
+		assert.Contains(t, old, "data-feed-undelivered-warn")
+		assert.Contains(t, old, "feed-banner-problem")
+	})
+
+	t.Run("a clean delivery run adds nothing", func(t *testing.T) {
+		board := feedBoard()
+		board.Status.Delivery = &leadfeed.Delivery{At: pageAsOf()}
+
+		content := feedContent(t, getPage(newFeedPages(t, &fakeFeedPages{board: board}), "/feed", true).Body.String())
+
+		assert.NotContains(t, content, "data-feed-undelivered")
+		assert.NotContains(t, content, "data-feed-delivery-error")
+	})
+
 	t.Run("nothing imported yet", func(t *testing.T) {
 		content := feedContent(t, getPage(newFeedPages(t, &fakeFeedPages{}), "/feed", true).Body.String())
 

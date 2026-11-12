@@ -77,6 +77,8 @@ type View interface {
 	State(ctx context.Context) (*State, error)
 	// LastAttempt returns nil when no import has run yet.
 	LastAttempt(ctx context.Context) (*Attempt, error)
+	// Delivery returns nil when no delivery run has been recorded yet.
+	Delivery(ctx context.Context) (*Delivery, error)
 	Tasks(ctx context.Context, filter TaskFilter, offset, limit int) ([]Task, error)
 	// Task returns ErrTaskNotFound for an unknown id.
 	Task(ctx context.Context, id string) (*Task, error)

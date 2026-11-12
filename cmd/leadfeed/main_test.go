@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 
 	"github.com/lllypuk/flowra/tests/testutil"
 )
@@ -18,8 +19,11 @@ import (
 const fixturePath = "../../tests/fixtures/leadfeed/full.jsonl"
 
 type cli struct {
-	t    *testing.T
-	base []string
+	t      *testing.T
+	base   []string
+	client *mongo.Client
+	db     *mongo.Database
+	uri    string
 }
 
 func newCLI(t *testing.T) cli {
@@ -29,9 +33,11 @@ func newCLI(t *testing.T) cli {
 
 	cont, err := testutil.GetSharedMongoContainer(ctx)
 	require.NoError(t, err)
-	_, db := testutil.SetupTestMongoDBWithClient(t)
+	client, db := testutil.SetupTestMongoDBWithClient(t)
 
-	return cli{t: t, base: []string{"-mongo-uri", cont.URI, "-mongo-db", db.Name()}}
+	return cli{
+		t: t, base: []string{"-mongo-uri", cont.URI, "-mongo-db", db.Name()}, client: client, db: db, uri: cont.URI,
+	}
 }
 
 func (c cli) run(stdin string, args ...string) (int, string, string) {

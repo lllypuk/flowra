@@ -88,6 +88,11 @@ type FeedBannerView struct {
 	LastError   string
 	// ShowError is set when the last import attempt did not confirm the feed.
 	ShowError bool
+	// Unconfirmed counts owner answers the snapshot does not confirm yet; the warning is set after feedStaleAfter.
+	Unconfirmed     int
+	UnconfirmedAge  string
+	UnconfirmedWarn bool
+	DeliveryError   string
 }
 
 // FeedTaskRowView is one task in the list.
@@ -311,6 +316,15 @@ func (h *FeedTemplateHandler) banner(status leadfeed.FeedStatus) FeedBannerView 
 		banner.Outcome = attempt.Outcome
 		banner.LastError = attempt.Error
 		banner.ShowError = !banner.Healthy
+	}
+	if delivery := status.Delivery; delivery != nil {
+		banner.Unconfirmed = delivery.Unconfirmed
+		banner.DeliveryError = delivery.LastError
+		if oldest := delivery.OldestUnconfirmedAt; oldest != nil && delivery.Unconfirmed > 0 {
+			age := h.now().Sub(*oldest)
+			banner.UnconfirmedAge = feedSpan(age)
+			banner.UnconfirmedWarn = age > feedStaleAfter
+		}
 	}
 	return banner
 }

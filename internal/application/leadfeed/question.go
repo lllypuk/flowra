@@ -335,7 +335,7 @@ func overlay(rec *Record, taskTitle string, own *OwnerAnswer) QuestionView {
 
 	switch {
 	case own != nil:
-		confirmed := q.Answer != nil && q.Answer.AnswerID == own.AnswerID && q.Answer.Delivered
+		confirmed := isConfirmed(q, own.AnswerID)
 		view.Answer = &AnswerView{
 			AnswerID: own.AnswerID, OptionID: own.OptionID, OptionLabel: own.OptionLabel, Text: own.Text,
 			AnsweredAt: own.AnsweredAt, Late: q.Answer != nil && q.Answer.AnswerID == own.AnswerID && q.Answer.Late,

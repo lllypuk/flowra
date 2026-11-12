@@ -20,6 +20,8 @@ import (
 const (
 	leadFeedStateID   = "state"
 	leadFeedAttemptID = "attempt"
+	// leadFeedDeliveryID keeps the delivery outcome beside the attempt; a publication never touches either.
+	leadFeedDeliveryID = "delivery"
 
 	defaultLeadFeedTxTimeout = 30 * time.Second
 
@@ -163,6 +165,17 @@ type leadFeedAttemptDoc struct {
 	PreviousEpoch string    `bson:"previous_epoch"`
 }
 
+type leadFeedDeliveryDoc struct {
+	ID                  string     `bson:"_id"`
+	At                  time.Time  `bson:"at"`
+	Sent                int        `bson:"sent"`
+	Failed              int        `bson:"failed"`
+	Unconfirmed         int        `bson:"unconfirmed"`
+	OldestUnconfirmedAt *time.Time `bson:"oldest_unconfirmed_at"`
+	OtherEpoch          int        `bson:"other_epoch"`
+	LastError           string     `bson:"last_error"`
+}
+
 // Publish replaces the feed with snap in one transaction.
 // The freshness check is inside the transaction because the driver may run it more than once.
 func (r *MongoLeadFeedRepository) Publish(
@@ -297,6 +310,28 @@ func (r *MongoLeadFeedRepository) RecordAttempt(ctx context.Context, attempt lea
 	return nil
 }
 
+// RecordDelivery stores the outcome of the last delivery run in its own document.
+func (r *MongoLeadFeedRepository) RecordDelivery(ctx context.Context, delivery leadfeed.Delivery) error {
+	doc := leadFeedDeliveryDoc{
+		ID:          leadFeedDeliveryID,
+		At:          mongoTime(delivery.At),
+		Sent:        delivery.Sent,
+		Failed:      delivery.Failed,
+		Unconfirmed: delivery.Unconfirmed,
+		OtherEpoch:  delivery.OtherEpoch,
+		LastError:   delivery.LastError,
+	}
+	if oldest := delivery.OldestUnconfirmedAt; oldest != nil {
+		at := mongoTime(*oldest)
+		doc.OldestUnconfirmedAt = &at
+	}
+	_, err := r.state.ReplaceOne(ctx, bson.M{"_id": leadFeedDeliveryID}, doc, options.Replace().SetUpsert(true))
+	if err != nil {
+		return fmt.Errorf("record feed delivery: %w", err)
+	}
+	return nil
+}
+
 // Read runs fn against one snapshot of the feed.
 // fn may run more than once and must rebuild its result from scratch each time.
 func (r *MongoLeadFeedRepository) Read(
@@ -366,6 +401,30 @@ func (v leadFeedView) LastAttempt(ctx context.Context) (*leadfeed.Attempt, error
 		Revision:      doc.Revision,
 		PreviousEpoch: doc.PreviousEpoch,
 	}, nil
+}
+
+func (v leadFeedView) Delivery(ctx context.Context) (*leadfeed.Delivery, error) {
+	var doc leadFeedDeliveryDoc
+	err := v.repo.state.FindOne(ctx, bson.M{"_id": leadFeedDeliveryID}).Decode(&doc)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return nil, nil //nolint:nilnil // no delivery run is a valid answer before the first one
+	}
+	if err != nil {
+		return nil, fmt.Errorf("load feed delivery: %w", err)
+	}
+	out := &leadfeed.Delivery{
+		At:          doc.At.UTC(),
+		Sent:        doc.Sent,
+		Failed:      doc.Failed,
+		Unconfirmed: doc.Unconfirmed,
+		OtherEpoch:  doc.OtherEpoch,
+		LastError:   doc.LastError,
+	}
+	if doc.OldestUnconfirmedAt != nil {
+		at := doc.OldestUnconfirmedAt.UTC()
+		out.OldestUnconfirmedAt = &at
+	}
+	return out, nil
 }
 
 func (v leadFeedView) Tasks(

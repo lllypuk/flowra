@@ -14,12 +14,13 @@ import (
 
 // memFeed is an in-memory feed; it runs every read twice to prove results are rebuilt, not appended.
 type memFeed struct {
-	state   *leadfeed.State
-	attempt *leadfeed.Attempt
-	tasks   []leadfeed.Task
-	records map[string][]leadfeed.Record
-	filters []leadfeed.TaskFilter
-	readErr error
+	state    *leadfeed.State
+	attempt  *leadfeed.Attempt
+	delivery *leadfeed.Delivery
+	tasks    []leadfeed.Task
+	records  map[string][]leadfeed.Record
+	filters  []leadfeed.TaskFilter
+	readErr  error
 }
 
 func (m *memFeed) Read(ctx context.Context, fn func(ctx context.Context, view leadfeed.View) error) error {
@@ -37,6 +38,8 @@ type memView struct{ feed *memFeed }
 func (v memView) State(context.Context) (*leadfeed.State, error) { return v.feed.state, nil }
 
 func (v memView) LastAttempt(context.Context) (*leadfeed.Attempt, error) { return v.feed.attempt, nil }
+
+func (v memView) Delivery(context.Context) (*leadfeed.Delivery, error) { return v.feed.delivery, nil }
 
 func (v memView) Tasks(_ context.Context, filter leadfeed.TaskFilter, offset, limit int) ([]leadfeed.Task, error) {
 	v.feed.filters = append(v.feed.filters, filter)

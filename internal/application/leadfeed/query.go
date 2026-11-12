@@ -80,6 +80,7 @@ type Meta struct {
 type FeedStatus struct {
 	State       *State
 	LastAttempt *Attempt
+	Delivery    *Delivery
 }
 
 // Healthy reports whether the last import attempt, if any, left the feed confirmed.
@@ -151,16 +152,29 @@ func NewQueryService(reader Reader) *QueryService {
 	return &QueryService{reader: reader}
 }
 
+func readStatus(ctx context.Context, view View) (FeedStatus, error) {
+	var (
+		out FeedStatus
+		err error
+	)
+	if out.State, err = view.State(ctx); err != nil {
+		return FeedStatus{}, err
+	}
+	if out.LastAttempt, err = view.LastAttempt(ctx); err != nil {
+		return FeedStatus{}, err
+	}
+	if out.Delivery, err = view.Delivery(ctx); err != nil {
+		return FeedStatus{}, err
+	}
+	return out, nil
+}
+
 // Status returns the published snapshot and the last import attempt.
 func (s *QueryService) Status(ctx context.Context) (FeedStatus, error) {
 	var out FeedStatus
 	err := s.reader.Read(ctx, func(ctx context.Context, view View) error {
-		out = FeedStatus{}
 		var err error
-		if out.State, err = view.State(ctx); err != nil {
-			return err
-		}
-		out.LastAttempt, err = view.LastAttempt(ctx)
+		out, err = readStatus(ctx, view)
 		return err
 	})
 	return out, err
@@ -269,10 +283,7 @@ func (s *QueryService) Thread(ctx context.Context, taskID string, limit int, cur
 		}
 		out.Meta, out.Task = meta, *task
 
-		if out.Status.State, err = view.State(ctx); err != nil {
-			return err
-		}
-		if out.Status.LastAttempt, err = view.LastAttempt(ctx); err != nil {
+		if out.Status, err = readStatus(ctx, view); err != nil {
 			return err
 		}
 
@@ -301,10 +312,7 @@ func (s *QueryService) Board(ctx context.Context) (Board, error) {
 		}
 		out.Meta = meta
 
-		if out.Status.State, err = view.State(ctx); err != nil {
-			return err
-		}
-		if out.Status.LastAttempt, err = view.LastAttempt(ctx); err != nil {
+		if out.Status, err = readStatus(ctx, view); err != nil {
 			return err
 		}
 
