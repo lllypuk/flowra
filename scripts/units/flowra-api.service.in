@@ -1,0 +1,14 @@
+[Unit]
+Description=Flowra API
+After=network.target
+
+[Service]
+WorkingDirectory=@ROOT@
+EnvironmentFile=@ENV_FILE@
+ExecStartPre=/usr/bin/timeout 120 /usr/bin/bash -c 'until (exec 3<>/dev/tcp/127.0.0.1/27017) 2>/dev/null; do sleep 2; done'
+ExecStart=@ROOT@/bin/api
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

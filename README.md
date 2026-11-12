@@ -96,7 +96,7 @@ make feed-status    # published revision and the last import attempt
 ```
 
 Pages: `/feed`, `/feed/tasks/{id}`. API: `GET /api/v1/feed/status|tasks|tasks/{id}|tasks/{id}/records`.
-Timer unit examples are in `scripts/leadfeed-sync.*.example`.
+`make install-units` installs the API and a one-minute sync timer as systemd user units.
 
 ---
 

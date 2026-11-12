@@ -1,0 +1,9 @@
+[Unit]
+Description=Publish the lead task snapshot into the Flowra feed
+
+[Service]
+Type=oneshot
+WorkingDirectory=@ROOT@
+EnvironmentFile=@ENV_FILE@
+ExecStart=@ROOT@/scripts/leadfeed-sync.sh
+MemoryMax=512M
