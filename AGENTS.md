@@ -89,6 +89,12 @@ make test-load-tags
 # Format and lint (ALWAYS run before committing)
 make lint                  # go fmt + golangci-lint --fix
 
+# CI lint, exactly as .github/workflows/tests.yml runs it: must report 0 issues before handing work over.
+# Other linter versions report a different set; a binary built with Go 1.27 fails to load packages.
+GOTOOLCHAIN=go1.26.0 GOBIN=$HOME/.local/opt/golangci-lint-2.10.1 \
+  go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.10.1
+GOTOOLCHAIN=go1.26.0 ~/.local/opt/golangci-lint-2.10.1/golangci-lint run --timeout=5m ./internal/... ./tests/...
+
 # Dependencies
 make deps                  # go mod download && go mod tidy
 
@@ -431,6 +437,7 @@ docs: update API documentation for chat endpoints
 
 ### Pre-commit Checklist
 - [ ] `make lint` passes (format + linter)
+- [ ] CI lint command (Code Quality) reports 0 issues
 - [ ] `make test` passes (all tests)
 - [ ] New code has test coverage
 - [ ] No commented-out code or debug statements
