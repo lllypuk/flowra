@@ -28,7 +28,6 @@ This guide covers deploying Flowra in various environments, from local developme
 | Docker Compose | 2.20+ | Multi-container orchestration |
 | MongoDB | 6.0+ | Primary database |
 | Redis | 7.0+ | Cache and pub/sub |
-| Keycloak | 23.0+ | Authentication server |
 
 ### System Requirements
 
@@ -40,8 +39,7 @@ This guide covers deploying Flowra in various environments, from local developme
 
 ### Network Requirements
 
-- Port 8080: API server
-- Port 8090: Keycloak admin console
+- Port 8080: API server, on loopback only (`127.0.0.1`)
 - Port 27017: MongoDB (only if exposed for external admin/debug access)
 - Port 6379: Redis (only if exposed for external admin/debug access)
 
@@ -56,11 +54,9 @@ This guide covers deploying Flowra in various environments, from local developme
 git clone https://github.com/lllypuk/flowra.git
 cd flowra
 
-# Copy example configuration
-cp configs/config.example.yaml configs/config.yaml
-
-# Edit configuration as needed
-vim configs/config.yaml
+# Generate an owner token and give the server its digest
+token=$(openssl rand -hex 32); echo "$token"
+export AUTH_OWNER_TOKEN_SHA256=$(printf %s "$token" | sha256sum | cut -d' ' -f1)
 ```
 
 ### 2. Start Infrastructure
@@ -104,7 +100,7 @@ The main configuration file is `configs/config.yaml`:
 
 ```yaml
 server:
-  host: "0.0.0.0"
+  host: "127.0.0.1"  # the API refuses a non-loopback address
   port: 8080
   read_timeout: 30s
   write_timeout: 30s
@@ -122,19 +118,14 @@ redis:
   db: 0
   pool_size: 10
 
-keycloak:
-  url: "http://localhost:8090"
-  public_url: "http://localhost:8090"
-  realm: "flowra"
-  client_id: "flowra-backend"
-  client_secret: "your-client-secret"
-  admin_username: "admin"
-  admin_password: "admin123"
-
 auth:
-  jwt_secret: "your-secure-jwt-secret"
-  access_token_ttl: 15m
-  refresh_token_ttl: 7d
+  # tokens:            # named owner tokens, SHA-256 digests only
+  #   - name: "phone"
+  #     sha256: "<hex sha256>"
+  owner:
+    username: "owner"
+    email: "owner@flowra.local"
+  session_ttl: 720h
 
 eventbus:
   type: "redis"  # redis | inmemory
@@ -170,30 +161,21 @@ Use the production compose stack when deploying Flowra as a single image with bu
 cp .env.example .env
 
 # 2) Set required secrets before first run
-#    - MONGODB_ROOT_PASSWORD
+#    - MONGODB_ROOT_USERNAME (for example flowra) and MONGODB_ROOT_PASSWORD
 #    - REDIS_PASSWORD
-#    - KEYCLOAK_CLIENT_SECRET
-#    - KEYCLOAK_ADMIN_PASSWORD
-#    - KEYCLOAK_DB_PASSWORD
-#    - AUTH_JWT_SECRET
-# 3) Set required usernames/audience for secure defaults
-#    - MONGODB_ROOT_USERNAME (for example flowra)
-#    - KEYCLOAK_JWT_AUDIENCE (for example flowra-backend)
-# 4) Set public URLs for browser OAuth redirects
-#    - FLOWRA_PUBLIC_URL (for example http://localhost:8080 or https://app.example.com)
-#    - KEYCLOAK_PUBLIC_URL (for example http://localhost:8090 or https://auth.example.com)
+#    - AUTH_OWNER_TOKEN_SHA256: token=$(openssl rand -hex 32); printf %s "$token" | sha256sum
 vim .env
 
-# 5) Start the full stack (MongoDB, Redis, Keycloak, Flowra app)
+# 3) Start the stack (MongoDB, Redis, Flowra app)
 docker compose -f docker-compose.prod.yml up -d
 
-# 6) Verify health
+# 4) Verify health
 curl -sf http://localhost:8080/health
 
-# 7) View logs
+# 5) View logs
 docker compose -f docker-compose.prod.yml logs -f app
 
-# 8) Stop the stack
+# 6) Stop the stack
 docker compose -f docker-compose.prod.yml down
 ```
 
@@ -212,17 +194,26 @@ make docker-prod-down
 - `uploads_data` mounted to `/app/uploads` in `app` for user file uploads
 - `mongodb_data` mounted to `/data/db` in `mongodb`
 - `redis_data` mounted to `/data` in `redis`
-- `keycloak_db_data` mounted to `/var/lib/postgresql/data` in `keycloak-db`
 
 Data in these volumes survives `docker compose ... down`. Use `docker compose ... down -v` only when intentionally resetting state.
 
-### Keycloak Realm Import
+### Network
 
-- `docker-compose.prod.yml` mounts `configs/keycloak-prod/realm-export.template.json` and renders `KEYCLOAK_CLIENT_SECRET` plus `FLOWRA_PUBLIC_URL` into a runtime import file.
-- The production realm template does not include pre-seeded users.
-- On first startup, Keycloak imports the `flowra` realm automatically.
-- On subsequent startups with existing Keycloak DB data (`keycloak_db_data` volume), Keycloak skips re-import.
-- Browser auth URLs use `KEYCLOAK_PUBLIC_URL`; backend service-to-service calls use `KEYCLOAK_URL`.
+- The token is a bearer secret over plain HTTP, so the API listens only on `127.0.0.1`. The `app` service runs
+  with `network_mode: host`; MongoDB and Redis are published on `127.0.0.1` only.
+- The stack cannot run next to the development stack: both use ports 27017 and 6379.
+- Access from other machines (a private network or an HTTPS proxy on the host) is not configured here.
+
+### Migrating a database from the Keycloak era
+
+Users created through Keycloak store its subject in `keycloak_id`; every token now resolves to the identity
+`owner`. Point the owner user at it once, or the server creates a new user without workspaces:
+
+```bash
+mongosh flowra --eval 'db.users.updateOne({username: "<owner username>"}, {$set: {keycloak_id: "owner"}})'
+```
+
+Leftover `keycloak_group_id` fields and the `idx_workspaces_keycloak_unique` index on workspaces are harmless.
 
 ### Worker Runtime Mode
 
@@ -310,7 +301,7 @@ Flowra environment variable names do not use a `FLOWRA_` prefix (except runtime 
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `SERVER_HOST` | `0.0.0.0` | Server bind address |
+| `SERVER_HOST` | `127.0.0.1` | Server bind address; the API refuses a non-loopback address |
 | `SERVER_PORT` | `8080` | Server port |
 | `SERVER_READ_TIMEOUT` | `30s` | Request read timeout |
 | `SERVER_WRITE_TIMEOUT` | `30s` | Response write timeout |
@@ -334,26 +325,14 @@ Flowra environment variable names do not use a `FLOWRA_` prefix (except runtime 
 | `REDIS_DB` | `0` | Redis database number |
 | `REDIS_POOL_SIZE` | `10` | Connection pool size |
 
-### Keycloak and Auth Configuration
+### Auth Configuration
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `KEYCLOAK_ENABLED` | `true` | Enable Keycloak integration |
-| `KEYCLOAK_URL` | `http://localhost:8090` | Internal Keycloak URL used by backend-to-Keycloak requests |
-| `KEYCLOAK_PUBLIC_URL` | `http://localhost:8090` | Public Keycloak URL used for browser OAuth redirects |
-| `FLOWRA_PUBLIC_URL` | `http://localhost:8080` | Public Flowra base URL injected into Keycloak realm redirect/logout settings |
-| `KEYCLOAK_REALM` | `flowra` | Keycloak realm |
-| `KEYCLOAK_CLIENT_ID` | `flowra-backend` | OAuth client ID |
-| `KEYCLOAK_CLIENT_SECRET` | `` | OAuth client secret |
-| `KEYCLOAK_ADMIN_USERNAME` | `` | Keycloak admin username (used for user sync/admin APIs) |
-| `KEYCLOAK_ADMIN_PASSWORD` | `` | Keycloak admin password (used for user sync/admin APIs) |
-| `KEYCLOAK_DB_PASSWORD` | `` | Keycloak PostgreSQL database password |
-| `KEYCLOAK_JWT_AUDIENCE` | `flowra-backend` | Expected JWT audience in production deployments |
-| `KEYCLOAK_JWT_LEEWAY` | `30s` | JWT validation clock skew leeway |
-| `KEYCLOAK_JWT_REFRESH_INTERVAL` | `1h` | JWKS/token validation metadata refresh interval |
-| `AUTH_JWT_SECRET` | `` | JWT signing secret |
-| `AUTH_ACCESS_TOKEN_TTL` | `15m` | Access token lifetime |
-| `AUTH_REFRESH_TOKEN_TTL` | `7d` | Refresh token lifetime |
+| `AUTH_OWNER_TOKEN_SHA256` | `` | Hex SHA-256 of the owner token named `owner`; more tokens go to `auth.tokens` in YAML |
+| `AUTH_OWNER_USERNAME` | `owner` | Username every token resolves to |
+| `AUTH_OWNER_EMAIL` | `owner@flowra.local` | Email of the owner user |
+| `AUTH_SESSION_TTL` | `720h` | Lifetime of the web session cookie |
 
 ### Logging Configuration
 
@@ -502,26 +481,20 @@ redis-cli -h localhost -p 6379 ping
 docker-compose logs redis
 ```
 
-#### 3. Keycloak Authentication Fails
+#### 3. Sign-in Fails
 
 **Symptoms:**
 ```
-error: invalid token or token expired
+error: invalid token
 ```
 
 **Solutions:**
 ```bash
-# Check Keycloak is accessible
-curl http://localhost:8090/realms/flowra
+# The server stores only the digest: compare it with the token you send
+printf %s "$token" | sha256sum
 
-# Verify realm exists
-# Login to Keycloak admin: http://localhost:8090/admin
-
-# Check client configuration
-# Ensure client_secret matches in config
-
-# Check time synchronization
-timedatectl status
+# The API refuses to start without a token or on a non-loopback address
+docker compose -f docker-compose.prod.yml logs app | grep -i auth
 ```
 
 #### 4. WebSocket Connection Fails
@@ -609,7 +582,6 @@ log:
 | Worker | `stdout` / `/var/log/flowra/worker.log` |
 | MongoDB | Docker logs / `/var/log/mongodb/` |
 | Redis | Docker logs / `/var/log/redis/` |
-| Keycloak | Docker logs |
 
 ---
 
@@ -618,7 +590,7 @@ log:
 ### Production Checklist
 
 - [ ] Change all default passwords
-- [ ] Use strong JWT secret (min 256 bits)
+- [ ] Generate owner tokens with `openssl rand -hex 32` and keep only their digests in config
 - [ ] Enable TLS/HTTPS
 - [ ] Configure firewall rules
 - [ ] Enable MongoDB authentication

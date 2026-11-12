@@ -52,32 +52,6 @@ services:
       retries: 5
     restart: unless-stopped
 
-  keycloak:
-    image: quay.io/keycloak/keycloak:23.0
-    container_name: flowra-keycloak
-    profiles: ["keycloak"]
-    environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin123
-      KC_DB: dev-file
-    ports:
-      - "8090:8080"
-    volumes:
-      - ./configs/keycloak:/opt/keycloak/data/import
-    command:
-      - start-dev
-      - --import-realm
-    networks:
-      - flowra-network
-    healthcheck:
-      test:
-        ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    restart: unless-stopped
-
 volumes:
   mongodb_data:
   redis_data:
