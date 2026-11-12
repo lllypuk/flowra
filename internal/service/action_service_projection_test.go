@@ -207,6 +207,7 @@ func TestActionService_AppliedSurvivesProjectionAndNoteFailures(t *testing.T) {
 type stubRunner struct {
 	key     appcore.CommandKey
 	outcome chatapp.Outcome
+	err     error
 }
 
 func (s *stubRunner) Run(
@@ -216,7 +217,7 @@ func (s *stubRunner) Run(
 	_ func(context.Context) (chatapp.Result, error),
 ) (chatapp.Outcome, error) {
 	s.key = key
-	return s.outcome, nil
+	return s.outcome, s.err
 }
 
 func TestActionService_KeyAndReplay(t *testing.T) {
@@ -232,4 +233,16 @@ func TestActionService_KeyAndReplay(t *testing.T) {
 	assert.True(t, res.Replayed)
 	assert.Equal(t, 1, f.chats.calls, "a replay rebuilds the chat read model")
 	assert.Empty(t, f.sender.cmds, "a replay posts no second note")
+}
+
+func TestActionService_OutcomeUnknownRebuildsProjections(t *testing.T) {
+	runner := &stubRunner{err: errs.ErrOutcomeUnknown}
+	f := newActionFixture(t, runner)
+
+	_, err := f.svc.Close(context.Background(), f.chatID, f.ownerID, "")
+	require.ErrorIs(t, err, errs.ErrOutcomeUnknown)
+
+	assert.Equal(t, 1, f.chats.calls, "the commit may have landed: the chat read model is rebuilt")
+	assert.Equal(t, 1, f.tasks.calls, "the commit may have landed: the task read model is rebuilt")
+	assert.Empty(t, f.sender.cmds, "an unknown outcome posts no note")
 }

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -285,6 +286,11 @@ func (s *ActionService) apply(
 		cmdKey.ID = actorID.String() + ":" + key
 	}
 	out, err := s.runner.Run(ctx, chatID, cmdKey, exec)
+	if errors.Is(err, errs.ErrOutcomeUnknown) {
+		// The commit may have landed without reaching the read models, and a retry without a key writes nothing.
+		s.syncProjection(ctx, s.chatProjectionSync, chatID, "chat")
+		s.syncProjection(ctx, s.taskProjectionSync, chatID, "task")
+	}
 	if err != nil {
 		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
 	}

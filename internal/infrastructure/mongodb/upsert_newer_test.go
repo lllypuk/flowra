@@ -2,6 +2,8 @@ package mongodb_test
 
 import (
 	"context"
+	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -51,6 +53,31 @@ func TestUpsertNewer(t *testing.T) {
 	n, err := coll.CountDocuments(ctx, bson.M{"chat_id": "legacy", "title": "new"})
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), n, "a document without a version is updated")
+}
+
+func TestUpsertNewer_ConcurrentInsertsKeepNewest(t *testing.T) {
+	db := testutil.SetupTestMongoDB(t)
+	ctx := context.Background()
+	coll := db.Collection("rm_race")
+	_, err := coll.Indexes().CreateOne(ctx, mongoIndex("chat_id"))
+	require.NoError(t, err)
+
+	const docs, versions = 40, 6
+	var wg sync.WaitGroup
+	for d := range docs {
+		id := fmt.Sprintf("c%d", d)
+		for v := 1; v <= versions; v++ {
+			wg.Go(func() {
+				assert.NoError(t, mongodb.UpsertNewer(ctx, coll, bson.M{"chat_id": id}, v,
+					bson.M{"$set": bson.M{"chat_id": id, "version": v}}))
+			})
+		}
+	}
+	wg.Wait()
+
+	stale, err := coll.CountDocuments(ctx, bson.M{"version": bson.M{"$lt": versions}})
+	require.NoError(t, err)
+	assert.Zero(t, stale, "a lost insert race must not leave an older version stored")
 }
 
 func mongoIndex(field string) mongo.IndexModel {
