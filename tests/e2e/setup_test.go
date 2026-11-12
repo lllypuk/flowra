@@ -300,11 +300,15 @@ func (s *E2ETestSuite) setupServer() {
 
 	// Lead feed routes: the real handler over the real store, read-only
 	s.FeedRepo = mongodb.NewMongoLeadFeedRepository(s.MongoClient, s.MongoDB)
-	feedHandler := httphandler.NewFeedHandler(leadfeed.NewQueryService(s.FeedRepo), logger)
+	feedHandler := httphandler.NewFeedHandler(leadfeed.NewQueryService(s.FeedRepo), logger).
+		WithQuestions(leadfeed.NewQuestionService(s.FeedRepo, mongodb.NewMongoOwnerAnswerRepository(s.MongoDB)))
 	api.GET("/feed/status", feedHandler.Status)
 	api.GET("/feed/tasks", feedHandler.ListTasks)
 	api.GET("/feed/tasks/:id", feedHandler.GetTask)
 	api.GET("/feed/tasks/:id/records", feedHandler.ListRecords)
+	api.GET("/feed/questions", feedHandler.ListQuestions)
+	api.GET("/feed/questions/:qid", feedHandler.GetQuestion)
+	api.POST("/feed/questions/:qid/answer", feedHandler.AnswerQuestion, httphandler.RequireSameOriginForCookie)
 
 	// WebSocket route (simplified for testing)
 	api.GET("/ws", func(c echo.Context) error {
@@ -509,6 +513,14 @@ func (s *E2ETestSuite) NewHTTPClient(token string) *HTTPClient {
 // DoRequest performs an HTTP request and returns the response.
 func (c *HTTPClient) DoRequest(method, path string, body interface{}) *http.Response {
 	c.t.Helper()
+	return c.DoRequestWithHeaders(method, path, body, nil)
+}
+
+// DoRequestWithHeaders is DoRequest with extra request headers.
+func (c *HTTPClient) DoRequestWithHeaders(
+	method, path string, body interface{}, headers map[string]string,
+) *http.Response {
+	c.t.Helper()
 
 	var bodyReader io.Reader
 	if body != nil {
@@ -523,6 +535,9 @@ func (c *HTTPClient) DoRequest(method, path string, body interface{}) *http.Resp
 	req.Header.Set("Content-Type", "application/json")
 	if c.token != "" {
 		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
+	for name, value := range headers {
+		req.Header.Set(name, value)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
