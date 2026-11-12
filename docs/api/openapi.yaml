@@ -1347,7 +1347,7 @@ paths:
           content:
             application/json:
               schema:
-                oneOf:
+                anyOf:
                   - $ref: "#/components/schemas/TaskResponse"
                   - $ref: "#/components/schemas/ActionOutcomeResponse"
         "400":
@@ -1398,7 +1398,7 @@ paths:
           content:
             application/json:
               schema:
-                oneOf:
+                anyOf:
                   - $ref: "#/components/schemas/TaskResponse"
                   - $ref: "#/components/schemas/ActionOutcomeResponse"
         "400":
@@ -1445,7 +1445,7 @@ paths:
           content:
             application/json:
               schema:
-                oneOf:
+                anyOf:
                   - $ref: "#/components/schemas/TaskResponse"
                   - $ref: "#/components/schemas/ActionOutcomeResponse"
         "400":
@@ -1492,7 +1492,7 @@ paths:
           content:
             application/json:
               schema:
-                oneOf:
+                anyOf:
                   - $ref: "#/components/schemas/TaskResponse"
                   - $ref: "#/components/schemas/ActionOutcomeResponse"
         "400":

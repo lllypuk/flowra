@@ -17,8 +17,12 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-// commandTimeout bounds one action, lock wait included; it stays below the server write timeout.
-const commandTimeout = 20 * time.Second
+const (
+	// commandTimeout bounds one action, lock wait included; it stays below the server write timeout.
+	commandTimeout = 20 * time.Second
+	// rebuildTimeout bounds the read-model rebuild after an unknown outcome.
+	rebuildTimeout = 5 * time.Second
+)
 
 // ActionMessageSender defines command execution required by ActionService.
 type ActionMessageSender interface {
@@ -288,8 +292,11 @@ func (s *ActionService) apply(
 	out, err := s.runner.Run(ctx, chatID, cmdKey, exec)
 	if errors.Is(err, errs.ErrOutcomeUnknown) {
 		// The commit may have landed without reaching the read models, and a retry without a key writes nothing.
-		s.syncProjection(ctx, s.chatProjectionSync, chatID, "chat")
-		s.syncProjection(ctx, s.taskProjectionSync, chatID, "task")
+		// The command deadline may be spent by the driver's commit retries, so the rebuild gets its own.
+		rctx, rcancel := context.WithTimeout(context.WithoutCancel(ctx), rebuildTimeout)
+		s.syncProjection(rctx, s.chatProjectionSync, chatID, "chat")
+		s.syncProjection(rctx, s.taskProjectionSync, chatID, "task")
+		rcancel()
 	}
 	if err != nil {
 		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
