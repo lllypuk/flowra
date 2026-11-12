@@ -200,9 +200,8 @@ type AuthToken struct {
 
 // OwnerConfig describes the owner user; it does not depend on any token.
 type OwnerConfig struct {
-	Username    string `yaml:"username" env:"AUTH_OWNER_USERNAME"`
-	Email       string `yaml:"email" env:"AUTH_OWNER_EMAIL"`
-	DisplayName string `yaml:"display_name" env:"AUTH_OWNER_DISPLAY_NAME"`
+	Username string `yaml:"username" env:"AUTH_OWNER_USERNAME"`
+	Email    string `yaml:"email" env:"AUTH_OWNER_EMAIL"`
 }
 
 // IsTokenMode reports whether owner tokens are the only accepted credentials.
@@ -324,9 +323,8 @@ func DefaultConfig() *Config {
 			AccessTokenTTL:  DefaultAccessTokenTTL,
 			RefreshTokenTTL: DefaultRefreshTokenTTL,
 			Owner: OwnerConfig{
-				Username:    "owner",
-				Email:       "owner@flowra.local",
-				DisplayName: "Owner",
+				Username: "owner",
+				Email:    "owner@flowra.local",
 			},
 			SessionTTL: DefaultSessionTTL,
 		},

@@ -1,0 +1,28 @@
+# Single-owner run without Keycloak: make dev-local
+# Auth is by owner token, so the server must stay on loopback.
+
+server:
+  host: "127.0.0.1"
+  port: 8080
+
+mongodb:
+  uri: "mongodb://localhost:27017/?replicaSet=rs0"
+  database: "flowra"
+
+redis:
+  addr: "localhost:6379"
+
+keycloak:
+  enabled: false
+
+auth:
+  mode: "token"
+  # The token named "owner" comes from AUTH_OWNER_TOKEN_SHA256.
+  # More tokens, one per device:
+  # tokens:
+  #   - name: "phone"
+  #     sha256: "<hex sha256 of a random secret>"
+
+log:
+  level: "info"
+  format: "text"

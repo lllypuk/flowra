@@ -55,3 +55,21 @@ func TestSetupUserSyncWorker_EnabledRequiresAdminPassword(t *testing.T) {
 	require.Equal(t, UserSyncConfig{}, syncConfig)
 	require.EqualError(t, err, "keycloak configuration is required for user sync worker")
 }
+
+func TestSetupUserSyncWorker_TokenAuthModeSkipsKeycloak(t *testing.T) {
+	t.Setenv("USER_SYNC_DISABLED", "")
+	t.Setenv("USER_SYNC_INTERVAL", "")
+
+	cfg := config.DefaultConfig()
+	cfg.Auth.Mode = config.AuthModeToken
+	cfg.Keycloak.Enabled = false
+	cfg.Keycloak.URL = ""
+	cfg.Keycloak.AdminUsername = ""
+	cfg.Keycloak.AdminPassword = ""
+
+	userSyncWorker, syncConfig, err := setupUserSyncWorker(cfg, nil, slog.Default())
+	require.NoError(t, err)
+	require.NotNil(t, userSyncWorker)
+	require.False(t, syncConfig.Enabled)
+	require.NoError(t, userSyncWorker.Run(context.Background()))
+}

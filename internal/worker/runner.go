@@ -139,7 +139,8 @@ func setupUserSyncWorker(
 		}
 	}
 
-	if isEnvBoolTrue("USER_SYNC_DISABLED") {
+	// Token auth has no Keycloak to sync users from.
+	if isEnvBoolTrue("USER_SYNC_DISABLED") || cfg.Auth.IsTokenMode() {
 		syncConfig.Enabled = false
 
 		workerInstance := NewUserSyncWorker(

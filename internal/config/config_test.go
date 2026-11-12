@@ -865,3 +865,27 @@ func TestAuthConfig_OwnerTokens_FromEnv(t *testing.T) {
 	assert.Equal(t, config.EnvOwnerTokenName, tokens[1].Name)
 	assert.Equal(t, "owner", cfg.Auth.Owner.Username)
 }
+
+func TestLoadFromPath_TokenConfig(t *testing.T) {
+	const tokenConfig = "../../configs/config.token.yaml"
+
+	t.Run("valid with the owner token digest from env", func(t *testing.T) {
+		t.Setenv("AUTH_OWNER_TOKEN_SHA256", testTokenDigest)
+
+		cfg, err := config.LoadFromPath(tokenConfig)
+		require.NoError(t, err)
+
+		assert.True(t, cfg.Auth.IsTokenMode())
+		assert.False(t, cfg.Keycloak.Enabled)
+		assert.Equal(t, "127.0.0.1", cfg.Server.Host)
+		require.Len(t, cfg.Auth.OwnerTokens(), 1)
+	})
+
+	t.Run("refused without any token", func(t *testing.T) {
+		t.Setenv("AUTH_OWNER_TOKEN_SHA256", "")
+
+		_, err := config.LoadFromPath(tokenConfig)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), config.ErrNoOwnerTokens.Error())
+	})
+}

@@ -26,8 +26,20 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-echo "[dev] starting infrastructure (mongodb, redis, keycloak)..."
-docker-compose up -d mongodb redis keycloak mongo-init
+if [[ "${FLOWRA_LOCAL:-}" == "1" ]]; then
+	if [[ -z "${AUTH_OWNER_TOKEN_SHA256:-}" ]]; then
+		echo "[dev] AUTH_OWNER_TOKEN_SHA256 is not set." >&2
+		echo "[dev] generate a token:  token=\$(openssl rand -hex 32); echo \"\$token\"" >&2
+		echo "[dev] and export its digest:  export AUTH_OWNER_TOKEN_SHA256=\$(printf %s \"\$token\" | sha256sum | cut -d' ' -f1)" >&2
+		exit 1
+	fi
+	export CONFIG_PATH="${CONFIG_PATH:-configs/config.token.yaml}"
+	echo "[dev] starting infrastructure (mongodb, redis), no keycloak..."
+	docker-compose up -d mongodb redis mongo-init
+else
+	echo "[dev] starting infrastructure (mongodb, redis, keycloak)..."
+	docker-compose --profile keycloak up -d mongodb redis keycloak mongo-init
+fi
 
 echo "[dev] starting worker..."
 FLOWRA_DEV_MODE=fullstack go run ./cmd/worker &

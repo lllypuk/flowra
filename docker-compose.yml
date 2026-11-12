@@ -55,6 +55,7 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:23.0
     container_name: flowra-keycloak
+    profiles: ["keycloak"]
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin123
