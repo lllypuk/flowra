@@ -5,83 +5,70 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
+	"github.com/lllypuk/flowra/internal/application/appcore"
 	chatApp "github.com/lllypuk/flowra/internal/application/chat"
-	"github.com/lllypuk/flowra/internal/domain/errs"
 	domainUUID "github.com/lllypuk/flowra/internal/domain/uuid"
 )
 
-const (
-	noneUsername = "@none"
+const noneUsername = "@none"
 
-	// Retry configuration for handling concurrency conflicts
-	// Increased to handle high-contention scenarios where chat is being modified rapidly
-	maxRetries         = 5
-	initialRetryDelay  = 100 * time.Millisecond
-	maxRetryDelay      = 2000 * time.Millisecond
-	retryDelayMultiple = 2
-)
+// ChatCommandRunner applies a chat command with bounded retries, one at a time per chat.
+type ChatCommandRunner interface {
+	Run(
+		ctx context.Context,
+		chatID domainUUID.UUID,
+		key appcore.CommandKey,
+		exec func(context.Context) (chatApp.Result, error),
+	) (chatApp.Outcome, error)
+}
 
 // CommandExecutor performs tag commands via Chat UseCases
 type CommandExecutor struct {
 	chatUseCases *ChatUseCases
 	userRepo     UserRepository
+	runner       ChatCommandRunner
+}
+
+// ExecutorOption customizes CommandExecutor.
+type ExecutorOption func(*CommandExecutor)
+
+// WithChatCommandRunner shares the runner with other chat writers, so that their commands on one chat queue up.
+func WithChatCommandRunner(runner ChatCommandRunner) ExecutorOption {
+	return func(e *CommandExecutor) { e.runner = runner }
 }
 
 // NewCommandExecutor creates New CommandExecutor
 func NewCommandExecutor(
 	chatUseCases *ChatUseCases,
 	userRepo UserRepository,
+	opts ...ExecutorOption,
 ) *CommandExecutor {
-	return &CommandExecutor{
+	e := &CommandExecutor{
 		chatUseCases: chatUseCases,
 		userRepo:     userRepo,
 	}
+	for _, opt := range opts {
+		opt(e)
+	}
+	if e.runner == nil {
+		e.runner = chatApp.NewCommandRunner(nil)
+	}
+	return e
 }
 
-// retryOnConcurrentModification retries an operation with exponential backoff when concurrent modification occurs.
-// This is used by all executor methods to handle optimistic locking conflicts during chat operations.
-func (e *CommandExecutor) retryOnConcurrentModification(
+// run applies one chat command through the runner.
+func (e *CommandExecutor) run(
 	ctx context.Context,
-	operation func(context.Context) error,
+	chatID uuid.UUID,
+	operation func(context.Context) (chatApp.Result, error),
 	operationName string,
 ) error {
-	var lastErr error
-	delay := initialRetryDelay
-
-	for attempt := 0; attempt <= maxRetries; attempt++ {
-		err := operation(ctx)
-		if err == nil {
-			return nil // Success
-		}
-
-		// Check if this is a concurrency conflict
-		if !errors.Is(err, errs.ErrConcurrentModification) {
-			return fmt.Errorf("%s: %w", operationName, err)
-		}
-
-		lastErr = err
-
-		// If this was the last attempt, return the error
-		if attempt == maxRetries {
-			break
-		}
-
-		// Wait before retrying with exponential backoff
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(delay):
-			delay *= retryDelayMultiple
-			if delay > maxRetryDelay {
-				delay = maxRetryDelay
-			}
-		}
+	if _, err := e.runner.Run(ctx, domainUUID.FromGoogleUUID(chatID), appcore.CommandKey{}, operation); err != nil {
+		return fmt.Errorf("%s: %w", operationName, err)
 	}
-
-	return fmt.Errorf("failed after %d retries: %w", maxRetries, lastErr)
+	return nil
 }
 
 // Execute performs command by dispatching to appropriate executor method.
@@ -177,9 +164,8 @@ func (e *CommandExecutor) executeChangeStatus(ctx context.Context, cmd ChangeSta
 		ChangedBy: domainUUID.FromGoogleUUID(actorID),
 	}
 
-	return e.retryOnConcurrentModification(ctx, func(ctx context.Context) error {
-		_, err := e.chatUseCases.ChangeStatus.Execute(ctx, usecaseCmd)
-		return err
+	return e.run(ctx, cmd.ChatID, func(ctx context.Context) (chatApp.Result, error) {
+		return e.chatUseCases.ChangeStatus.Execute(ctx, usecaseCmd)
 	}, "failed to change status")
 }
 
@@ -203,9 +189,8 @@ func (e *CommandExecutor) executeAssignUser(ctx context.Context, cmd AssignUserC
 		AssignedBy: domainUUID.FromGoogleUUID(actorID),
 	}
 
-	return e.retryOnConcurrentModification(ctx, func(ctx context.Context) error {
-		_, err := e.chatUseCases.AssignUser.Execute(ctx, usecaseCmd)
-		return err
+	return e.run(ctx, cmd.ChatID, func(ctx context.Context) (chatApp.Result, error) {
+		return e.chatUseCases.AssignUser.Execute(ctx, usecaseCmd)
 	}, "failed to assign user")
 }
 
@@ -221,9 +206,8 @@ func (e *CommandExecutor) executeChangePriority(
 		SetBy:    domainUUID.FromGoogleUUID(actorID),
 	}
 
-	return e.retryOnConcurrentModification(ctx, func(ctx context.Context) error {
-		_, err := e.chatUseCases.SetPriority.Execute(ctx, usecaseCmd)
-		return err
+	return e.run(ctx, cmd.ChatID, func(ctx context.Context) (chatApp.Result, error) {
+		return e.chatUseCases.SetPriority.Execute(ctx, usecaseCmd)
 	}, "failed to set priority")
 }
 
@@ -235,9 +219,8 @@ func (e *CommandExecutor) executeSetDueDate(ctx context.Context, cmd SetDueDateC
 		SetBy:   domainUUID.FromGoogleUUID(actorID),
 	}
 
-	return e.retryOnConcurrentModification(ctx, func(ctx context.Context) error {
-		_, err := e.chatUseCases.SetDueDate.Execute(ctx, usecaseCmd)
-		return err
+	return e.run(ctx, cmd.ChatID, func(ctx context.Context) (chatApp.Result, error) {
+		return e.chatUseCases.SetDueDate.Execute(ctx, usecaseCmd)
 	}, "failed to set due date")
 }
 
@@ -249,9 +232,8 @@ func (e *CommandExecutor) executeChangeTitle(ctx context.Context, cmd ChangeTitl
 		RenamedBy: domainUUID.FromGoogleUUID(actorID),
 	}
 
-	return e.retryOnConcurrentModification(ctx, func(ctx context.Context) error {
-		_, err := e.chatUseCases.Rename.Execute(ctx, usecaseCmd)
-		return err
+	return e.run(ctx, cmd.ChatID, func(ctx context.Context) (chatApp.Result, error) {
+		return e.chatUseCases.Rename.Execute(ctx, usecaseCmd)
 	}, "failed to rename")
 }
 
@@ -263,9 +245,8 @@ func (e *CommandExecutor) executeSetSeverity(ctx context.Context, cmd SetSeverit
 		SetBy:    domainUUID.FromGoogleUUID(actorID),
 	}
 
-	return e.retryOnConcurrentModification(ctx, func(ctx context.Context) error {
-		_, err := e.chatUseCases.SetSeverity.Execute(ctx, usecaseCmd)
-		return err
+	return e.run(ctx, cmd.ChatID, func(ctx context.Context) (chatApp.Result, error) {
+		return e.chatUseCases.SetSeverity.Execute(ctx, usecaseCmd)
 	}, "failed to set severity")
 }
 
@@ -288,9 +269,8 @@ func (e *CommandExecutor) executeInviteUser(ctx context.Context, cmd InviteUserC
 		AddedBy: domainUUID.FromGoogleUUID(actorID),
 	}
 
-	return e.retryOnConcurrentModification(ctx, func(ctx context.Context) error {
-		_, err := e.chatUseCases.AddParticipant.Execute(ctx, addCmd)
-		return err
+	return e.run(ctx, cmd.ChatID, func(ctx context.Context) (chatApp.Result, error) {
+		return e.chatUseCases.AddParticipant.Execute(ctx, addCmd)
 	}, "failed to add participant")
 }
 
@@ -310,9 +290,8 @@ func (e *CommandExecutor) executeRemoveUser(ctx context.Context, cmd RemoveUserC
 		RemovedBy: domainUUID.FromGoogleUUID(actorID),
 	}
 
-	return e.retryOnConcurrentModification(ctx, func(ctx context.Context) error {
-		_, err := e.chatUseCases.RemoveParticipant.Execute(ctx, removeCmd)
-		return err
+	return e.run(ctx, cmd.ChatID, func(ctx context.Context) (chatApp.Result, error) {
+		return e.chatUseCases.RemoveParticipant.Execute(ctx, removeCmd)
 	}, "failed to remove participant")
 }
 
@@ -323,9 +302,8 @@ func (e *CommandExecutor) executeCloseChat(ctx context.Context, cmd CloseChatCom
 		ClosedBy: domainUUID.FromGoogleUUID(actorID),
 	}
 
-	return e.retryOnConcurrentModification(ctx, func(ctx context.Context) error {
-		_, err := e.chatUseCases.CloseChat.Execute(ctx, closeCmd)
-		return err
+	return e.run(ctx, cmd.ChatID, func(ctx context.Context) (chatApp.Result, error) {
+		return e.chatUseCases.CloseChat.Execute(ctx, closeCmd)
 	}, "failed to close chat")
 }
 
@@ -336,9 +314,8 @@ func (e *CommandExecutor) executeReopenChat(ctx context.Context, cmd ReopenChatC
 		ReopenedBy: domainUUID.FromGoogleUUID(actorID),
 	}
 
-	return e.retryOnConcurrentModification(ctx, func(ctx context.Context) error {
-		_, err := e.chatUseCases.ReopenChat.Execute(ctx, reopenCmd)
-		return err
+	return e.run(ctx, cmd.ChatID, func(ctx context.Context) (chatApp.Result, error) {
+		return e.chatUseCases.ReopenChat.Execute(ctx, reopenCmd)
 	}, "failed to reopen chat")
 }
 

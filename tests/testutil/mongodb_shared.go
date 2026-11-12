@@ -133,7 +133,11 @@ func startMongoContainer(ctx context.Context) (*SharedMongoContainer, error) {
 			hc.MemorySwap = containerMemoryLimit
 		},
 		// Enable single-node replica set so MongoDB transactions work in tests.
-		Cmd: []string{"--replSet", mongoReplicaSetName, "--bind_ip_all", "--wiredTigerCacheSizeGB=0.25"},
+		Cmd: []string{
+			"--replSet", mongoReplicaSetName, "--bind_ip_all", "--wiredTigerCacheSizeGB=0.25",
+			// failCommand lets tests fail a commit on purpose.
+			"--setParameter", "enableTestCommands=1",
+		},
 		// Use both log and port check for more reliable startup detection
 		WaitingFor: wait.ForAll(
 			wait.ForLog("Waiting for connections").WithStartupTimeout(containerStartupTimeout),

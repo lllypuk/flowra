@@ -2,6 +2,7 @@ package httpserver_test
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -152,7 +153,21 @@ func TestRespondError(t *testing.T) {
 			err:            errs.ErrConcurrentModification,
 			expectedStatus: http.StatusConflict,
 			expectedCode:   "CONCURRENT_MODIFICATION",
-			expectedMsg:    "Resource was modified by another request",
+			expectedMsg:    "Not applied: the resource was modified concurrently; retry",
+		},
+		{
+			name:           "unknown outcome, wrapped",
+			err:            fmt.Errorf("failed to save events: %w: commit", errs.ErrOutcomeUnknown),
+			expectedStatus: http.StatusServiceUnavailable,
+			expectedCode:   "OUTCOME_UNKNOWN",
+			expectedMsg:    "The change may or may not have been applied; retry with the same Idempotency-Key",
+		},
+		{
+			name:           "idempotency key reused",
+			err:            errs.ErrIdempotencyKeyReused,
+			expectedStatus: http.StatusUnprocessableEntity,
+			expectedCode:   "IDEMPOTENCY_KEY_REUSED",
+			expectedMsg:    "The Idempotency-Key was already used for a different request",
 		},
 		{
 			name:           "invalid state error",

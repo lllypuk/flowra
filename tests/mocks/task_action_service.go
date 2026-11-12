@@ -34,6 +34,7 @@ func (m *MockTaskActionService) ChangeStatus(
 	chatID uuid.UUID,
 	newStatus string,
 	_ uuid.UUID,
+	_ string,
 ) (*appcore.ActionResult, error) {
 	return m.apply(ctx, chatID, func(rm *taskapp.ReadModel) { rm.Status = taskdomain.Status(newStatus) })
 }
@@ -43,6 +44,7 @@ func (m *MockTaskActionService) SetPriority(
 	chatID uuid.UUID,
 	priority string,
 	_ uuid.UUID,
+	_ string,
 ) (*appcore.ActionResult, error) {
 	return m.apply(ctx, chatID, func(rm *taskapp.ReadModel) { rm.Priority = taskdomain.Priority(priority) })
 }
@@ -52,6 +54,7 @@ func (m *MockTaskActionService) AssignUser(
 	chatID uuid.UUID,
 	assigneeID *uuid.UUID,
 	_ uuid.UUID,
+	_ string,
 ) (*appcore.ActionResult, error) {
 	return m.apply(ctx, chatID, func(rm *taskapp.ReadModel) { rm.AssignedTo = assigneeID })
 }
@@ -61,6 +64,7 @@ func (m *MockTaskActionService) SetDueDate(
 	chatID uuid.UUID,
 	dueDate *time.Time,
 	_ uuid.UUID,
+	_ string,
 ) (*appcore.ActionResult, error) {
 	return m.apply(ctx, chatID, func(rm *taskapp.ReadModel) { rm.DueDate = dueDate })
 }
@@ -78,7 +82,7 @@ func (m *MockTaskActionService) apply(
 		if rm.ChatID == chatID {
 			change(rm)
 			rm.Version++
-			return &appcore.ActionResult{MessageID: uuid.NewUUID(), Success: true}, nil
+			return &appcore.ActionResult{ChatID: chatID, Version: rm.Version, Success: true}, nil
 		}
 	}
 	return nil, ErrTaskChatNotFound

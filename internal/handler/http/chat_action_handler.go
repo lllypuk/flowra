@@ -21,28 +21,38 @@ type ActionService interface {
 		chatID uuid.UUID,
 		newStatus string,
 		actorID uuid.UUID,
+		key string,
 	) (*appcore.ActionResult, error)
 	SetPriority(
 		ctx context.Context,
 		chatID uuid.UUID,
 		priority string,
 		actorID uuid.UUID,
+		key string,
 	) (*appcore.ActionResult, error)
 	AssignUser(
 		ctx context.Context,
 		chatID uuid.UUID,
 		assigneeID *uuid.UUID,
 		actorID uuid.UUID,
+		key string,
 	) (*appcore.ActionResult, error)
 	SetDueDate(
 		ctx context.Context,
 		chatID uuid.UUID,
 		dueDate *time.Time,
 		actorID uuid.UUID,
+		key string,
 	) (*appcore.ActionResult, error)
-	Close(ctx context.Context, chatID uuid.UUID, actorID uuid.UUID) (*appcore.ActionResult, error)
-	Reopen(ctx context.Context, chatID uuid.UUID, actorID uuid.UUID) (*appcore.ActionResult, error)
-	Rename(ctx context.Context, chatID uuid.UUID, newTitle string, actorID uuid.UUID) (*appcore.ActionResult, error)
+	Close(ctx context.Context, chatID uuid.UUID, actorID uuid.UUID, key string) (*appcore.ActionResult, error)
+	Reopen(ctx context.Context, chatID uuid.UUID, actorID uuid.UUID, key string) (*appcore.ActionResult, error)
+	Rename(
+		ctx context.Context,
+		chatID uuid.UUID,
+		newTitle string,
+		actorID uuid.UUID,
+		key string,
+	) (*appcore.ActionResult, error)
 }
 
 // ChatActionHandler handles chat action endpoints (status, priority, etc.)
@@ -85,14 +95,12 @@ func (h *ChatActionHandler) ChangeStatus(c echo.Context) error {
 		return httpserver.RespondErrorWithCode(c, http.StatusBadRequest, "INVALID_STATUS", "status is required")
 	}
 
-	_, err := h.actionService.ChangeStatus(ctx, chatID, req.Status, userID)
-	if err != nil {
-		return httpserver.RespondError(c, err)
+	key, ok, keyErr := idempotencyKey(c)
+	if !ok {
+		return keyErr
 	}
-
-	// For HTMX, return empty response with HX-Trigger header
-	c.Response().Header().Set("Hx-Trigger", "chatUpdated")
-	return c.NoContent(http.StatusOK)
+	res, err := h.actionService.ChangeStatus(ctx, chatID, req.Status, userID, key)
+	return respondAction(c, res, err, "chatUpdated")
 }
 
 // ChangePriority handles POST /api/v1/chats/:id/actions/priority
@@ -122,13 +130,12 @@ func (h *ChatActionHandler) ChangePriority(c echo.Context) error {
 		return httpserver.RespondErrorWithCode(c, http.StatusBadRequest, "INVALID_PRIORITY", "priority is required")
 	}
 
-	_, err := h.actionService.SetPriority(ctx, chatID, req.Priority, userID)
-	if err != nil {
-		return httpserver.RespondError(c, err)
+	key, ok, keyErr := idempotencyKey(c)
+	if !ok {
+		return keyErr
 	}
-
-	c.Response().Header().Set("Hx-Trigger", "chatUpdated")
-	return c.NoContent(http.StatusOK)
+	res, err := h.actionService.SetPriority(ctx, chatID, req.Priority, userID, key)
+	return respondAction(c, res, err, "chatUpdated")
 }
 
 // ChangeAssignee handles POST /api/v1/chats/:id/actions/assignee
@@ -166,13 +173,12 @@ func (h *ChatActionHandler) ChangeAssignee(c echo.Context) error {
 		assigneeID = &parsed
 	}
 
-	_, err := h.actionService.AssignUser(ctx, chatID, assigneeID, userID)
-	if err != nil {
-		return httpserver.RespondError(c, err)
+	key, ok, keyErr := idempotencyKey(c)
+	if !ok {
+		return keyErr
 	}
-
-	c.Response().Header().Set("Hx-Trigger", "chatUpdated")
-	return c.NoContent(http.StatusOK)
+	res, err := h.actionService.AssignUser(ctx, chatID, assigneeID, userID, key)
+	return respondAction(c, res, err, "chatUpdated")
 }
 
 // SetDueDate handles POST /api/v1/chats/:id/actions/due-date
@@ -210,13 +216,12 @@ func (h *ChatActionHandler) SetDueDate(c echo.Context) error {
 		dueDate = &parsed
 	}
 
-	_, err := h.actionService.SetDueDate(ctx, chatID, dueDate, userID)
-	if err != nil {
-		return httpserver.RespondError(c, err)
+	key, ok, keyErr := idempotencyKey(c)
+	if !ok {
+		return keyErr
 	}
-
-	c.Response().Header().Set("Hx-Trigger", "chatUpdated")
-	return c.NoContent(http.StatusOK)
+	res, err := h.actionService.SetDueDate(ctx, chatID, dueDate, userID, key)
+	return respondAction(c, res, err, "chatUpdated")
 }
 
 // Close handles POST /api/v1/chats/:id/actions/close
@@ -233,13 +238,12 @@ func (h *ChatActionHandler) Close(c echo.Context) error {
 		return httpserver.RespondErrorWithCode(c, http.StatusBadRequest, "INVALID_CHAT_ID", "invalid chat ID format")
 	}
 
-	_, err := h.actionService.Close(ctx, chatID, userID)
-	if err != nil {
-		return httpserver.RespondError(c, err)
+	key, ok, keyErr := idempotencyKey(c)
+	if !ok {
+		return keyErr
 	}
-
-	c.Response().Header().Set("Hx-Trigger", "chatUpdated")
-	return c.NoContent(http.StatusOK)
+	res, err := h.actionService.Close(ctx, chatID, userID, key)
+	return respondAction(c, res, err, "chatUpdated")
 }
 
 // Reopen handles POST /api/v1/chats/:id/actions/reopen
@@ -256,13 +260,12 @@ func (h *ChatActionHandler) Reopen(c echo.Context) error {
 		return httpserver.RespondErrorWithCode(c, http.StatusBadRequest, "INVALID_CHAT_ID", "invalid chat ID format")
 	}
 
-	_, err := h.actionService.Reopen(ctx, chatID, userID)
-	if err != nil {
-		return httpserver.RespondError(c, err)
+	key, ok, keyErr := idempotencyKey(c)
+	if !ok {
+		return keyErr
 	}
-
-	c.Response().Header().Set("Hx-Trigger", "chatUpdated")
-	return c.NoContent(http.StatusOK)
+	res, err := h.actionService.Reopen(ctx, chatID, userID, key)
+	return respondAction(c, res, err, "chatUpdated")
 }
 
 // Rename handles POST /api/v1/chats/:id/actions/rename
@@ -292,11 +295,10 @@ func (h *ChatActionHandler) Rename(c echo.Context) error {
 		return httpserver.RespondErrorWithCode(c, http.StatusBadRequest, "INVALID_TITLE", "title is required")
 	}
 
-	_, err := h.actionService.Rename(ctx, chatID, req.Title, userID)
-	if err != nil {
-		return httpserver.RespondError(c, err)
+	key, ok, keyErr := idempotencyKey(c)
+	if !ok {
+		return keyErr
 	}
-
-	c.Response().Header().Set("Hx-Trigger", "chatUpdated")
-	return c.NoContent(http.StatusOK)
+	res, err := h.actionService.Rename(ctx, chatID, req.Title, userID, key)
+	return respondAction(c, res, err, "chatUpdated")
 }

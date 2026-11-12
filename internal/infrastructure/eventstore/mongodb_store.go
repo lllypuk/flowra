@@ -19,6 +19,8 @@ import (
 // CommandIndexName is the unique index on (aggregate_id, command_id); a duplicate on it means a repeated command.
 const CommandIndexName = "idx_events_aggregate_command_unique"
 
+const fieldAggregateID = "aggregate_id"
+
 // MongoEventStore realizuet EventStore s ispolzovaniem MongoDB
 type MongoEventStore struct {
 	client     *mongo.Client
@@ -177,7 +179,7 @@ func (s *MongoEventStore) FindCommand(
 	aggregateID, commandID string,
 ) (appcore.CommandRecord, bool, error) {
 	var doc EventDocument
-	err := s.collection.FindOne(ctx, bson.M{"aggregate_id": aggregateID, "command_id": commandID}).Decode(&doc)
+	err := s.collection.FindOne(ctx, bson.M{fieldAggregateID: aggregateID, "command_id": commandID}).Decode(&doc)
 	if errors.Is(err, mongo.ErrNoDocuments) {
 		return appcore.CommandRecord{}, false, nil
 	}
@@ -189,7 +191,7 @@ func (s *MongoEventStore) FindCommand(
 
 // LoadEvents loads all event for aggregate
 func (s *MongoEventStore) LoadEvents(ctx context.Context, aggregateID string) ([]event.DomainEvent, error) {
-	filter := bson.M{"aggregate_id": aggregateID}
+	filter := bson.M{fieldAggregateID: aggregateID}
 	opts := options.Find().SetSort(bson.D{{Key: "version", Value: 1}})
 
 	cursor, err := s.collection.Find(ctx, filter, opts)
@@ -232,7 +234,7 @@ func (s *MongoEventStore) LoadEvents(ctx context.Context, aggregateID string) ([
 
 // GetVersion returns current version aggregate
 func (s *MongoEventStore) GetVersion(ctx context.Context, aggregateID string) (int, error) {
-	filter := bson.M{"aggregate_id": aggregateID}
+	filter := bson.M{fieldAggregateID: aggregateID}
 	opts := options.FindOne().SetSort(bson.D{{Key: "version", Value: -1}})
 
 	var doc EventDocument

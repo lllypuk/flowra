@@ -169,7 +169,13 @@ func (p *ChatToTaskReadModelProjector) syncReadModel(ctx context.Context, aggreg
 		return nil
 	}
 
-	if updateErr := mongodbinfra.UpsertNewer(ctx, p.readModelColl, filter, doc.Version, bson.M{"$set": doc}); updateErr != nil {
+	if updateErr := mongodbinfra.UpsertNewer(
+		ctx,
+		p.readModelColl,
+		filter,
+		doc.Version,
+		bson.M{"$set": doc},
+	); updateErr != nil {
 		return fmt.Errorf("failed to upsert task read model: %w", updateErr)
 	}
 

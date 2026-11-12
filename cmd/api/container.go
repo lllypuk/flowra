@@ -102,6 +102,8 @@ type Container struct {
 	LogHandler   *eventbus.LoggingHandler
 	// Shared projector instance reused across all API wiring.
 	TaskReadModelProjector appcore.ReadModelProjector
+	// ChatCommandRunner is shared by every chat writer so that commands on one chat queue up in this process.
+	ChatCommandRunner *chatapp.CommandRunner
 
 	// Reliability components
 	DeadLetterHandler *eventbus.DeadLetterHandler
@@ -665,7 +667,8 @@ func (c *Container) setupMessageUseCases() {
 	// Create tag processor and executor
 	tagProcessor := tag.NewProcessor()
 	chatUseCases := c.createChatUseCasesForTags()
-	tagExecutor := tag.NewCommandExecutor(chatUseCases, c.UserRepo)
+	tagExecutor := tag.NewCommandExecutor(chatUseCases, c.UserRepo,
+		tag.WithChatCommandRunner(c.getChatCommandRunner()))
 
 	// SendMessage use case with tag support
 	botUserID, _ := uuid.ParseUUID(SystemBotUserID)
@@ -744,8 +747,8 @@ func (c *Container) createChatUseCasesForTags() *tag.ChatUseCases {
 		RemoveParticipant: chatapp.NewRemoveParticipantUseCase(c.ChatRepo),
 
 		// Chat Lifecycle (Task 007a)
-		CloseChat:  chatapp.NewCloseChatUseCase(c.EventStore),
-		ReopenChat: chatapp.NewReopenChatUseCase(c.EventStore),
+		CloseChat:  chatapp.NewCloseChatUseCase(c.ChatRepo),
+		ReopenChat: chatapp.NewReopenChatUseCase(c.ChatRepo),
 	}
 }
 
@@ -761,6 +764,28 @@ func (c *Container) setupEventHandlers() {
 	c.LogHandler = eventbus.NewLoggingHandler(c.Logger)
 
 	c.Logger.Debug("event handlers initialized")
+}
+
+func (c *Container) getChatCommandRunner() *chatapp.CommandRunner {
+	if c.ChatCommandRunner == nil {
+		var log chatapp.CommandLog
+		if c.EventStore != nil {
+			log = c.EventStore
+		}
+		c.ChatCommandRunner = chatapp.NewCommandRunner(log)
+	}
+	return c.ChatCommandRunner
+}
+
+func (c *Container) getChatReadModelProjector() service.TaskProjectionSync {
+	if c.EventStore == nil || c.MongoDB == nil {
+		return nil
+	}
+	return projector.NewChatProjector(
+		c.EventStore,
+		c.MongoDB.Database(c.MongoDBName).Collection(mongodbinfra.CollectionChatReadModel),
+		c.Logger,
+	)
 }
 
 func (c *Container) getTaskReadModelProjector() appcore.ReadModelProjector {
@@ -925,10 +950,23 @@ func (c *Container) setupHTTPHandlers() {
 	c.setupMessageHandler()
 
 	// === 14. Action Service ===
+	tagUseCases := c.createChatUseCasesForTags()
 	c.ActionService = service.NewActionService(
+		service.ActionChatCommands{
+			ChangeStatus: tagUseCases.ChangeStatus,
+			SetPriority:  tagUseCases.SetPriority,
+			AssignUser:   tagUseCases.AssignUser,
+			SetDueDate:   tagUseCases.SetDueDate,
+			Rename:       tagUseCases.Rename,
+			Close:        tagUseCases.CloseChat,
+			Reopen:       tagUseCases.ReopenChat,
+		},
+		c.getChatCommandRunner(),
+		c.ChatQueryRepo,
 		c.SendMessageUC,
 		c.UserRepo,
 		service.WithTaskProjectionSync(c.getTaskReadModelProjector()),
+		service.WithChatProjectionSync(c.getChatReadModelProjector()),
 	)
 	c.ChatActionHandler = httphandler.NewChatActionHandler(c.ActionService)
 	c.Logger.Debug("action service and chat action handler initialized")

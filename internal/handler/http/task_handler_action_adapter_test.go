@@ -36,6 +36,7 @@ func (s *spyTaskWriteActionService) ChangeStatus(
 	chatID uuid.UUID,
 	newStatus string,
 	_ uuid.UUID,
+	_ string,
 ) (*appcore.ActionResult, error) {
 	s.statusCalls++
 	s.lastChatID = chatID
@@ -48,6 +49,7 @@ func (s *spyTaskWriteActionService) SetPriority(
 	chatID uuid.UUID,
 	priority string,
 	_ uuid.UUID,
+	_ string,
 ) (*appcore.ActionResult, error) {
 	s.priorityCalls++
 	s.lastChatID = chatID
@@ -60,6 +62,7 @@ func (s *spyTaskWriteActionService) AssignUser(
 	chatID uuid.UUID,
 	assigneeID *uuid.UUID,
 	_ uuid.UUID,
+	_ string,
 ) (*appcore.ActionResult, error) {
 	s.assigneeCalls++
 	s.lastChatID = chatID
@@ -72,6 +75,7 @@ func (s *spyTaskWriteActionService) SetDueDate(
 	chatID uuid.UUID,
 	dueDate *time.Time,
 	_ uuid.UUID,
+	_ string,
 ) (*appcore.ActionResult, error) {
 	s.dueDateCalls++
 	s.lastChatID = chatID
@@ -123,7 +127,7 @@ func TestTaskHandler_ChangeStatus_UsesActionServiceWhenConfigured(t *testing.T) 
 	assert.Equal(t, string(task.StatusInProgress), actionSpy.lastStatus)
 }
 
-func TestTaskHandler_SetDueDate_IdempotentNoopWhenDateUnchanged(t *testing.T) {
+func TestTaskHandler_SetDueDate_SameDateStillRunsCommand(t *testing.T) {
 	e := echo.New()
 	userID := uuid.NewUUID()
 	workspaceID := uuid.NewUUID()
@@ -164,7 +168,7 @@ func TestTaskHandler_SetDueDate_IdempotentNoopWhenDateUnchanged(t *testing.T) {
 	err := handler.SetDueDate(c)
 	require.NoError(t, err)
 	assert.Equal(t, stdhttp.StatusOK, rec.Code)
-	assert.Equal(t, 0, actionSpy.dueDateCalls)
+	assert.Equal(t, 1, actionSpy.dueDateCalls, "a stale read model must not short-circuit the command")
 }
 
 func TestTaskHandler_ChangeStatus_ReturnsServiceUnavailableWithoutActionService(t *testing.T) {

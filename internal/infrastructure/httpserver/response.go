@@ -86,6 +86,18 @@ func mapError(err error) (int, *Error) {
 
 	// Fall back to domain error mapping
 	switch {
+	case errors.Is(err, errs.ErrOutcomeUnknown):
+		return http.StatusServiceUnavailable, &Error{
+			Code:    "OUTCOME_UNKNOWN",
+			Message: "The change may or may not have been applied; retry with the same Idempotency-Key",
+		}
+
+	case errors.Is(err, errs.ErrIdempotencyKeyReused):
+		return http.StatusUnprocessableEntity, &Error{
+			Code:    "IDEMPOTENCY_KEY_REUSED",
+			Message: "The Idempotency-Key was already used for a different request",
+		}
+
 	case errors.Is(err, errs.ErrNotFound):
 		return http.StatusNotFound, &Error{
 			Code:    "NOT_FOUND",
@@ -119,7 +131,7 @@ func mapError(err error) (int, *Error) {
 	case errors.Is(err, errs.ErrConcurrentModification):
 		return http.StatusConflict, &Error{
 			Code:    "CONCURRENT_MODIFICATION",
-			Message: "Resource was modified by another request",
+			Message: "Not applied: the resource was modified concurrently; retry",
 		}
 
 	case errors.Is(err, errs.ErrInvalidState):

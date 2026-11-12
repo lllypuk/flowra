@@ -30,6 +30,7 @@ type TaskActionService interface {
 		chatID uuid.UUID,
 		newStatus string,
 		actorID uuid.UUID,
+		key string,
 	) (*appcore.ActionResult, error)
 
 	SetPriority(
@@ -37,6 +38,7 @@ type TaskActionService interface {
 		chatID uuid.UUID,
 		priority string,
 		actorID uuid.UUID,
+		key string,
 	) (*appcore.ActionResult, error)
 
 	AssignUser(
@@ -44,6 +46,7 @@ type TaskActionService interface {
 		chatID uuid.UUID,
 		assigneeID *uuid.UUID,
 		actorID uuid.UUID,
+		key string,
 	) (*appcore.ActionResult, error)
 
 	SetDueDate(
@@ -51,6 +54,7 @@ type TaskActionService interface {
 		chatID uuid.UUID,
 		dueDate *time.Time,
 		actorID uuid.UUID,
+		key string,
 	) (*appcore.ActionResult, error)
 }
 
@@ -122,23 +126,18 @@ func (h *TaskActionHandler) ChangeStatus(c echo.Context) error {
 		return httpserver.RespondErrorWithCode(c, http.StatusBadRequest, "INVALID_STATUS", statusErr.Error())
 	}
 
-	// Idempotent no-op: same status requested.
-	if taskModel.Status == status {
-		c.Response().Header().Set("Hx-Trigger", "taskUpdated")
-		return c.NoContent(http.StatusNoContent)
+	key, ok, keyErr := idempotencyKey(c)
+	if !ok {
+		return keyErr
 	}
-
-	if _, actionErr := h.actionService.ChangeStatus(
+	res, actionErr := h.actionService.ChangeStatus(
 		c.Request().Context(),
 		taskModel.ChatID,
 		string(status),
 		userID,
-	); actionErr != nil {
-		return httpserver.RespondError(c, actionErr)
-	}
-
-	c.Response().Header().Set("Hx-Trigger", "taskUpdated")
-	return c.NoContent(http.StatusNoContent)
+		key,
+	)
+	return respondAction(c, res, actionErr, "taskUpdated")
 }
 
 // ChangePriority handles POST /api/v1/workspaces/:workspace_id/tasks/:task_id/actions/priority.
@@ -172,23 +171,18 @@ func (h *TaskActionHandler) ChangePriority(c echo.Context) error {
 		)
 	}
 
-	// Idempotent no-op: same priority requested.
-	if taskModel.Priority == priority {
-		c.Response().Header().Set("Hx-Trigger", "taskUpdated")
-		return c.NoContent(http.StatusNoContent)
+	key, ok, keyErr := idempotencyKey(c)
+	if !ok {
+		return keyErr
 	}
-
-	if _, actionErr := h.actionService.SetPriority(
+	res, actionErr := h.actionService.SetPriority(
 		c.Request().Context(),
 		taskModel.ChatID,
 		string(priority),
 		userID,
-	); actionErr != nil {
-		return httpserver.RespondError(c, actionErr)
-	}
-
-	c.Response().Header().Set("Hx-Trigger", "taskUpdated")
-	return c.NoContent(http.StatusNoContent)
+		key,
+	)
+	return respondAction(c, res, actionErr, "taskUpdated")
 }
 
 // ChangeAssignee handles POST /api/v1/workspaces/:workspace_id/tasks/:task_id/actions/assignee.
@@ -221,18 +215,18 @@ func (h *TaskActionHandler) ChangeAssignee(c echo.Context) error {
 		assigneeID = &parsed
 	}
 
-	// Idempotent no-op: same assignee requested.
-	if sameUUIDPtr(taskModel.AssignedTo, assigneeID) {
-		c.Response().Header().Set("Hx-Trigger", "taskUpdated")
-		return c.NoContent(http.StatusNoContent)
+	key, ok, keyErr := idempotencyKey(c)
+	if !ok {
+		return keyErr
 	}
-
-	if _, actionErr := h.actionService.AssignUser(ctx, taskModel.ChatID, assigneeID, userID); actionErr != nil {
-		return httpserver.RespondError(c, actionErr)
-	}
-
-	c.Response().Header().Set("Hx-Trigger", "taskUpdated")
-	return c.NoContent(http.StatusNoContent)
+	res, actionErr := h.actionService.AssignUser(
+		ctx,
+		taskModel.ChatID,
+		assigneeID,
+		userID,
+		key,
+	)
+	return respondAction(c, res, actionErr, "taskUpdated")
 }
 
 // SetDueDate handles POST /api/v1/workspaces/:workspace_id/tasks/:task_id/actions/due-date.
@@ -265,16 +259,16 @@ func (h *TaskActionHandler) SetDueDate(c echo.Context) error {
 		dueDate = &parsed
 	}
 
-	// Idempotent no-op: same due date requested.
-	if sameDate(taskModel.DueDate, dueDate) {
-		c.Response().Header().Set("Hx-Trigger", "taskUpdated")
-		return c.NoContent(http.StatusNoContent)
+	key, ok, keyErr := idempotencyKey(c)
+	if !ok {
+		return keyErr
 	}
-
-	if _, actionErr := h.actionService.SetDueDate(ctx, taskModel.ChatID, dueDate, userID); actionErr != nil {
-		return httpserver.RespondError(c, actionErr)
-	}
-
-	c.Response().Header().Set("Hx-Trigger", "taskUpdated")
-	return c.NoContent(http.StatusNoContent)
+	res, actionErr := h.actionService.SetDueDate(
+		ctx,
+		taskModel.ChatID,
+		dueDate,
+		userID,
+		key,
+	)
+	return respondAction(c, res, actionErr, "taskUpdated")
 }

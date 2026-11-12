@@ -6,18 +6,17 @@ import (
 	"fmt"
 
 	"github.com/lllypuk/flowra/internal/application/appcore"
+	"github.com/lllypuk/flowra/internal/domain/chat"
 )
 
 // ReopenChatUseCase handles reopening a closed chat
 type ReopenChatUseCase struct {
-	eventStore appcore.EventStore
+	chatRepo CommandRepository
 }
 
 // NewReopenChatUseCase creates a new ReopenChatUseCase
-func NewReopenChatUseCase(eventStore appcore.EventStore) *ReopenChatUseCase {
-	return &ReopenChatUseCase{
-		eventStore: eventStore,
-	}
+func NewReopenChatUseCase(chatRepo CommandRepository) *ReopenChatUseCase {
+	return &ReopenChatUseCase{chatRepo: chatRepo}
 }
 
 // Execute performs reopening a chat
@@ -26,16 +25,25 @@ func (uc *ReopenChatUseCase) Execute(ctx context.Context, cmd ReopenChatCommand)
 		return Result{}, fmt.Errorf("validation failed: %w", err)
 	}
 
-	chatAggregate, err := loadAggregate(ctx, uc.eventStore, cmd.ChatID)
+	chatAggregate, err := uc.chatRepo.Load(ctx, cmd.ChatID)
 	if err != nil {
-		return Result{}, err
+		return Result{}, fmt.Errorf("failed to load chat: %w", err)
 	}
 
 	if reopenErr := chatAggregate.Reopen(cmd.ReopenedBy); reopenErr != nil {
 		return Result{}, fmt.Errorf("failed to reopen chat: %w", reopenErr)
 	}
 
-	return saveAggregate(ctx, uc.eventStore, chatAggregate, cmd.ChatID.String())
+	if err = uc.chatRepo.Save(ctx, chatAggregate); err != nil {
+		return Result{}, fmt.Errorf("failed to save chat: %w", err)
+	}
+
+	return Result{
+		Result: appcore.Result[*chat.Chat]{
+			Value:   chatAggregate,
+			Version: chatAggregate.Version(),
+		},
+	}, nil
 }
 
 func (uc *ReopenChatUseCase) validate(cmd ReopenChatCommand) error {

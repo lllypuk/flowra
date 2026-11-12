@@ -52,6 +52,7 @@ func (m *mockTaskActionService) ChangeStatus(
 	chatID uuid.UUID,
 	newStatus string,
 	_ uuid.UUID,
+	_ string,
 ) (*appcore.ActionResult, error) {
 	m.lastChatID = chatID
 	m.lastStatus = newStatus
@@ -64,6 +65,7 @@ func (m *mockTaskActionService) SetPriority(
 	chatID uuid.UUID,
 	priority string,
 	_ uuid.UUID,
+	_ string,
 ) (*appcore.ActionResult, error) {
 	m.lastChatID = chatID
 	m.lastPriority = priority
@@ -76,6 +78,7 @@ func (m *mockTaskActionService) AssignUser(
 	chatID uuid.UUID,
 	assigneeID *uuid.UUID,
 	_ uuid.UUID,
+	_ string,
 ) (*appcore.ActionResult, error) {
 	m.lastChatID = chatID
 	m.lastAssignee = assigneeID
@@ -88,6 +91,7 @@ func (m *mockTaskActionService) SetDueDate(
 	chatID uuid.UUID,
 	dueDate *time.Time,
 	_ uuid.UUID,
+	_ string,
 ) (*appcore.ActionResult, error) {
 	m.lastChatID = chatID
 	m.lastDueDate = dueDate
@@ -135,7 +139,7 @@ func TestTaskActionHandler_ChangeStatus(t *testing.T) {
 		err := h.ChangeStatus(c)
 
 		require.NoError(t, err)
-		assert.Equal(t, http.StatusNoContent, rec.Code)
+		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, chatID, actionSvc.lastChatID)
 		assert.Equal(t, "In Progress", actionSvc.lastStatus)
 		assert.Equal(t, "taskUpdated", rec.Header().Get("Hx-Trigger"))
@@ -154,7 +158,7 @@ func TestTaskActionHandler_ChangeStatus(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
-	t.Run("idempotent when status unchanged", func(t *testing.T) {
+	t.Run("same value still runs the command", func(t *testing.T) {
 		taskWithStatus := &taskapp.ReadModel{
 			ID:     taskID,
 			ChatID: chatID,
@@ -169,8 +173,8 @@ func TestTaskActionHandler_ChangeStatus(t *testing.T) {
 		err := h.ChangeStatus(c)
 
 		require.NoError(t, err)
-		assert.Equal(t, http.StatusNoContent, rec.Code)
-		assert.Equal(t, 0, actionSvc.statusCalls)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, 1, actionSvc.statusCalls, "a stale read model must not short-circuit the command")
 	})
 
 	t.Run("task not found", func(t *testing.T) {
@@ -236,7 +240,7 @@ func TestTaskActionHandler_ChangePriority(t *testing.T) {
 		err := h.ChangePriority(c)
 
 		require.NoError(t, err)
-		assert.Equal(t, http.StatusNoContent, rec.Code)
+		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, chatID, actionSvc.lastChatID)
 		assert.Equal(t, "High", actionSvc.lastPriority)
 	})
@@ -254,7 +258,7 @@ func TestTaskActionHandler_ChangePriority(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
-	t.Run("idempotent when priority unchanged", func(t *testing.T) {
+	t.Run("same value still runs the command", func(t *testing.T) {
 		taskWithPriority := &taskapp.ReadModel{
 			ID:       taskID,
 			ChatID:   chatID,
@@ -269,8 +273,8 @@ func TestTaskActionHandler_ChangePriority(t *testing.T) {
 		err := h.ChangePriority(c)
 
 		require.NoError(t, err)
-		assert.Equal(t, http.StatusNoContent, rec.Code)
-		assert.Equal(t, 0, actionSvc.priorityCalls)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, 1, actionSvc.priorityCalls, "a stale read model must not short-circuit the command")
 	})
 }
 
@@ -292,7 +296,7 @@ func TestTaskActionHandler_ChangeAssignee(t *testing.T) {
 		err := h.ChangeAssignee(c)
 
 		require.NoError(t, err)
-		assert.Equal(t, http.StatusNoContent, rec.Code)
+		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, chatID, actionSvc.lastChatID)
 		require.NotNil(t, actionSvc.lastAssignee)
 		assert.Equal(t, assigneeID, *actionSvc.lastAssignee)
@@ -308,11 +312,11 @@ func TestTaskActionHandler_ChangeAssignee(t *testing.T) {
 		err := h.ChangeAssignee(c)
 
 		require.NoError(t, err)
-		assert.Equal(t, http.StatusNoContent, rec.Code)
+		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Nil(t, actionSvc.lastAssignee)
 	})
 
-	t.Run("idempotent when assignee unchanged", func(t *testing.T) {
+	t.Run("same value still runs the command", func(t *testing.T) {
 		taskWithAssignee := &taskapp.ReadModel{
 			ID:         taskID,
 			ChatID:     chatID,
@@ -328,8 +332,8 @@ func TestTaskActionHandler_ChangeAssignee(t *testing.T) {
 		err := h.ChangeAssignee(c)
 
 		require.NoError(t, err)
-		assert.Equal(t, http.StatusNoContent, rec.Code)
-		assert.Equal(t, 0, actionSvc.assigneeCalls)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, 1, actionSvc.assigneeCalls, "a stale read model must not short-circuit the command")
 	})
 
 	t.Run("invalid assignee_id format", func(t *testing.T) {
@@ -362,7 +366,7 @@ func TestTaskActionHandler_SetDueDate(t *testing.T) {
 		err := h.SetDueDate(c)
 
 		require.NoError(t, err)
-		assert.Equal(t, http.StatusNoContent, rec.Code)
+		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, chatID, actionSvc.lastChatID)
 		require.NotNil(t, actionSvc.lastDueDate)
 
@@ -380,11 +384,11 @@ func TestTaskActionHandler_SetDueDate(t *testing.T) {
 		err := h.SetDueDate(c)
 
 		require.NoError(t, err)
-		assert.Equal(t, http.StatusNoContent, rec.Code)
+		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Nil(t, actionSvc.lastDueDate)
 	})
 
-	t.Run("idempotent when due date unchanged", func(t *testing.T) {
+	t.Run("same value still runs the command", func(t *testing.T) {
 		existing := time.Date(2026, 3, 15, 16, 30, 0, 0, time.UTC)
 		taskWithDueDate := &taskapp.ReadModel{
 			ID:      taskID,
@@ -400,8 +404,8 @@ func TestTaskActionHandler_SetDueDate(t *testing.T) {
 		err := h.SetDueDate(c)
 
 		require.NoError(t, err)
-		assert.Equal(t, http.StatusNoContent, rec.Code)
-		assert.Equal(t, 0, actionSvc.dueDateCalls)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, 1, actionSvc.dueDateCalls, "a stale read model must not short-circuit the command")
 	})
 
 	t.Run("invalid date format", func(t *testing.T) {

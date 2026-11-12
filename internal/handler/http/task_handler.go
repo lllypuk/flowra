@@ -345,11 +345,6 @@ func (h *TaskHandler) ChangeStatus(c echo.Context) error {
 		return httpserver.RespondError(c, getErr)
 	}
 
-	// Idempotent no-op: requested status already set.
-	if taskModel.Status == status {
-		return httpserver.RespondOK(c, ToTaskResponseFromReadModel(taskModel))
-	}
-
 	if !h.ensureActionService() {
 		return httpserver.RespondErrorWithCode(
 			c,
@@ -359,22 +354,25 @@ func (h *TaskHandler) ChangeStatus(c echo.Context) error {
 		)
 	}
 
-	if _, actionErr := h.actionService.ChangeStatus(
+	key, ok, keyErr := idempotencyKey(c)
+	if !ok {
+		return keyErr
+	}
+	res, actionErr := h.actionService.ChangeStatus(
 		c.Request().Context(),
 		taskModel.ChatID,
 		string(status),
 		userID,
-	); actionErr != nil {
+		key,
+	)
+	if actionErr != nil {
 		return httpserver.RespondError(c, actionErr)
 	}
 
-	// Best-effort read-back: action pipeline is asynchronous.
 	updatedTask, updatedErr := h.taskService.GetTask(c.Request().Context(), taskID)
 	if updatedErr != nil {
-		return httpserver.RespondOK(c, map[string]any{
-			"id":      taskID.String(),
-			"message": "status update queued",
-		})
+		// Applied; only the read-back failed.
+		return httpserver.RespondOK(c, outcomeOf(res))
 	}
 
 	return httpserver.RespondOK(c, ToTaskResponseFromReadModel(updatedTask))
@@ -416,11 +414,6 @@ func (h *TaskHandler) Assign(c echo.Context) error {
 		return httpserver.RespondError(c, getErr)
 	}
 
-	// Idempotent no-op: requested assignee already set.
-	if sameUUIDPtr(taskModel.AssignedTo, assigneeID) {
-		return httpserver.RespondOK(c, ToTaskResponseFromReadModel(taskModel))
-	}
-
 	if !h.ensureActionService() {
 		return httpserver.RespondErrorWithCode(
 			c,
@@ -430,21 +423,25 @@ func (h *TaskHandler) Assign(c echo.Context) error {
 		)
 	}
 
-	if _, actionErr := h.actionService.AssignUser(
+	key, ok, keyErr := idempotencyKey(c)
+	if !ok {
+		return keyErr
+	}
+	res, actionErr := h.actionService.AssignUser(
 		c.Request().Context(),
 		taskModel.ChatID,
 		assigneeID,
 		userID,
-	); actionErr != nil {
+		key,
+	)
+	if actionErr != nil {
 		return httpserver.RespondError(c, actionErr)
 	}
 
 	updatedTask, updatedErr := h.taskService.GetTask(c.Request().Context(), taskID)
 	if updatedErr != nil {
-		return httpserver.RespondOK(c, map[string]any{
-			"id":      taskID.String(),
-			"message": "assignee update queued",
-		})
+		// Applied; only the read-back failed.
+		return httpserver.RespondOK(c, outcomeOf(res))
 	}
 
 	return httpserver.RespondOK(c, ToTaskResponseFromReadModel(updatedTask))
@@ -482,11 +479,6 @@ func (h *TaskHandler) ChangePriority(c echo.Context) error {
 		return httpserver.RespondError(c, getErr)
 	}
 
-	// Idempotent no-op: requested priority already set.
-	if taskModel.Priority == priority {
-		return httpserver.RespondOK(c, ToTaskResponseFromReadModel(taskModel))
-	}
-
 	if !h.ensureActionService() {
 		return httpserver.RespondErrorWithCode(
 			c,
@@ -496,21 +488,25 @@ func (h *TaskHandler) ChangePriority(c echo.Context) error {
 		)
 	}
 
-	if _, actionErr := h.actionService.SetPriority(
+	key, ok, keyErr := idempotencyKey(c)
+	if !ok {
+		return keyErr
+	}
+	res, actionErr := h.actionService.SetPriority(
 		c.Request().Context(),
 		taskModel.ChatID,
 		string(priority),
 		userID,
-	); actionErr != nil {
+		key,
+	)
+	if actionErr != nil {
 		return httpserver.RespondError(c, actionErr)
 	}
 
 	updatedTask, updatedErr := h.taskService.GetTask(c.Request().Context(), taskID)
 	if updatedErr != nil {
-		return httpserver.RespondOK(c, map[string]any{
-			"id":      taskID.String(),
-			"message": "priority update queued",
-		})
+		// Applied; only the read-back failed.
+		return httpserver.RespondOK(c, outcomeOf(res))
 	}
 
 	return httpserver.RespondOK(c, ToTaskResponseFromReadModel(updatedTask))
@@ -552,11 +548,6 @@ func (h *TaskHandler) SetDueDate(c echo.Context) error {
 		return httpserver.RespondError(c, getErr)
 	}
 
-	// Idempotent no-op: requested due date already set.
-	if sameDate(taskModel.DueDate, dueDate) {
-		return httpserver.RespondOK(c, ToTaskResponseFromReadModel(taskModel))
-	}
-
 	if !h.ensureActionService() {
 		return httpserver.RespondErrorWithCode(
 			c,
@@ -566,21 +557,25 @@ func (h *TaskHandler) SetDueDate(c echo.Context) error {
 		)
 	}
 
-	if _, actionErr := h.actionService.SetDueDate(
+	key, ok, keyErr := idempotencyKey(c)
+	if !ok {
+		return keyErr
+	}
+	res, actionErr := h.actionService.SetDueDate(
 		c.Request().Context(),
 		taskModel.ChatID,
 		dueDate,
 		userID,
-	); actionErr != nil {
+		key,
+	)
+	if actionErr != nil {
 		return httpserver.RespondError(c, actionErr)
 	}
 
 	updatedTask, updatedErr := h.taskService.GetTask(c.Request().Context(), taskID)
 	if updatedErr != nil {
-		return httpserver.RespondOK(c, map[string]any{
-			"id":      taskID.String(),
-			"message": "due date update queued",
-		})
+		// Applied; only the read-back failed.
+		return httpserver.RespondOK(c, outcomeOf(res))
 	}
 
 	return httpserver.RespondOK(c, ToTaskResponseFromReadModel(updatedTask))

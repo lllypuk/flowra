@@ -2,6 +2,7 @@ package chat
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"time"
 
@@ -565,12 +566,12 @@ func (c *Chat) Delete(deletedBy uuid.UUID) error {
 func (c *Chat) Close(closedBy uuid.UUID) error {
 	// Cannot close a Discussion
 	if c.chatType == TypeDiscussion {
-		return errors.New("cannot close a discussion")
+		return fmt.Errorf("%w: cannot close a discussion", errs.ErrInvalidState)
 	}
 
 	// Check if already closed
 	if c.status == StatusClosed {
-		return errors.New("chat is already closed")
+		return fmt.Errorf("%w: chat is already closed", errs.ErrInvalidState)
 	}
 
 	previousStatus := c.status
@@ -590,7 +591,7 @@ func (c *Chat) Close(closedBy uuid.UUID) error {
 func (c *Chat) Reopen(reopenedBy uuid.UUID) error {
 	// Check if closed
 	if c.status != StatusClosed {
-		return errors.New("chat is not closed")
+		return fmt.Errorf("%w: chat is not closed", errs.ErrInvalidState)
 	}
 
 	// Determine the default status for the entity type

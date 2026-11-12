@@ -4,13 +4,20 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"time"
 
 	"github.com/lllypuk/flowra/internal/application/appcore"
+	chatapp "github.com/lllypuk/flowra/internal/application/chat"
 	messageapp "github.com/lllypuk/flowra/internal/application/message"
+	chatdomain "github.com/lllypuk/flowra/internal/domain/chat"
+	"github.com/lllypuk/flowra/internal/domain/errs"
 	"github.com/lllypuk/flowra/internal/domain/message"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
 )
+
+// commandTimeout bounds one action, lock wait included; it stays below the server write timeout.
+const commandTimeout = 20 * time.Second
 
 // ActionMessageSender defines command execution required by ActionService.
 type ActionMessageSender interface {
@@ -20,6 +27,37 @@ type ActionMessageSender interface {
 // TaskProjectionSync defines projection synchronization required by ActionService.
 type TaskProjectionSync interface {
 	RebuildOne(ctx context.Context, chatID uuid.UUID) error
+}
+
+// ChatCommand is a chat use case run by ActionService.
+type ChatCommand[C any] interface {
+	Execute(ctx context.Context, cmd C) (chatapp.Result, error)
+}
+
+// ActionChatReader reads the chat an action targets.
+type ActionChatReader interface {
+	FindByID(ctx context.Context, chatID uuid.UUID) (*chatapp.ReadModel, error)
+}
+
+// ActionCommandRunner applies a chat command with a definite outcome.
+type ActionCommandRunner interface {
+	Run(
+		ctx context.Context,
+		chatID uuid.UUID,
+		key appcore.CommandKey,
+		exec func(context.Context) (chatapp.Result, error),
+	) (chatapp.Outcome, error)
+}
+
+// ActionChatCommands are the chat use cases behind the actions.
+type ActionChatCommands struct {
+	ChangeStatus ChatCommand[chatapp.ChangeStatusCommand]
+	SetPriority  ChatCommand[chatapp.SetPriorityCommand]
+	AssignUser   ChatCommand[chatapp.AssignUserCommand]
+	SetDueDate   ChatCommand[chatapp.SetDueDateCommand]
+	Rename       ChatCommand[chatapp.RenameChatCommand]
+	Close        ChatCommand[chatapp.CloseChatCommand]
+	Reopen       ChatCommand[chatapp.ReopenChatCommand]
 }
 
 // ActionServiceOption customizes ActionService behavior.
@@ -32,22 +70,39 @@ func WithTaskProjectionSync(sync TaskProjectionSync) ActionServiceOption {
 	}
 }
 
-// ActionService converts UI actions to chat messages with human-readable content
+// WithChatProjectionSync configures the chat read-model rebuild after a replayed command.
+func WithChatProjectionSync(sync TaskProjectionSync) ActionServiceOption {
+	return func(s *ActionService) {
+		s.chatProjectionSync = sync
+	}
+}
+
+// ActionService applies UI and agent actions to a chat and answers with a definite outcome.
 type ActionService struct {
+	commands           ActionChatCommands
+	runner             ActionCommandRunner
+	chats              ActionChatReader
 	sendMessageUC      ActionMessageSender
 	userRepo           appcore.UserRepository
 	taskProjectionSync TaskProjectionSync
+	chatProjectionSync TaskProjectionSync
 	batcher            *ChangeBatcher
 	logger             *slog.Logger
 }
 
-// NewActionService creates a new ActionService
+// NewActionService creates a new ActionService.
 func NewActionService(
+	commands ActionChatCommands,
+	runner ActionCommandRunner,
+	chats ActionChatReader,
 	sendMessageUC ActionMessageSender,
 	userRepo appcore.UserRepository,
 	opts ...ActionServiceOption,
 ) *ActionService {
 	svc := &ActionService{
+		commands:      commands,
+		runner:        runner,
+		chats:         chats,
 		sendMessageUC: sendMessageUC,
 		userRepo:      userRepo,
 		logger:        slog.Default(),
@@ -58,7 +113,6 @@ func NewActionService(
 		}
 	}
 
-	// Initialize batcher with flush function and logger
 	svc.batcher = NewChangeBatcher(defaultBatchWindow, svc.flushBatchMessage)
 	svc.batcher.logger = svc.logger
 
@@ -77,337 +131,216 @@ func (s *ActionService) getActorDisplayName(ctx context.Context, actorID uuid.UU
 	return usr.FullName
 }
 
-// ChangeStatus executes status change via tag command and batches the human-readable message
+// ChangeStatus sets the chat status.
 func (s *ActionService) ChangeStatus(
 	ctx context.Context,
 	chatID uuid.UUID,
 	newStatus string,
 	actorID uuid.UUID,
+	key string,
 ) (*appcore.ActionResult, error) {
-	return s.executeTaskTagAction(
-		ctx,
-		chatID,
-		actorID,
-		fmt.Sprintf("#status %s", newStatus),
-		ChangeTypeStatus,
-		newStatus,
-		"failed to batch status change message",
-	)
+	return s.apply(ctx, chatID, actorID, key, "status:"+newStatus, ChangeTypeStatus, newStatus,
+		func(ctx context.Context) (chatapp.Result, error) {
+			return s.commands.ChangeStatus.Execute(ctx, chatapp.ChangeStatusCommand{
+				ChatID: chatID, Status: newStatus, ChangedBy: actorID,
+			})
+		})
 }
 
-// AssignUser executes assignee change via tag command and batches the human-readable message
+// AssignUser sets or clears the assignee.
 func (s *ActionService) AssignUser(
 	ctx context.Context,
 	chatID uuid.UUID,
 	assigneeID *uuid.UUID,
 	actorID uuid.UUID,
+	key string,
 ) (*appcore.ActionResult, error) {
-	// Execute the actual domain change via tag command
-	var tagContent string
-	var assigneeName string
-	if assigneeID == nil {
-		tagContent = "#assignee @none"
-		assigneeName = ""
-	} else {
+	fingerprint, assigneeName := "assignee:none", ""
+	if assigneeID != nil {
 		usr, err := s.userRepo.GetByID(ctx, *assigneeID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve user: %w", err)
 		}
-		tagContent = fmt.Sprintf("#assignee @%s", usr.Username)
+		fingerprint = "assignee:" + assigneeID.String()
 		assigneeName = usr.FullName
 		if assigneeName == "" {
 			assigneeName = usr.Username
 		}
 	}
-
-	cmd := messageapp.SendMessageCommand{
-		ChatID:   chatID,
-		AuthorID: actorID,
-		Content:  tagContent,
-		Type:     message.TypeSystem,
-		ActorID:  &actorID,
-	}
-
-	if _, err := s.sendMessageUC.Execute(ctx, cmd); err != nil {
-		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
-	}
-	if err := s.syncTaskProjection(ctx, chatID); err != nil {
-		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
-	}
-
-	// Add human-readable message to batch
-	actorName := s.getActorDisplayName(ctx, actorID)
-	err := s.batcher.AddChange(ctx, actorID, chatID, actorName, ChangeTypeAssignee, assigneeName)
-	if err != nil {
-		s.logger.WarnContext(ctx, "failed to batch assignee change message", "error", err)
-	}
-
-	return &appcore.ActionResult{Success: true}, nil
+	return s.apply(ctx, chatID, actorID, key, fingerprint, ChangeTypeAssignee, assigneeName,
+		func(ctx context.Context) (chatapp.Result, error) {
+			return s.commands.AssignUser.Execute(ctx, chatapp.AssignUserCommand{
+				ChatID: chatID, AssigneeID: assigneeID, AssignedBy: actorID,
+			})
+		})
 }
 
-// SetPriority executes priority change via tag command and batches the human-readable message
+// SetPriority sets the chat priority.
 func (s *ActionService) SetPriority(
 	ctx context.Context,
 	chatID uuid.UUID,
 	priority string,
 	actorID uuid.UUID,
+	key string,
 ) (*appcore.ActionResult, error) {
-	return s.executeTaskTagAction(
-		ctx,
-		chatID,
-		actorID,
-		fmt.Sprintf("#priority %s", priority),
-		ChangeTypePriority,
-		priority,
-		"failed to batch priority change message",
-	)
+	return s.apply(ctx, chatID, actorID, key, "priority:"+priority, ChangeTypePriority, priority,
+		func(ctx context.Context) (chatapp.Result, error) {
+			return s.commands.SetPriority.Execute(ctx, chatapp.SetPriorityCommand{
+				ChatID: chatID, Priority: priority, SetBy: actorID,
+			})
+		})
 }
 
-// SetDueDate executes due date change via tag command and batches the human-readable message
+// SetDueDate sets or clears the due date.
 func (s *ActionService) SetDueDate(
 	ctx context.Context,
 	chatID uuid.UUID,
 	dueDate *time.Time,
 	actorID uuid.UUID,
+	key string,
 ) (*appcore.ActionResult, error) {
-	// Execute the actual domain change via tag command
-	var tagContent string
-	var formattedDate string
-	if dueDate == nil {
-		tagContent = "#due"
-		formattedDate = ""
-	} else {
-		tagContent = fmt.Sprintf("#due %s", dueDate.Format("2006-01-02"))
-		formattedDate = dueDate.Format("January 2, 2006")
+	fingerprint, formatted := "due:none", ""
+	if dueDate != nil {
+		fingerprint = "due:" + dueDate.Format(time.DateOnly)
+		formatted = dueDate.Format("January 2, 2006")
 	}
-
-	cmd := messageapp.SendMessageCommand{
-		ChatID:   chatID,
-		AuthorID: actorID,
-		Content:  tagContent,
-		Type:     message.TypeSystem,
-		ActorID:  &actorID,
-	}
-
-	if _, err := s.sendMessageUC.Execute(ctx, cmd); err != nil {
-		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
-	}
-	if err := s.syncTaskProjection(ctx, chatID); err != nil {
-		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
-	}
-
-	// Add human-readable message to batch
-	actorName := s.getActorDisplayName(ctx, actorID)
-	err := s.batcher.AddChange(ctx, actorID, chatID, actorName, ChangeTypeDueDate, formattedDate)
-	if err != nil {
-		s.logger.WarnContext(ctx, "failed to batch due date change message", "error", err)
-	}
-
-	return &appcore.ActionResult{Success: true}, nil
+	return s.apply(ctx, chatID, actorID, key, fingerprint, ChangeTypeDueDate, formatted,
+		func(ctx context.Context) (chatapp.Result, error) {
+			return s.commands.SetDueDate.Execute(ctx, chatapp.SetDueDateCommand{
+				ChatID: chatID, DueDate: dueDate, SetBy: actorID,
+			})
+		})
 }
 
-// InviteUser creates a system message to add a participant
-func (s *ActionService) InviteUser(
-	ctx context.Context,
-	chatID uuid.UUID,
-	userID uuid.UUID,
-	actorID uuid.UUID,
-) (*appcore.ActionResult, error) {
-	actorName := s.getActorDisplayName(ctx, actorID)
-	usr, err := s.userRepo.GetByID(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve user: %w", err)
-	}
-	inviteeName := usr.FullName
-	if inviteeName == "" {
-		inviteeName = usr.Username
-	}
-	var content string
-	if actorName != "" {
-		content = fmt.Sprintf("✅ %s invited %s to the chat", actorName, inviteeName)
-	} else {
-		content = fmt.Sprintf("✅ %s was invited to the chat", inviteeName)
-	}
-	return s.executeAction(ctx, chatID, content, actorID)
-}
-
-// RemoveUser creates a system message to remove a participant
-func (s *ActionService) RemoveUser(
-	ctx context.Context,
-	chatID uuid.UUID,
-	userID uuid.UUID,
-	actorID uuid.UUID,
-) (*appcore.ActionResult, error) {
-	actorName := s.getActorDisplayName(ctx, actorID)
-	usr, err := s.userRepo.GetByID(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve user: %w", err)
-	}
-	removedName := usr.FullName
-	if removedName == "" {
-		removedName = usr.Username
-	}
-	var content string
-	if actorName != "" {
-		content = fmt.Sprintf("✅ %s removed %s from the chat", actorName, removedName)
-	} else {
-		content = fmt.Sprintf("✅ %s was removed from the chat", removedName)
-	}
-	return s.executeAction(ctx, chatID, content, actorID)
-}
-
-// Rename creates a system message to rename the chat
+// Rename changes the chat title.
 func (s *ActionService) Rename(
 	ctx context.Context,
 	chatID uuid.UUID,
 	newTitle string,
 	actorID uuid.UUID,
+	key string,
 ) (*appcore.ActionResult, error) {
-	actorName := s.getActorDisplayName(ctx, actorID)
-	var content string
-	if actorName != "" {
-		content = fmt.Sprintf("✅ %s changed title to: %s", actorName, newTitle)
-	} else {
-		content = fmt.Sprintf("✅ Title changed to: %s", newTitle)
-	}
-	return s.executeAction(ctx, chatID, content, actorID)
+	return s.apply(ctx, chatID, actorID, key, "rename:"+newTitle, ChangeTypeTitle, newTitle,
+		func(ctx context.Context) (chatapp.Result, error) {
+			return s.commands.Rename.Execute(ctx, chatapp.RenameChatCommand{
+				ChatID: chatID, NewTitle: newTitle, RenamedBy: actorID,
+			})
+		})
 }
 
-// Close creates a system message to close the chat
+// Close closes the chat.
 func (s *ActionService) Close(
 	ctx context.Context,
 	chatID uuid.UUID,
 	actorID uuid.UUID,
+	key string,
 ) (*appcore.ActionResult, error) {
-	if err := s.executeTagCommand(ctx, chatID, actorID, "#close"); err != nil {
-		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	res, err := s.apply(ctx, chatID, actorID, key, "close", "", "",
+		func(ctx context.Context) (chatapp.Result, error) {
+			return s.commands.Close.Execute(ctx, chatapp.CloseChatCommand{ChatID: chatID, ClosedBy: actorID})
+		})
+	if err == nil && !res.Replayed {
+		s.postNote(ctx, chatID, actorID, "closed the chat", "Chat closed")
 	}
-	if err := s.syncTaskProjection(ctx, chatID); err != nil {
-		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
-	}
-
-	actorName := s.getActorDisplayName(ctx, actorID)
-	var content string
-	if actorName != "" {
-		content = fmt.Sprintf("✅ %s closed the chat", actorName)
-	} else {
-		content = "✅ Chat closed"
-	}
-	return s.executeAction(ctx, chatID, content, actorID)
+	return res, err
 }
 
-// Reopen creates a system message to reopen the chat
+// Reopen reopens a closed chat.
 func (s *ActionService) Reopen(
 	ctx context.Context,
 	chatID uuid.UUID,
 	actorID uuid.UUID,
+	key string,
 ) (*appcore.ActionResult, error) {
-	if err := s.executeTagCommand(ctx, chatID, actorID, "#reopen"); err != nil {
+	res, err := s.apply(ctx, chatID, actorID, key, "reopen", "", "",
+		func(ctx context.Context) (chatapp.Result, error) {
+			return s.commands.Reopen.Execute(ctx, chatapp.ReopenChatCommand{ChatID: chatID, ReopenedBy: actorID})
+		})
+	if err == nil && !res.Replayed {
+		s.postNote(ctx, chatID, actorID, "reopened the chat", "Chat reopened")
+	}
+	return res, err
+}
+
+// apply runs one action. Once the command is applied, projection sync and the thread note are best effort:
+// their failure is logged and the answer stays "applied".
+func (s *ActionService) apply(
+	ctx context.Context,
+	chatID, actorID uuid.UUID,
+	key, fingerprint string,
+	changeType ChangeType,
+	changeValue string,
+	exec func(context.Context) (chatapp.Result, error),
+) (*appcore.ActionResult, error) {
+	// Detached from the request: a client disconnect must not abort a commit and make its outcome unknown.
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), commandTimeout)
+	defer cancel()
+
+	if err := s.checkParticipant(ctx, chatID, actorID); err != nil {
 		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
 	}
-	if err := s.syncTaskProjection(ctx, chatID); err != nil {
+
+	cmdKey := appcore.CommandKey{Fingerprint: fingerprint}
+	if key != "" {
+		cmdKey.ID = actorID.String() + ":" + key
+	}
+	out, err := s.runner.Run(ctx, chatID, cmdKey, exec)
+	if err != nil {
 		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
 	}
 
-	actorName := s.getActorDisplayName(ctx, actorID)
-	var content string
-	if actorName != "" {
-		content = fmt.Sprintf("✅ %s reopened the chat", actorName)
-	} else {
-		content = "✅ Chat reopened"
+	if out.Replayed {
+		// The first attempt may have committed without reaching the read models.
+		s.syncProjection(ctx, s.chatProjectionSync, chatID, "chat")
 	}
-	return s.executeAction(ctx, chatID, content, actorID)
+	s.syncProjection(ctx, s.taskProjectionSync, chatID, "task")
+
+	if changeType != "" && !out.Replayed {
+		actorName := s.getActorDisplayName(ctx, actorID)
+		if batchErr := s.batcher.AddChange(ctx, actorID, chatID, actorName, changeType, changeValue); batchErr != nil {
+			s.logger.WarnContext(ctx, "failed to batch change message", slog.String("error", batchErr.Error()))
+		}
+	}
+
+	return &appcore.ActionResult{ChatID: chatID, Version: out.Version, Replayed: out.Replayed, Success: true}, nil
 }
 
-// Delete creates a system message to delete the chat
-func (s *ActionService) Delete(
-	ctx context.Context,
-	chatID uuid.UUID,
-	actorID uuid.UUID,
-) (*appcore.ActionResult, error) {
-	actorName := s.getActorDisplayName(ctx, actorID)
-	var content string
-	if actorName != "" {
-		content = fmt.Sprintf("✅ %s deleted the chat", actorName)
-	} else {
-		content = "✅ Chat deleted"
+func (s *ActionService) checkParticipant(ctx context.Context, chatID, actorID uuid.UUID) error {
+	if s.chats == nil {
+		return nil
 	}
-	return s.executeAction(ctx, chatID, content, actorID)
-}
-
-// executeAction is the common implementation for all actions
-func (s *ActionService) executeAction(
-	ctx context.Context,
-	chatID uuid.UUID,
-	content string,
-	actorID uuid.UUID,
-) (*appcore.ActionResult, error) {
-	cmd := messageapp.SendMessageCommand{
-		ChatID:   chatID,
-		AuthorID: actorID,
-		Content:  content,
-		Type:     message.TypeSystem,
-		ActorID:  &actorID,
-	}
-
-	result, err := s.sendMessageUC.Execute(ctx, cmd)
+	chat, err := s.chats.FindByID(ctx, chatID)
 	if err != nil {
-		return &appcore.ActionResult{
-			Success: false,
-			Error:   err.Error(),
-		}, err
+		return fmt.Errorf("failed to load chat: %w", err)
 	}
-
-	return &appcore.ActionResult{
-		MessageID: result.Value.ID(),
-		Success:   true,
-	}, nil
-}
-
-// executeTagCommand sends a system message with an executable tag command.
-func (s *ActionService) executeTagCommand(
-	ctx context.Context,
-	chatID uuid.UUID,
-	actorID uuid.UUID,
-	tagCommand string,
-) error {
-	cmd := messageapp.SendMessageCommand{
-		ChatID:   chatID,
-		AuthorID: actorID,
-		Content:  tagCommand,
-		Type:     message.TypeSystem,
-		ActorID:  &actorID,
-	}
-
-	_, err := s.sendMessageUC.Execute(ctx, cmd)
-	if err != nil {
-		return err
+	if !slices.ContainsFunc(chat.Participants, func(p chatdomain.Participant) bool { return p.UserID() == actorID }) {
+		return fmt.Errorf("%w: not a chat participant", errs.ErrForbidden)
 	}
 	return nil
 }
 
-func (s *ActionService) executeTaskTagAction(
-	ctx context.Context,
-	chatID uuid.UUID,
-	actorID uuid.UUID,
-	tagContent string,
-	changeType ChangeType,
-	changeValue string,
-	warnMsg string,
-) (*appcore.ActionResult, error) {
-	if err := s.executeTagCommand(ctx, chatID, actorID, tagContent); err != nil {
-		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+func (s *ActionService) syncProjection(ctx context.Context, sync TaskProjectionSync, chatID uuid.UUID, name string) {
+	if sync == nil {
+		return
 	}
-	if err := s.syncTaskProjection(ctx, chatID); err != nil {
-		return &appcore.ActionResult{Success: false, Error: err.Error()}, err
+	if err := sync.RebuildOne(ctx, chatID); err != nil {
+		s.logger.ErrorContext(ctx, "failed to sync projection after chat action",
+			slog.String("projection", name),
+			slog.String("chat_id", chatID.String()),
+			slog.String("error", err.Error()),
+		)
 	}
+}
 
-	actorName := s.getActorDisplayName(ctx, actorID)
-	if err := s.batcher.AddChange(ctx, actorID, chatID, actorName, changeType, changeValue); err != nil {
-		s.logger.WarnContext(ctx, warnMsg, "error", err)
+// postNote writes a human-readable line to the thread; it is a record for people, not part of the outcome.
+func (s *ActionService) postNote(ctx context.Context, chatID, actorID uuid.UUID, withActor, anonymous string) {
+	content := "✅ " + anonymous
+	if actorName := s.getActorDisplayName(ctx, actorID); actorName != "" {
+		content = fmt.Sprintf("✅ %s %s", actorName, withActor)
 	}
-
-	return &appcore.ActionResult{Success: true}, nil
+	if err := s.flushBatchMessage(ctx, chatID, content, actorID); err != nil {
+		s.logger.WarnContext(ctx, "failed to post action note", slog.String("error", err.Error()))
+	}
 }
 
 // flushBatchMessage is called by the batcher to send a combined message
@@ -417,7 +350,13 @@ func (s *ActionService) flushBatchMessage(
 	content string,
 	actorID uuid.UUID,
 ) error {
-	_, err := s.executeAction(ctx, chatID, content, actorID)
+	_, err := s.sendMessageUC.Execute(ctx, messageapp.SendMessageCommand{
+		ChatID:   chatID,
+		AuthorID: actorID,
+		Content:  content,
+		Type:     message.TypeSystem,
+		ActorID:  &actorID,
+	})
 	return err
 }
 
@@ -426,18 +365,4 @@ func (s *ActionService) Shutdown() {
 	if s.batcher != nil {
 		s.batcher.Close()
 	}
-}
-
-func (s *ActionService) syncTaskProjection(ctx context.Context, chatID uuid.UUID) error {
-	if s.taskProjectionSync == nil {
-		return nil
-	}
-	if err := s.taskProjectionSync.RebuildOne(ctx, chatID); err != nil {
-		s.logger.ErrorContext(ctx, "failed to sync task projection after chat action",
-			slog.String("chat_id", chatID.String()),
-			slog.String("error", err.Error()),
-		)
-		return fmt.Errorf("failed to sync task projection: %w", err)
-	}
-	return nil
 }

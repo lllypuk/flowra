@@ -81,7 +81,7 @@ type tagExecutorTestEnv struct {
 	candidateUsers map[string]domainuuid.UUID
 }
 
-func TestTagConcurrentProcessing_RetriesAndAppliesConcurrentCommands(t *testing.T) {
+func TestTagConcurrentProcessing_QueuesAndAppliesConcurrentCommands(t *testing.T) {
 	env := newTagExecutorTestEnv(t, countingRepoOptions{saveDelay: 250 * time.Microsecond})
 
 	commands := make([]tag.Command, 0, 6)
@@ -112,7 +112,7 @@ func TestTagConcurrentProcessing_RetriesAndAppliesConcurrentCommands(t *testing.
 
 	runTagCommandsConcurrently(t, env.ctx, env.executor, env.actorGoogleID, commands)
 
-	assert.Greater(t, env.chatRepo.ConflictCount(), int64(0), "expected optimistic-lock conflicts during concurrent updates")
+	assert.Zero(t, env.chatRepo.ConflictCount(), "commands on one chat queue up in the runner instead of conflicting")
 
 	finalChat, err := env.rawChatRepo.Load(env.ctx, env.chatID)
 	require.NoError(t, err)
@@ -139,7 +139,7 @@ func TestTagConcurrentProcessing_AssignUserConcurrentUpdates(t *testing.T) {
 
 	runTagCommandsConcurrently(t, env.ctx, env.executor, env.actorGoogleID, commands)
 
-	assert.Greater(t, env.chatRepo.ConflictCount(), int64(0), "expected optimistic-lock conflicts during concurrent assignee updates")
+	assert.Zero(t, env.chatRepo.ConflictCount(), "commands on one chat queue up in the runner instead of conflicting")
 
 	finalChat, err := env.rawChatRepo.Load(env.ctx, env.chatID)
 	require.NoError(t, err)

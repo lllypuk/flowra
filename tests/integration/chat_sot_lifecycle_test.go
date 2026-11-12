@@ -171,7 +171,7 @@ func TestChatSoT_CloseReopenLifecycleProjectsRealStateTransitions(t *testing.T) 
 	require.NoError(t, err)
 	chatID := createResult.Value.ID()
 
-	_, err = chatapp.NewCloseChatUseCase(env.eventStore).Execute(ctx, chatapp.CloseChatCommand{
+	_, err = chatapp.NewCloseChatUseCase(env.chatRepo).Execute(ctx, chatapp.CloseChatCommand{
 		ChatID:   chatID,
 		ClosedBy: actorID,
 	})
@@ -185,7 +185,7 @@ func TestChatSoT_CloseReopenLifecycleProjectsRealStateTransitions(t *testing.T) 
 	afterCloseChat := env.mustFindChatReadModel(t, ctx, chatID)
 	assert.Equal(t, chatdomain.StatusClosed, afterCloseChat.Status)
 
-	_, err = chatapp.NewReopenChatUseCase(env.eventStore).Execute(ctx, chatapp.ReopenChatCommand{
+	_, err = chatapp.NewReopenChatUseCase(env.chatRepo).Execute(ctx, chatapp.ReopenChatCommand{
 		ChatID:     chatID,
 		ReopenedBy: actorID,
 	})

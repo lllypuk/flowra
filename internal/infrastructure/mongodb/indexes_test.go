@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 
+	"github.com/lllypuk/flowra/internal/infrastructure/eventstore"
 	"github.com/lllypuk/flowra/internal/infrastructure/mongodb"
 	"github.com/lllypuk/flowra/tests/testutil"
 )
@@ -68,7 +69,10 @@ func TestGetEventIndexes(t *testing.T) {
 	indexes := mongodb.GetEventIndexes()
 
 	// Verify expected indexes
-	assert.Len(t, indexes, 3)
+	assert.Len(t, indexes, 4)
+
+	cmdIdx := findIndexByName(indexes, eventstore.CommandIndexName)
+	require.NotNil(t, cmdIdx, "the event store maps duplicates on this index to a repeated command")
 
 	// Check unique index on aggregate_id + version
 	uniqueIdx := findIndexByName(indexes, "idx_events_aggregate_version_unique")
@@ -400,6 +404,7 @@ func findIndexByName(indexes []mongodb.IndexDefinition, name string) *mongodb.In
 	expectedNames := map[string]bool{
 		// Events
 		"idx_events_aggregate_version_unique": true,
+		"idx_events_aggregate_command_unique": true,
 		"idx_events_type_time":                true,
 		"idx_events_aggregate_type_time":      true,
 		// Users

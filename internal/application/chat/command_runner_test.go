@@ -22,7 +22,10 @@ type fakeCommandLog struct {
 	records map[string]appcore.CommandRecord
 }
 
-func (f *fakeCommandLog) FindCommand(_ context.Context, aggregateID, commandID string) (appcore.CommandRecord, bool, error) {
+func (f *fakeCommandLog) FindCommand(
+	_ context.Context,
+	aggregateID, commandID string,
+) (appcore.CommandRecord, bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	rec, ok := f.records[aggregateID+"/"+commandID]
@@ -96,17 +99,22 @@ func TestCommandRunner_Run(t *testing.T) {
 			runner := chatapp.NewCommandRunner(log, chatapp.WithCommandAttempts(3))
 
 			calls := 0
-			out, err := runner.Run(context.Background(), chatID, key, func(ctx context.Context) (chatapp.Result, error) {
-				got, ok := appcore.CommandFrom(ctx)
-				require.True(t, ok)
-				assert.Equal(t, key, got)
-				res := tt.results[calls]
-				calls++
-				if res != nil {
-					return chatapp.Result{}, res
-				}
-				return applied(7), nil
-			})
+			out, err := runner.Run(
+				context.Background(),
+				chatID,
+				key,
+				func(ctx context.Context) (chatapp.Result, error) {
+					got, ok := appcore.CommandFrom(ctx)
+					require.True(t, ok)
+					assert.Equal(t, key, got)
+					res := tt.results[calls]
+					calls++
+					if res != nil {
+						return chatapp.Result{}, res
+					}
+					return applied(7), nil
+				},
+			)
 
 			assert.Equal(t, tt.wantCalls, calls)
 			if tt.wantErr != nil {
