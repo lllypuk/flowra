@@ -95,29 +95,41 @@ Flowra поднимается локально без Keycloak и показыв
 
 ## Technical Details
 
-### Контракт снимка (нужен от лида)
+### Контракт снимка
 
-JSONL, по объекту на строку, порядок: `header`, `task`…, `record`…, `footer`.
+Сверен с `lead-task export` и двумя образцами лида 12.11 (`~/projects/lead/tasks/samples/`, в репозиторий
+не кладутся). JSONL, по объекту на строку, у каждой строки поле `type`; `header` первой, `footer`
+последней, после `footer` строк нет; порядок `task` и `record` между ними не важен.
 
 | Строка | Поля |
 |---|---|
-| `header` | `schema` (1), `source`, `epoch` (id установки журнала), `revision`, `as_of` (UTC), `derivation` (версия правил статусов), `complete`, `errors[]` |
+| `header` | `schema` (1), `source`, `epoch` (хэш первой строки журнала), `revision`, `as_of` (UTC), `derivation` (версия правил статусов), `complete`, `errors[]` (строки) |
 | `task` | `id` (`T-0007`), `title`, `project`, `agent`, `created_at`, `status`, `waiting_on`, `status_since`, `note`, `returns`, `spent{queued,work,lead,user}`, `transitions[{at, status, cause, derived}]` |
-| `record` | `id`, `task`, `kind`, `at`, `order`, `actor`, `actor_derived`, `source{kind, ref}`, `body`, `body_missing`, `format` |
+| `record` | `id`, `task`, `kind`, `at`, `order`, `actor`, `actor_derived`, `source{kind, ref}`, `body`, `body_derived` (только у писем), `body_missing`, `format` |
 | `footer` | `revision`, `tasks`, `records` |
 
 - `record.kind`: `letter` (лид → агент: постановка, ответ, возврат), `report` (агент → лид), `decision`
   (`set` лида с заметкой), `observation` (наблюдение без текста, например реплика человека в сессии).
   Сообщение и переход — разные сущности: переход ссылается на запись через `cause`, письмо в треде одно.
-- `id` записи устойчив между снимками: порядковый номер строки журнала в пределах `epoch`, `uuid` записи
-  транскрипта, `id` вызова инструмента. Не время, не хэш текста, не индекс в отсортированном списке.
-- Нет текста — `body_missing` с причиной, запись остаётся. Чужие результаты инструментов не выгружаются.
+- `id` записи устойчив между снимками: `j:<номер строки журнала>` — письмо и решение,
+  `u:<id вызова инструмента>` — отчёт, `t:<uuid записи транскрипта>` — наблюдение. `order` — номер в
+  треде внутри одного снимка, между снимками не устойчив: поздняя запись сдвигает следующие.
+- `revision` — первые 16 hex SHA-256 от строк `task` и `record`, склеенных `\n`. Импортёр пересчитывает
+  его: изменённое содержимое под прежней ревизией отклоняется при разборе. `spent` открытой задачи
+  растёт, поэтому каждый экспорт — новая ревизия; порядок ревизий — по `as_of`.
+- Текст письма — доставленный, найден в транскрипте агента по времени события журнала:
+  `body_derived: true`.
+- Ровно одно из `body` и `body_missing` задано. Нет текста — `body_missing` с причиной, запись остаётся.
+  Чужие результаты инструментов не выгружаются.
+- `spent` — целые секунды; время — RFC 3339 UTC с миллисекундами; `waiting_on` у закрытых — `null`.
+- `observation` выгружается, только когда реплика человека сменила статус; в образцах таких нет.
 - `derived: true` и `actor_derived: true` помечают выведенное: реплика человека не объявляется решением
   владельца, обнаруженная команда отчёта — доставкой.
 - Пути файловой системы, id сессий и панелей в снимок не входят.
 - `waiting_on` и `spent` считает `lead-task`; Flowra их не пересчитывает.
 - Экспортёр читает входы одним согласованным срезом; `as_of` — время этого среза, а не время печати.
-- `complete: false` или непустой `errors` — снимок не публикуется. `body_missing` ошибкой не является.
+- `complete: false` или непустой `errors` — снимок не публикуется; экспорт при этом завершается кодом 1.
+  `body_missing` ошибкой не является.
 - Тройка `source` + `epoch` + `revision` задаёт неизменяемый снимок: то же содержимое — повтор без
   последствий, иное содержимое под той же тройкой — отказ. Смена `epoch` принимается как новый источник
   и отмечается в состоянии.
@@ -250,33 +262,30 @@ FEED_REVISION_CHANGED`, клиент начинает сначала. Время
 **Files:**
 - Create: `tests/mocks/task_action_service.go`
 - Modify: `tests/e2e/setup_test.go`
-- Modify: `internal/infrastructure/eventbus/redis_eventbus_test.go`
-- Modify: `internal/infrastructure/eventbus/handlers_test.go`
 
-- [ ] проверить окружение до правок: Go ≥ 1.26, Docker отвечает, свободной памяти ≥ 4 ГБ, порты 27017, 6379, 8080 свободны; красный итог с причиной «окружение» останавливает план
-- [ ] добавить мок `TaskActionService` в `tests/mocks` и передать его в `NewTaskHandler` в `tests/e2e/setup_test.go:265`
-- [ ] прогнать `go test -tags=e2e ./tests/e2e/`: пять тестов `TestTask_*` зелёные
-- [ ] воспроизвести падение `eventbus`: пять полных `go test -count=1 ./...` с сохранением вывода, назвать упавший тест
-- [ ] если причина — ожидание подписки фиксированной паузой, заменить паузу ожиданием готовности в тестах; если не воспроизвелось — записать сюда «не воспроизвелось за пять прогонов, оставлено» и не считать это зелёным итогом расследования
-- [ ] записать в этот план набор обязательных проверок среза: `go build ./...`, `go vet ./...`, `go test -count=1 ./...`, `go test -tags=integration ./tests/integration/...`, `go test -tags=e2e ./tests/e2e/`
-- [ ] прогнать весь набор — зелёный до Task 2
+- [x] проверить окружение до правок: Go ≥ 1.26, Docker отвечает, свободной памяти ≥ 4 ГБ, порты 27017, 6379, 8080 свободны; красный итог с причиной «окружение» останавливает план
+- [x] добавить мок `TaskActionService` в `tests/mocks` и передать его в `NewTaskHandler` в `tests/e2e/setup_test.go:265`
+- [x] прогнать `go test -tags=e2e ./tests/e2e/`: пять тестов `TestTask_*` зелёные
+- [x] воспроизвести падение `eventbus`: пять полных `go test -count=1 ./...` с сохранением вывода, назвать упавший тест
+- [ ] ⚠️ причина падения `eventbus` не установлена. Не воспроизвелось: пять полных прогонов, восемь отдельных с `-race`, четыре отдельных под нагрузкой 48 циклов на процессор. Упавший тест не назван — вывод первого прогона 12.11 был обрезан. Тогда пакет шёл 20,7 с против обычных 5 с (холодная сборка и загрузка модулей одновременно с контейнерами); гипотеза — фиксированные ожидания ответа 2 с в тестах. Тесты не правились: чинить без упавшего теста нечего. Оставлено
+- [x] записать в этот план набор обязательных проверок среза: `go build ./...`, `go vet ./...`, `go test -count=1 ./...`, `go test -tags=integration ./tests/integration/...`, `go test -tags=e2e ./tests/e2e/`
+- [x] прогнать весь набор — зелёный до Task 2
 
 ### Task 2: Формат снимка — типы, разбор, проверка
 
-Предусловие: лид добавил `lead-task export` и прислал настоящий полный снимок, в котором есть запись
-без текста и поздно найденная запись. Без образца задача не начинается.
+Предусловие выполнено 12.11: `lead-task export` и два образца получены.
 
 **Files:**
 - Create: `internal/application/leadfeed/snapshot.go`
 - Create: `internal/application/leadfeed/snapshot_test.go`
 - Create: `tests/fixtures/leadfeed/` (синтетические снимки)
 
-- [ ] сверить образец лида с разделом «Контракт снимка»; расхождения записать в план и поправить контракт до кода
-- [ ] описать типы `Header`, `Task`, `Transition`, `Record`, `Footer` и потоковый разбор JSONL
-- [ ] проверка целостности: порядок строк, версия схемы, `complete: true` и пустой `errors`, совпадение `revision` и счётчиков с `footer`, ссылки `record.task` и `transition.cause`
-- [ ] синтетические фикстуры по форме образца: полный, обрезанный без `footer`, `complete: false` с верным `footer`, с неизвестной схемой, с одинаковым временем записей, с пропущенным текстом, с текстом, похожим на теги (`#status Done`)
-- [ ] тесты разбора: успех и каждый вид отказа
-- [ ] прогнать обязательные проверки
+- [x] сверить образец лида с разделом «Контракт снимка»; расхождения записать в план и поправить контракт до кода
+- [x] описать типы `Header`, `Task`, `Transition`, `Record` и потоковый разбор JSONL (`ParseSnapshot`)
+- [x] проверка целостности: `header` первой и `footer` последней, версия схемы, `complete: true` и пустой `errors`, совпадение `revision` и счётчиков с `footer`, пересчёт `revision` по содержимому, уникальность id, ссылки `record.task` и `transition.cause`, ровно одно из `body` и `body_missing`
+- [x] синтетическая фикстура `tests/fixtures/leadfeed/full.jsonl`: одинаковое время записей, пропущенный текст, неизвестный статус, наблюдение, текст, похожий на теги (`#status Done`); обрезанный, `complete: false` и прочие отказы тесты получают правкой её строк
+- [x] тесты разбора: успех и каждый вид отказа; настоящие образцы проверяются при `LEADFEED_SAMPLE_DIR=~/projects/lead/tasks/samples` — оба разбираются
+- [x] прогнать обязательные проверки
 
 ### Task 3: Вход по токену — конфиг, валидатор, одна политика для REST и HTML
 
@@ -288,45 +297,49 @@ FEED_REVISION_CHANGED`, клиент начинает сначала. Время
 - Modify: `cmd/api/container.go`
 - Modify: `cmd/api/container_test.go`
 - Modify: `internal/handler/http/auth_middleware.go`
+- Create: `internal/handler/http/auth_middleware_test.go`
+- Modify: `internal/handler/http/auth_handler.go`
 
-- [ ] `AuthConfig`: `mode` (`keycloak` | `token`), `tokens[{name, sha256}]` в YAML и скалярная переменная `AUTH_OWNER_TOKEN_SHA256` для одного токена `owner`, `owner{username, email, display_name}`; проверка конфига: режим `token` требует хотя бы один токен и адрес loopback в `server.host`
-- [ ] `ConfigTokenValidator`: SHA-256 предъявленного токена, сравнение за постоянное время, `claims.ExternalUserID` — постоянное значение владельца; имя токена попадает в лог входа, сам токен и заголовки — нет
-- [ ] `setupTokenValidator`: в режиме `token` — только новый валидатор, без отката на `StaticTokenValidator`; ветка Keycloak не меняется
-- [ ] в режиме `token` закрыть остальные пути: `validateAndSetUserContext` без валидатора отказывает, а не ставит mock-пользователя; `createAuthService` не отдаёт `MockAuthService`, `/api/v1/auth/login` отвечает отказом
-- [ ] тесты: верный токен, неверный, пустой; два токена ведут на одного пользователя; замена токена не меняет пользователя; `dev-token-*`, mock-кука и `/api/v1/auth/login` в режиме `token` отклонены; REST и HTML используют один валидатор
-- [ ] прогнать обязательные проверки
+- [x] `AuthConfig`: `mode` (`keycloak` | `token`), `tokens[{name, sha256}]` в YAML и скалярная переменная `AUTH_OWNER_TOKEN_SHA256` для одного токена `owner`, `owner{username, email}`, `session_ttl`; проверка конфига: режим `token` требует хотя бы один токен, адрес loopback в `server.host` и `keycloak.enabled: false`. Отображаемое имя владельца не заведено: `UserResolver` берёт его из `username`
+- [x] `OwnerTokenValidator`: SHA-256 предъявленного токена, сравнение за постоянное время, `claims.ExternalUserID` — постоянное значение владельца; имя токена попадает в отладочный лог, сам токен и заголовки — нет
+- [x] `setupTokenValidator`: в режиме `token` — только новый валидатор, без отката на `StaticTokenValidator`; при ошибке валидатор остаётся пустым и `validateWiring` останавливает запуск; ветка Keycloak не меняется
+- [x] в режиме `token` закрыть остальные пути: `validateAndSetUserContext` без валидатора отказывает, а не ставит mock-пользователя; `createAuthService` отдаёт `DisabledAuthService`, `/api/v1/auth/login` отвечает 401
+- [x] тесты: верный токен, неверный, пустой; два токена ведут на одного пользователя; замена токена не меняет пользователя; `dev-token-*`, mock-кука и OAuth-вход в режиме `token` отклонены; REST (`middleware.Auth`) и HTML (`RequireAuth`) проверены с одним и тем же валидатором
+- [x] прогнать обязательные проверки
 
 ### Task 4: Веб-вход формой с токеном
 
 **Files:**
 - Modify: `internal/handler/http/template_handler.go`
-- Modify: `internal/handler/http/auth_cookies.go`
 - Modify: `web/templates/auth/login.html`
+- Modify: `cmd/api/routes.go`
+- Modify: `cmd/api/container.go`
 - Create: `internal/handler/http/template_handler_auth_test.go`
 
-- [ ] в режиме `token` страница входа показывает форму с полем токена; `POST` проверяет токен тем же валидатором и ставит куку `flowra_session` (HttpOnly, SameSite=Lax, `Secure` под HTTPS, срок из конфига)
-- [ ] путь `code=mock-code` и кука `mock-session-token` в режиме `token` недоступны
-- [ ] выход очищает куку; тело формы не логируется
-- [ ] тесты: вход верным и неверным токеном, выход, mock-путь отклонён
-- [ ] прогнать обязательные проверки
+- [x] в режиме `token` страница входа показывает форму с полем токена; `POST /login` сверяет `state` формы с кукой, проверяет токен тем же валидатором и ставит куку `flowra_session` (HttpOnly, SameSite=Lax, `Secure` под HTTPS, срок `auth.session_ttl`)
+- [x] путь `code=mock-code` и кука `mock-session-token` в режиме `token` недоступны: `/auth/callback` ведёт на `/login`
+- [x] выход очищает куку; тело формы не логируется
+- [x] тесты: вход верным и неверным токеном, несовпавший `state`, возврат на сохранённую страницу, выход, mock-путь отклонён, `POST /login` вне режима `token` не обслуживается
+- [x] прогнать обязательные проверки
 
 ### Task 5: Локальный запуск без Keycloak
 
 **Files:**
 - Modify: `internal/worker/runner.go`
-- Modify: `internal/worker/runner_test.go`
-- Create: `configs/config.local.yaml`
+- Modify: `internal/worker/runner_internal_test.go`
+- Create: `configs/config.token.yaml`
 - Modify: `docker-compose.yml`
 - Modify: `scripts/dev-full-stack.sh`
 - Modify: `Makefile`
 - Modify: `.env.example`
 
-- [ ] воркер в режиме `token` стартует без синхронизации пользователей, не требуя `USER_SYNC_DISABLED`
-- [ ] `configs/config.local.yaml`: `auth.mode: token`, `keycloak.enabled: false`, `server.host: 127.0.0.1`; SHA-256 токена — из `AUTH_OWNER_TOKEN_SHA256`
-- [ ] Keycloak в `docker-compose.yml` — под профилем `keycloak`; `make dev-local` поднимает Mongo, Redis, воркер и API без него; `make docker-up` и `scripts/dev-full-stack.sh` передают `--profile keycloak` и работают как прежде
-- [ ] тесты: воркер стартует в режиме `token` без настроек Keycloak; `configs/config.local.yaml` загружается и проходит проверку конфига
-- [ ] запустить `make dev-local`, войти токеном в браузере и через `curl -H 'Authorization: Bearer …' /api/v1/auth/me`; итог записать в план
-- [ ] прогнать обязательные проверки
+- [x] воркер в режиме `token` стартует без синхронизации пользователей, не требуя `USER_SYNC_DISABLED`
+- [x] `configs/config.token.yaml`: `auth.mode: token`, `keycloak.enabled: false`, `server.host: 127.0.0.1`; SHA-256 токена — из `AUTH_OWNER_TOKEN_SHA256`. Имя не `config.local.yaml`: `*.local.yaml` в `.gitignore`
+- [x] Keycloak в `docker-compose.yml` — под профилем `keycloak`; `make dev-local` поднимает Mongo, Redis, воркер и API без него и отказывается стартовать без `AUTH_OWNER_TOKEN_SHA256`; `make docker-up`, `make docker-down` и `scripts/dev-full-stack.sh` передают `--profile keycloak`
+- [ ] `make dev` и `make docker-up` с Keycloak не запускались: образ и около 770 МБ памяти при работающих стендах соседнего проекта. Проверено только, что `docker-compose --profile keycloak config --services` называет `keycloak`
+- [x] тесты: воркер стартует в режиме `token` без настроек Keycloak; `configs/config.token.yaml` загружается и проходит проверку конфига, без токена — отказ
+- [x] запустить `make dev-local`, войти токеном в браузере и через `curl`. Итог 12.11 с одноразовым токеном: сервер слушает `127.0.0.1:8080`; `GET /api/v1/auth/me` — 401 без токена и с `dev-token-1`, 200 с токеном (пользователь `owner`); `POST /api/v1/auth/login` с `mock-code` — 401; форма — 401 на неверный токен, 303 на `/workspaces` на верный; `/workspaces` без куки и с `mock-session-token` — 302 на `/login`; в Chrome вход формой открывает «Your Workspaces» под `owner`, ошибок JS нет; токена в логах нет. Контейнеры и тома после проверки удалены
+- [x] прогнать обязательные проверки: сборка, `go vet`, `go test -count=1 ./...` (38 пакетов), интеграционные и API-e2e зелёные
 
 ### Task 6: Хранилище ленты и атомарная публикация поколения
 
@@ -425,14 +438,13 @@ FEED_REVISION_CHANGED`, клиент начинает сначала. Время
 
 ### Task 12: [Final] Update documentation
 
-- [ ] `README.md` и `docs/DEVELOPMENT.md`: запуск `make dev-local`, вход по токену, команды ленты
+- [ ] `README.md` и `docs/DEVELOPMENT.md`: запуск `make dev-local` с `configs/config.token.yaml`, вход по токену, команды ленты
 - [ ] `AGENTS.md`: граница ленты — отдельная проекция на чтение, вне Chat и обработчика тегов
 - [ ] перенести план в `docs/plans/completed/`
 
 ## Post-Completion
 
-**От лида, до Task 2:** команда `lead-task export` по разделу «Контракт снимка» и настоящий полный снимок
-с записью без текста и с поздно найденной записью.
+**От лида:** `lead-task export` и образцы получены 12.11.
 
 **От владельца:** сгенерировать токен и положить его SHA-256 в окружение; установить таймер из примеров.
 
