@@ -25,6 +25,10 @@ type EventDocument struct {
 	Metadata      EventMetadataDocument `bson:"metadata"`
 	OccurredAt    time.Time             `bson:"occurred_at"`
 	CreatedAt     time.Time             `bson:"created_at"`
+
+	// CommandID and CommandFP are set on the last event of a command saved with appcore.WithCommand.
+	CommandID string `bson:"command_id,omitempty"`
+	CommandFP string `bson:"command_fp,omitempty"`
 }
 
 // EventMetadataDocument represents metadannye event in MongoDB

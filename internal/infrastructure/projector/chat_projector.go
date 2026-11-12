@@ -10,9 +10,9 @@ import (
 	chatdomain "github.com/lllypuk/flowra/internal/domain/chat"
 	"github.com/lllypuk/flowra/internal/domain/event"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
+	mongodbinfra "github.com/lllypuk/flowra/internal/infrastructure/mongodb"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 // ChatProjector rebuilds chat read models from event store.
@@ -211,15 +211,11 @@ func (p *ChatProjector) updateReadModel(ctx context.Context, chat *chatdomain.Ch
 	}
 	setDoc, unsetDoc := buildChatReadModelMutation(chat)
 
-	// Upsert the document
-	filter := bson.M{"chat_id": chat.ID().String()}
 	update := bson.M{"$set": setDoc}
 	if len(unsetDoc) > 0 {
 		update["$unset"] = unsetDoc
 	}
-	opts := options.UpdateOne().SetUpsert(true)
-
-	_, err := p.readModelColl.UpdateOne(ctx, filter, update, opts)
+	err := mongodbinfra.UpsertNewer(ctx, p.readModelColl, bson.M{"chat_id": chat.ID().String()}, chat.Version(), update)
 	if err != nil {
 		return fmt.Errorf("failed to upsert read model: %w", err)
 	}
@@ -242,6 +238,7 @@ func buildChatReadModelMutation(chat *chatdomain.Chat) (bson.M, bson.M) {
 		"created_by":   chat.CreatedBy().String(),
 		"created_at":   chat.CreatedAt(),
 		"participants": participantStrs,
+		"version":      chat.Version(),
 	}
 
 	unsetDoc := bson.M{}

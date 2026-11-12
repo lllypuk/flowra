@@ -240,15 +240,11 @@ func (r *MongoChatRepository) updateReadModel(ctx context.Context, chat *chatdom
 	}
 	setDoc, unsetDoc := buildChatReadModelMutation(chat)
 
-	// ispolzuem upsert for creating or updating dokumenta
-	filter := bson.M{"chat_id": chat.ID().String()}
 	update := bson.M{"$set": setDoc}
 	if len(unsetDoc) > 0 {
 		update["$unset"] = unsetDoc
 	}
-	opts := options.UpdateOne().SetUpsert(true)
-
-	_, err := r.readModelColl.UpdateOne(ctx, filter, update, opts)
+	err := mongodbinfra.UpsertNewer(ctx, r.readModelColl, bson.M{"chat_id": chat.ID().String()}, chat.Version(), update)
 	return HandleMongoError(err, mongodbinfra.CollectionChatReadModel)
 }
 
@@ -267,6 +263,7 @@ func buildChatReadModelMutation(chat *chatdomain.Chat) (bson.M, bson.M) {
 		"created_by":   chat.CreatedBy().String(),
 		"created_at":   chat.CreatedAt(),
 		"participants": participantStrs,
+		"version":      chat.Version(),
 	}
 
 	unsetDoc := bson.M{}

@@ -13,9 +13,9 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/event"
 	taskdomain "github.com/lllypuk/flowra/internal/domain/task"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
+	mongodbinfra "github.com/lllypuk/flowra/internal/infrastructure/mongodb"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 // ChatToTaskReadModelProjector rebuilds tasks_read_model from chat.* event streams.
@@ -169,9 +169,7 @@ func (p *ChatToTaskReadModelProjector) syncReadModel(ctx context.Context, aggreg
 		return nil
 	}
 
-	update := bson.M{"$set": doc}
-	opts := options.UpdateOne().SetUpsert(true)
-	if _, updateErr := p.readModelColl.UpdateOne(ctx, filter, update, opts); updateErr != nil {
+	if updateErr := mongodbinfra.UpsertNewer(ctx, p.readModelColl, filter, doc.Version, bson.M{"$set": doc}); updateErr != nil {
 		return fmt.Errorf("failed to upsert task read model: %w", updateErr)
 	}
 

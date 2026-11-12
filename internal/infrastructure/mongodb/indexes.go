@@ -98,6 +98,13 @@ func GetEventIndexes() []IndexDefinition {
 			Options:    options.Index().SetUnique(true).SetName("idx_events_aggregate_version_unique"),
 		},
 		{
+			// A command key is applied once per aggregate; must match eventstore.CommandIndexName.
+			Collection: CollectionEvents,
+			Keys:       bson.D{{Key: "aggregate_id", Value: 1}, {Key: "command_id", Value: 1}},
+			Options: options.Index().SetUnique(true).SetName("idx_events_aggregate_command_unique").
+				SetPartialFilterExpression(bson.M{"command_id": bson.M{"$type": "string"}}),
+		},
+		{
 			// Index for filtering events by type
 			Collection: CollectionEvents,
 			Keys:       bson.D{{Key: "event_type", Value: 1}, {Key: "occurred_at", Value: -1}},

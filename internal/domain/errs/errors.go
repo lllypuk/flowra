@@ -26,4 +26,10 @@ var (
 
 	// ErrInvalidTransition is returned when a state transition is invalid
 	ErrInvalidTransition = errors.New("invalid state transition")
+
+	// ErrOutcomeUnknown is returned when a write may or may not have been committed.
+	ErrOutcomeUnknown = errors.New("write outcome unknown")
+
+	// ErrIdempotencyKeyReused is returned when a command key was already used for a different request.
+	ErrIdempotencyKeyReused = errors.New("idempotency key reused for a different request")
 )

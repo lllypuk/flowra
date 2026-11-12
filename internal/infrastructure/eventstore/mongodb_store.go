@@ -5,14 +5,19 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
 	"github.com/lllypuk/flowra/internal/application/appcore"
+	"github.com/lllypuk/flowra/internal/domain/errs"
 	"github.com/lllypuk/flowra/internal/domain/event"
 )
+
+// CommandIndexName is the unique index on (aggregate_id, command_id); a duplicate on it means a repeated command.
+const CommandIndexName = "idx_events_aggregate_command_unique"
 
 // MongoEventStore realizuet EventStore s ispolzovaniem MongoDB
 type MongoEventStore struct {
@@ -75,8 +80,12 @@ func (s *MongoEventStore) SaveEvents(
 	}
 	defer session.EndSession(ctx)
 
-	// vypolnyaem operatsiyu in tranzaktsii
+	cmd, hasCmd := appcore.CommandFrom(ctx)
+
+	// callbackDone tells a failed commit, whose outcome is unknown, from a failure before it.
+	callbackDone := false
 	_, err = session.WithTransaction(ctx, func(txCtx context.Context) (any, error) {
+		callbackDone = false
 		// 1. Checking current version (optimistic locking)
 		currentVersion, errVersion := s.getCurrentVersion(txCtx, aggregateID)
 		if errVersion != nil {
@@ -111,6 +120,10 @@ func (s *MongoEventStore) SaveEvents(
 		for i, doc := range documents {
 			doc.Version = expectedVersion + i + 1
 		}
+		if hasCmd {
+			last := documents[len(documents)-1]
+			last.CommandID, last.CommandFP = cmd.ID, cmd.Fingerprint
+		}
 
 		// 4. preobrazuem in interface{} for InsertMany
 		docs := make([]any, len(documents))
@@ -122,6 +135,9 @@ func (s *MongoEventStore) SaveEvents(
 		_, errInsert := s.collection.InsertMany(txCtx, docs)
 		if errInsert != nil {
 			// Checking error dublirovaniya klyucha (konflikt concurrency)
+			if mongo.IsDuplicateKeyError(errInsert) && strings.Contains(errInsert.Error(), CommandIndexName) {
+				return nil, appcore.ErrDuplicateCommand
+			}
 			if mongo.IsDuplicateKeyError(errInsert) {
 				s.logger.WarnContext(ctx, "duplicate key error in event store (concurrency)",
 					slog.String("aggregate_id", aggregateID),
@@ -137,10 +153,14 @@ func (s *MongoEventStore) SaveEvents(
 			return nil, fmt.Errorf("failed to insert events: %w", errInsert)
 		}
 
+		callbackDone = true
 		return nil, nil //nolint:nilnil // Transaction success returns nil for both values
 	})
 
-	if err != nil && !errors.Is(err, appcore.ErrConcurrencyConflict) {
+	if err != nil && callbackDone {
+		err = fmt.Errorf("%w: commit: %w", errs.ErrOutcomeUnknown, err)
+	}
+	if err != nil && !errors.Is(err, appcore.ErrConcurrencyConflict) && !errors.Is(err, appcore.ErrDuplicateCommand) {
 		s.logger.ErrorContext(ctx, "event store transaction failed",
 			slog.String("aggregate_id", aggregateID),
 			slog.Int("events_count", len(events)),
@@ -149,6 +169,22 @@ func (s *MongoEventStore) SaveEvents(
 	}
 
 	return err
+}
+
+// FindCommand returns the stored effect of a command saved with appcore.WithCommand.
+func (s *MongoEventStore) FindCommand(
+	ctx context.Context,
+	aggregateID, commandID string,
+) (appcore.CommandRecord, bool, error) {
+	var doc EventDocument
+	err := s.collection.FindOne(ctx, bson.M{"aggregate_id": aggregateID, "command_id": commandID}).Decode(&doc)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return appcore.CommandRecord{}, false, nil
+	}
+	if err != nil {
+		return appcore.CommandRecord{}, false, fmt.Errorf("failed to find command: %w", err)
+	}
+	return appcore.CommandRecord{Version: doc.Version, Fingerprint: doc.CommandFP}, true, nil
 }
 
 // LoadEvents loads all event for aggregate
