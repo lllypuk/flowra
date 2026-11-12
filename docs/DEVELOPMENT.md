@@ -130,7 +130,7 @@ and nothing in it falls back to mock or development auth.
 ```bash
 token=$(openssl rand -hex 32)
 export AUTH_OWNER_TOKEN_SHA256=$(printf %s "$token" | sha256sum | cut -d' ' -f1)
-make dev-local        # MongoDB + Redis + worker + API, config: configs/config.token.yaml
+make dev-local        # MongoDB + Redis + API with the worker inside, config: configs/config.token.yaml
 ```
 
 - Web: http://127.0.0.1:8080/login takes the token and sets an HttpOnly session cookie.

@@ -6,7 +6,7 @@ help: ## Show this help
 dev: ## Run full-stack development mode (infra + API + worker)
 	bash ./scripts/dev-full-stack.sh
 
-dev-local: ## Run without Keycloak: owner token auth on loopback (needs AUTH_OWNER_TOKEN_SHA256)
+dev-local: ## Run without Keycloak: one API process with the worker, owner token auth on loopback (needs AUTH_OWNER_TOKEN_SHA256)
 	FLOWRA_LOCAL=1 bash ./scripts/dev-full-stack.sh
 
 dev-lite: ## Run lightweight development mode (API only)

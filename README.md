@@ -95,7 +95,7 @@ Test user for app login: `testuser` / `test123`.
 
 ### Run Without Keycloak (single owner)
 
-`make dev-local` starts MongoDB, Redis, the worker and the API on `127.0.0.1:8080` with owner-token auth
+`make dev-local` starts MongoDB, Redis and one API process with the worker inside on `127.0.0.1:8080` with owner-token auth
 (`configs/config.token.yaml`). The server keeps only the SHA-256 of the token:
 
 ```bash

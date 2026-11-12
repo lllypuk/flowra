@@ -41,6 +41,14 @@ else
 	docker-compose --profile keycloak up -d mongodb redis keycloak mongo-init
 fi
 
+if [[ "${FLOWRA_LOCAL:-}" == "1" ]]; then
+	echo "[dev] starting API with the worker inside..."
+	FLOWRA_DEV_MODE=fullstack FLOWRA_WORKER=true go run ./cmd/api &
+	api_pid=$!
+	wait "$api_pid"
+	exit $?
+fi
+
 echo "[dev] starting worker..."
 FLOWRA_DEV_MODE=fullstack go run ./cmd/worker &
 worker_pid=$!
