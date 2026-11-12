@@ -10,7 +10,6 @@ ENV_FILE="$CONFIG_DIR/flowra.env"
 CONFIG_FILE="$CONFIG_DIR/config.yaml"
 
 LEAD_TASK="${LEAD_TASK:-$HOME/projects/lead/bin/lead-task}"
-LEAD_SESSION="${LEAD_SESSION:-lead}"
 AGTERM_SOCKET="${AGTERM_SOCKET:-$HOME/.local/share/agterm/agterm.sock}"
 
 for tool in go docker-compose systemctl; do
@@ -51,12 +50,14 @@ agterm_dir=""
 if agtermctl_path="$(command -v agtermctl)"; then
 	agterm_dir="$(dirname "$agtermctl_path"):"
 fi
+lead_session_line=""
+[[ -n "${LEAD_SESSION:-}" ]] && lead_session_line="LEAD_SESSION=$LEAD_SESSION"
 cat > "$ENV_FILE.tmp" <<ENV
 CONFIG_PATH=$CONFIG_FILE
 AUTH_OWNER_TOKEN_SHA256=$owner_digest
 FLOWRA_WORKER=true
 LEAD_TASK=$LEAD_TASK
-LEAD_SESSION=$LEAD_SESSION
+${lead_session_line}
 AGTERM_SOCKET=$AGTERM_SOCKET
 PATH=${agterm_dir}/usr/local/bin:/usr/bin:/bin
 ENV

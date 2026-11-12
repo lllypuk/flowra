@@ -74,16 +74,16 @@ func newInstallEnv(t *testing.T) installEnv {
 	return env
 }
 
-func (e installEnv) run(t *testing.T) string {
+func (e installEnv) run(t *testing.T, extra ...string) string {
 	t.Helper()
 	cmd := exec.CommandContext(t.Context(), "bash", filepath.Join(e.root, "scripts/install-user-units.sh"))
 	cmd.Env = []string{
 		"HOME=" + e.home,
 		"PATH=" + e.bin + ":/usr/bin:/bin",
 		"LEAD_TASK=/opt/fake/lead-task",
-		"LEAD_SESSION=lead-test",
 		"AGTERM_SOCKET=" + filepath.Join(e.home, "agterm.sock"),
 	}
+	cmd.Env = append(cmd.Env, extra...)
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(out))
 	return string(out)
@@ -112,7 +112,7 @@ func readFile(t *testing.T, path string) string {
 
 func TestInstallUserUnits_FirstRunWritesFilesAndHidesTokens(t *testing.T) {
 	env := newInstallEnv(t)
-	out := env.run(t)
+	out := env.run(t, "LEAD_SESSION=lead-test")
 
 	tokens := printedTokens(out)
 	require.Len(t, tokens, 2, out)
@@ -165,6 +165,12 @@ func TestInstallUserUnits_FirstRunWritesFilesAndHidesTokens(t *testing.T) {
 	require.Contains(t, calls, "systemctl --user enable --now flowra-api.service leadfeed-sync.timer")
 	require.FileExists(t, filepath.Join(env.root, "bin/api"))
 	require.FileExists(t, filepath.Join(env.root, "bin/leadfeed"))
+}
+
+func TestInstallUserUnits_LeadSessionOnlyWhenOverridden(t *testing.T) {
+	env := newInstallEnv(t)
+	env.run(t)
+	require.NotContains(t, readFile(t, filepath.Join(env.home, ".config/flowra/flowra.env")), "LEAD_SESSION")
 }
 
 func TestInstallUserUnits_RepeatKeepsTokensAndRefreshesUnits(t *testing.T) {

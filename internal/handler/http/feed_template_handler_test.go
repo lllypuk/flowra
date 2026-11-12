@@ -52,12 +52,17 @@ func healthyFeedStatus() leadfeed.FeedStatus {
 // newFeedPages serves the feed pages behind the real page auth with an owner token.
 func newFeedPages(t *testing.T, svc httphandler.FeedPageService) *echo.Echo {
 	t.Helper()
+	return newFeedPagesAt(t, svc, pageNow)
+}
+
+func newFeedPagesAt(t *testing.T, svc httphandler.FeedPageService, now func() time.Time) *echo.Echo {
+	t.Helper()
 	renderer, err := httphandler.NewTemplateRenderer(httphandler.TemplateRendererConfig{FS: web.TemplatesFS})
 	require.NoError(t, err)
 	usePageAuth(t, &httphandler.PageAuthConfig{TokenValidator: ownerValidator(t, ownerSecret)})
 
 	handler := httphandler.NewFeedTemplateHandler(renderer, svc, nil)
-	handler.SetClock(pageNow, time.UTC)
+	handler.SetClock(now, time.UTC)
 
 	e := echo.New()
 	handler.SetupFeedRoutes(e)
@@ -186,6 +191,19 @@ func TestFeedList_Banner(t *testing.T) {
 		assert.Contains(t, content, "rev-a")
 		assert.NotContains(t, content, "data-feed-error")
 		assert.NotContains(t, content, "feed-banner-problem")
+		assert.NotContains(t, content, "data-feed-stale", "five minutes exactly is still fresh")
+	})
+
+	t.Run("old snapshot warns on the list and on the thread", func(t *testing.T) {
+		later := func() time.Time { return pageAsOf().Add(5*time.Minute + time.Second) }
+		e := newFeedPagesAt(t, &fakeFeedPages{board: feedBoard(), thread: feedThread()}, later)
+
+		for _, target := range []string{"/feed", "/feed/tasks/T-0002"} {
+			content := feedContent(t, getPage(e, target, true).Body.String())
+			assert.Contains(t, content, "data-feed-stale", target)
+			assert.Contains(t, content, "5 мин назад", target)
+			assert.Contains(t, content, "feed-banner-problem", target)
+		}
 	})
 
 	t.Run("failed import is visible and the old snapshot stays", func(t *testing.T) {

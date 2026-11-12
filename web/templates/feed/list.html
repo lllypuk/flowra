@@ -3,13 +3,16 @@
 {{end}}
 
 {{define "feed-banner"}}
-<aside class="feed-banner {{if not .Healthy}}feed-banner-problem{{end}}" data-feed-banner>
+<aside class="feed-banner {{if or (not .Healthy) .Stale}}feed-banner-problem{{end}}" data-feed-banner>
     {{if .Published}}
     <span>Снимок от <strong>{{.AsOf}}</strong> ({{.AsOfAge}} назад)</span>
     <span>опубликован {{.PublishedAt}}</span>
     <span class="feed-muted">ревизия {{.Revision}}</span>
     {{else}}
     <span><strong>Лента пуста:</strong> ни один снимок ещё не импортирован.</span>
+    {{end}}
+    {{if .Stale}}
+    <span class="feed-banner-error" data-feed-stale>Снимок устарел: синхронизация не обновляет ленту.</span>
     {{end}}
     {{if .ShowError}}
     <span class="feed-banner-error" data-feed-error>

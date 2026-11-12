@@ -63,10 +63,12 @@ func (h *FeedTemplateHandler) SetupFeedRoutes(e *echo.Echo) {
 
 // FeedBannerView is the state strip shown on every feed page.
 type FeedBannerView struct {
-	Published   bool
-	Revision    string
-	AsOf        string
-	AsOfAge     string
+	Published bool
+	Revision  string
+	AsOf      string
+	AsOfAge   string
+	// Stale is set when the snapshot is older than feedStaleAfter: the sync is not keeping up.
+	Stale       bool
 	PublishedAt string
 	Healthy     bool
 	AttemptAt   string
@@ -269,7 +271,9 @@ func (h *FeedTemplateHandler) banner(status leadfeed.FeedStatus) FeedBannerView 
 		banner.Published = true
 		banner.Revision = state.Revision
 		banner.AsOf = h.formatTime(state.AsOf)
-		banner.AsOfAge = feedSpan(h.now().Sub(state.AsOf))
+		age := h.now().Sub(state.AsOf)
+		banner.AsOfAge = feedSpan(age)
+		banner.Stale = age > feedStaleAfter
 		banner.PublishedAt = h.formatTime(state.PublishedAt)
 	}
 	if attempt := status.LastAttempt; attempt != nil {
@@ -353,6 +357,8 @@ func feedWaitingOnLabel(waitingOn *string) string {
 	}
 	return feedActorLabel(*waitingOn)
 }
+
+const feedStaleAfter = 5 * time.Minute
 
 // feedSpan prints a duration the way the lead's board does.
 func feedSpan(d time.Duration) string {
