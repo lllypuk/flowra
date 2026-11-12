@@ -42,6 +42,7 @@ The complete API is documented in OpenAPI 3.1 format:
 
 - **[openapi.yaml](./openapi.yaml)** - Full API specification with all endpoints, schemas, and examples
 - **[action-endpoints.md](./action-endpoints.md)** - UI/HTMX action endpoints reference (chat/task action routes)
+- **[feed-questions.md](./feed-questions.md)** - Lead questions and the owner's answer (feed API, form route, `lead-task` contract)
 - **[websocket-protocol.md](./websocket-protocol.md)** - Current WebSocket protocol reference (messages, events, reconnect)
 
 ### View Documentation

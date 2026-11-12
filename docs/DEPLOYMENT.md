@@ -14,6 +14,7 @@ This guide covers deploying Flowra in various environments, from local developme
 8. [Monitoring](#monitoring)
 9. [Troubleshooting](#troubleshooting)
 10. [Security Considerations](#security-considerations)
+11. [Always-on install](#always-on-install-systemd-user-units)
 
 ---
 
@@ -673,3 +674,51 @@ cp /var/lib/redis/dump.rdb /backup/redis/dump.rdb.$(date +%Y%m%d)
 ---
 
 *Last updated: March 2026*
+
+---
+
+## Always-on install (systemd user units)
+
+```bash
+make install-units
+```
+
+Builds `bin/api` and `bin/leadfeed`; starts MongoDB and Redis through Compose; writes `~/.config/flowra/`
+(`config.yaml`, `flowra.env`, 0600) and the user units `flowra-api.service`, `leadfeed-sync.service` and
+`leadfeed-sync.timer` (every minute: export, import, deliver answers). The first run generates two tokens,
+`owner` (this laptop's browser) and `phone`, and prints them once; the files keep only SHA-256. Repeating the
+command refreshes binaries and units and leaves the tokens alone.
+
+Override `LEAD_TASK` (path to `lead-task`), `LEAD_SESSION` and `AGTERM_SOCKET` in the environment on the first
+run; they are stored in `flowra.env`.
+
+Remove:
+
+```bash
+systemctl --user disable --now flowra-api.service leadfeed-sync.timer
+rm ~/.config/systemd/user/{flowra-api.service,leadfeed-sync.service,leadfeed-sync.timer}
+rm -r ~/.config/flowra   # also discards the token digests
+systemctl --user daemon-reload
+```
+
+Units run while the user is logged in; no `sudo` or linger. While the laptop sleeps Flowra is unavailable and
+questions wait in the lead's journal.
+
+### What only the owner can do
+
+| Action | Why |
+|---|---|
+| Save the printed tokens (password manager); enter `phone` in the phone's browser | shown once, needed on the owner's device |
+| Set up the phone's SSH client with port forwarding (below) | the phone is the owner's device |
+| Confirm that the phone's key in `~/.ssh/authorized_keys` is the owner's | only the owner grants access to the machine |
+| Decide on access from outside the home network | a third-party service, `sudo` install, an app on the phone |
+
+### Phone
+
+Access is SSH port forwarding inside the home network: the phone's SSH client forwards a local port to
+`127.0.0.1:8080` of the laptop, and the phone's browser opens `http://127.0.0.1:<port>/feed`. The server stays
+on loopback, and the token travels inside SSH. The cookie is not `Secure` for this plain-HTTP address; the
+form's `Origin` check accepts the forwarded address.
+
+Limits: the phone and the laptop share a network; the laptop is awake; its address may change (DHCP), so fix
+it in the client or reserve it in the router. There is no access from outside the home network.
