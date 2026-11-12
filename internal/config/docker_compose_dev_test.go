@@ -30,7 +30,14 @@ func TestDockerCompose_PublishesOnLoopbackOnly(t *testing.T) {
 			}
 			for _, port := range ports {
 				spec := fmt.Sprint(port)
-				require.True(t, strings.HasPrefix(spec, "127.0.0.1:"), "%s: %s publishes %q beyond loopback", file, name, spec)
+				require.True(
+					t,
+					strings.HasPrefix(spec, "127.0.0.1:"),
+					"%s: %s publishes %q beyond loopback",
+					file,
+					name,
+					spec,
+				)
 				published++
 			}
 		}
