@@ -23,6 +23,10 @@ const (
 	CollectionOutbox        = "outbox"
 	CollectionRepairQueue   = "repair_queue"
 	CollectionFileMetadata  = "file_metadata"
+
+	CollectionLeadFeedTasks   = "leadfeed_tasks"
+	CollectionLeadFeedRecords = "leadfeed_records"
+	CollectionLeadFeedState   = "leadfeed_state"
 )
 
 // IndexDefinition describes a MongoDB index to be created.
@@ -79,6 +83,7 @@ func GetAllIndexDefinitions() []IndexDefinition {
 	indexes = append(indexes, GetOutboxIndexes()...)
 	indexes = append(indexes, GetRepairQueueIndexes()...)
 	indexes = append(indexes, GetFileMetadataIndexes()...)
+	indexes = append(indexes, GetLeadFeedIndexes()...)
 
 	return indexes
 }
@@ -518,6 +523,23 @@ func GetFileMetadataIndexes() []IndexDefinition {
 	}
 }
 
+// GetLeadFeedIndexes returns index definitions for the lead feed projection.
+// Record and task ids are the documents' _id, so their uniqueness needs no index of its own.
+func GetLeadFeedIndexes() []IndexDefinition {
+	return []IndexDefinition{
+		{
+			Collection: CollectionLeadFeedTasks,
+			Keys:       bson.D{{Key: "created_at", Value: -1}},
+			Options:    options.Index().SetName("idx_leadfeed_tasks_created"),
+		},
+		{
+			Collection: CollectionLeadFeedRecords,
+			Keys:       bson.D{{Key: "task", Value: 1}, {Key: "order", Value: 1}},
+			Options:    options.Index().SetName("idx_leadfeed_records_task_order"),
+		},
+	}
+}
+
 // CreateCollectionIndexes creates indexes for a specific collection only.
 // Useful for targeted index creation or testing.
 func CreateCollectionIndexes(ctx context.Context, db *mongo.Database, collectionName string) error {
@@ -546,6 +568,12 @@ func CreateCollectionIndexes(ctx context.Context, db *mongo.Database, collection
 		indexes = GetRepairQueueIndexes()
 	case CollectionFileMetadata:
 		indexes = GetFileMetadataIndexes()
+	case CollectionLeadFeedTasks, CollectionLeadFeedRecords:
+		for _, idx := range GetLeadFeedIndexes() {
+			if idx.Collection == collectionName {
+				indexes = append(indexes, idx)
+			}
+		}
 	default:
 		return fmt.Errorf("unknown collection: %s", collectionName)
 	}

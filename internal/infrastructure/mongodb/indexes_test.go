@@ -248,7 +248,8 @@ func TestGetAllIndexDefinitions(t *testing.T) {
 		len(mongodb.GetNotificationIndexes()) +
 		len(mongodb.GetOutboxIndexes()) +
 		len(mongodb.GetRepairQueueIndexes()) +
-		len(mongodb.GetFileMetadataIndexes())
+		len(mongodb.GetFileMetadataIndexes()) +
+		len(mongodb.GetLeadFeedIndexes())
 
 	assert.Len(t, indexes, expectedTotal)
 
@@ -482,4 +483,30 @@ func findIndexInDBByName(indexes []bson.M, name string) bson.M {
 		}
 	}
 	return nil
+}
+
+func TestGetLeadFeedIndexes(t *testing.T) {
+	t.Parallel()
+
+	indexes := mongodb.GetLeadFeedIndexes()
+
+	byCollection := map[string]int{}
+	for _, idx := range indexes {
+		byCollection[idx.Collection]++
+		assert.NotNil(t, idx.Options)
+	}
+	assert.Equal(t, 1, byCollection[mongodb.CollectionLeadFeedTasks])
+	assert.Equal(t, 1, byCollection[mongodb.CollectionLeadFeedRecords])
+}
+
+func TestCreateCollectionIndexes_LeadFeed(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.SetupTestMongoDB(t)
+	ctx := context.Background()
+
+	for _, collName := range []string{mongodb.CollectionLeadFeedTasks, mongodb.CollectionLeadFeedRecords} {
+		require.NoError(t, mongodb.CreateCollectionIndexes(ctx, db, collName))
+		assert.Len(t, getCollectionIndexes(ctx, t, db, collName), 2, "collection %s", collName)
+	}
 }
