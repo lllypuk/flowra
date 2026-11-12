@@ -64,7 +64,7 @@ tags:
   - name: Notifications
     description: User notification management
   - name: Feed
-    description: Read-only projection of the lead's task journal. GET only; nothing here changes data.
+    description: Projection of the lead's task journal. Only the owner's answer to a question writes data, and only into Flowra.
   - name: WebSocket
     description: Real-time communication endpoints
 
@@ -1846,7 +1846,7 @@ paths:
       description: >-
         Questions of the published snapshot with the owner's answer laid over them; those waiting for an answer
         come first. `state` is `waiting`, `answered` (Flowra holds an answer the lead has not confirmed yet),
-        `delivered` (the lead's mailbox accepted it) or `handled` (the lead closed the question).
+        `delivered` (the lead's mailbox accepted it) or `handled` (the journal marks the question resolved and no answer is waiting for confirmation; an answer the journal has not confirmed stays `answered` even if the lead closed the question).
       operationId: listFeedQuestions
       responses:
         "200":

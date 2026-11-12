@@ -85,17 +85,19 @@ curl http://127.0.0.1:8080/health
 Sign in at http://127.0.0.1:8080/login with the token, or send it as `Authorization: Bearer <token>`.
 More tokens, one per device, go to `auth.tokens` in `configs/config.yaml`.
 
-### Lead Feed (read-only)
+### Lead Feed
 
-The feed shows the lead's task journal as a list and per-task threads. Flowra never writes to the journal;
-the feed is replaced as a whole from a snapshot produced by `lead-task export`:
+The feed shows the lead's task journal as a list and per-task threads, and the lead's questions with a form for
+the owner's answer. Flowra never writes to the journal; the feed is replaced as a whole from a snapshot produced
+by `lead-task export`, and answers go back through `lead-task answer`:
 
 ```bash
-make feed-sync      # export, validate, publish; the previous feed stays on any failure
-make feed-status    # published revision and the last import attempt
+make feed-sync      # export, validate, publish (the previous feed stays on failure), deliver answers
+make feed-status    # published revision, last import attempt and last answer delivery
 ```
 
-Pages: `/feed`, `/feed/tasks/{id}`. API: `GET /api/v1/feed/status|tasks|tasks/{id}|tasks/{id}/records`.
+Pages: `/feed`, `/feed/tasks/{id}`, `/feed/questions`, `/feed/questions/{id}`. API: `GET /api/v1/feed/status|tasks|tasks/{id}|tasks/{id}/records|questions|questions/{id}`,
+`POST /api/v1/feed/questions/{id}/answer` (see `docs/api/feed-questions.md`).
 `make install-units` installs the API and a one-minute sync timer as systemd user units.
 
 ---

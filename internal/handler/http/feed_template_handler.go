@@ -22,7 +22,7 @@ type FeedPageService interface {
 	Thread(ctx context.Context, taskID string, limit int, cursor string) (leadfeed.Thread, error)
 }
 
-// FeedTemplateHandler renders the read-only lead feed pages.
+// FeedTemplateHandler renders the lead feed pages and the owner answer form.
 // Statuses and times come from the query service; templates only print them.
 type FeedTemplateHandler struct {
 	renderer  *TemplateRenderer

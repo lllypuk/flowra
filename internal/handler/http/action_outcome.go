@@ -49,7 +49,7 @@ func requiredIdempotencyKey(c echo.Context) (string, bool, error) {
 		return "", false, err
 	}
 	if key == "" {
-		return "", false, httpserver.RespondErrorWithCode(c, http.StatusBadRequest, "IDEMPOTENCY_KEY_REQUIRED",
+		return "", false, httpserver.RespondErrorWithCode(c, http.StatusBadRequest, feedCodeKeyRequired,
 			"Idempotency-Key header is required")
 	}
 	return key, true, nil

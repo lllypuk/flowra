@@ -11,8 +11,9 @@ and delivery: `docs/plans/20261112-owner-question.md`.
 | POST | `/questions/{qid}/answer` | body `{"option_id": "...|null", "text": "..."}` |
 
 `state`: `waiting`, `answered` (stored in Flowra, not yet confirmed by the journal), `delivered` (mail accepted by
-the lead's pane), `handled` (`resolved` in the journal). `closed_in_session` marks an answer given on a question
-the lead already closed.
+the lead's pane), `handled` (`resolved` in the journal and no unconfirmed answer: a resolved question whose
+answer is not confirmed stays `answered`). `closed_in_session` marks a question the lead closed while an owner
+answer was still unconfirmed.
 
 ## Answer
 

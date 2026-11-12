@@ -51,7 +51,7 @@ make dev-lite
 # Build binaries
 make build                 # Creates bin/api, bin/worker and bin/leadfeed
 
-# Lead feed (read-only projection of the lead's task journal)
+# Lead feed (projection of the lead's task journal; owner answers go back through lead-task)
 make feed-sync             # Export, validate and publish a snapshot
 make feed-status           # Published revision and last import attempt
 

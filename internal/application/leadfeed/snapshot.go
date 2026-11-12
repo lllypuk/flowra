@@ -1,4 +1,4 @@
-// Package leadfeed is the read-only projection of the lead's task journal.
+// Package leadfeed is the projection of the lead's task journal; owner answers are stored beside it, never in the journal.
 // It is fed by full snapshots and never goes through the Chat aggregate or tag processing.
 package leadfeed
 

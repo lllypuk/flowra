@@ -1,4 +1,4 @@
-// Command leadfeed imports the lead's task snapshot into the read-only feed and reports its state.
+// Command leadfeed imports the lead's task snapshot into the feed, delivers owner answers and reports its state.
 package main
 
 import (

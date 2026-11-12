@@ -298,7 +298,7 @@ func (s *E2ETestSuite) setupServer() {
 	api.PUT("/workspaces/:workspace_id/tasks/:task_id/due-date", taskHandler.SetDueDate)
 	api.DELETE("/workspaces/:workspace_id/tasks/:task_id", taskHandler.Delete)
 
-	// Lead feed routes: the real handler over the real store, read-only
+	// Lead feed routes: the real handler over the real store
 	s.FeedRepo = mongodb.NewMongoLeadFeedRepository(s.MongoClient, s.MongoDB)
 	feedHandler := httphandler.NewFeedHandler(leadfeed.NewQueryService(s.FeedRepo), logger).
 		WithQuestions(leadfeed.NewQuestionService(s.FeedRepo, mongodb.NewMongoOwnerAnswerRepository(s.MongoDB)))

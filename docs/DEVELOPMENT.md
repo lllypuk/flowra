@@ -131,7 +131,8 @@ nothing falls back to mock or development auth.
 
 ### 8. Lead Feed
 
-The feed is a read-only projection of the lead's task journal, kept apart from chats and tasks.
+The feed is a projection of the lead's task journal, kept apart from chats and tasks. The owner's answers to
+questions are stored in Flowra and delivered through `lead-task answer`; the journal is never written directly.
 
 ```bash
 make feed-sync                         # lead-task export -> temp file -> bin/leadfeed import

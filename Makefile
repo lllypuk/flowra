@@ -19,11 +19,11 @@ build: ## Build binaries
 install-units: ## Install the API and the feed sync as systemd user units (see docs/DEPLOYMENT.md)
 	bash ./scripts/install-user-units.sh
 
-feed-sync: ## Publish the lead task snapshot into the feed (needs running MongoDB)
+feed-sync: ## Publish the lead task snapshot into the feed and deliver owner answers (needs running MongoDB)
 	go build -o bin/leadfeed ./cmd/leadfeed
 	bash ./scripts/leadfeed-sync.sh
 
-feed-status: ## Show the published feed snapshot and the last import attempt
+feed-status: ## Show the published feed snapshot, the last import attempt and the last answer delivery
 	go run ./cmd/leadfeed status
 
 test: ## Run all tests with coverage

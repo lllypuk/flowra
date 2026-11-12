@@ -162,7 +162,7 @@ type Container struct {
 	BoardTemplateHandler        *httphandler.BoardTemplateHandler
 	TaskDetailTemplateHandler   *httphandler.TaskDetailTemplateHandler
 
-	// Lead feed: read-only projection of the lead's task journal
+	// Lead feed: projection of the lead's task journal plus the owner's answers
 	FeedService         *leadfeed.QueryService
 	QuestionService     *leadfeed.QuestionService
 	FeedHandler         *httphandler.FeedHandler
