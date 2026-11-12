@@ -157,7 +157,7 @@ Legacy collections (`chat_read_model`, `task_read_model`) are non-authoritative 
 
 The lead feed (`internal/application/leadfeed`, collections `leadfeed_*`, routes `/feed` and `/api/v1/feed`) is an external read projection, not part of the Chat write model:
 - Do not import feed data into Chat, Task or Message aggregates, and do not pass feed text to `internal/domain/tag`.
-- The feed itself changes only through `cmd/leadfeed import`. The one write route, the owner's answer to a question, goes to `owner_answers` outside the projection: never write answers into `leadfeed_*`, and an import never touches `owner_answers`.
+- The feed itself changes only through `cmd/leadfeed import`. The one write route (API and the `/feed` form, same service and origin check), the owner's answer to a question, goes to `owner_answers` outside the projection: never write answers into `leadfeed_*`, and an import never touches `owner_answers`.
 - A publication replaces the whole feed in one MongoDB transaction; keep the freshness check inside that transaction.
 - Source statuses are stored and returned verbatim; labels and groups are display-only (`leadfeed.StatusLabel`, `leadfeed.StatusGroup`).
 - Real exports contain private text: keep them out of the repository, fixtures are synthetic.

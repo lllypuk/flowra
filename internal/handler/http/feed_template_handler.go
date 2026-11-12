@@ -25,11 +25,12 @@ type FeedPageService interface {
 // FeedTemplateHandler renders the read-only lead feed pages.
 // Statuses and times come from the query service; templates only print them.
 type FeedTemplateHandler struct {
-	renderer *TemplateRenderer
-	service  FeedPageService
-	logger   *slog.Logger
-	now      func() time.Time
-	location *time.Location
+	renderer  *TemplateRenderer
+	service   FeedPageService
+	questions FeedQuestionService
+	logger    *slog.Logger
+	now       func() time.Time
+	location  *time.Location
 }
 
 // NewFeedTemplateHandler creates the feed page handler.
@@ -50,15 +51,26 @@ func NewFeedTemplateHandler(
 	}
 }
 
+// WithQuestions enables the question pages and the answer form.
+func (h *FeedTemplateHandler) WithQuestions(questions FeedQuestionService) *FeedTemplateHandler {
+	h.questions = questions
+	return h
+}
+
 // SetClock fixes the current time and the display time zone.
 func (h *FeedTemplateHandler) SetClock(now func() time.Time, location *time.Location) {
 	h.now, h.location = now, location
 }
 
-// SetupFeedRoutes registers the feed pages; they have no forms and no write routes.
+// SetupFeedRoutes registers the feed pages; the only write route is the owner's answer form.
 func (h *FeedTemplateHandler) SetupFeedRoutes(e *echo.Echo) {
 	e.GET("/feed", h.FeedList, RequireAuth)
 	e.GET("/feed/tasks/:id", h.FeedThread, RequireAuth)
+	if h.questions != nil {
+		e.GET("/feed/questions", h.QuestionList, RequireAuth)
+		e.GET("/feed/questions/:qid", h.QuestionPage, RequireAuth)
+		e.POST("/feed/questions/:qid/answer", h.AnswerForm, RequireAuth, RequireSameOriginForCookie)
+	}
 }
 
 // FeedBannerView is the state strip shown on every feed page.
@@ -103,6 +115,9 @@ type FeedListView struct {
 	Groups    []FeedGroupView
 	Total     int
 	Truncated bool
+	// Questions is set when the question pages are on; Waiting counts those without an answer.
+	Questions bool
+	Waiting   int
 }
 
 // FeedTransitionView is one status change in the task header.
@@ -127,6 +142,8 @@ type FeedRecordView struct {
 	BodyDerived  bool
 	BodyMissing  string
 	SourceKind   string
+	// QID is set on a question record and links to its answer page.
+	QID string
 }
 
 // FeedThreadView is the data of the thread page.
@@ -168,6 +185,16 @@ func (h *FeedTemplateHandler) FeedList(c echo.Context) error {
 		Banner:    h.banner(board.Status),
 		Total:     len(board.Tasks),
 		Truncated: board.Truncated,
+	}
+	if h.questions != nil {
+		view.Questions = true
+		list, listErr := h.questions.List(c.Request().Context())
+		if listErr != nil {
+			h.logger.WarnContext(c.Request().Context(), "feed question count failed",
+				slog.String("error", listErr.Error()))
+			view.Questions = false
+		}
+		view.Waiting = list.Waiting
 	}
 	for _, group := range feedGroupOrder() {
 		if tasks := byGroup[group.Key]; len(tasks) > 0 {
@@ -256,6 +283,9 @@ func (h *FeedTemplateHandler) recordView(rec *leadfeed.Record) FeedRecordView {
 		BodyDerived:  rec.BodyDerived,
 		SourceKind:   rec.Source.Kind,
 	}
+	if rec.Question != nil && h.questions != nil {
+		view.QID = rec.Question.QID
+	}
 	if rec.Body != nil {
 		view.Body, view.HasBody = *rec.Body, true
 	}
@@ -293,6 +323,12 @@ func (h *FeedTemplateHandler) formatTime(t time.Time) string {
 }
 
 func (h *FeedTemplateHandler) render(c echo.Context, templateName, title, content string, data any) error {
+	return h.renderStatus(c, http.StatusOK, templateName, title, content, data)
+}
+
+func (h *FeedTemplateHandler) renderStatus(
+	c echo.Context, status int, templateName, title, content string, data any,
+) error {
 	pageData := PageData{
 		Title:           title,
 		User:            getUserView(c),
@@ -300,6 +336,7 @@ func (h *FeedTemplateHandler) render(c echo.Context, templateName, title, conten
 		ContentTemplate: content,
 	}
 	c.Response().Header().Set(echo.HeaderContentType, echo.MIMETextHTMLCharsetUTF8)
+	c.Response().WriteHeader(status)
 	return h.renderer.Render(c.Response().Writer, templateName, pageData, c)
 }
 
@@ -327,6 +364,8 @@ func feedKindLabel(kind string) string {
 	switch kind {
 	case "letter":
 		return "письмо"
+	case leadfeed.KindQuestion:
+		return "вопрос"
 	case "report":
 		return "отчёт"
 	case "decision":

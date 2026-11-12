@@ -72,6 +72,15 @@
         font-size: 0.92rem;
     }
     .feed-missing { margin: 0.5rem 0 0; font-style: italic; color: var(--pico-muted-color); }
+    .feed-question-link { margin: 0.5rem 0 0; }
+    .feed-question-list { list-style: none; padding: 0; margin: 0; }
+    .feed-question-list li { margin-bottom: 0.75rem; padding: 0.7rem 0.9rem; border: 1px solid var(--pico-muted-border-color); border-radius: 8px; overflow-wrap: anywhere; }
+    .feed-question-waiting { border-color: #d95926 !important; }
+    .feed-question-meta { display: flex; flex-wrap: wrap; gap: 0.2rem 0.9rem; font-size: 0.85rem; }
+    .feed-question-page { max-width: 100%; }
+    .feed-question-page fieldset, .feed-question-page textarea, .feed-question-page input[type="text"] { max-width: 100%; box-sizing: border-box; }
+    .feed-question-page label { overflow-wrap: anywhere; }
+    .feed-error { color: #d95926; }
     .feed-facts { display: flex; flex-wrap: wrap; gap: 0.25rem 1.5rem; font-size: 0.9rem; margin-bottom: 1rem; }
 </style>
 {{end}}
@@ -84,6 +93,11 @@
     </header>
 
     {{template "feed-banner" .Data.Banner}}
+
+    {{if .Data.Questions}}
+    <p data-feed-questions-link><a href="/feed/questions">Вопросы лида</a>
+        <span class="feed-muted">· ждут ответа: <strong data-feed-waiting>{{.Data.Waiting}}</strong></span></p>
+    {{end}}
 
     {{if .Data.Truncated}}
     <p class="feed-muted">Показана только часть задач: лента длиннее одной страницы.</p>

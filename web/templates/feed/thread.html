@@ -66,6 +66,9 @@
             <span class="feed-muted">{{.ID}} · {{.SourceKind}}</span>
             {{if and .HasBody .BodyDerived}}<span class="feed-derived" title="Текст найден в транскрипте агента по времени события">текст из транскрипта</span>{{end}}
         </header>
+        {{if .QID}}
+        <p class="feed-question-link" data-feed-question-card><a href="/feed/questions/{{.QID}}">Вопрос {{.QID}}: открыть и ответить</a></p>
+        {{end}}
         {{if .HasBody}}
         <pre class="feed-body">{{.Body}}</pre>
         {{else}}

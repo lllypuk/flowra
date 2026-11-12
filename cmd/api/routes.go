@@ -329,7 +329,7 @@ func registerPageRoutes(e *echo.Echo, c *Container) {
 		c.TaskDetailTemplateHandler.SetupTaskDetailRoutes(e)
 	}
 
-	// Lead feed pages (read-only)
+	// Lead feed pages (read-only except the answer form)
 	if c.FeedTemplateHandler != nil {
 		c.FeedTemplateHandler.SetupFeedRoutes(e)
 	}

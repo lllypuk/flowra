@@ -16,6 +16,7 @@ import (
 	"github.com/lllypuk/flowra/internal/infrastructure/httpserver"
 	"github.com/lllypuk/flowra/internal/infrastructure/websocket"
 	"github.com/lllypuk/flowra/internal/middleware"
+	"github.com/lllypuk/flowra/web"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -453,6 +454,80 @@ func TestSetupRoutes_FeedWithoutQuestionsStaysReadOnly(t *testing.T) {
 
 	for _, r := range SetupRoutes(c).Echo().Routes() {
 		if strings.HasPrefix(r.Path, "/api/v1/feed") {
+			assert.Equal(t, http.MethodGet, r.Method, r.Path)
+		}
+	}
+}
+
+func TestSetupRoutes_FeedPagesWriteOnlyTheAnswerForm(t *testing.T) {
+	renderer, err := httphandler.NewTemplateRenderer(httphandler.TemplateRendererConfig{FS: web.TemplatesFS})
+	require.NoError(t, err)
+	handler := httphandler.NewFeedTemplateHandler(renderer, nil, slog.Default()).WithQuestions(stubQuestions{})
+	c := &Container{
+		Config:              config.DefaultConfig(),
+		Logger:              slog.Default(),
+		TokenValidator:      testTokenValidator(t),
+		AccessChecker:       middleware.NewMockWorkspaceAccessChecker(),
+		Hub:                 websocket.NewHub(),
+		FeedHandler:         httphandler.NewFeedHandler(nil, slog.Default()).WithQuestions(stubQuestions{}),
+		FeedTemplateHandler: handler,
+	}
+
+	e := SetupRoutes(c).Echo()
+
+	pages := map[string][]string{}
+	var writes []string
+	for _, r := range e.Routes() {
+		isFeed := strings.HasPrefix(r.Path, "/feed")
+		if isFeed {
+			pages[r.Path] = append(pages[r.Path], r.Method)
+		}
+		if (isFeed || strings.HasPrefix(r.Path, "/api/v1/feed")) && r.Method != http.MethodGet {
+			writes = append(writes, r.Method+" "+r.Path)
+		}
+	}
+
+	assert.Equal(t, map[string][]string{
+		"/feed":                       {http.MethodGet},
+		"/feed/tasks/:id":             {http.MethodGet},
+		"/feed/questions":             {http.MethodGet},
+		"/feed/questions/:qid":        {http.MethodGet},
+		"/feed/questions/:qid/answer": {http.MethodPost},
+	}, pages)
+	assert.ElementsMatch(t, []string{
+		"POST /api/v1/feed/questions/:qid/answer",
+		"POST /feed/questions/:qid/answer",
+	}, writes, "the answer routes are the only write paths of the feed")
+
+	for _, method := range []string{http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
+		for path, methods := range pages {
+			if slices.Contains(methods, method) {
+				continue
+			}
+			target := strings.NewReplacer(":id", "T-0001", ":qid", "Q-0001").Replace(path)
+			rec := httptest.NewRecorder()
+
+			e.ServeHTTP(rec, httptest.NewRequest(method, target, nil))
+
+			assert.Contains(t, []int{http.StatusNotFound, http.StatusMethodNotAllowed}, rec.Code, "%s %s", method, path)
+		}
+	}
+}
+
+func TestSetupRoutes_FeedPagesWithoutQuestionsStayReadOnly(t *testing.T) {
+	renderer, err := httphandler.NewTemplateRenderer(httphandler.TemplateRendererConfig{FS: web.TemplatesFS})
+	require.NoError(t, err)
+	c := &Container{
+		Config:              config.DefaultConfig(),
+		Logger:              slog.Default(),
+		TokenValidator:      testTokenValidator(t),
+		AccessChecker:       middleware.NewMockWorkspaceAccessChecker(),
+		Hub:                 websocket.NewHub(),
+		FeedTemplateHandler: httphandler.NewFeedTemplateHandler(renderer, nil, slog.Default()),
+	}
+
+	for _, r := range SetupRoutes(c).Echo().Routes() {
+		if strings.HasPrefix(r.Path, "/feed") {
 			assert.Equal(t, http.MethodGet, r.Method, r.Path)
 		}
 	}

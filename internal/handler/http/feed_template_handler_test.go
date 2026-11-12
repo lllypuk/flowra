@@ -57,11 +57,21 @@ func newFeedPages(t *testing.T, svc httphandler.FeedPageService) *echo.Echo {
 
 func newFeedPagesAt(t *testing.T, svc httphandler.FeedPageService, now func() time.Time) *echo.Echo {
 	t.Helper()
+	return newFeedPagesWithQuestions(t, svc, nil, now)
+}
+
+func newFeedPagesWithQuestions(
+	t *testing.T, svc httphandler.FeedPageService, questions httphandler.FeedQuestionService, now func() time.Time,
+) *echo.Echo {
+	t.Helper()
 	renderer, err := httphandler.NewTemplateRenderer(httphandler.TemplateRendererConfig{FS: web.TemplatesFS})
 	require.NoError(t, err)
 	usePageAuth(t, &httphandler.PageAuthConfig{TokenValidator: ownerValidator(t, ownerSecret)})
 
 	handler := httphandler.NewFeedTemplateHandler(renderer, svc, nil)
+	if questions != nil {
+		handler.WithQuestions(questions)
+	}
 	handler.SetClock(now, time.UTC)
 
 	e := echo.New()

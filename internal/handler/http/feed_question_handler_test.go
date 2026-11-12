@@ -23,6 +23,8 @@ type fakeQuestionService struct {
 	detail leadfeed.QuestionDetail
 	result leadfeed.SaveAnswerResult
 	err    error
+	// answerErr, when set, fails Answer only.
+	answerErr error
 
 	gotQID string
 	gotCmd leadfeed.AnswerCommand
@@ -39,6 +41,9 @@ func (f *fakeQuestionService) Question(_ context.Context, qid string) (leadfeed.
 
 func (f *fakeQuestionService) Answer(_ context.Context, cmd leadfeed.AnswerCommand) (leadfeed.SaveAnswerResult, error) {
 	f.gotCmd = cmd
+	if f.answerErr != nil {
+		return f.result, f.answerErr
+	}
 	return f.result, f.err
 }
 

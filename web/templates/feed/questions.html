@@ -1,0 +1,53 @@
+{{define "feed/questions.html"}}
+{{template "base" .}}
+{{end}}
+
+{{define "feed-snapshot"}}
+<aside class="feed-banner {{if .Stale}}feed-banner-problem{{end}}" data-feed-banner>
+    {{if .Published}}
+    <span>Снимок от <strong>{{.AsOf}}</strong> ({{.AsOfAge}} назад)</span>
+    {{else}}
+    <span><strong>Лента пуста:</strong> ни один снимок ещё не импортирован.</span>
+    {{end}}
+    {{if .Stale}}
+    <span class="feed-banner-error" data-feed-stale>Снимок устарел: синхронизация не обновляет ленту.</span>
+    {{end}}
+</aside>
+{{end}}
+
+{{define "feed-questions-content"}}
+<section class="feed" data-feed-content>
+    <nav aria-label="breadcrumb">
+        <ul>
+            <li><a href="/feed">Лента лида</a></li>
+            <li>Вопросы</li>
+        </ul>
+    </nav>
+
+    <header class="page-header">
+        <h1>Вопросы лида</h1>
+        <p class="feed-muted">Ждут ответа: <strong data-feed-waiting>{{.Data.Waiting}}</strong></p>
+    </header>
+
+    {{template "feed-snapshot" .Data.Snapshot}}
+
+    {{if .Data.Items}}
+    <ul class="feed-question-list">
+        {{range .Data.Items}}
+        <li class="{{if eq .State "waiting"}}feed-question-waiting{{end}}" data-feed-question="{{.QID}}" data-feed-state="{{.State}}">
+            <div class="feed-question-meta">
+                <a href="/feed/questions/{{.QID}}"><strong>{{.QID}}</strong></a>
+                <span>{{.StateLabel}}</span>
+                <span class="feed-muted">{{.AskedAt}}</span>
+            </div>
+            <div class="feed-muted">{{.Task}} · {{.TaskTitle}}</div>
+            {{if .Snippet}}<div>{{.Snippet}}</div>{{end}}
+        </li>
+        {{end}}
+    </ul>
+    {{else}}
+    <p class="feed-muted">Вопросов нет.</p>
+    {{end}}
+</section>
+{{template "feed-styles"}}
+{{end}}

@@ -1,0 +1,71 @@
+{{define "feed/question.html"}}
+{{template "base" .}}
+{{end}}
+
+{{define "feed-question-content"}}
+<section class="feed feed-question-page" data-feed-content data-feed-state="{{.Data.State}}">
+    <nav aria-label="breadcrumb">
+        <ul>
+            <li><a href="/feed">Лента лида</a></li>
+            <li><a href="/feed/questions">Вопросы</a></li>
+            <li>{{.Data.QID}}</li>
+        </ul>
+    </nav>
+
+    {{template "feed-snapshot" .Data.Snapshot}}
+
+    <header class="page-header">
+        <h1>{{.Data.QID}}</h1>
+        <p class="feed-muted"><a href="/feed/tasks/{{.Data.Task}}">{{.Data.Task}} · {{.Data.TaskTitle}}</a> · задан {{.Data.AskedAt}}</p>
+    </header>
+
+    <p data-feed-state-label><strong>{{.Data.StateLabel}}</strong></p>
+
+    <pre class="feed-body" data-feed-question-body>{{.Data.Body}}</pre>
+
+    <p data-feed-scope><strong>Область действия ответа:</strong> {{.Data.Scope}}</p>
+
+    {{if .Data.HasRecommendation}}
+    <p data-feed-recommendation><strong>Рекомендация лида{{if .Data.RecommendedLabel}}: {{.Data.RecommendedLabel}}{{end}}.</strong> {{.Data.RecommendedWhy}}</p>
+    {{end}}
+
+    {{if .Data.Answer}}
+    <article class="feed-record" data-feed-answer>
+        <header><strong>Ответ владельца</strong> <span>{{.Data.Answer.AnsweredAt}}</span>{{if .Data.Answer.Late}} <span class="feed-derived">после закрытия вопроса</span>{{end}}</header>
+        {{if .Data.Answer.Choice}}<p>Вариант: <strong>{{.Data.Answer.Choice}}</strong></p>{{end}}
+        {{if .Data.Answer.Text}}<pre class="feed-body">{{.Data.Answer.Text}}</pre>{{end}}
+    </article>
+    {{end}}
+
+    {{if .Data.ResolvedAt}}
+    <p data-feed-resolved>Вопрос закрыт {{.Data.ResolvedAt}}{{if .Data.ResolvedElsewhere}} (ответ дан в сессии){{end}}.{{if .Data.ResolvedNote}} {{.Data.ResolvedNote}}{{end}}</p>
+    {{end}}
+    {{if .Data.ClosedInSession}}
+    <p class="feed-muted" data-feed-closed-in-session>Вопрос закрыт в сессии; ваш ответ ещё будет передан лиду.</p>
+    {{end}}
+
+    {{if .Data.CanAnswer}}
+    <form method="post" action="/feed/questions/{{.Data.QID}}/answer" data-feed-answer-form>
+        <input type="hidden" name="idempotency_key" value="{{.Data.Key}}">
+        {{if .Data.Error}}<p class="feed-error" role="alert" data-feed-form-error>{{.Data.Error}}</p>{{end}}
+        {{if .Data.Options}}
+        <fieldset>
+            <legend>Вариант</legend>
+            {{range .Data.Options}}
+            <label>
+                <input type="radio" name="option_id" value="{{.ID}}" {{if .Selected}}checked{{end}}>
+                {{.Label}}{{if .Recommended}} <span class="feed-derived">рекомендация лида</span>{{end}}
+            </label>
+            {{end}}
+        </fieldset>
+        {{end}}
+        <label>
+            Текст
+            <textarea name="text" rows="5" maxlength="4000">{{.Data.Text}}</textarea>
+        </label>
+        <button type="submit">Ответить</button>
+    </form>
+    {{end}}
+</section>
+{{template "feed-styles"}}
+{{end}}

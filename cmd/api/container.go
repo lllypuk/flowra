@@ -1014,7 +1014,8 @@ func (c *Container) setupLeadFeed() {
 	c.QuestionService = leadfeed.NewQuestionService(feedRepo, answerRepo)
 	c.FeedHandler = httphandler.NewFeedHandler(c.FeedService, c.Logger).WithQuestions(c.QuestionService)
 	if c.TemplateRenderer != nil {
-		c.FeedTemplateHandler = httphandler.NewFeedTemplateHandler(c.TemplateRenderer, c.FeedService, c.Logger)
+		c.FeedTemplateHandler = httphandler.NewFeedTemplateHandler(c.TemplateRenderer, c.FeedService, c.Logger).
+			WithQuestions(c.QuestionService)
 	}
 	c.Logger.Debug("lead feed handlers initialized")
 }
