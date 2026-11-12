@@ -29,6 +29,7 @@ import (
 	"github.com/lllypuk/flowra/internal/infrastructure/repository/mongodb"
 	wsinfra "github.com/lllypuk/flowra/internal/infrastructure/websocket"
 	"github.com/lllypuk/flowra/internal/middleware"
+	"github.com/lllypuk/flowra/tests/mocks"
 	"github.com/lllypuk/flowra/tests/testutil"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
@@ -262,7 +263,7 @@ func (s *E2ETestSuite) setupServer() {
 	workspaceHandler := httphandler.NewWorkspaceHandler(s.MockWorkspaceService, s.MockMemberService)
 	chatHandler := httphandler.NewChatHandler(s.MockChatService)
 	messageHandler := httphandler.NewMessageHandler(s.MessageService)
-	taskHandler := httphandler.NewTaskHandler(s.MockTaskService)
+	taskHandler := httphandler.NewTaskHandler(s.MockTaskService, mocks.NewMockTaskActionService(s.MockTaskService))
 
 	// Register routes
 	api := s.Echo.Group("/api/v1")
