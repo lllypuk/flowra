@@ -2,7 +2,14 @@ services:
   mongodb:
     image: mongo:6.0
     container_name: flowra-mongodb
-    command: ["--replSet", "rs0", "--bind_ip_all", "--auth"]
+    # A replica set with auth needs a key file; a single member accepts a fresh one on every start.
+    entrypoint:
+      - bash
+      - -c
+      - |
+        head -c 756 /dev/urandom | base64 > /tmp/mongo-keyfile
+        chmod 400 /tmp/mongo-keyfile && chown 999:999 /tmp/mongo-keyfile
+        exec docker-entrypoint.sh mongod --replSet rs0 --bind_ip_all --keyFile /tmp/mongo-keyfile
     # The app runs on the host network; publish on loopback only.
     ports:
       - "127.0.0.1:27017:27017"
