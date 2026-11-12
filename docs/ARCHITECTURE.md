@@ -180,9 +180,10 @@ token to the owner user.
   bearer secret over plain HTTP.
 - **No fallbacks.** Without a validator a request is rejected, never served as a mock user.
 - **Cookie writes.** A write authenticated by cookie must carry `Origin` or `Referer` matching `Host`
-  (`RequireSameOriginForCookie`); Bearer requests skip the check.
-- **WebSocket.** `/api/v1/ws` sits behind the same middleware. `websocket.Handler.getUserID` also reads a `token`
-  query parameter when the context has no user; the request log redacts that parameter.
+  (`middleware.RequireSameOriginForCookie`); Bearer requests skip the check.
+- **WebSocket.** `GET /api/v1/ws` sits behind the same middleware and the same origin check: the handshake carries
+  the cookie or a Bearer header. The token is never read from the URL: owner tokens do not expire and would leak
+  through history, proxy logs and `Referer`.
 
 ### Several Users: What Is Missing
 

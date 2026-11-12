@@ -26,8 +26,9 @@ curl http://localhost:8080/api/v1/feed/status -H "Authorization: Bearer $token"
   same middleware accepts when there is no `Authorization` header.
 - A missing, malformed or unknown token is `401 UNAUTHORIZED`. `404` means the token passed and the resource
   does not exist.
-- A cookie-authenticated write to the owner answer route must carry a matching `Origin` or `Referer`
-  (`403 ORIGIN_MISMATCH`); Bearer requests skip the check.
+- A cookie-authenticated write to the owner answer route, and a cookie-authenticated WebSocket handshake, must
+  carry a matching `Origin` or `Referer` (`403 ORIGIN_MISMATCH`); Bearer requests skip the check.
+- The token is never accepted in the URL, the WebSocket included.
 
 ## Responses
 
@@ -84,7 +85,7 @@ Kept from the earlier product, not developed. Workspace-scoped routes need works
 - `/workspaces/{id}` with members, `/chats` (and `/actions/*`), `/chats/{chat_id}/messages`, `/messages/{id}`,
   `/tasks`
 - file routes registered by the file handler
-- `GET /ws`: WebSocket, see [websocket-protocol.md](./websocket-protocol.md)
+- `GET /ws`: WebSocket (cookie or Bearer, no token in the URL), see [websocket-protocol.md](./websocket-protocol.md)
 
 ## Development
 
