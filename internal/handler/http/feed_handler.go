@@ -12,6 +12,7 @@ import (
 
 	"github.com/lllypuk/flowra/internal/application/leadfeed"
 	"github.com/lllypuk/flowra/internal/infrastructure/httpserver"
+	"github.com/lllypuk/flowra/internal/middleware"
 )
 
 // Feed API error codes.
@@ -28,7 +29,6 @@ const (
 	feedCodeKeyRequired      = "IDEMPOTENCY_KEY_REQUIRED"
 	feedCodeKeyReused        = "IDEMPOTENCY_KEY_REUSED"
 	feedCodeInvalidAnswer    = "INVALID_ANSWER"
-	feedCodeOriginMismatch   = "ORIGIN_MISMATCH"
 )
 
 // FeedService reads the published lead feed; every call answers from one snapshot.
@@ -76,7 +76,7 @@ func (h *FeedHandler) RegisterRoutes(r *httpserver.Router) {
 	if h.questions != nil {
 		r.Auth().GET("/feed/questions", h.ListQuestions)
 		r.Auth().GET("/feed/questions/:qid", h.GetQuestion)
-		r.Auth().POST("/feed/questions/:qid/answer", h.AnswerQuestion, RequireSameOriginForCookie)
+		r.Auth().POST("/feed/questions/:qid/answer", h.AnswerQuestion, middleware.RequireSameOriginForCookie)
 	}
 }
 

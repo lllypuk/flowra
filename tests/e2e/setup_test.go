@@ -308,7 +308,7 @@ func (s *E2ETestSuite) setupServer() {
 	api.GET("/feed/tasks/:id/records", feedHandler.ListRecords)
 	api.GET("/feed/questions", feedHandler.ListQuestions)
 	api.GET("/feed/questions/:qid", feedHandler.GetQuestion)
-	api.POST("/feed/questions/:qid/answer", feedHandler.AnswerQuestion, httphandler.RequireSameOriginForCookie)
+	api.POST("/feed/questions/:qid/answer", feedHandler.AnswerQuestion, middleware.RequireSameOriginForCookie)
 
 	// WebSocket route (simplified for testing)
 	api.GET("/ws", func(c echo.Context) error {

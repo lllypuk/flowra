@@ -72,7 +72,6 @@ type TaskSidebarViewData struct {
 	Statuses     []SelectOption
 	Priorities   []SelectOption
 	Participants []MemberViewData
-	Token        string
 }
 
 // TaskDetailViewData represents task data for the detail view.
@@ -296,7 +295,6 @@ func (h *TaskDetailTemplateHandler) TaskSidebarPartial(c echo.Context) error {
 		Statuses:     getStatusOptions(),
 		Priorities:   getPriorityOptions(),
 		Participants: participants,
-		Token:        "", // TODO: Get JWT token for WebSocket auth
 	}
 
 	return h.renderPartial(c, "task/sidebar", data)

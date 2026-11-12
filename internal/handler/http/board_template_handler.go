@@ -73,7 +73,6 @@ type BoardViewData struct {
 	TotalTasks int
 	Filters    BoardFilters
 	Members    []MemberViewData
-	Token      string
 	Columns    []ColumnViewData
 }
 
@@ -262,7 +261,6 @@ func (h *BoardTemplateHandler) BoardIndex(c echo.Context) error {
 		TotalTasks: totalTasks,
 		Filters:    filters,
 		Members:    members,
-		Token:      "", // TODO: Get JWT token for WebSocket auth
 	}
 
 	h.logger.Debug("BoardIndex: calling render",

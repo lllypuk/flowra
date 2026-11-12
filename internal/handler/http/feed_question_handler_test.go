@@ -16,6 +16,7 @@ import (
 
 	"github.com/lllypuk/flowra/internal/application/leadfeed"
 	httphandler "github.com/lllypuk/flowra/internal/handler/http"
+	"github.com/lllypuk/flowra/internal/middleware"
 )
 
 type fakeQuestionService struct {
@@ -52,7 +53,7 @@ func newQuestionServer(svc *fakeQuestionService) *echo.Echo {
 	e := echo.New()
 	e.GET("/api/v1/feed/questions", h.ListQuestions)
 	e.GET("/api/v1/feed/questions/:qid", h.GetQuestion)
-	e.POST("/api/v1/feed/questions/:qid/answer", h.AnswerQuestion, httphandler.RequireSameOriginForCookie)
+	e.POST("/api/v1/feed/questions/:qid/answer", h.AnswerQuestion, middleware.RequireSameOriginForCookie)
 	return e
 }
 

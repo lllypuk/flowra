@@ -75,13 +75,9 @@ func (s *WSTestSuite) setupServer() {
 
 	// WebSocket handler
 	s.Echo.GET("/ws", func(c echo.Context) error {
-		// Get token from query or header
-		token := c.QueryParam("token")
-		if token == "" {
-			authHeader := c.Request().Header.Get("Authorization")
-			if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
-				token = authHeader[7:]
-			}
+		var token string
+		if authHeader := c.Request().Header.Get("Authorization"); len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+			token = authHeader[7:]
 		}
 
 		if token == "" {
@@ -235,7 +231,9 @@ func (s *WSTestSuite) ConnectWS(token string) (*websocket.Conn, error) {
 		HandshakeTimeout: 5 * time.Second,
 	}
 
-	conn, _, err := dialer.Dial(s.WSURL()+"?token="+token, nil)
+	header := http.Header{}
+	header.Set("Authorization", "Bearer "+token)
+	conn, _, err := dialer.Dial(s.WSURL(), header)
 	return conn, err
 }
 
@@ -267,7 +265,7 @@ func TestWebSocket_Connect_InvalidToken(t *testing.T) {
 		HandshakeTimeout: 5 * time.Second,
 	}
 
-	_, resp, err := dialer.Dial(suite.WSURL()+"?token=invalid-token", nil)
+	_, resp, err := dialer.Dial(suite.WSURL(), http.Header{"Authorization": {"Bearer invalid-token"}})
 
 	// Should fail with 401
 	if err != nil {

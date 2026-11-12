@@ -889,7 +889,6 @@ func (c *Container) setupHTTPHandlers() {
 	c.WSHandler = wshandler.NewHandler(
 		c.Hub,
 		wshandler.WithHandlerLogger(c.Logger),
-		wshandler.WithTokenValidator(c.TokenValidator),
 		wshandler.WithHandlerConfig(wshandler.HandlerConfig{
 			ReadBufferSize:  c.Config.WebSocket.ReadBufferSize,
 			WriteBufferSize: c.Config.WebSocket.WriteBufferSize,

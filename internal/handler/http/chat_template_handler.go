@@ -255,7 +255,6 @@ func (h *ChatTemplateHandler) ChatLayout(c echo.Context) error {
 	data := map[string]any{
 		"Workspace": workspaceData,
 		"Chat":      nil, // No chat selected initially
-		"Token":     "",  // TODO: get JWT token for WebSocket auth
 	}
 
 	// If chat_id is provided in query, load that chat
@@ -309,7 +308,6 @@ func (h *ChatTemplateHandler) ChatView(c echo.Context) error {
 	data := map[string]any{
 		"Workspace": workspaceData,
 		"Chat":      chatData,
-		"Token":     "", // TODO: get JWT token for WebSocket auth
 	}
 
 	// Load task data for task chats

@@ -12,6 +12,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/lllypuk/flowra/internal/application/leadfeed"
+	"github.com/lllypuk/flowra/internal/middleware"
 )
 
 const feedTimeLayout = "02.01.2006 15:04"
@@ -69,7 +70,7 @@ func (h *FeedTemplateHandler) SetupFeedRoutes(e *echo.Echo) {
 	if h.questions != nil {
 		e.GET("/feed/questions", h.QuestionList, RequireAuth)
 		e.GET("/feed/questions/:qid", h.QuestionPage, RequireAuth)
-		e.POST("/feed/questions/:qid/answer", h.AnswerForm, RequireAuth, RequireSameOriginForCookie)
+		e.POST("/feed/questions/:qid/answer", h.AnswerForm, RequireAuth, middleware.RequireSameOriginForCookie)
 	}
 }
 

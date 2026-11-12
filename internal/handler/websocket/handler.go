@@ -2,14 +2,11 @@
 package websocket
 
 import (
-	"context"
 	"log/slog"
 	"net/http"
-	"strings"
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
-	"github.com/lllypuk/flowra/internal/domain/uuid"
 	ws "github.com/lllypuk/flowra/internal/infrastructure/websocket"
 	"github.com/lllypuk/flowra/internal/middleware"
 )
@@ -20,20 +17,12 @@ const (
 	defaultHandlerWriteBufferSize = 1024
 )
 
-// TokenValidator defines the interface for validating JWT tokens.
-// Declared on the consumer side per project guidelines.
-type TokenValidator interface {
-	// ValidateToken validates a JWT token and returns the claims.
-	ValidateToken(ctx context.Context, token string) (*middleware.TokenClaims, error)
-}
-
 // Handler handles WebSocket HTTP requests.
 type Handler struct {
-	hub            *ws.Hub
-	upgrader       websocket.Upgrader
-	tokenValidator TokenValidator
-	logger         *slog.Logger
-	clientConfig   ws.ClientConfig
+	hub          *ws.Hub
+	upgrader     websocket.Upgrader
+	logger       *slog.Logger
+	clientConfig ws.ClientConfig
 }
 
 // HandlerConfig holds configuration for the WebSocket handler.
@@ -44,8 +33,8 @@ type HandlerConfig struct {
 	// WriteBufferSize is the size of the write buffer for WebSocket connections.
 	WriteBufferSize int
 
-	// CheckOrigin is a function that returns true if the request origin is acceptable.
-	// If nil, a default function allowing all origins is used.
+	// CheckOrigin reports whether the request Origin is acceptable.
+	// If nil, the upgrader's default applies: an Origin header must match the request Host.
 	CheckOrigin func(r *http.Request) bool
 
 	// Logger is the structured logger for the handler.
@@ -76,13 +65,6 @@ func WithHandlerLogger(logger *slog.Logger) HandlerOption {
 	}
 }
 
-// WithTokenValidator sets the token validator for the handler.
-func WithTokenValidator(validator TokenValidator) HandlerOption {
-	return func(h *Handler) {
-		h.tokenValidator = validator
-	}
-}
-
 // WithHandlerConfig sets the handler configuration.
 func WithHandlerConfig(config HandlerConfig) HandlerOption {
 	return func(h *Handler) {
@@ -105,11 +87,6 @@ func NewHandler(hub *ws.Hub, opts ...HandlerOption) *Handler {
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  defaultHandlerReadBufferSize,
 			WriteBufferSize: defaultHandlerWriteBufferSize,
-			CheckOrigin: func(_ *http.Request) bool {
-				// Allow all origins in development
-				// In production, this should be configured properly
-				return true
-			},
 		},
 		logger:       slog.Default(),
 		clientConfig: ws.DefaultClientConfig(),
@@ -122,12 +99,10 @@ func NewHandler(hub *ws.Hub, opts ...HandlerOption) *Handler {
 	return h
 }
 
-// HandleWebSocket handles WebSocket upgrade requests.
-// It validates the JWT token from query parameter or header, upgrades the connection,
-// and registers the client with the hub.
+// HandleWebSocket upgrades an authenticated request and registers the client with the hub.
+// The user comes from middleware.Auth (session cookie or Bearer header); the URL is never read for credentials.
 func (h *Handler) HandleWebSocket(c echo.Context) error {
-	// Get user ID from context (set by auth middleware) or validate token
-	userID := h.getUserID(c)
+	userID := middleware.GetUserID(c)
 	if userID.IsZero() {
 		h.logger.Warn("websocket connection rejected: authentication required",
 			slog.String("remote_ip", c.RealIP()),
@@ -175,48 +150,13 @@ func (h *Handler) HandleWebSocket(c echo.Context) error {
 	return nil
 }
 
-// getUserID extracts the user ID from the echo context or validates the token.
-func (h *Handler) getUserID(c echo.Context) uuid.UUID {
-	// First, try to get user ID from context (set by auth middleware)
-	if userID := middleware.GetUserID(c); !userID.IsZero() {
-		return userID
-	}
-
-	// If not in context, try to validate token from query parameter
-	token := c.QueryParam("token")
-	if token == "" {
-		// Try to get from Authorization header
-		authHeader := c.Request().Header.Get(echo.HeaderAuthorization)
-		if authHeader != "" {
-			const bearerPrefix = "Bearer "
-			if after, ok := strings.CutPrefix(authHeader, bearerPrefix); ok {
-				token = after
-			}
-		}
-	}
-
-	if token == "" || h.tokenValidator == nil {
-		return uuid.UUID("")
-	}
-
-	// Validate token
-	claims, err := h.tokenValidator.ValidateToken(c.Request().Context(), token)
-	if err != nil {
-		h.logger.Debug("token validation failed",
-			slog.String("error", err.Error()),
-		)
-		return uuid.UUID("")
-	}
-
-	return claims.UserID
-}
-
 // RegisterRoutes registers the WebSocket handler with the Echo router.
+// The caller must put the authentication middleware in front of it.
 func (h *Handler) RegisterRoutes(e *echo.Echo) {
-	e.GET("/ws", h.HandleWebSocket)
+	e.GET("/ws", h.HandleWebSocket, middleware.RequireSameOriginForCookie)
 }
 
 // RegisterRoutesWithGroup registers the WebSocket handler with an Echo group.
 func (h *Handler) RegisterRoutesWithGroup(g *echo.Group) {
-	g.GET("/ws", h.HandleWebSocket)
+	g.GET("/ws", h.HandleWebSocket, middleware.RequireSameOriginForCookie)
 }

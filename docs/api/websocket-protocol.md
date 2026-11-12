@@ -17,7 +17,7 @@ It covers:
 Notes:
 
 - The route is registered under the authenticated API group (`/api/v1/ws`).
-- Some older templates/examples may still reference `/ws`; prefer `/api/v1/ws`.
+- `/api/v1/ws` is the only WebSocket path; `/ws` is not registered.
 
 ## Authentication
 
@@ -26,7 +26,11 @@ The WebSocket endpoint requires authentication.
 Server-side behavior (`internal/handler/websocket/handler.go`):
 
 - The route is behind the auth middleware: the browser sends its `flowra_session` cookie, other clients send
-  `Authorization: Bearer <token>` on the handshake. A token in the query string is not accepted.
+  `Authorization: Bearer <token>` on the handshake. The query string is never read for credentials: owner tokens do
+  not expire and would end up in browser history, proxy logs and `Referer`.
+- A cookie-authenticated handshake must carry an `Origin` (or `Referer`) equal to the request `Host`; otherwise the
+  server returns `403` `ORIGIN_MISMATCH`. A handshake with an `Authorization` header skips this check, so non-browser
+  clients need no `Origin`. The check is `middleware.RequireSameOriginForCookie`, shared with the feed's write routes.
 
 If authentication fails, the server returns `401` JSON (no upgrade).
 
@@ -370,9 +374,13 @@ Authorization: Bearer <token>
 
 ### `401` before upgrade
 
-- Check session cookie or access token
+- Check the session cookie or the `Authorization: Bearer` header; `?token=` is ignored
 - Use canonical endpoint `/api/v1/ws`
-- If using token query param, ensure `token` is present and valid
+
+### `403` `ORIGIN_MISMATCH` before upgrade
+
+- A cookie-authenticated client sent no `Origin`/`Referer`, or one that differs from the `Host` (for example, behind
+  a proxy that rewrites `Host`); send `Authorization: Bearer` instead of the cookie
 
 ### Connected but no chat events
 
@@ -387,7 +395,7 @@ Authorization: Bearer <token>
 ## Source References (implementation)
 
 - Route registration: `cmd/api/routes.go`
-- WS HTTP handler/auth fallback: `internal/handler/websocket/handler.go`
+- WS HTTP handler: `internal/handler/websocket/handler.go`; Origin check: `internal/middleware/same_origin.go`
 - Hub/client message handling: `internal/infrastructure/websocket/client.go`
 - Presence/typing broadcasts: `internal/infrastructure/websocket/hub.go`
 - Domain event -> WS mapping: `internal/infrastructure/websocket/broadcaster.go`

@@ -252,8 +252,7 @@ func registerUserRoutes(r *httpserver.Router, c *Container) {
 
 // registerWebSocketRoutes registers WebSocket routes.
 func registerWebSocketRoutes(r *httpserver.Router, c *Container) {
-	// WebSocket endpoint requires authentication
-	r.Auth().GET("/ws", c.WSHandler.HandleWebSocket)
+	r.Auth().GET("/ws", c.WSHandler.HandleWebSocket, middleware.RequireSameOriginForCookie)
 }
 
 // createPlaceholderHandler creates a handler that returns 501 Not Implemented.
