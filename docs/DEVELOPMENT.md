@@ -79,8 +79,8 @@ docker-compose up -d
 docker-compose ps
 
 # Expected output:
-# flowra-mongodb   running   0.0.0.0:27017->27017/tcp
-# flowra-redis     running   0.0.0.0:6379->6379/tcp
+# flowra-mongodb   running   127.0.0.1:27017->27017/tcp
+# flowra-redis     running   127.0.0.1:6379->6379/tcp
 ```
 
 `make dev` already starts these services automatically. Manual startup is useful when you need to run `make reset-data`

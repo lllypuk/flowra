@@ -41,8 +41,8 @@ This guide covers deploying Flowra in various environments, from local developme
 ### Network Requirements
 
 - Port 8080: API server, on loopback only (`127.0.0.1`)
-- Port 27017: MongoDB (only if exposed for external admin/debug access)
-- Port 6379: Redis (only if exposed for external admin/debug access)
+- Port 27017: MongoDB, published on loopback only
+- Port 6379: Redis, published on loopback only
 
 ---
 
@@ -691,6 +691,13 @@ command refreshes binaries and units and leaves the tokens alone.
 
 Set `LEAD_TASK` (path to `lead-task`), `LEAD_SESSION` and `AGTERM_SOCKET` in the environment; they are stored in
 `flowra.env` and kept on reruns unless set again.
+
+The installed stack listens on loopback only: API `127.0.0.1:8080`, MongoDB `127.0.0.1:27017`, Redis
+`127.0.0.1:6379`.
+
+Run the installer from a working copy kept for it: units, binaries and templates point at the copy the script
+lives in, so switching branches there changes the running service. The Compose project is named `flowra` in
+`docker-compose.yml`, so a copy in any directory reuses the same containers and volumes.
 
 Remove:
 
