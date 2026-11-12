@@ -15,7 +15,7 @@ import (
 	"github.com/lllypuk/flowra/tests/testutil"
 )
 
-var feedBase = time.Date(2026, 1, 10, 9, 0, 0, 0, time.UTC)
+func feedBase() time.Time { return time.Date(2026, 1, 10, 9, 0, 0, 0, time.UTC) }
 
 func setupLeadFeedRepository(t *testing.T) *mongodb.MongoLeadFeedRepository {
 	t.Helper()
@@ -30,13 +30,13 @@ func feedSnapshot(revision string, asOfSeconds int, taskIDs ...string) *leadfeed
 		Source:   "lead-task",
 		Epoch:    "epoch-1",
 		Revision: revision,
-		AsOf:     feedBase.Add(time.Duration(asOfSeconds) * time.Second),
+		AsOf:     feedBase().Add(time.Duration(asOfSeconds) * time.Second),
 		Complete: true,
 	}}
 
 	owner := "owner"
 	for i, id := range taskIDs {
-		created := feedBase.Add(time.Duration(i) * time.Minute)
+		created := feedBase().Add(time.Duration(i) * time.Minute)
 		task := leadfeed.Task{
 			ID:          id,
 			Title:       revision,
@@ -62,8 +62,15 @@ func feedSnapshot(revision string, asOfSeconds int, taskIDs ...string) *leadfeed
 				Actor: "lead", Source: leadfeed.Source{Kind: "journal", Ref: "1"}, Body: &body, Format: "text",
 			},
 			leadfeed.Record{
-				ID: revision + ":" + id + ":decision", Task: id, Kind: "decision", At: created, Order: 1,
-				Actor: "lead", Source: leadfeed.Source{Kind: "journal", Ref: "2"}, BodyMissing: &missing, Format: "text",
+				ID:          revision + ":" + id + ":decision",
+				Task:        id,
+				Kind:        "decision",
+				At:          created,
+				Order:       1,
+				Actor:       "lead",
+				Source:      leadfeed.Source{Kind: "journal", Ref: "2"},
+				BodyMissing: &missing,
+				Format:      "text",
 			},
 		)
 	}
@@ -116,7 +123,7 @@ func TestLeadFeedRepository_EmptyFeed(t *testing.T) {
 func TestLeadFeedRepository_PublishAndRead(t *testing.T) {
 	repo := setupLeadFeedRepository(t)
 	ctx := context.Background()
-	now := feedBase.Add(time.Hour)
+	now := feedBase().Add(time.Hour)
 
 	result, err := repo.Publish(ctx, feedSnapshot("rev-a", 10, "T-0001", "T-0002", "T-0003"), now)
 	require.NoError(t, err)
@@ -128,7 +135,7 @@ func TestLeadFeedRepository_PublishAndRead(t *testing.T) {
 	assert.Equal(t, "rev-a", got.state.Revision)
 	assert.Equal(t, 3, got.state.Tasks)
 	assert.Equal(t, 6, got.state.Records)
-	assert.True(t, got.state.AsOf.Equal(feedBase.Add(10*time.Second)))
+	assert.True(t, got.state.AsOf.Equal(feedBase().Add(10*time.Second)))
 	assert.True(t, got.state.PublishedAt.Equal(now))
 	assert.Equal(t, []string{"T-0003", "T-0002", "T-0001"}, taskIDs(got.tasks), "newest first")
 
@@ -165,7 +172,7 @@ func TestLeadFeedRepository_PublishAndRead(t *testing.T) {
 func TestLeadFeedRepository_TaskFilters(t *testing.T) {
 	repo := setupLeadFeedRepository(t)
 	ctx := context.Background()
-	_, err := repo.Publish(ctx, feedSnapshot("rev-a", 10, "T-0001", "T-0002", "T-0003"), feedBase)
+	_, err := repo.Publish(ctx, feedSnapshot("rev-a", 10, "T-0001", "T-0002", "T-0003"), feedBase())
 	require.NoError(t, err)
 
 	owner, nobody, done := "owner", leadfeed.WaitingOnNobody, "done"
@@ -201,9 +208,9 @@ func TestLeadFeedRepository_ReplaceDropsMissingTasks(t *testing.T) {
 	repo := setupLeadFeedRepository(t)
 	ctx := context.Background()
 
-	_, err := repo.Publish(ctx, feedSnapshot("rev-a", 10, "T-0001", "T-0002"), feedBase)
+	_, err := repo.Publish(ctx, feedSnapshot("rev-a", 10, "T-0001", "T-0002"), feedBase())
 	require.NoError(t, err)
-	_, err = repo.Publish(ctx, feedSnapshot("rev-b", 20, "T-0002", "T-0003"), feedBase)
+	_, err = repo.Publish(ctx, feedSnapshot("rev-b", 20, "T-0002", "T-0003"), feedBase())
 	require.NoError(t, err)
 
 	got := readFeed(t, repo)
@@ -226,38 +233,38 @@ func TestLeadFeedRepository_RepeatAdvancesWatermark(t *testing.T) {
 	repo := setupLeadFeedRepository(t)
 	ctx := context.Background()
 
-	first, err := repo.Publish(ctx, feedSnapshot("rev-x", 10, "T-0001"), feedBase)
+	first, err := repo.Publish(ctx, feedSnapshot("rev-x", 10, "T-0001"), feedBase())
 	require.NoError(t, err)
 	assert.Equal(t, leadfeed.OutcomePublished, first.Outcome)
 
-	repeat, err := repo.Publish(ctx, feedSnapshot("rev-x", 20, "T-0001"), feedBase.Add(time.Minute))
+	repeat, err := repo.Publish(ctx, feedSnapshot("rev-x", 20, "T-0001"), feedBase().Add(time.Minute))
 	require.NoError(t, err)
 	assert.Equal(t, leadfeed.OutcomeRefreshed, repeat.Outcome)
 
-	_, err = repo.Publish(ctx, feedSnapshot("rev-y", 15, "T-0001", "T-0002"), feedBase.Add(2*time.Minute))
+	_, err = repo.Publish(ctx, feedSnapshot("rev-y", 15, "T-0001", "T-0002"), feedBase().Add(2*time.Minute))
 	require.ErrorIs(t, err, leadfeed.ErrSnapshotStale, "a snapshot older than the confirmed one must lose")
 
 	got := readFeed(t, repo)
 	assert.Equal(t, "rev-x", got.state.Revision)
-	assert.True(t, got.state.AsOf.Equal(feedBase.Add(20*time.Second)))
-	assert.True(t, got.state.PublishedAt.Equal(feedBase.Add(time.Minute)))
+	assert.True(t, got.state.AsOf.Equal(feedBase().Add(20*time.Second)))
+	assert.True(t, got.state.PublishedAt.Equal(feedBase().Add(time.Minute)))
 	assert.Equal(t, []string{"T-0001"}, taskIDs(got.tasks))
 }
 
 func TestLeadFeedRepository_SameAsOf(t *testing.T) {
 	repo := setupLeadFeedRepository(t)
 	ctx := context.Background()
-	_, err := repo.Publish(ctx, feedSnapshot("rev-x", 10, "T-0001"), feedBase)
+	_, err := repo.Publish(ctx, feedSnapshot("rev-x", 10, "T-0001"), feedBase())
 	require.NoError(t, err)
 
 	t.Run("same content is a harmless repeat", func(t *testing.T) {
-		result, repeatErr := repo.Publish(ctx, feedSnapshot("rev-x", 10, "T-0001"), feedBase)
+		result, repeatErr := repo.Publish(ctx, feedSnapshot("rev-x", 10, "T-0001"), feedBase())
 		require.NoError(t, repeatErr)
 		assert.Equal(t, leadfeed.OutcomeRefreshed, result.Outcome)
 	})
 
 	t.Run("different content is a conflict", func(t *testing.T) {
-		_, conflictErr := repo.Publish(ctx, feedSnapshot("rev-y", 10, "T-0002"), feedBase)
+		_, conflictErr := repo.Publish(ctx, feedSnapshot("rev-y", 10, "T-0002"), feedBase())
 		require.ErrorIs(t, conflictErr, leadfeed.ErrSnapshotConflict)
 
 		got := readFeed(t, repo)
@@ -269,20 +276,20 @@ func TestLeadFeedRepository_SameAsOf(t *testing.T) {
 func TestLeadFeedRepository_EpochChange(t *testing.T) {
 	repo := setupLeadFeedRepository(t)
 	ctx := context.Background()
-	_, err := repo.Publish(ctx, feedSnapshot("rev-x", 10, "T-0001"), feedBase)
+	_, err := repo.Publish(ctx, feedSnapshot("rev-x", 10, "T-0001"), feedBase())
 	require.NoError(t, err)
 
 	t.Run("older snapshot of another epoch is refused", func(t *testing.T) {
 		other := feedSnapshot("rev-x", 5, "T-0001")
 		other.Header.Epoch = "epoch-2"
-		_, staleErr := repo.Publish(ctx, other, feedBase)
+		_, staleErr := repo.Publish(ctx, other, feedBase())
 		require.ErrorIs(t, staleErr, leadfeed.ErrSnapshotStale)
 	})
 
 	t.Run("newer snapshot of another epoch replaces the feed", func(t *testing.T) {
 		other := feedSnapshot("rev-x", 20, "T-0009")
 		other.Header.Epoch = "epoch-2"
-		result, pubErr := repo.Publish(ctx, other, feedBase)
+		result, pubErr := repo.Publish(ctx, other, feedBase())
 		require.NoError(t, pubErr)
 		assert.Equal(t, leadfeed.OutcomePublished, result.Outcome)
 		assert.Equal(t, "epoch-1", result.PreviousEpoch)
@@ -296,30 +303,30 @@ func TestLeadFeedRepository_EpochChange(t *testing.T) {
 func TestLeadFeedRepository_FailedWriteKeepsPreviousSnapshot(t *testing.T) {
 	repo := setupLeadFeedRepository(t)
 	ctx := context.Background()
-	_, err := repo.Publish(ctx, feedSnapshot("rev-a", 10, "T-0001", "T-0002"), feedBase)
+	_, err := repo.Publish(ctx, feedSnapshot("rev-a", 10, "T-0001", "T-0002"), feedBase())
 	require.NoError(t, err)
 
 	// The duplicate id fails the insert after both DeleteMany calls have already run.
 	broken := feedSnapshot("rev-b", 20, "T-0003")
 	broken.Records = append(broken.Records, broken.Records[0])
 
-	_, err = repo.Publish(ctx, broken, feedBase)
+	_, err = repo.Publish(ctx, broken, feedBase())
 	require.Error(t, err)
 	require.NotErrorIs(t, err, leadfeed.ErrCommitUnknown)
 
 	got := readFeed(t, repo)
 	assert.Equal(t, "rev-a", got.state.Revision)
-	assert.True(t, got.state.AsOf.Equal(feedBase.Add(10*time.Second)))
+	assert.True(t, got.state.AsOf.Equal(feedBase().Add(10*time.Second)))
 	assert.Equal(t, []string{"T-0002", "T-0001"}, taskIDs(got.tasks))
 }
 
 func TestLeadFeedRepository_AttemptDoesNotTouchState(t *testing.T) {
 	repo := setupLeadFeedRepository(t)
 	ctx := context.Background()
-	_, err := repo.Publish(ctx, feedSnapshot("rev-a", 10, "T-0001"), feedBase)
+	_, err := repo.Publish(ctx, feedSnapshot("rev-a", 10, "T-0001"), feedBase())
 	require.NoError(t, err)
 
-	attemptAt := feedBase.Add(time.Hour)
+	attemptAt := feedBase().Add(time.Hour)
 	require.NoError(t, repo.RecordAttempt(ctx, leadfeed.Attempt{
 		At:       attemptAt,
 		Outcome:  leadfeed.AttemptRejected,
@@ -329,7 +336,7 @@ func TestLeadFeedRepository_AttemptDoesNotTouchState(t *testing.T) {
 
 	got := readFeed(t, repo)
 	assert.Equal(t, "rev-a", got.state.Revision)
-	assert.True(t, got.state.AsOf.Equal(feedBase.Add(10*time.Second)))
+	assert.True(t, got.state.AsOf.Equal(feedBase().Add(10*time.Second)))
 	require.NotNil(t, got.attempt)
 	assert.Equal(t, leadfeed.AttemptRejected, got.attempt.Outcome)
 	assert.Equal(t, "snapshot has no footer", got.attempt.Error)
@@ -349,7 +356,7 @@ func TestLeadFeedRepository_ConcurrentPublishersKeepNewest(t *testing.T) {
 			for n := range i + 1 {
 				ids = append(ids, fmt.Sprintf("T-%04d", n))
 			}
-			_, errs[i] = repo.Publish(ctx, feedSnapshot(fmt.Sprintf("rev-%d", i), 10+i, ids...), feedBase)
+			_, errs[i] = repo.Publish(ctx, feedSnapshot(fmt.Sprintf("rev-%d", i), 10+i, ids...), feedBase())
 		})
 	}
 	wg.Wait()
@@ -374,7 +381,7 @@ func TestLeadFeedRepository_ReadDuringReplaceSeesOneSnapshot(t *testing.T) {
 
 	small := []string{"T-0001", "T-0002", "T-0003"}
 	large := []string{"T-0001", "T-0002", "T-0003", "T-0004", "T-0005", "T-0006", "T-0007"}
-	_, err := repo.Publish(ctx, feedSnapshot("rev-0", 0, small...), feedBase)
+	_, err := repo.Publish(ctx, feedSnapshot("rev-0", 0, small...), feedBase())
 	require.NoError(t, err)
 
 	done := make(chan struct{})
@@ -386,7 +393,11 @@ func TestLeadFeedRepository_ReadDuringReplaceSeesOneSnapshot(t *testing.T) {
 			if i%2 == 1 {
 				ids = large
 			}
-			if _, writeErr = repo.Publish(ctx, feedSnapshot(fmt.Sprintf("rev-%d", i), i, ids...), feedBase); writeErr != nil {
+			if _, writeErr = repo.Publish(
+				ctx,
+				feedSnapshot(fmt.Sprintf("rev-%d", i), i, ids...),
+				feedBase(),
+			); writeErr != nil {
 				return
 			}
 		}

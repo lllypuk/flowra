@@ -13,7 +13,7 @@ import (
 const leadFeedRevisionHexLen = 16
 
 // LeadFeedBase is the time the synthetic lead feed snapshots are built around.
-var LeadFeedBase = time.Date(2026, 1, 10, 9, 0, 0, 0, time.UTC) //nolint:gochecknoglobals // shared test clock
+var LeadFeedBase = time.Date(2026, 1, 10, 9, 0, 0, 0, time.UTC)
 
 // LeadFeedTask builds a synthetic task; waitingOn "" means the task waits on nobody.
 func LeadFeedTask(id, status, waitingOn string, createdMinutes int) leadfeed.Task {
@@ -56,8 +56,9 @@ func LeadFeedSnapshotJSONL(asOf time.Time, tasks []leadfeed.Task, records []lead
 	lines := make([][]byte, 0, len(tasks)+len(records))
 	for _, task := range tasks {
 		line, err := json.Marshal(struct {
-			Type string `json:"type"`
 			leadfeed.Task
+
+			Type string `json:"type"`
 		}{Type: "task", Task: task})
 		if err != nil {
 			return nil, err
@@ -66,8 +67,9 @@ func LeadFeedSnapshotJSONL(asOf time.Time, tasks []leadfeed.Task, records []lead
 	}
 	for _, record := range records {
 		line, err := json.Marshal(struct {
-			Type string `json:"type"`
 			leadfeed.Record
+
+			Type string `json:"type"`
 		}{Type: "record", Record: record})
 		if err != nil {
 			return nil, err

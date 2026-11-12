@@ -22,7 +22,11 @@ type fakePublisher struct {
 	attemptErr error
 }
 
-func (f *fakePublisher) Publish(_ context.Context, snap *leadfeed.Snapshot, _ time.Time) (leadfeed.PublishResult, error) {
+func (f *fakePublisher) Publish(
+	_ context.Context,
+	snap *leadfeed.Snapshot,
+	_ time.Time,
+) (leadfeed.PublishResult, error) {
 	if f.publishErr != nil {
 		return leadfeed.PublishResult{}, f.publishErr
 	}
@@ -35,10 +39,10 @@ func (f *fakePublisher) RecordAttempt(_ context.Context, attempt leadfeed.Attemp
 	return f.attemptErr
 }
 
-var importClock = time.Date(2026, 1, 10, 13, 0, 0, 0, time.UTC)
+func importClock() time.Time { return time.Date(2026, 1, 10, 13, 0, 0, 0, time.UTC) }
 
 func newTestImporter(store *fakePublisher, opts ...leadfeed.ImporterOption) *leadfeed.Importer {
-	opts = append([]leadfeed.ImporterOption{leadfeed.WithClock(func() time.Time { return importClock })}, opts...)
+	opts = append([]leadfeed.ImporterOption{leadfeed.WithClock(importClock)}, opts...)
 	return leadfeed.NewImporter(store, opts...)
 }
 
@@ -64,7 +68,7 @@ func TestImporter_PublishesValidSnapshot(t *testing.T) {
 	assert.Equal(t, string(leadfeed.OutcomePublished), store.attempts[0].Outcome)
 	assert.Empty(t, store.attempts[0].Error)
 	assert.Equal(t, "old", store.attempts[0].PreviousEpoch)
-	assert.True(t, store.attempts[0].At.Equal(importClock))
+	assert.True(t, store.attempts[0].At.Equal(importClock()))
 }
 
 func TestImporter_RejectsBeforePublishing(t *testing.T) {

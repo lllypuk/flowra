@@ -18,6 +18,18 @@ import (
 	"time"
 )
 
+const (
+	exitUsage       = 2
+	httpTimeout     = 30 * time.Second
+	connsPerAgent   = 2
+	percent         = 100
+	settlePoll      = 250 * time.Millisecond
+	readChats       = 20
+	threadPageLimit = 50
+	rngSeed         = 42
+	usPerMs         = float64(time.Millisecond / time.Microsecond)
+)
+
 type config struct {
 	base      string
 	token     string
@@ -165,10 +177,11 @@ func (r *recorder) stats(elapsed time.Duration) []opStats {
 			if len(lat) == 0 {
 				return 0
 			}
-			return float64(lat[min(len(lat)-1, int(q*float64(len(lat))))].Microseconds()) / 1000
+			return float64(lat[min(len(lat)-1, int(q*float64(len(lat))))].Microseconds()) / usPerMs
 		}
 		st.PerSec = float64(len(lat)) / elapsed.Seconds()
-		st.P50ms, st.P95ms, st.P99ms, st.MaxMs = pick(0.50), pick(0.95), pick(0.99), pick(1)
+		const p50, p95, p99, pMax = 0.50, 0.95, 0.99, 1
+		st.P50ms, st.P95ms, st.P99ms, st.MaxMs = pick(p50), pick(p95), pick(p99), pick(pMax)
 		out = append(out, st)
 	}
 	return out
@@ -199,14 +212,16 @@ func main() {
 	raw, err := os.ReadFile(tokenFile)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "agentbench: -token-file:", err)
-		os.Exit(2)
+		os.Exit(exitUsage)
 	}
 	cfg.token = strings.TrimSpace(string(raw))
 
 	c := &client{base: cfg.base, token: cfg.token, http: &http.Client{
-		Timeout: 30 * time.Second,
+		Timeout: httpTimeout,
 		Transport: &http.Transport{
-			MaxIdleConns: cfg.agents * 2, MaxIdleConnsPerHost: cfg.agents * 2, MaxConnsPerHost: cfg.agents * 2,
+			MaxIdleConns:        cfg.agents * connsPerAgent,
+			MaxIdleConnsPerHost: cfg.agents * connsPerAgent,
+			MaxConnsPerHost:     cfg.agents * connsPerAgent,
 		},
 	}}
 
@@ -232,18 +247,17 @@ func main() {
 		start, extra = runReads(ctx, c, cfg, ws.ID, rec)
 	default:
 		fmt.Fprintln(os.Stderr, "agentbench: unknown scenario", cfg.scenario)
-		os.Exit(2)
+		os.Exit(exitUsage)
 	}
 	elapsed := min(time.Since(start), cfg.duration+5*time.Second)
 	if measured, ok := extra["measured_seconds"].(float64); ok {
 		elapsed = time.Duration(measured * float64(time.Second))
 	}
 
-	out, _ := json.Marshal(map[string]any{
+	_ = json.NewEncoder(os.Stdout).Encode(map[string]any{
 		"scenario": cfg.scenario, "agents": cfg.agents, "rate_per_agent": cfg.rate, "body_bytes": cfg.bodyBytes,
 		"thread": cfg.thread, "seconds": elapsed.Seconds(), "ops": rec.stats(elapsed), "extra": extra,
 	})
-	fmt.Println(string(out))
 }
 
 func createTaskChats(ctx context.Context, c *client, wsID string, n int) []string {
@@ -293,7 +307,7 @@ func runWrites(ctx context.Context, c *client, cfg config, wsID string, chats in
 	for agent := range cfg.agents {
 		wg.Go(func() {
 			chatID := chatIDs[agent%len(chatIDs)]
-			rng := rand.New(rand.NewPCG(uint64(agent), 42))
+			rng := rand.New(rand.NewPCG(uint64(agent), rngSeed)) //nolint:gosec // spreads load, not a secret
 			// Agents start spread over one interval so that paced runs do not fire in bursts.
 			next := begin
 			if cfg.rate > 0 {
@@ -304,7 +318,7 @@ func runWrites(ctx context.Context, c *client, cfg config, wsID string, chats in
 				op, path, payload := "message", "/workspaces/"+wsID+"/chats/"+chatID+"/messages", any(
 					map[string]string{"content": text},
 				)
-				if rng.IntN(100) < cfg.statusPct {
+				if rng.IntN(percent) < cfg.statusPct {
 					turn++
 					final[agent] = statuses[turn%len(statuses)]
 					op, path = "status", "/workspaces/"+wsID+"/chats/"+chatID+"/actions/status"
@@ -410,14 +424,14 @@ func settleStatuses(ctx context.Context, c *client, wsID string, chatIDs, final 
 		if pending == 0 {
 			break
 		}
-		time.Sleep(250 * time.Millisecond)
+		time.Sleep(settlePoll)
 	}
 	return time.Since(started), pending
 }
 
 // runReads fills one thread to cfg.thread messages, then measures thread pages and lists.
 func runReads(ctx context.Context, c *client, cfg config, wsID string, rec *recorder) (time.Time, map[string]any) {
-	chatIDs := createTaskChats(ctx, c, wsID, 20)
+	chatIDs := createTaskChats(ctx, c, wsID, readChats)
 	text := body(cfg.bodyBytes)
 	path := "/workspaces/" + wsID + "/chats/" + chatIDs[0] + "/messages"
 
@@ -444,7 +458,7 @@ func runReads(ctx context.Context, c *client, cfg config, wsID string, rec *reco
 
 	targets := []struct{ op, path string }{
 		{"thread_page_50_newest", path + "?limit=50"},
-		{"thread_page_50_deep", fmt.Sprintf("%s?limit=50&offset=%d", path, max(0, cfg.thread-50))},
+		{"thread_page_50_deep", fmt.Sprintf("%s?limit=50&offset=%d", path, max(0, cfg.thread-threadPageLimit))},
 		{"chat_list", "/workspaces/" + wsID + "/chats"},
 		{"task_list", "/workspaces/" + wsID + "/tasks"},
 		{"feed_tasks", "/feed/tasks"},

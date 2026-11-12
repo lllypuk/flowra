@@ -128,8 +128,6 @@ type RedisConfig struct {
 }
 
 // AuthConfig holds authentication configuration.
-//
-//nolint:golines // Struct tags require longer lines for readability
 type AuthConfig struct {
 	// Tokens are the named owner tokens; only SHA-256 digests are configured.
 	Tokens []AuthToken `yaml:"tokens"`
@@ -153,7 +151,7 @@ type AuthToken struct {
 // OwnerConfig describes the owner user; it does not depend on any token.
 type OwnerConfig struct {
 	Username string `yaml:"username" env:"AUTH_OWNER_USERNAME"`
-	Email    string `yaml:"email" env:"AUTH_OWNER_EMAIL"`
+	Email    string `yaml:"email"    env:"AUTH_OWNER_EMAIL"`
 }
 
 // OwnerTokens returns the configured tokens, including the one set through the environment.

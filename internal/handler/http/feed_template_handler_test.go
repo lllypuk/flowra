@@ -33,15 +33,19 @@ func (f *fakeFeedPages) Thread(_ context.Context, _ string, limit int, cursor st
 	return f.thread, f.err
 }
 
-var (
-	pageAsOf = time.Date(2026, 1, 10, 12, 0, 0, 0, time.UTC)
-	pageNow  = pageAsOf.Add(5 * time.Minute)
-)
+func pageAsOf() time.Time { return time.Date(2026, 1, 10, 12, 0, 0, 0, time.UTC) }
+
+func pageNow() time.Time { return pageAsOf().Add(5 * time.Minute) }
 
 func healthyFeedStatus() leadfeed.FeedStatus {
 	return leadfeed.FeedStatus{
-		State:       &leadfeed.State{Revision: "rev-a", AsOf: pageAsOf, Tasks: 4, PublishedAt: pageAsOf.Add(time.Second)},
-		LastAttempt: &leadfeed.Attempt{At: pageAsOf.Add(time.Second), Outcome: string(leadfeed.OutcomePublished)},
+		State: &leadfeed.State{
+			Revision:    "rev-a",
+			AsOf:        pageAsOf(),
+			Tasks:       4,
+			PublishedAt: pageAsOf().Add(time.Second),
+		},
+		LastAttempt: &leadfeed.Attempt{At: pageAsOf().Add(time.Second), Outcome: string(leadfeed.OutcomePublished)},
 	}
 }
 
@@ -53,7 +57,7 @@ func newFeedPages(t *testing.T, svc httphandler.FeedPageService) *echo.Echo {
 	usePageAuth(t, &httphandler.PageAuthConfig{TokenValidator: ownerValidator(t, ownerSecret)})
 
 	handler := httphandler.NewFeedTemplateHandler(renderer, svc, nil)
-	handler.SetClock(func() time.Time { return pageNow }, time.UTC)
+	handler.SetClock(pageNow, time.UTC)
 
 	e := echo.New()
 	handler.SetupFeedRoutes(e)
@@ -82,12 +86,19 @@ func feedContent(t *testing.T, body string) string {
 
 func feedBoard() leadfeed.Board {
 	owner, lead, agent := "owner", "lead", "agent"
-	at := func(minutes int) time.Time { return pageAsOf.Add(-time.Duration(minutes) * time.Minute) }
+	at := func(minutes int) time.Time { return pageAsOf().Add(-time.Duration(minutes) * time.Minute) }
 	return leadfeed.Board{
-		Meta:   leadfeed.Meta{Revision: "rev-a", AsOf: pageAsOf},
+		Meta:   leadfeed.Meta{Revision: "rev-a", AsOf: pageAsOf()},
 		Status: healthyFeedStatus(),
 		Tasks: []leadfeed.Task{
-			{ID: "T-0004", Project: "delta", Title: "Paused thing", Status: "paused", WaitingOn: &agent, StatusSince: at(30)},
+			{
+				ID:          "T-0004",
+				Project:     "delta",
+				Title:       "Paused thing",
+				Status:      "paused",
+				WaitingOn:   &agent,
+				StatusSince: at(30),
+			},
 			{ID: "T-0003", Project: "gamma", Title: "Rollout <b>plan</b>", Status: "wait_user", WaitingOn: &owner,
 				StatusSince: at(125), Note: "needs <script>alert(1)</script> decision"},
 			{ID: "T-0002", Project: "beta", Title: "Fix build", Status: "review", WaitingOn: &lead, StatusSince: at(2)},
@@ -165,7 +176,10 @@ func TestFeedPages_HaveNoWriteControls(t *testing.T) {
 
 func TestFeedList_Banner(t *testing.T) {
 	t.Run("healthy feed shows snapshot time and age", func(t *testing.T) {
-		content := feedContent(t, getPage(newFeedPages(t, &fakeFeedPages{board: feedBoard()}), "/feed", true).Body.String())
+		content := feedContent(
+			t,
+			getPage(newFeedPages(t, &fakeFeedPages{board: feedBoard()}), "/feed", true).Body.String(),
+		)
 
 		assert.Contains(t, content, "10.01.2026 12:00")
 		assert.Contains(t, content, "5 мин назад")
@@ -177,7 +191,7 @@ func TestFeedList_Banner(t *testing.T) {
 	t.Run("failed import is visible and the old snapshot stays", func(t *testing.T) {
 		board := feedBoard()
 		board.Status.LastAttempt = &leadfeed.Attempt{
-			At: pageAsOf.Add(3 * time.Minute), Outcome: leadfeed.AttemptRejected, Error: "snapshot has no footer",
+			At: pageAsOf().Add(3 * time.Minute), Outcome: leadfeed.AttemptRejected, Error: "snapshot has no footer",
 		}
 
 		content := feedContent(t, getPage(newFeedPages(t, &fakeFeedPages{board: board}), "/feed", true).Body.String())
@@ -206,22 +220,30 @@ func feedThread() leadfeed.Thread {
 	return leadfeed.Thread{
 		Status: healthyFeedStatus(),
 		RecordPage: leadfeed.RecordPage{
-			Meta: leadfeed.Meta{Revision: "rev-a", AsOf: pageAsOf},
+			Meta: leadfeed.Meta{Revision: "rev-a", AsOf: pageAsOf()},
 			Task: leadfeed.Task{
 				ID: "T-0002", Project: "beta", Agent: "claude", Title: "Fix build", Status: "review", WaitingOn: &lead,
-				CreatedAt: pageAsOf.Add(-2 * time.Hour), StatusSince: pageAsOf.Add(-80 * time.Minute), Returns: 1,
+				CreatedAt: pageAsOf().Add(-2 * time.Hour), StatusSince: pageAsOf().Add(-80 * time.Minute), Returns: 1,
 				Spent: leadfeed.Spent{Work: 2400, Lead: 4800},
 				Transitions: []leadfeed.Transition{
-					{At: pageAsOf.Add(-2 * time.Hour), Status: "queued"},
-					{At: pageAsOf.Add(-80 * time.Minute), Status: "review", Cause: &cause, Derived: true},
+					{At: pageAsOf().Add(-2 * time.Hour), Status: "queued"},
+					{At: pageAsOf().Add(-80 * time.Minute), Status: "review", Cause: &cause, Derived: true},
 				},
 			},
 			Records: []leadfeed.Record{
-				{ID: "j:3", Kind: "letter", At: pageAsOf.Add(-2 * time.Hour), Actor: "lead", BodyDerived: true,
+				{ID: "j:3", Kind: "letter", At: pageAsOf().Add(-2 * time.Hour), Actor: "lead", BodyDerived: true,
 					Source: leadfeed.Source{Kind: "journal"}, BodyMissing: &missing},
-				{ID: "j:4", Kind: "letter", At: pageAsOf.Add(-2 * time.Hour), Order: 1, Actor: "lead", BodyDerived: true,
-					Source: leadfeed.Source{Kind: "journal"}, Body: &body},
-				{ID: "u:toolu_beta1", Kind: "report", At: pageAsOf.Add(-80 * time.Minute), Order: 2, Actor: "agent",
+				{
+					ID:          "j:4",
+					Kind:        "letter",
+					At:          pageAsOf().Add(-2 * time.Hour),
+					Order:       1,
+					Actor:       "lead",
+					BodyDerived: true,
+					Source:      leadfeed.Source{Kind: "journal"},
+					Body:        &body,
+				},
+				{ID: "u:toolu_beta1", Kind: "report", At: pageAsOf().Add(-80 * time.Minute), Order: 2, Actor: "agent",
 					ActorDerived: true, Source: leadfeed.Source{Kind: "transcript"}, Body: &report},
 			},
 		},
@@ -251,7 +273,10 @@ func TestFeedThread_ShowsTaskAndRecords(t *testing.T) {
 }
 
 func TestFeedThread_MarksDerivedAndMissing(t *testing.T) {
-	content := feedContent(t, getPage(newFeedPages(t, &fakeFeedPages{thread: feedThread()}), "/feed/tasks/T-0002", true).Body.String())
+	content := feedContent(
+		t,
+		getPage(newFeedPages(t, &fakeFeedPages{thread: feedThread()}), "/feed/tasks/T-0002", true).Body.String(),
+	)
 
 	transitions := content[strings.Index(content, "data-feed-transitions"):strings.Index(content, "Переписка")]
 	assert.Equal(t, 1, strings.Count(transitions, "feed-derived"), "only the inferred transition is marked")
@@ -262,12 +287,17 @@ func TestFeedThread_MarksDerivedAndMissing(t *testing.T) {
 	assert.Contains(t, missing, "letter not found in the agent transcript")
 	assert.NotContains(t, missing, "feed-body")
 
-	report := content[strings.Index(content, `id="rec-u:toolu_beta1"`):]
+	reportAt := strings.Index(content, `id="rec-u:toolu_beta1"`)
+	require.NotEqual(t, -1, reportAt)
+	report := content[reportAt:]
 	assert.Contains(t, report, "агент <span class=\"feed-derived\"", "inferred author is marked")
 }
 
 func TestFeedThread_TextIsShownVerbatimAndInert(t *testing.T) {
-	content := feedContent(t, getPage(newFeedPages(t, &fakeFeedPages{thread: feedThread()}), "/feed/tasks/T-0002", true).Body.String())
+	content := feedContent(
+		t,
+		getPage(newFeedPages(t, &fakeFeedPages{thread: feedThread()}), "/feed/tasks/T-0002", true).Body.String(),
+	)
 
 	assert.Contains(t, content, "#status Done\n#assignee @bob\n", "tag-like lines are plain text")
 	assert.NotContains(t, content, "<script>alert(1)</script>")

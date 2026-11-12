@@ -63,18 +63,21 @@ func window[T any](items []T, offset, limit int) []T {
 	return items[offset:min(offset+limit, len(items))]
 }
 
-var queryAsOf = time.Date(2026, 1, 10, 12, 0, 0, 0, time.UTC)
+func queryAsOf() time.Time { return time.Date(2026, 1, 10, 12, 0, 0, 0, time.UTC) }
 
-func newMemFeed(revision string, tasks int) *memFeed {
+func newMemFeed(tasks int) *memFeed {
 	feed := &memFeed{
-		state:   &leadfeed.State{Source: "lead-task", Epoch: "e1", Revision: revision, AsOf: queryAsOf, Tasks: tasks},
+		state:   &leadfeed.State{Source: "lead-task", Epoch: "e1", Revision: "rev-a", AsOf: queryAsOf(), Tasks: tasks},
 		records: map[string][]leadfeed.Record{},
 	}
 	for i := range tasks {
 		id := fmt.Sprintf("T-%04d", i+1)
 		feed.tasks = append(feed.tasks, leadfeed.Task{ID: id, Status: "work"})
 		for n := range 3 {
-			feed.records[id] = append(feed.records[id], leadfeed.Record{ID: fmt.Sprintf("%s:%d", id, n), Task: id, Order: n})
+			feed.records[id] = append(
+				feed.records[id],
+				leadfeed.Record{ID: fmt.Sprintf("%s:%d", id, n), Task: id, Order: n},
+			)
 		}
 	}
 	return feed
@@ -106,7 +109,7 @@ func TestStatusDisplay(t *testing.T) {
 }
 
 func TestQueryService_ListTasks_PagesCoverEveryTaskOnce(t *testing.T) {
-	svc := leadfeed.NewQueryService(newMemFeed("rev-a", 5))
+	svc := leadfeed.NewQueryService(newMemFeed(5))
 	ctx := context.Background()
 
 	var seen []string
@@ -115,7 +118,7 @@ func TestQueryService_ListTasks_PagesCoverEveryTaskOnce(t *testing.T) {
 		got, err := svc.ListTasks(ctx, leadfeed.TaskListQuery{Limit: 2, Cursor: cursor})
 		require.NoError(t, err)
 		assert.Equal(t, "rev-a", got.Revision)
-		assert.True(t, got.AsOf.Equal(queryAsOf))
+		assert.True(t, got.AsOf.Equal(queryAsOf()))
 		assert.LessOrEqual(t, len(got.Tasks), 2)
 		for _, task := range got.Tasks {
 			seen = append(seen, task.ID)
@@ -131,7 +134,7 @@ func TestQueryService_ListTasks_PagesCoverEveryTaskOnce(t *testing.T) {
 }
 
 func TestQueryService_ListTasks_Limits(t *testing.T) {
-	feed := newMemFeed("rev-a", leadfeed.MaxPageSize+10)
+	feed := newMemFeed(leadfeed.MaxPageSize + 10)
 	svc := leadfeed.NewQueryService(feed)
 	ctx := context.Background()
 
@@ -154,7 +157,7 @@ func TestQueryService_ListTasks_Limits(t *testing.T) {
 	})
 
 	t.Run("exact fit has no next cursor", func(t *testing.T) {
-		exact := leadfeed.NewQueryService(newMemFeed("rev-a", 2))
+		exact := leadfeed.NewQueryService(newMemFeed(2))
 		got, err := exact.ListTasks(ctx, leadfeed.TaskListQuery{Limit: 2})
 		require.NoError(t, err)
 		assert.Len(t, got.Tasks, 2)
@@ -163,7 +166,7 @@ func TestQueryService_ListTasks_Limits(t *testing.T) {
 }
 
 func TestQueryService_ListTasks_PassesFilter(t *testing.T) {
-	feed := newMemFeed("rev-a", 1)
+	feed := newMemFeed(1)
 	owner := "owner"
 
 	_, err := leadfeed.NewQueryService(feed).ListTasks(context.Background(),
@@ -176,7 +179,7 @@ func TestQueryService_ListTasks_PassesFilter(t *testing.T) {
 }
 
 func TestQueryService_CursorOfAnotherRevision(t *testing.T) {
-	feed := newMemFeed("rev-a", 5)
+	feed := newMemFeed(5)
 	svc := leadfeed.NewQueryService(feed)
 	ctx := context.Background()
 
@@ -199,7 +202,7 @@ func TestQueryService_CursorOfAnotherRevision(t *testing.T) {
 }
 
 func TestQueryService_InvalidCursor(t *testing.T) {
-	svc := leadfeed.NewQueryService(newMemFeed("rev-a", 5))
+	svc := leadfeed.NewQueryService(newMemFeed(5))
 
 	for _, cursor := range []string{"%%%", "bm90LWEtY3Vyc29y", "djF8cmV2LWF8LTE", "djJ8cmV2LWF8MA", "djF8fDA"} {
 		t.Run(cursor, func(t *testing.T) {
@@ -210,7 +213,7 @@ func TestQueryService_InvalidCursor(t *testing.T) {
 }
 
 func TestQueryService_TaskAndRecords(t *testing.T) {
-	svc := leadfeed.NewQueryService(newMemFeed("rev-a", 2))
+	svc := leadfeed.NewQueryService(newMemFeed(2))
 	ctx := context.Background()
 
 	detail, err := svc.Task(ctx, "T-0002")
@@ -267,14 +270,36 @@ func TestFeedStatus_Healthy(t *testing.T) {
 		healthy bool
 	}{
 		{name: "published, no attempt on record", status: leadfeed.FeedStatus{State: state}, healthy: true},
-		{name: "last attempt published",
-			status: leadfeed.FeedStatus{State: state, LastAttempt: &leadfeed.Attempt{Outcome: "published"}}, healthy: true},
-		{name: "last attempt refreshed",
-			status: leadfeed.FeedStatus{State: state, LastAttempt: &leadfeed.Attempt{Outcome: "refreshed"}}, healthy: true},
-		{name: "last attempt rejected",
-			status: leadfeed.FeedStatus{State: state, LastAttempt: &leadfeed.Attempt{Outcome: leadfeed.AttemptRejected}}},
-		{name: "last attempt unknown",
-			status: leadfeed.FeedStatus{State: state, LastAttempt: &leadfeed.Attempt{Outcome: leadfeed.AttemptUnknown}}},
+		{
+			name: "last attempt published",
+			status: leadfeed.FeedStatus{
+				State:       state,
+				LastAttempt: &leadfeed.Attempt{Outcome: "published"},
+			},
+			healthy: true,
+		},
+		{
+			name: "last attempt refreshed",
+			status: leadfeed.FeedStatus{
+				State:       state,
+				LastAttempt: &leadfeed.Attempt{Outcome: "refreshed"},
+			},
+			healthy: true,
+		},
+		{
+			name: "last attempt rejected",
+			status: leadfeed.FeedStatus{
+				State:       state,
+				LastAttempt: &leadfeed.Attempt{Outcome: leadfeed.AttemptRejected},
+			},
+		},
+		{
+			name: "last attempt unknown",
+			status: leadfeed.FeedStatus{
+				State:       state,
+				LastAttempt: &leadfeed.Attempt{Outcome: leadfeed.AttemptUnknown},
+			},
+		},
 		{name: "nothing published", status: leadfeed.FeedStatus{}},
 	}
 
@@ -286,7 +311,7 @@ func TestFeedStatus_Healthy(t *testing.T) {
 }
 
 func TestQueryService_Board(t *testing.T) {
-	feed := newMemFeed("rev-a", 3)
+	feed := newMemFeed(3)
 	feed.attempt = &leadfeed.Attempt{Outcome: leadfeed.AttemptRejected, Error: "snapshot has no footer"}
 
 	board, err := leadfeed.NewQueryService(feed).Board(context.Background())
@@ -300,7 +325,7 @@ func TestQueryService_Board(t *testing.T) {
 }
 
 func TestQueryService_Board_Truncated(t *testing.T) {
-	board, err := leadfeed.NewQueryService(newMemFeed("rev-a", 1001)).Board(context.Background())
+	board, err := leadfeed.NewQueryService(newMemFeed(1001)).Board(context.Background())
 
 	require.NoError(t, err)
 	assert.Len(t, board.Tasks, 1000)
@@ -316,7 +341,7 @@ func TestQueryService_ReadError(t *testing.T) {
 }
 
 func TestQueryService_Thread(t *testing.T) {
-	feed := newMemFeed("rev-a", 2)
+	feed := newMemFeed(2)
 	feed.attempt = &leadfeed.Attempt{Outcome: string(leadfeed.OutcomePublished)}
 	svc := leadfeed.NewQueryService(feed)
 	ctx := context.Background()

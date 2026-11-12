@@ -44,14 +44,19 @@ func (f *fakeFeedService) Task(_ context.Context, id string) (leadfeed.TaskDetai
 	return f.detail, f.err
 }
 
-func (f *fakeFeedService) Records(_ context.Context, taskID string, limit int, cursor string) (leadfeed.RecordPage, error) {
+func (f *fakeFeedService) Records(
+	_ context.Context,
+	taskID string,
+	limit int,
+	cursor string,
+) (leadfeed.RecordPage, error) {
 	f.gotTaskID, f.gotLimit, f.gotCursor = taskID, limit, cursor
 	return f.recordPage, f.err
 }
 
-var feedAsOf = time.Date(2026, 1, 10, 12, 0, 0, 123_000_000, time.UTC)
+func feedAsOf() time.Time { return time.Date(2026, 1, 10, 12, 0, 0, 123_000_000, time.UTC) }
 
-func feedMeta() leadfeed.Meta { return leadfeed.Meta{Revision: "rev-a", AsOf: feedAsOf} }
+func feedMeta() leadfeed.Meta { return leadfeed.Meta{Revision: "rev-a", AsOf: feedAsOf()} }
 
 func newFeedServer(svc httphandler.FeedService) *echo.Echo {
 	h := httphandler.NewFeedHandler(svc, nil)
@@ -104,9 +109,9 @@ func TestFeedHandler_Status(t *testing.T) {
 
 	t.Run("published with a failed last attempt", func(t *testing.T) {
 		svc := &fakeFeedService{status: leadfeed.FeedStatus{
-			State: &leadfeed.State{Source: "lead-task", Epoch: "e1", Revision: "rev-a", AsOf: feedAsOf,
-				Tasks: 8, Records: 21, PublishedAt: feedAsOf.Add(time.Second)},
-			LastAttempt: &leadfeed.Attempt{At: feedAsOf.Add(time.Minute), Outcome: leadfeed.AttemptRejected,
+			State: &leadfeed.State{Source: "lead-task", Epoch: "e1", Revision: "rev-a", AsOf: feedAsOf(),
+				Tasks: 8, Records: 21, PublishedAt: feedAsOf().Add(time.Second)},
+			LastAttempt: &leadfeed.Attempt{At: feedAsOf().Add(time.Minute), Outcome: leadfeed.AttemptRejected,
 				Error: "snapshot has no footer"},
 		}}
 
@@ -133,7 +138,7 @@ func TestFeedHandler_ListTasks(t *testing.T) {
 		Meta: feedMeta(),
 		Tasks: []leadfeed.Task{
 			{ID: "T-0003", Title: "Rollout", Status: "wait_user", WaitingOn: &owner, Spent: leadfeed.Spent{User: 3300},
-				Transitions: []leadfeed.Transition{{At: feedAsOf, Status: "wait_user", Derived: true}}},
+				Transitions: []leadfeed.Transition{{At: feedAsOf(), Status: "wait_user", Derived: true}}},
 			{ID: "T-0001", Status: "done"},
 			{ID: "T-0004", Status: "paused"},
 		},
@@ -190,7 +195,9 @@ func TestFeedHandler_ListTasks_NoFiltersAndEmptyFeed(t *testing.T) {
 }
 
 func TestFeedHandler_GetTask(t *testing.T) {
-	svc := &fakeFeedService{detail: leadfeed.TaskDetail{Meta: feedMeta(), Task: leadfeed.Task{ID: "T-0007", Status: "review"}}}
+	svc := &fakeFeedService{
+		detail: leadfeed.TaskDetail{Meta: feedMeta(), Task: leadfeed.Task{ID: "T-0007", Status: "review"}},
+	}
 
 	code, env := getFeed(t, newFeedServer(svc), "/api/v1/feed/tasks/T-0007")
 
@@ -208,9 +215,18 @@ func TestFeedHandler_ListRecords(t *testing.T) {
 		Meta: feedMeta(),
 		Task: leadfeed.Task{ID: "T-0002"},
 		Records: []leadfeed.Record{
-			{ID: "j:3", Task: "T-0002", Kind: "letter", At: feedAsOf, Actor: "lead", BodyDerived: true,
+			{ID: "j:3", Task: "T-0002", Kind: "letter", At: feedAsOf(), Actor: "lead", BodyDerived: true,
 				Source: leadfeed.Source{Kind: "journal", Ref: "3"}, BodyMissing: &missing, Format: "text"},
-			{ID: "j:4", Task: "T-0002", Kind: "letter", At: feedAsOf, Order: 1, Actor: "lead", Body: &body, Format: "text"},
+			{
+				ID:     "j:4",
+				Task:   "T-0002",
+				Kind:   "letter",
+				At:     feedAsOf(),
+				Order:  1,
+				Actor:  "lead",
+				Body:   &body,
+				Format: "text",
+			},
 		},
 	}}
 
@@ -244,8 +260,13 @@ func TestFeedHandler_Errors(t *testing.T) {
 			wantStatus: stdhttp.StatusNotFound, wantCode: "FEED_TASK_NOT_FOUND"},
 		{name: "records of an unknown task", target: "/api/v1/feed/tasks/T-0999/records", err: leadfeed.ErrTaskNotFound,
 			wantStatus: stdhttp.StatusNotFound, wantCode: "FEED_TASK_NOT_FOUND"},
-		{name: "revision changed during paging", target: "/api/v1/feed/tasks?cursor=old", err: leadfeed.ErrRevisionChanged,
-			wantStatus: stdhttp.StatusConflict, wantCode: "FEED_REVISION_CHANGED"},
+		{
+			name:       "revision changed during paging",
+			target:     "/api/v1/feed/tasks?cursor=old",
+			err:        leadfeed.ErrRevisionChanged,
+			wantStatus: stdhttp.StatusConflict,
+			wantCode:   "FEED_REVISION_CHANGED",
+		},
 		{name: "invalid cursor", target: "/api/v1/feed/tasks?cursor=%25", err: leadfeed.ErrInvalidCursor,
 			wantStatus: stdhttp.StatusBadRequest, wantCode: "INVALID_CURSOR"},
 		{name: "limit is not a number", target: "/api/v1/feed/tasks?limit=many",
@@ -279,10 +300,26 @@ func TestFeedTime_FixedMilliseconds(t *testing.T) {
 		at   time.Time
 		want string
 	}{
-		{name: "trailing zero is kept", at: time.Date(2026, 11, 12, 4, 0, 17, 920_000_000, time.UTC), want: `"2026-11-12T04:00:17.920Z"`},
+		{
+			name: "trailing zero is kept",
+			at:   time.Date(2026, 11, 12, 4, 0, 17, 920_000_000, time.UTC),
+			want: `"2026-11-12T04:00:17.920Z"`,
+		},
 		{name: "whole second", at: time.Date(2026, 11, 12, 4, 0, 17, 0, time.UTC), want: `"2026-11-12T04:00:17.000Z"`},
-		{name: "other zone is converted to UTC",
-			at: time.Date(2026, 11, 12, 9, 0, 17, 5_000_000, time.FixedZone("YEKT", 5*3600)), want: `"2026-11-12T04:00:17.005Z"`},
+		{
+			name: "other zone is converted to UTC",
+			at: time.Date(
+				2026,
+				11,
+				12,
+				9,
+				0,
+				17,
+				5_000_000,
+				time.FixedZone("YEKT", 5*3600),
+			),
+			want: `"2026-11-12T04:00:17.005Z"`,
+		},
 	}
 
 	for _, tt := range tests {

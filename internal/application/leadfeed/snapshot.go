@@ -148,7 +148,12 @@ func (p *parser) next() ([]byte, error) {
 	for {
 		line, err := p.in.ReadBytes('\n')
 		if len(line) > maxLineBytes {
-			return nil, fmt.Errorf("%w: line %d is longer than %d bytes", ErrSnapshotMalformed, p.lineNo+1, maxLineBytes)
+			return nil, fmt.Errorf(
+				"%w: line %d is longer than %d bytes",
+				ErrSnapshotMalformed,
+				p.lineNo+1,
+				maxLineBytes,
+			)
 		}
 		if err != nil && !errors.Is(err, io.EOF) {
 			return nil, fmt.Errorf("read snapshot: %w", err)
@@ -226,39 +231,43 @@ func (p *parser) readBody() error {
 		if p.foot != nil {
 			return fmt.Errorf("%w: line %d follows the footer", ErrSnapshotMalformed, p.lineNo)
 		}
-
-		kind, err := p.lineType(line)
-		if err != nil {
+		if err = p.readBodyLine(line); err != nil {
 			return err
-		}
-
-		switch kind {
-		case lineTask:
-			var t Task
-			if err = p.decode(line, &t); err != nil {
-				return err
-			}
-			p.snap.Tasks = append(p.snap.Tasks, t)
-			p.addToHash(line)
-		case lineRecord:
-			var rec Record
-			if err = p.decode(line, &rec); err != nil {
-				return err
-			}
-			p.snap.Records = append(p.snap.Records, rec)
-			p.addToHash(line)
-		case lineFooter:
-			p.foot = &footer{}
-			if err = p.decode(line, p.foot); err != nil {
-				return err
-			}
-		default:
-			return fmt.Errorf("%w: line %d has unknown type %q", ErrSnapshotMalformed, p.lineNo, kind)
 		}
 	}
 
 	if p.foot == nil {
 		return ErrSnapshotTruncated
+	}
+	return nil
+}
+
+func (p *parser) readBodyLine(line []byte) error {
+	kind, err := p.lineType(line)
+	if err != nil {
+		return err
+	}
+
+	switch kind {
+	case lineTask:
+		var t Task
+		if err = p.decode(line, &t); err != nil {
+			return err
+		}
+		p.snap.Tasks = append(p.snap.Tasks, t)
+		p.addToHash(line)
+	case lineRecord:
+		var rec Record
+		if err = p.decode(line, &rec); err != nil {
+			return err
+		}
+		p.snap.Records = append(p.snap.Records, rec)
+		p.addToHash(line)
+	case lineFooter:
+		p.foot = &footer{}
+		return p.decode(line, p.foot)
+	default:
+		return fmt.Errorf("%w: line %d has unknown type %q", ErrSnapshotMalformed, p.lineNo, kind)
 	}
 	return nil
 }
@@ -290,34 +299,56 @@ func (p *parser) check() error {
 }
 
 func (p *parser) checkReferences() error {
+	tasks, err := p.checkTasks()
+	if err != nil {
+		return err
+	}
+	records, err := p.checkRecords(tasks)
+	if err != nil {
+		return err
+	}
+	return p.checkCauses(records)
+}
+
+func (p *parser) checkTasks() (map[string]struct{}, error) {
 	tasks := make(map[string]struct{}, len(p.snap.Tasks))
 	for _, t := range p.snap.Tasks {
 		if t.ID == "" || t.Status == "" {
-			return fmt.Errorf("%w: task needs id and status", ErrSnapshotMalformed)
+			return nil, fmt.Errorf("%w: task needs id and status", ErrSnapshotMalformed)
 		}
 		if _, dup := tasks[t.ID]; dup {
-			return fmt.Errorf("%w: duplicate task %q", ErrSnapshotMalformed, t.ID)
+			return nil, fmt.Errorf("%w: duplicate task %q", ErrSnapshotMalformed, t.ID)
 		}
 		tasks[t.ID] = struct{}{}
 	}
+	return tasks, nil
+}
 
+func (p *parser) checkRecords(tasks map[string]struct{}) (map[string]struct{}, error) {
 	records := make(map[string]struct{}, len(p.snap.Records))
 	for _, rec := range p.snap.Records {
 		if rec.ID == "" || rec.Kind == "" {
-			return fmt.Errorf("%w: record needs id and kind", ErrSnapshotMalformed)
+			return nil, fmt.Errorf("%w: record needs id and kind", ErrSnapshotMalformed)
 		}
 		if _, dup := records[rec.ID]; dup {
-			return fmt.Errorf("%w: duplicate record %q", ErrSnapshotMalformed, rec.ID)
+			return nil, fmt.Errorf("%w: duplicate record %q", ErrSnapshotMalformed, rec.ID)
 		}
 		if _, ok := tasks[rec.Task]; !ok {
-			return fmt.Errorf("%w: record %q refers to unknown task %q", ErrSnapshotMalformed, rec.ID, rec.Task)
+			return nil, fmt.Errorf("%w: record %q refers to unknown task %q", ErrSnapshotMalformed, rec.ID, rec.Task)
 		}
 		if (rec.Body == nil) == (rec.BodyMissing == nil) {
-			return fmt.Errorf("%w: record %q needs exactly one of body and body_missing", ErrSnapshotMalformed, rec.ID)
+			return nil, fmt.Errorf(
+				"%w: record %q needs exactly one of body and body_missing",
+				ErrSnapshotMalformed,
+				rec.ID,
+			)
 		}
 		records[rec.ID] = struct{}{}
 	}
+	return records, nil
+}
 
+func (p *parser) checkCauses(records map[string]struct{}) error {
 	for _, t := range p.snap.Tasks {
 		for _, tr := range t.Transitions {
 			if tr.Cause == nil {

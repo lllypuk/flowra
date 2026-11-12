@@ -51,7 +51,11 @@ func cookieNamed(rec *httptest.ResponseRecorder, name string) *stdhttp.Cookie {
 	return nil
 }
 
-func postLogin(e *echo.Echo, token, formState, cookieState string, extra ...*stdhttp.Cookie) *httptest.ResponseRecorder {
+func postLogin(
+	e *echo.Echo,
+	token, formState, cookieState string,
+	extra ...*stdhttp.Cookie,
+) *httptest.ResponseRecorder {
 	form := url.Values{"token": {token}, "state": {formState}}
 	req := httptest.NewRequest(stdhttp.MethodPost, "/login", strings.NewReader(form.Encode()))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationForm)

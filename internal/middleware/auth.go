@@ -120,45 +120,9 @@ func Auth(config AuthConfig) echo.MiddlewareFunc {
 				return next(c)
 			}
 
-			// Extract token from Authorization header or session cookie
-			authHeader := c.Request().Header.Get(echo.HeaderAuthorization)
-			token, tokenErr := extractTokenFromRequest(c, authHeader, config)
-			if tokenErr != nil {
-				return respondAuthError(c, tokenErr)
-			}
-
-			// Validate token
-			if config.TokenValidator == nil {
-				config.Logger.Error("token validator not configured")
-				return respondAuthError(c, ErrInvalidToken)
-			}
-
-			claims, validateErr := config.TokenValidator.ValidateToken(c.Request().Context(), token)
-			if validateErr != nil {
-				config.Logger.Warn("token validation failed",
-					slog.String("error", validateErr.Error()),
-					slog.String("path", path),
-					slog.String("remote_ip", c.RealIP()),
-				)
-				return respondAuthError(c, validateErr)
-			}
-
-			// Resolve internal user ID if resolver is configured
-			if config.UserResolver != nil && claims.UserID.IsZero() {
-				userID, resolveErr := config.UserResolver.ResolveUser(
-					c.Request().Context(),
-					claims.ExternalUserID,
-					claims.Username,
-					claims.Email,
-				)
-				if resolveErr != nil {
-					config.Logger.Error("failed to resolve user",
-						slog.String("error", resolveErr.Error()),
-						slog.String("external_id", claims.ExternalUserID),
-					)
-					return respondAuthError(c, ErrUserNotFound)
-				}
-				claims.UserID = userID
+			claims, authErr := authenticate(c, config, path)
+			if authErr != nil {
+				return respondAuthError(c, authErr)
 			}
 
 			// Enrich context with user information
@@ -174,6 +138,52 @@ func Auth(config AuthConfig) echo.MiddlewareFunc {
 			return next(c)
 		}
 	}
+}
+
+// authenticate validates the request token and resolves the internal user; the error is what to respond with.
+func authenticate(c echo.Context, config AuthConfig, path string) (*TokenClaims, error) {
+	// Extract token from Authorization header or session cookie
+	authHeader := c.Request().Header.Get(echo.HeaderAuthorization)
+	token, tokenErr := extractTokenFromRequest(c, authHeader, config)
+	if tokenErr != nil {
+		return nil, tokenErr
+	}
+
+	// Validate token
+	if config.TokenValidator == nil {
+		config.Logger.Error("token validator not configured")
+		return nil, ErrInvalidToken
+	}
+
+	claims, validateErr := config.TokenValidator.ValidateToken(c.Request().Context(), token)
+	if validateErr != nil {
+		config.Logger.Warn("token validation failed",
+			slog.String("error", validateErr.Error()),
+			slog.String("path", path),
+			slog.String("remote_ip", c.RealIP()),
+		)
+		return nil, validateErr
+	}
+
+	// Resolve internal user ID if resolver is configured
+	if config.UserResolver != nil && claims.UserID.IsZero() {
+		userID, resolveErr := config.UserResolver.ResolveUser(
+			c.Request().Context(),
+			claims.ExternalUserID,
+			claims.Username,
+			claims.Email,
+		)
+		if resolveErr != nil {
+			config.Logger.Error("failed to resolve user",
+				slog.String("error", resolveErr.Error()),
+				slog.String("external_id", claims.ExternalUserID),
+			)
+			return nil, ErrUserNotFound
+		}
+		claims.UserID = userID
+	}
+
+	return claims, nil
 }
 
 // extractTokenFromRequest extracts the auth token from the request.

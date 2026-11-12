@@ -100,6 +100,7 @@ type TaskListQuery struct {
 // TaskPage is one page of tasks from a single snapshot.
 type TaskPage struct {
 	Meta
+
 	Tasks      []Task
 	NextCursor string
 }
@@ -107,12 +108,14 @@ type TaskPage struct {
 // TaskDetail is one task from a single snapshot.
 type TaskDetail struct {
 	Meta
+
 	Task Task
 }
 
 // RecordPage is one page of a task thread from a single snapshot.
 type RecordPage struct {
 	Meta
+
 	Task       Task
 	Records    []Record
 	NextCursor string
@@ -121,12 +124,14 @@ type RecordPage struct {
 // Thread is a page of a task thread together with the feed status, for the thread page.
 type Thread struct {
 	RecordPage
+
 	Status FeedStatus
 }
 
 // Board is the whole feed, for the list page.
 type Board struct {
 	Meta
+
 	Status FeedStatus
 	Tasks  []Task
 	// Truncated is set when the feed holds more tasks than one board shows.
@@ -163,13 +168,13 @@ func (s *QueryService) Status(ctx context.Context) (FeedStatus, error) {
 
 // ListTasks returns a page of tasks, newest first.
 func (s *QueryService) ListTasks(ctx context.Context, query TaskListQuery) (TaskPage, error) {
-	limit, err := pageLimit(query.Limit)
-	if err != nil {
-		return TaskPage{}, err
+	limit, limitErr := pageLimit(query.Limit)
+	if limitErr != nil {
+		return TaskPage{}, limitErr
 	}
 
 	var out TaskPage
-	err = s.reader.Read(ctx, func(ctx context.Context, view View) error {
+	err := s.reader.Read(ctx, func(ctx context.Context, view View) error {
 		out = TaskPage{}
 		meta, offset, err := startPage(ctx, view, query.Cursor)
 		if err != nil {
@@ -212,13 +217,13 @@ func (s *QueryService) Task(ctx context.Context, id string) (TaskDetail, error) 
 
 // Records returns a page of a task thread in source order.
 func (s *QueryService) Records(ctx context.Context, taskID string, limit int, cursor string) (RecordPage, error) {
-	limit, err := pageLimit(limit)
-	if err != nil {
-		return RecordPage{}, err
+	limit, limitErr := pageLimit(limit)
+	if limitErr != nil {
+		return RecordPage{}, limitErr
 	}
 
 	var out RecordPage
-	err = s.reader.Read(ctx, func(ctx context.Context, view View) error {
+	err := s.reader.Read(ctx, func(ctx context.Context, view View) error {
 		out = RecordPage{}
 		meta, offset, err := startPage(ctx, view, cursor)
 		if err != nil {
@@ -246,13 +251,13 @@ func (s *QueryService) Records(ctx context.Context, taskID string, limit int, cu
 
 // Thread returns a page of a task thread and the feed status, from one snapshot.
 func (s *QueryService) Thread(ctx context.Context, taskID string, limit int, cursor string) (Thread, error) {
-	limit, err := pageLimit(limit)
-	if err != nil {
-		return Thread{}, err
+	limit, limitErr := pageLimit(limit)
+	if limitErr != nil {
+		return Thread{}, limitErr
 	}
 
 	var out Thread
-	err = s.reader.Read(ctx, func(ctx context.Context, view View) error {
+	err := s.reader.Read(ctx, func(ctx context.Context, view View) error {
 		out = Thread{}
 		meta, offset, err := startPage(ctx, view, cursor)
 		if err != nil {

@@ -82,77 +82,12 @@ func (s *MongoEventStore) SaveEvents(
 	}
 	defer session.EndSession(ctx)
 
-	cmd, hasCmd := appcore.CommandFrom(ctx)
-
 	// callbackDone tells a failed commit, whose outcome is unknown, from a failure before it.
 	callbackDone := false
 	_, err = session.WithTransaction(ctx, func(txCtx context.Context) (any, error) {
 		callbackDone = false
-		// 1. Checking current version (optimistic locking)
-		currentVersion, errVersion := s.getCurrentVersion(txCtx, aggregateID)
-		if errVersion != nil {
-			s.logger.ErrorContext(ctx, "failed to get current version for aggregate",
-				slog.String("aggregate_id", aggregateID),
-				slog.String("error", errVersion.Error()),
-			)
-			return nil, errVersion
-		}
-
-		if currentVersion != expectedVersion {
-			s.logger.WarnContext(ctx, "concurrency conflict in event store",
-				slog.String("aggregate_id", aggregateID),
-				slog.Int("expected_version", expectedVersion),
-				slog.Int("current_version", currentVersion),
-			)
-			return nil, appcore.ErrConcurrencyConflict
-		}
-
-		// 2. Serializing event
-		documents, errSerialize := s.serializer.SerializeMany(events)
-		if errSerialize != nil {
-			s.logger.ErrorContext(ctx, "failed to serialize events",
-				slog.String("aggregate_id", aggregateID),
-				slog.Int("events_count", len(events)),
-				slog.String("error", errSerialize.Error()),
-			)
-			return nil, errSerialize
-		}
-
-		// 3. Assign correct versions to documents (expectedVersion + 1, +2, ...)
-		for i, doc := range documents {
-			doc.Version = expectedVersion + i + 1
-		}
-		if hasCmd {
-			last := documents[len(documents)-1]
-			last.CommandID, last.CommandFP = cmd.ID, cmd.Fingerprint
-		}
-
-		// 4. preobrazuem in interface{} for InsertMany
-		docs := make([]any, len(documents))
-		for i, doc := range documents {
-			docs[i] = doc
-		}
-
-		// 4. vstavlyaem event (bulk)
-		_, errInsert := s.collection.InsertMany(txCtx, docs)
-		if errInsert != nil {
-			// Checking error dublirovaniya klyucha (konflikt concurrency)
-			if mongo.IsDuplicateKeyError(errInsert) && strings.Contains(errInsert.Error(), CommandIndexName) {
-				return nil, appcore.ErrDuplicateCommand
-			}
-			if mongo.IsDuplicateKeyError(errInsert) {
-				s.logger.WarnContext(ctx, "duplicate key error in event store (concurrency)",
-					slog.String("aggregate_id", aggregateID),
-					slog.Int("events_count", len(events)),
-				)
-				return nil, appcore.ErrConcurrencyConflict
-			}
-			s.logger.ErrorContext(ctx, "failed to insert events to event store",
-				slog.String("aggregate_id", aggregateID),
-				slog.Int("events_count", len(events)),
-				slog.String("error", errInsert.Error()),
-			)
-			return nil, fmt.Errorf("failed to insert events: %w", errInsert)
+		if errAppend := s.appendEvents(ctx, txCtx, aggregateID, events, expectedVersion); errAppend != nil {
+			return nil, errAppend
 		}
 
 		callbackDone = true
@@ -171,6 +106,83 @@ func (s *MongoEventStore) SaveEvents(
 	}
 
 	return err
+}
+
+// appendEvents checks the expected version and inserts the events inside the transaction txCtx.
+func (s *MongoEventStore) appendEvents(
+	ctx, txCtx context.Context,
+	aggregateID string,
+	events []event.DomainEvent,
+	expectedVersion int,
+) error {
+	cmd, hasCmd := appcore.CommandFrom(ctx)
+
+	currentVersion, errVersion := s.getCurrentVersion(txCtx, aggregateID)
+	if errVersion != nil {
+		s.logger.ErrorContext(ctx, "failed to get current version for aggregate",
+			slog.String("aggregate_id", aggregateID),
+			slog.String("error", errVersion.Error()),
+		)
+		return errVersion
+	}
+
+	if currentVersion != expectedVersion {
+		s.logger.WarnContext(ctx, "concurrency conflict in event store",
+			slog.String("aggregate_id", aggregateID),
+			slog.Int("expected_version", expectedVersion),
+			slog.Int("current_version", currentVersion),
+		)
+		return appcore.ErrConcurrencyConflict
+	}
+
+	documents, errSerialize := s.serializer.SerializeMany(events)
+	if errSerialize != nil {
+		s.logger.ErrorContext(ctx, "failed to serialize events",
+			slog.String("aggregate_id", aggregateID),
+			slog.Int("events_count", len(events)),
+			slog.String("error", errSerialize.Error()),
+		)
+		return errSerialize
+	}
+
+	for i, doc := range documents {
+		doc.Version = expectedVersion + i + 1
+	}
+	if hasCmd {
+		last := documents[len(documents)-1]
+		last.CommandID, last.CommandFP = cmd.ID, cmd.Fingerprint
+	}
+
+	docs := make([]any, len(documents))
+	for i, doc := range documents {
+		docs[i] = doc
+	}
+
+	_, errInsert := s.collection.InsertMany(txCtx, docs)
+	if errInsert != nil {
+		return s.insertError(ctx, aggregateID, len(events), errInsert)
+	}
+	return nil
+}
+
+// insertError maps an InsertMany failure to a store error.
+func (s *MongoEventStore) insertError(ctx context.Context, aggregateID string, count int, err error) error {
+	if mongo.IsDuplicateKeyError(err) && strings.Contains(err.Error(), CommandIndexName) {
+		return appcore.ErrDuplicateCommand
+	}
+	if mongo.IsDuplicateKeyError(err) {
+		s.logger.WarnContext(ctx, "duplicate key error in event store (concurrency)",
+			slog.String("aggregate_id", aggregateID),
+			slog.Int("events_count", count),
+		)
+		return appcore.ErrConcurrencyConflict
+	}
+	s.logger.ErrorContext(ctx, "failed to insert events to event store",
+		slog.String("aggregate_id", aggregateID),
+		slog.Int("events_count", count),
+		slog.String("error", err.Error()),
+	)
+	return fmt.Errorf("failed to insert events: %w", err)
 }
 
 // FindCommand returns the stored effect of a command saved with appcore.WithCommand.
