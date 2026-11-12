@@ -26,9 +26,6 @@ type PageAuthConfig struct {
 
 	// Logger for auth events.
 	Logger *slog.Logger
-
-	// RequireValidator rejects every session when TokenValidator is missing instead of using the mock user.
-	RequireValidator bool
 }
 
 // globalPageAuthConfig holds the global configuration for page auth middleware.
@@ -93,13 +90,8 @@ func OptionalAuth(next echo.HandlerFunc) echo.HandlerFunc {
 func validateAndSetUserContext(c echo.Context, token string) error {
 	config := globalPageAuthConfig
 
-	if config != nil && config.RequireValidator && config.TokenValidator == nil {
-		return middleware.ErrInvalidToken
-	}
-
-	// If no config is set, use mock mode for development
 	if config == nil || config.TokenValidator == nil {
-		return setMockUserContext(c, token)
+		return middleware.ErrInvalidToken
 	}
 
 	ctx := c.Request().Context()
@@ -138,7 +130,6 @@ func setUserContext(c echo.Context, userID uuid.UUID, claims *middleware.TokenCl
 	c.Set(string(middleware.ContextKeyUsername), claims.Username)
 	c.Set(string(middleware.ContextKeyEmail), claims.Email)
 	c.Set(string(middleware.ContextKeyRoles), claims.Roles)
-	c.Set(string(middleware.ContextKeyGroups), claims.Groups)
 	c.Set(string(middleware.ContextKeyIsSystemAdmin), claims.IsSystemAdmin)
 	c.Set(string(middleware.ContextKeyClaims), claims)
 
@@ -153,30 +144,6 @@ func setUserContext(c echo.Context, userID uuid.UUID, claims *middleware.TokenCl
 		"username":     claims.Username,
 		"display_name": displayName,
 	})
-}
-
-// setMockUserContext sets mock user context for development mode.
-func setMockUserContext(c echo.Context, token string) error {
-	// Use a stable mock user ID for development (based on token value for consistency)
-	mockUserID := uuid.DeterministicUUID("mock-user-" + token)
-
-	claims := &middleware.TokenClaims{
-		UserID:         mockUserID,
-		ExternalUserID: "mock-external-id",
-		Username:       "mockuser",
-		Email:          "user@example.com",
-		Roles:          []string{"user"},
-		Groups:         []string{},
-		IsSystemAdmin:  false,
-	}
-
-	setUserContext(c, mockUserID, claims)
-
-	logger().Debug("using mock user context (development mode)",
-		slog.String("user_id", mockUserID.String()),
-	)
-
-	return nil
 }
 
 // handleUnauthenticated handles unauthenticated requests.

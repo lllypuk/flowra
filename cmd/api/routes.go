@@ -29,11 +29,6 @@ func SetupRoutes(c *Container) *httpserver.Router {
 				"/ready",
 				"/health/details",
 				"/metrics",
-				"/api/v1/auth/login",
-				"/api/v1/auth/register",
-			},
-			AllowExpiredForPaths: []string{
-				"/api/v1/auth/refresh",
 			},
 			// Session cookie support for HTMX frontend
 			SessionCookieName: "flowra_session",
@@ -101,12 +96,6 @@ func registerFeedRoutes(r *httpserver.Router, c *Container) {
 
 // registerAuthRoutes registers authentication-related routes.
 func registerAuthRoutes(r *httpserver.Router, c *Container) {
-	// Public auth routes
-	r.Public().POST("/auth/login", c.AuthHandler.Login)
-
-	// Authenticated auth routes
-	r.Auth().POST("/auth/logout", c.AuthHandler.Logout)
-	r.Auth().POST("/auth/refresh", c.AuthHandler.Refresh)
 	r.Auth().GET("/auth/me", c.AuthHandler.Me)
 }
 
@@ -289,7 +278,6 @@ func registerPageRoutes(e *echo.Echo, c *Container) {
 	// Auth pages (public)
 	e.GET("/login", c.TemplateHandler.LoginPage)
 	e.POST("/login", c.TemplateHandler.LoginSubmit)
-	e.GET("/auth/callback", c.TemplateHandler.AuthCallback)
 
 	// Auth actions
 	e.GET("/logout", httphandler.RequireAuth(c.TemplateHandler.LogoutPage))

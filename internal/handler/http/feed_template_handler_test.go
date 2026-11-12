@@ -50,7 +50,7 @@ func newFeedPages(t *testing.T, svc httphandler.FeedPageService) *echo.Echo {
 	t.Helper()
 	renderer, err := httphandler.NewTemplateRenderer(httphandler.TemplateRendererConfig{FS: web.TemplatesFS})
 	require.NoError(t, err)
-	usePageAuth(t, &httphandler.PageAuthConfig{TokenValidator: ownerValidator(t, ownerSecret), RequireValidator: true})
+	usePageAuth(t, &httphandler.PageAuthConfig{TokenValidator: ownerValidator(t, ownerSecret)})
 
 	handler := httphandler.NewFeedTemplateHandler(renderer, svc, nil)
 	handler.SetClock(func() time.Time { return pageNow }, time.UTC)

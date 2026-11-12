@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "flowra-api-collection-2026",
     "name": "Flowra API",
-    "description": "Complete API collection for Flowra - Chat System with Task Management.\n\n## Setup\n\n1. Import this collection into Postman\n2. Import the environment file or create variables:\n   - `base_url`: http://localhost:8080/api/v1\n   - `access_token`: Your JWT token\n   - `workspace_id`: Active workspace ID\n   - `chat_id`: Active chat ID\n\n## Authentication\n\nMost endpoints require authentication. Use the Login endpoint to get tokens, then set the `access_token` variable.",
+    "description": "Complete API collection for Flowra - Chat System with Task Management.\n\n## Setup\n\n1. Import this collection into Postman\n2. Import the environment file or create variables:\n   - `base_url`: http://localhost:8080/api/v1\n   - `access_token`: Your owner access token\n   - `workspace_id`: Active workspace ID\n   - `chat_id`: Active chat ID\n\n## Authentication\n\nMost endpoints require authentication. Set the `access_token` variable to an owner access token configured on the server.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -27,132 +27,6 @@
       "name": "Authentication",
       "description": "Authentication and session management endpoints",
       "item": [
-        {
-          "name": "Login",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "if (pm.response.code === 200) {",
-                  "    var jsonData = pm.response.json();",
-                  "    if (jsonData.data) {",
-                  "        pm.environment.set('access_token', jsonData.data.access_token);",
-                  "        pm.environment.set('refresh_token', jsonData.data.refresh_token);",
-                  "        pm.environment.set('user_id', jsonData.data.user.id);",
-                  "    }",
-                  "}",
-                  "",
-                  "pm.test('Login successful', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Response has access token', function () {",
-                  "    var jsonData = pm.response.json();",
-                  "    pm.expect(jsonData.data).to.have.property('access_token');",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "noauth"
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"code\": \"{{oauth_code}}\",\n    \"redirect_uri\": \"http://localhost:8080/callback\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/auth/login",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "login"]
-            },
-            "description": "Login with OAuth authorization code from Keycloak"
-          }
-        },
-        {
-          "name": "Logout",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Logout successful', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "if (pm.response.code === 200) {",
-                  "    pm.environment.unset('access_token');",
-                  "    pm.environment.unset('refresh_token');",
-                  "}"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/auth/logout",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "logout"]
-            },
-            "description": "Logout current session and invalidate tokens"
-          }
-        },
-        {
-          "name": "Refresh Token",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "if (pm.response.code === 200) {",
-                  "    var jsonData = pm.response.json();",
-                  "    if (jsonData.data) {",
-                  "        pm.environment.set('access_token', jsonData.data.access_token);",
-                  "        pm.environment.set('refresh_token', jsonData.data.refresh_token);",
-                  "    }",
-                  "}",
-                  "",
-                  "pm.test('Token refreshed', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"refresh_token\": \"{{refresh_token}}\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/auth/refresh",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "refresh"]
-            },
-            "description": "Refresh access token using refresh token"
-          }
-        },
         {
           "name": "Get Current User",
           "event": [

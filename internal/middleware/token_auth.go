@@ -91,6 +91,5 @@ func (v *OwnerTokenValidator) ValidateToken(ctx context.Context, token string) (
 		Username:       v.owner.Username,
 		Email:          v.owner.Email,
 		Roles:          []string{"user"},
-		Groups:         []string{},
 	}, nil
 }

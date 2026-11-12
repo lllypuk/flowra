@@ -129,11 +129,3 @@ func clearRedirectCookie(c echo.Context) {
 	}
 	c.SetCookie(cookie)
 }
-
-// GetRedirectURI builds the OAuth redirect URI based on the request.
-// This will be used when integrating with real OAuth provider (Keycloak).
-func GetRedirectURI(c echo.Context) string {
-	scheme := c.Scheme()
-	host := c.Request().Host
-	return scheme + "://" + host + "/auth/callback"
-}

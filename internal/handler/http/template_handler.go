@@ -228,21 +228,6 @@ type UserView struct {
 	UpdatedAt   time.Time
 }
 
-// OAuthClient defines the interface for OAuth operations.
-type OAuthClient interface {
-	// AuthorizationURL generates the OAuth authorization URL.
-	AuthorizationURL(redirectURI, state string) string
-	// ExchangeCode exchanges an authorization code for tokens.
-	ExchangeCode(ctx context.Context, code, redirectURI string) (*OAuthTokenResponse, error)
-}
-
-// OAuthTokenResponse represents OAuth token response.
-type OAuthTokenResponse struct {
-	AccessToken  string
-	RefreshToken string
-	ExpiresIn    int
-}
-
 // UserProfileLookup resolves user IDs to user profile details.
 // Declared on the consumer side per project guidelines.
 type UserProfileLookup interface {
@@ -263,13 +248,12 @@ type TemplateHandler struct {
 	logger           *slog.Logger
 	workspaceService WorkspaceService
 	memberService    MemberService
-	oauthClient      OAuthClient
 	userLookup       UserProfileLookup
 	userSearcher     UserSearcher
 	tokenLogin       *TokenLogin
 }
 
-// TokenLogin switches the login page to a token form; the OAuth callback and its mock path stop working.
+// TokenLogin configures sign-in with an owner token.
 type TokenLogin struct {
 	Validator  middleware.TokenValidator
 	SessionTTL time.Duration
@@ -298,11 +282,6 @@ func NewTemplateHandler(
 func (h *TemplateHandler) SetServices(workspaceService WorkspaceService, memberService MemberService) {
 	h.workspaceService = workspaceService
 	h.memberService = memberService
-}
-
-// SetOAuthClient sets the OAuth client for authentication.
-func (h *TemplateHandler) SetOAuthClient(client OAuthClient) {
-	h.oauthClient = client
 }
 
 // SetTokenLogin enables sign-in with an owner token.
@@ -411,7 +390,7 @@ func (h *TemplateHandler) Home(c echo.Context) error {
 	return h.render(c, "home.html", "Home", nil)
 }
 
-// LoginPage renders the login page with OAuth auth URL.
+// LoginPage renders the token sign-in form.
 func (h *TemplateHandler) LoginPage(c echo.Context) error {
 	// Redirect if already logged in
 	token := getSessionCookie(c)
@@ -423,41 +402,15 @@ func (h *TemplateHandler) LoginPage(c echo.Context) error {
 	state := generateState()
 	setStateCookie(c, state)
 
-	if h.tokenLogin != nil {
-		return h.renderTokenLogin(c, http.StatusOK, state, c.QueryParam("error"))
-	}
-
-	// Build auth URL
-	var authURL string
-	redirectURI := GetRedirectURI(c)
-
-	if h.oauthClient != nil {
-		// Use real Keycloak OAuth URL
-		authURL = h.oauthClient.AuthorizationURL(redirectURI, state)
-	} else {
-		// Fallback to mock for development without Keycloak
-		h.logger.Warn("OAuth client not configured, using mock auth flow")
-		authURL = "/auth/callback?code=mock-code&state=" + state
-	}
-
-	// Template expects AuthURL and Error at top level
-	data := map[string]any{
-		"Title":   "Login",
-		"AuthURL": authURL,
-		"Error":   c.QueryParam("error"),
-		"User":    nil, // Not logged in
-	}
-
-	return h.renderer.Render(c.Response().Writer, "auth/login.html", data, c)
+	return h.renderTokenLogin(c, http.StatusOK, state, c.QueryParam("error"))
 }
 
 func (h *TemplateHandler) renderTokenLogin(c echo.Context, status int, state, errorMsg string) error {
 	data := map[string]any{
-		"Title":      "Login",
-		"TokenLogin": true,
-		"State":      state,
-		"Error":      errorMsg,
-		"User":       nil,
+		"Title": "Login",
+		"State": state,
+		"Error": errorMsg,
+		"User":  nil,
 	}
 	c.Response().WriteHeader(status)
 	return h.renderer.Render(c.Response().Writer, "auth/login.html", data, c)
@@ -496,83 +449,6 @@ func (h *TemplateHandler) retryTokenLogin(c echo.Context, status int, errorMsg s
 	state := generateState()
 	setStateCookie(c, state)
 	return h.renderTokenLogin(c, status, state, errorMsg)
-}
-
-// AuthCallback handles OAuth callback from the authentication provider.
-func (h *TemplateHandler) AuthCallback(c echo.Context) error {
-	if h.tokenLogin != nil {
-		return c.Redirect(http.StatusFound, "/login")
-	}
-
-	code := c.QueryParam("code")
-	state := c.QueryParam("state")
-	errorParam := c.QueryParam("error")
-
-	// Check for OAuth error
-	if errorParam != "" {
-		return h.renderCallback(c, "", "Authentication failed: "+errorParam)
-	}
-
-	// Validate state parameter (CSRF protection)
-	expectedState := getStateCookie(c)
-	clearStateCookie(c)
-
-	if state != expectedState || expectedState == "" {
-		return h.renderCallback(c, "", "Invalid state parameter. Please try again.")
-	}
-
-	// Exchange code for tokens
-	if h.oauthClient != nil {
-		// Real OAuth flow with Keycloak
-		redirectURI := GetRedirectURI(c)
-		tokens, err := h.oauthClient.ExchangeCode(c.Request().Context(), code, redirectURI)
-		if err != nil {
-			h.logger.Error("failed to exchange code for tokens",
-				slog.String("error", err.Error()),
-			)
-			return h.renderCallback(c, "", "Authentication failed. Please try again.")
-		}
-
-		// Store access token in session cookie
-		setSessionCookie(c, tokens.AccessToken, tokens.ExpiresIn)
-
-		// Get redirect URL or default to workspaces
-		redirectURL := getRedirectCookie(c)
-		if redirectURL == "" {
-			redirectURL = "/workspaces"
-		}
-		clearRedirectCookie(c)
-
-		return h.renderCallback(c, redirectURL, "")
-	}
-
-	// Fallback mock mode (only when OAuth client is not configured)
-	if code == "mock-code" {
-		h.logger.Warn("using mock authentication flow")
-		const mockExpiresIn = 3600 // 1 hour
-		setSessionCookie(c, "mock-session-token", mockExpiresIn)
-
-		redirectURL := getRedirectCookie(c)
-		if redirectURL == "" {
-			redirectURL = "/workspaces"
-		}
-		clearRedirectCookie(c)
-
-		return h.renderCallback(c, redirectURL, "")
-	}
-
-	return h.renderCallback(c, "", "Invalid authentication code")
-}
-
-// renderCallback renders the OAuth callback page.
-func (h *TemplateHandler) renderCallback(c echo.Context, redirectURL, errorMsg string) error {
-	data := map[string]any{
-		"Title":       "Signing In",
-		"RedirectURL": redirectURL,
-		"Error":       errorMsg,
-		"User":        nil, // Not logged in yet during callback
-	}
-	return h.renderer.Render(c.Response().Writer, "auth/callback.html", data, c)
 }
 
 // LogoutPage renders the logout confirmation page.
@@ -714,7 +590,6 @@ func (h *TemplateHandler) SetupPageRoutes(e *echo.Echo) {
 	e.POST("/login", h.LoginSubmit)
 
 	// Auth pages
-	e.GET("/auth/callback", h.AuthCallback)
 	e.GET("/logout", h.LogoutPage)
 	e.POST("/auth/logout", h.LogoutHandler)
 

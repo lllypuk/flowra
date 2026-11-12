@@ -27,8 +27,8 @@ Server-side behavior (`internal/handler/websocket/handler.go`):
 
 - First tries authenticated user ID from middleware context (when connecting through the authenticated route group).
 - If missing, falls back to token validation from:
-  - query param `?token=<jwt>`
-  - `Authorization: Bearer <jwt>` header
+  - query param `?token=<token>`
+  - `Authorization: Bearer <token>` header
 
 If authentication fails, the server returns `401` JSON (no upgrade).
 
@@ -335,7 +335,7 @@ Because subscriptions are per connection, clients should re-send `subscribe` for
 1. Connect:
 
 ```text
-GET /api/v1/ws?token=<jwt>
+GET /api/v1/ws?token=<token>
 ```
 
 2. Subscribe to a chat:
@@ -371,7 +371,7 @@ GET /api/v1/ws?token=<jwt>
 
 ### `401` before upgrade
 
-- Check session cookie or JWT token
+- Check session cookie or access token
 - Use canonical endpoint `/api/v1/ws`
 - If using token query param, ensure `token` is present and valid
 

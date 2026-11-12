@@ -38,7 +38,6 @@ func newLoginServer(t *testing.T, tokenMode bool) *echo.Echo {
 	e := echo.New()
 	e.GET("/login", handler.LoginPage)
 	e.POST("/login", handler.LoginSubmit)
-	e.GET("/auth/callback", handler.AuthCallback)
 	e.POST("/auth/logout", handler.LogoutHandler)
 	return e
 }
@@ -76,7 +75,6 @@ func TestLoginPage_TokenMode_ShowsTokenForm(t *testing.T) {
 	require.Equal(t, stdhttp.StatusOK, rec.Code)
 	body := rec.Body.String()
 	assert.Contains(t, body, `name="token"`)
-	assert.NotContains(t, body, "mock-code")
 	assert.NotContains(t, body, "Sign in with SSO")
 
 	state := cookieNamed(rec, stateCookie)
@@ -136,17 +134,15 @@ func TestLoginSubmit_TokenMode_ReturnsToSavedPage(t *testing.T) {
 	assert.Equal(t, "/feed", rec.Header().Get("Location"))
 }
 
-func TestAuthCallback_TokenMode_MockCodeIsRefused(t *testing.T) {
-	e := newLoginServer(t, true)
-	req := httptest.NewRequest(stdhttp.MethodGet, "/auth/callback?code=mock-code&state=s1", nil)
-	req.AddCookie(&stdhttp.Cookie{Name: stateCookie, Value: "s1"})
+func TestLoginPage_WithoutTokenLogin_StillShowsTokenForm(t *testing.T) {
+	e := newLoginServer(t, false)
 	rec := httptest.NewRecorder()
 
-	e.ServeHTTP(rec, req)
+	e.ServeHTTP(rec, httptest.NewRequest(stdhttp.MethodGet, "/login", nil))
 
-	assert.Equal(t, stdhttp.StatusFound, rec.Code)
-	assert.Equal(t, "/login", rec.Header().Get("Location"))
-	assert.Nil(t, cookieNamed(rec, "flowra_session"))
+	require.Equal(t, stdhttp.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `name="token"`)
+	assert.NotContains(t, rec.Body.String(), "/auth/callback")
 }
 
 func TestLoginSubmit_WithoutTokenMode_IsNotServed(t *testing.T) {

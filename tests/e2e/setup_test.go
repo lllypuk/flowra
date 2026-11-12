@@ -72,7 +72,6 @@ type E2ETestSuite struct {
 	NotificationRepo *mongodb.MongoNotificationRepository
 
 	// HTTP Handlers with mocks for easier testing
-	MockAuthService      *httphandler.MockAuthService
 	MockUserRepo         *httphandler.MockUserRepository
 	MockWorkspaceService *httphandler.MockWorkspaceService
 	MockMemberService    *httphandler.MockMemberService
@@ -216,7 +215,6 @@ func (s *E2ETestSuite) setupRepositories() {
 
 // setupMockServices initializes mock services for HTTP handlers.
 func (s *E2ETestSuite) setupMockServices() {
-	s.MockAuthService = httphandler.NewMockAuthService()
 	s.MockUserRepo = httphandler.NewMockUserRepository()
 	s.MockWorkspaceService = httphandler.NewMockWorkspaceService()
 	s.MockMemberService = httphandler.NewMockMemberService()
@@ -242,10 +240,6 @@ func (s *E2ETestSuite) setupServer() {
 		SkipPaths: []string{
 			"/health",
 			"/ready",
-			"/api/v1/auth/login",
-		},
-		AllowExpiredForPaths: []string{
-			"/api/v1/auth/refresh",
 		},
 	})
 
@@ -261,7 +255,7 @@ func (s *E2ETestSuite) setupServer() {
 	})
 
 	// Create handlers
-	authHandler := httphandler.NewAuthHandler(s.MockAuthService, s.MockUserRepo)
+	authHandler := httphandler.NewAuthHandler(s.MockUserRepo)
 	workspaceHandler := httphandler.NewWorkspaceHandler(s.MockWorkspaceService, s.MockMemberService)
 	chatHandler := httphandler.NewChatHandler(s.MockChatService)
 	messageHandler := httphandler.NewMessageHandler(s.MessageService)
@@ -270,10 +264,6 @@ func (s *E2ETestSuite) setupServer() {
 	// Register routes
 	api := s.Echo.Group("/api/v1")
 
-	// Auth routes (public)
-	api.POST("/auth/login", authHandler.Login)
-	api.POST("/auth/logout", authHandler.Logout)
-	api.POST("/auth/refresh", authHandler.Refresh)
 	api.GET("/auth/me", authHandler.Me)
 
 	// Workspace routes
@@ -459,8 +449,6 @@ func (s *E2ETestSuite) CreateTestUser(username string) *TestUser {
 		ExpiresAt:      time.Now().Add(24 * time.Hour),
 	})
 
-	// Add to mock auth service
-	s.MockAuthService.AddUser("code-"+username, u)
 	s.MockUserRepo.AddUser(u)
 
 	// Store user

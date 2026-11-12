@@ -20,13 +20,11 @@ make dev
 
 ### 2. Authenticate
 
-All API requests (except `/auth/login` and health checks) require JWT authentication.
+All API requests except health checks require an owner access token. Generate one and give the server its digest:
 
 ```bash
-# Obtain tokens via OAuth flow with Keycloak
-curl -X POST http://localhost:8080/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"code": "<oauth_code>", "redirect_uri": "http://localhost:8080/callback"}'
+token=$(openssl rand -hex 32); echo "$token"
+export AUTH_OWNER_TOKEN_SHA256=$(printf %s "$token" | sha256sum | cut -d' ' -f1)
 ```
 
 ### 3. Make Authenticated Requests
@@ -75,20 +73,13 @@ You can view the API documentation using:
 
 ## Authentication
 
-Flowra uses JWT-based authentication via Keycloak SSO.
-
-### Token Flow
-
-1. User initiates OAuth flow with Keycloak
-2. Keycloak redirects with authorization code
-3. Exchange code for tokens via `/auth/login`
-4. Use access token in `Authorization` header
-5. Refresh tokens via `/auth/refresh` when expired
+Every token configured on the server signs in as the owner. Tokens are named (`auth.tokens`) so one can be
+removed without changing the others; the server never issues or refreshes them.
 
 ### Headers
 
 ```http
-Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+Authorization: Bearer <token>
 Content-Type: application/json
 ```
 
@@ -97,9 +88,6 @@ Content-Type: application/json
 ### Authentication
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/auth/login` | Login with OAuth code |
-| POST | `/auth/logout` | Logout current session |
-| POST | `/auth/refresh` | Refresh access token |
 | GET | `/auth/me` | Get current user |
 
 ### Users
@@ -249,7 +237,7 @@ X-RateLimit-Reset: 1704067200
 
 ## WebSocket API
 
-Connect to `/api/v1/ws` with JWT token for real-time updates.
+Connect to `/api/v1/ws` with an access token for real-time updates.
 
 For the current protocol (message types, payload envelope, HTMX integration, and reconnect behavior), see:
 
@@ -258,7 +246,7 @@ For the current protocol (message types, payload envelope, HTMX integration, and
 ### Connection
 
 ```javascript
-const ws = new WebSocket('ws://localhost:8080/api/v1/ws?token=<jwt_token>');
+const ws = new WebSocket('ws://localhost:8080/api/v1/ws?token=<token>');
 ```
 
 ### Client Messages
@@ -304,7 +292,7 @@ Import the Postman collection for easy API testing:
 2. Import → Upload Files → Select `postman_collection.json`
 3. Set environment variables:
    - `base_url`: `http://localhost:8080/api/v1`
-   - `access_token`: Your JWT token
+   - `access_token`: Your owner access token
 
 ## Development
 
@@ -332,7 +320,6 @@ openapi-generator-cli generate -i openapi.yaml -g go -o ./sdk/go
 
 - [OpenAPI 3.1 Specification](https://spec.openapis.org/oas/v3.1.0)
 - [Swagger Editor](https://editor.swagger.io/)
-- [Keycloak Documentation](https://www.keycloak.org/documentation)
 - [Echo Framework](https://echo.labstack.com/)
 
 ---

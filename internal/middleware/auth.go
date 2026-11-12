@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"context"
-	"crypto/subtle"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -33,9 +32,6 @@ const (
 	// ContextKeyRoles is the context key for user roles.
 	ContextKeyRoles contextKey = "roles"
 
-	// ContextKeyGroups is the context key for user groups (from Keycloak).
-	ContextKeyGroups contextKey = "groups"
-
 	// ContextKeyIsSystemAdmin is the context key for system admin flag.
 	ContextKeyIsSystemAdmin contextKey = "is_system_admin"
 
@@ -51,9 +47,6 @@ var (
 	ErrTokenExpired            = errors.New("token expired")
 	ErrUserNotFound            = errors.New("user not found")
 	ErrInsufficientPermissions = errors.New("insufficient permissions")
-
-	// errMockSessionHandled is a sentinel error indicating mock session was handled.
-	errMockSessionHandled = errors.New("mock session handled")
 )
 
 // TokenClaims represents the claims extracted from a JWT token.
@@ -61,7 +54,7 @@ type TokenClaims struct {
 	// UserID is the internal user ID.
 	UserID uuid.UUID
 
-	// ExternalUserID is the user ID from the external auth provider (Keycloak).
+	// ExternalUserID is the identity the token resolves to.
 	ExternalUserID string
 
 	// Username is the user's username.
@@ -72,9 +65,6 @@ type TokenClaims struct {
 
 	// Roles is a list of user roles.
 	Roles []string
-
-	// Groups is a list of user groups (from Keycloak).
-	Groups []string
 
 	// IsSystemAdmin indicates if the user is a system administrator.
 	IsSystemAdmin bool
@@ -110,30 +100,12 @@ type AuthConfig struct {
 	// SkipPaths are paths that don't require authentication.
 	SkipPaths []string
 
-	// AllowExpiredForPaths allows expired tokens for specific paths (e.g., refresh endpoint).
-	AllowExpiredForPaths []string
-
 	// SessionCookieName is the name of the session cookie to check as fallback.
 	// If set, the middleware will check for this cookie when no Authorization header is present.
 	SessionCookieName string
-
-	// MockSessionToken is the token value that identifies a valid mock session.
-	// Used for development when real auth is not available.
-	MockSessionToken string
-}
-
-// DefaultAuthConfig returns an AuthConfig with sensible defaults.
-func DefaultAuthConfig() AuthConfig {
-	return AuthConfig{
-		Logger:               slog.Default(),
-		SkipPaths:            []string{"/health", "/ready", "/api/v1/auth/login", "/api/v1/auth/register"},
-		AllowExpiredForPaths: []string{"/api/v1/auth/refresh"},
-	}
 }
 
 // Auth returns an authentication middleware with the given configuration.
-//
-//nolint:gocognit // Auth middleware requires complex token validation logic.
 func Auth(config AuthConfig) echo.MiddlewareFunc {
 	if config.Logger == nil {
 		config.Logger = slog.Default()
@@ -142,11 +114,6 @@ func Auth(config AuthConfig) echo.MiddlewareFunc {
 	skipPaths := make(map[string]struct{}, len(config.SkipPaths))
 	for _, path := range config.SkipPaths {
 		skipPaths[path] = struct{}{}
-	}
-
-	allowExpiredPaths := make(map[string]struct{}, len(config.AllowExpiredForPaths))
-	for _, path := range config.AllowExpiredForPaths {
-		allowExpiredPaths[path] = struct{}{}
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -162,10 +129,6 @@ func Auth(config AuthConfig) echo.MiddlewareFunc {
 			authHeader := c.Request().Header.Get(echo.HeaderAuthorization)
 			token, tokenErr := extractTokenFromRequest(c, authHeader, config)
 			if tokenErr != nil {
-				// Check if mock session was handled
-				if errors.Is(tokenErr, errMockSessionHandled) {
-					return next(c)
-				}
 				return respondAuthError(c, tokenErr)
 			}
 
@@ -176,19 +139,7 @@ func Auth(config AuthConfig) echo.MiddlewareFunc {
 			}
 
 			claims, validateErr := config.TokenValidator.ValidateToken(c.Request().Context(), token)
-			//nolint:nestif // Token validation requires nested error handling for expired token paths
 			if validateErr != nil {
-				// Check if expired tokens are allowed for this path
-				if errors.Is(validateErr, ErrTokenExpired) {
-					if _, ok := allowExpiredPaths[path]; ok {
-						// Allow expired token for refresh endpoint
-						if claims != nil {
-							enrichContext(c, claims)
-							return next(c)
-						}
-					}
-				}
-
 				config.Logger.Warn("token validation failed",
 					slog.String("error", validateErr.Error()),
 					slog.String("path", path),
@@ -242,11 +193,6 @@ func extractTokenFromRequest(c echo.Context, authHeader string, config AuthConfi
 	if config.SessionCookieName != "" {
 		cookie, cookieErr := c.Cookie(config.SessionCookieName)
 		if cookieErr == nil && cookie.Value != "" {
-			// Check if this is a mock session (for development)
-			if config.MockSessionToken != "" && cookie.Value == config.MockSessionToken {
-				setMockUserContext(c)
-				return "", errMockSessionHandled
-			}
 			return cookie.Value, nil
 		}
 	}
@@ -276,31 +222,8 @@ func enrichContext(c echo.Context, claims *TokenClaims) {
 	c.Set(string(ContextKeyUsername), claims.Username)
 	c.Set(string(ContextKeyEmail), claims.Email)
 	c.Set(string(ContextKeyRoles), claims.Roles)
-	c.Set(string(ContextKeyGroups), claims.Groups)
 	c.Set(string(ContextKeyIsSystemAdmin), claims.IsSystemAdmin)
 	c.Set(string(ContextKeyClaims), claims)
-}
-
-// setMockUserContext sets mock user context for development sessions.
-func setMockUserContext(c echo.Context) {
-	mockUserID := uuid.NewUUID()
-	mockClaims := &TokenClaims{
-		UserID:         mockUserID,
-		ExternalUserID: "mock-external-id",
-		Username:       "mockuser",
-		Email:          "user@example.com",
-		Roles:          []string{"user"},
-		Groups:         []string{},
-		IsSystemAdmin:  false,
-	}
-	c.Set(string(ContextKeyUserID), mockClaims.UserID)
-	c.Set(string(ContextKeyExternalUserID), mockClaims.ExternalUserID)
-	c.Set(string(ContextKeyUsername), mockClaims.Username)
-	c.Set(string(ContextKeyEmail), mockClaims.Email)
-	c.Set(string(ContextKeyRoles), mockClaims.Roles)
-	c.Set(string(ContextKeyGroups), mockClaims.Groups)
-	c.Set(string(ContextKeyIsSystemAdmin), mockClaims.IsSystemAdmin)
-	c.Set(string(ContextKeyClaims), mockClaims)
 }
 
 // respondAuthError sends an authentication error response.
@@ -444,107 +367,4 @@ func GetUser(c echo.Context) *TokenClaims {
 		return claims
 	}
 	return nil
-}
-
-// GetGroups extracts the user groups from the echo context.
-func GetGroups(c echo.Context) []string {
-	if groups, ok := c.Get(string(ContextKeyGroups)).([]string); ok {
-		return groups
-	}
-	return nil
-}
-
-// InGroup checks if the current user is in the specified group.
-// Supports both "/group" and "group" formats for matching.
-func InGroup(c echo.Context, group string) bool {
-	groups := GetGroups(c)
-	for _, g := range groups {
-		// Match exact or with leading slash
-		if g == group || g == "/"+group || "/"+g == group {
-			return true
-		}
-	}
-	return false
-}
-
-// HasAnyGroup checks if the current user is in any of the specified groups.
-func HasAnyGroup(c echo.Context, groups ...string) bool {
-	for _, group := range groups {
-		if InGroup(c, group) {
-			return true
-		}
-	}
-	return false
-}
-
-// RequireGroup returns a middleware that requires the user to be in a specific group.
-func RequireGroup(group string) echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			if !InGroup(c, group) {
-				return respondAuthError(c, ErrInsufficientPermissions)
-			}
-			return next(c)
-		}
-	}
-}
-
-// RequireAnyGroup returns a middleware that requires the user to be in any of the specified groups.
-func RequireAnyGroup(groups ...string) echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			if !HasAnyGroup(c, groups...) {
-				return respondAuthError(c, ErrInsufficientPermissions)
-			}
-			return next(c)
-		}
-	}
-}
-
-// StaticTokenValidator is a simple token validator for development/testing.
-// It validates tokens against a static secret using HMAC.
-// DO NOT USE IN PRODUCTION - use proper JWT validation instead.
-type StaticTokenValidator struct {
-	secret []byte
-}
-
-// NewStaticTokenValidator creates a new static token validator.
-func NewStaticTokenValidator(secret string) *StaticTokenValidator {
-	return &StaticTokenValidator{
-		secret: []byte(secret),
-	}
-}
-
-// ValidateToken validates a token using constant-time comparison.
-// This is a placeholder implementation for development.
-func (v *StaticTokenValidator) ValidateToken(_ context.Context, token string) (*TokenClaims, error) {
-	// This is a dummy implementation for development/testing
-	// In production, this should decode and verify a real JWT token
-	if len(token) == 0 {
-		return nil, ErrInvalidToken
-	}
-
-	// Simple constant-time comparison for development tokens
-	// Format: "dev-token-<user_id>"
-	if strings.HasPrefix(token, "dev-token-") {
-		parts := strings.Split(token, "-")
-		const minDevTokenParts = 3
-		const devTokenExpirationHours = 24
-		if len(parts) >= minDevTokenParts {
-			return &TokenClaims{
-				ExternalUserID: parts[2],
-				Username:       "dev-user-" + parts[2],
-				Email:          "dev-" + parts[2] + "@example.com",
-				Roles:          []string{"user"},
-				ExpiresAt:      time.Now().Add(devTokenExpirationHours * time.Hour),
-			}, nil
-		}
-	}
-
-	return nil, ErrInvalidToken
-}
-
-// ConstantTimeCompare performs a constant-time comparison of two strings.
-func ConstantTimeCompare(a, b string) bool {
-	return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1
 }

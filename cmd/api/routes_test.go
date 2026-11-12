@@ -35,7 +35,7 @@ func TestSetupRoutes_ReturnsRouter(t *testing.T) {
 	c := &Container{
 		Config:         cfg,
 		Logger:         logger,
-		TokenValidator: middleware.NewStaticTokenValidator(cfg.Auth.JWTSecret),
+		TokenValidator: testTokenValidator(t),
 		AccessChecker:  middleware.NewMockWorkspaceAccessChecker(),
 		Hub:            websocket.NewHub(),
 	}
@@ -53,7 +53,7 @@ func TestSetupRoutes_HealthEndpoint(t *testing.T) {
 	c := &Container{
 		Config:         cfg,
 		Logger:         logger,
-		TokenValidator: middleware.NewStaticTokenValidator(cfg.Auth.JWTSecret),
+		TokenValidator: testTokenValidator(t),
 		AccessChecker:  middleware.NewMockWorkspaceAccessChecker(),
 		Hub:            websocket.NewHub(),
 	}
@@ -79,7 +79,7 @@ func TestSetupRoutes_ReadyEndpoint_NotReady(t *testing.T) {
 	c := &Container{
 		Config:         cfg,
 		Logger:         logger,
-		TokenValidator: middleware.NewStaticTokenValidator(cfg.Auth.JWTSecret),
+		TokenValidator: testTokenValidator(t),
 		AccessChecker:  middleware.NewMockWorkspaceAccessChecker(),
 		Hub:            websocket.NewHub(),
 	}
@@ -104,7 +104,7 @@ func TestSetupRoutes_HealthDetailsEndpoint(t *testing.T) {
 	c := &Container{
 		Config:         cfg,
 		Logger:         logger,
-		TokenValidator: middleware.NewStaticTokenValidator(cfg.Auth.JWTSecret),
+		TokenValidator: testTokenValidator(t),
 		AccessChecker:  middleware.NewMockWorkspaceAccessChecker(),
 		Hub:            websocket.NewHub(),
 	}
@@ -131,7 +131,7 @@ func TestSetupRoutes_RegistersAuthRoutes(t *testing.T) {
 	c := &Container{
 		Config:         cfg,
 		Logger:         logger,
-		TokenValidator: middleware.NewStaticTokenValidator(cfg.Auth.JWTSecret),
+		TokenValidator: testTokenValidator(t),
 		AccessChecker:  middleware.NewMockWorkspaceAccessChecker(),
 		Hub:            websocket.NewHub(),
 	}
@@ -146,8 +146,11 @@ func TestSetupRoutes_RegistersAuthRoutes(t *testing.T) {
 		routePaths[r.Method+":"+r.Path] = true
 	}
 
-	// Auth routes should be registered
-	assert.True(t, routePaths["POST:/api/v1/auth/login"], "login route should be registered")
+	assert.True(t, routePaths["GET:/api/v1/auth/me"], "me route should be registered")
+	for _, gone := range []string{"POST:/api/v1/auth/login", "POST:/api/v1/auth/refresh", "POST:/api/v1/auth/logout",
+		"GET:/auth/callback"} {
+		assert.False(t, routePaths[gone], "%s is not served without Keycloak", gone)
+	}
 }
 
 func TestSetupRoutes_RegistersHealthEndpoints(t *testing.T) {
@@ -157,7 +160,7 @@ func TestSetupRoutes_RegistersHealthEndpoints(t *testing.T) {
 	c := &Container{
 		Config:         cfg,
 		Logger:         logger,
-		TokenValidator: middleware.NewStaticTokenValidator(cfg.Auth.JWTSecret),
+		TokenValidator: testTokenValidator(t),
 		AccessChecker:  middleware.NewMockWorkspaceAccessChecker(),
 		Hub:            websocket.NewHub(),
 	}
@@ -185,7 +188,7 @@ func TestSetupRoutes_RegistersWorkspaceRoutes(t *testing.T) {
 	c := &Container{
 		Config:         cfg,
 		Logger:         logger,
-		TokenValidator: middleware.NewStaticTokenValidator(cfg.Auth.JWTSecret),
+		TokenValidator: testTokenValidator(t),
 		AccessChecker:  middleware.NewMockWorkspaceAccessChecker(),
 		Hub:            websocket.NewHub(),
 	}
@@ -211,7 +214,7 @@ func TestSetupRoutes_RegistersChatRoutes(t *testing.T) {
 	c := &Container{
 		Config:         cfg,
 		Logger:         logger,
-		TokenValidator: middleware.NewStaticTokenValidator(cfg.Auth.JWTSecret),
+		TokenValidator: testTokenValidator(t),
 		AccessChecker:  middleware.NewMockWorkspaceAccessChecker(),
 		Hub:            websocket.NewHub(),
 	}
@@ -237,7 +240,7 @@ func TestSetupRoutes_RegistersWebSocketRoute(t *testing.T) {
 	c := &Container{
 		Config:         cfg,
 		Logger:         logger,
-		TokenValidator: middleware.NewStaticTokenValidator(cfg.Auth.JWTSecret),
+		TokenValidator: testTokenValidator(t),
 		AccessChecker:  middleware.NewMockWorkspaceAccessChecker(),
 		Hub:            websocket.NewHub(),
 	}
@@ -263,7 +266,7 @@ func TestSetupRoutes_PlaceholderEndpoints(t *testing.T) {
 	c := &Container{
 		Config:              cfg,
 		Logger:              logger,
-		TokenValidator:      middleware.NewStaticTokenValidator(cfg.Auth.JWTSecret),
+		TokenValidator:      testTokenValidator(t),
 		AccessChecker:       middleware.NewMockWorkspaceAccessChecker(),
 		Hub:                 websocket.NewHub(),
 		MessageHandler:      nil,
@@ -326,7 +329,7 @@ func TestRouteGroups_Created(t *testing.T) {
 	c := &Container{
 		Config:         cfg,
 		Logger:         logger,
-		TokenValidator: middleware.NewStaticTokenValidator(cfg.Auth.JWTSecret),
+		TokenValidator: testTokenValidator(t),
 		AccessChecker:  middleware.NewMockWorkspaceAccessChecker(),
 		Hub:            websocket.NewHub(),
 	}
@@ -346,7 +349,7 @@ func TestSetupRoutes_EchoConfiguration(t *testing.T) {
 	c := &Container{
 		Config:         cfg,
 		Logger:         slog.Default(),
-		TokenValidator: middleware.NewStaticTokenValidator(cfg.Auth.JWTSecret),
+		TokenValidator: testTokenValidator(t),
 		AccessChecker:  middleware.NewMockWorkspaceAccessChecker(),
 		Hub:            websocket.NewHub(),
 	}
@@ -380,7 +383,7 @@ func TestSetupRoutes_FeedRoutesAreReadOnly(t *testing.T) {
 	c := &Container{
 		Config:         cfg,
 		Logger:         slog.Default(),
-		TokenValidator: middleware.NewStaticTokenValidator(cfg.Auth.JWTSecret),
+		TokenValidator: testTokenValidator(t),
 		AccessChecker:  middleware.NewMockWorkspaceAccessChecker(),
 		Hub:            websocket.NewHub(),
 		FeedHandler:    httphandler.NewFeedHandler(nil, slog.Default()),
@@ -405,7 +408,7 @@ func TestSetupRoutes_FeedRoutesAreReadOnly(t *testing.T) {
 	for _, method := range []string{http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
 		for path := range feedRoutes {
 			req := httptest.NewRequest(method, strings.ReplaceAll(path, ":id", "T-0001"), nil)
-			req.Header.Set("Authorization", "Bearer dev-token-1")
+			req.Header.Set("Authorization", "Bearer test")
 			rec := httptest.NewRecorder()
 
 			e.ServeHTTP(rec, req)

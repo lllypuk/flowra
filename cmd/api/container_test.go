@@ -16,7 +16,6 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/event"
 	taskdomain "github.com/lllypuk/flowra/internal/domain/task"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
-	httphandler "github.com/lllypuk/flowra/internal/handler/http"
 	"github.com/lllypuk/flowra/internal/infrastructure/httpserver"
 	mongodbinfra "github.com/lllypuk/flowra/internal/infrastructure/mongodb"
 	"github.com/lllypuk/flowra/internal/infrastructure/repair"
@@ -291,7 +290,7 @@ func TestContainer_ValidateWiring_MockAccessCheckerInProduction(t *testing.T) {
 		Redis:          nil,
 		Hub:            nil,
 		EventBus:       nil,
-		TokenValidator: middleware.NewStaticTokenValidator("test-secret"),
+		TokenValidator: testTokenValidator(t),
 		AccessChecker:  middleware.NewMockWorkspaceAccessChecker(),
 	}
 
@@ -996,6 +995,18 @@ func TestTaskReadModelDoc_FieldMapping(t *testing.T) {
 
 const ownerSecretDigest = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08" // sha256("test")
 
+// testTokenValidator accepts the token "test".
+func testTokenValidator(t *testing.T) *middleware.OwnerTokenValidator {
+	t.Helper()
+	v, err := middleware.NewOwnerTokenValidator(
+		[]middleware.OwnerToken{{Name: "test", SHA256: ownerSecretDigest}},
+		middleware.OwnerIdentity{Username: "owner", Email: "owner@flowra.local"},
+		nil,
+	)
+	require.NoError(t, err)
+	return v
+}
+
 func tokenModeContainer(tokens ...config.AuthToken) *Container {
 	cfg := config.DefaultConfig()
 	cfg.Auth.Mode = config.AuthModeToken
@@ -1041,23 +1052,4 @@ func TestContainer_SetupTokenValidator_TokenMode_FailsClosed(t *testing.T) {
 			assert.Contains(t, err.Error(), "token validator not initialized")
 		})
 	}
-}
-
-func TestContainer_SetupTokenValidator_KeycloakDisabledKeepsStaticValidator(t *testing.T) {
-	cfg := config.DefaultConfig()
-	cfg.Keycloak.Enabled = false
-	c := &Container{Logger: slog.Default(), Config: cfg}
-
-	c.setupTokenValidator()
-
-	assert.IsType(t, &middleware.StaticTokenValidator{}, c.TokenValidator)
-}
-
-func TestContainer_CreateAuthService_TokenModeDisablesOAuthLogin(t *testing.T) {
-	c := tokenModeContainer(config.AuthToken{Name: "laptop", SHA256: ownerSecretDigest})
-
-	authService := c.createAuthService()
-
-	require.IsType(t, &httphandler.DisabledAuthService{}, authService)
-	assert.Nil(t, c.OAuthClient)
 }

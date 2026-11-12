@@ -5,7 +5,7 @@ info:
     Chat System with Task Management API.
 
     This API provides comprehensive functionality for:
-    - User authentication (Keycloak SSO integration)
+    - Authentication with owner access tokens
     - Workspace management with role-based access control
     - Real-time chat with participants management
     - Task management with kanban-style workflows
@@ -15,8 +15,9 @@ info:
 
     ## Authentication
 
-    All endpoints (except `/auth/login` and `/auth/register`) require JWT authentication.
-    Include the JWT token in the `Authorization` header:
+    All endpoints except health checks require an owner access token. The server stores only the SHA-256 of each
+    token (`auth.tokens`, `AUTH_OWNER_TOKEN_SHA256`) and listens on loopback. Send the token in the `Authorization`
+    header:
 
     ```
     Authorization: Bearer <token>
@@ -25,7 +26,6 @@ info:
     ## Rate Limiting
 
     - Default: 100 requests per minute per user
-    - Auth endpoints: 10 requests per minute per IP
     - WebSocket: 60 messages per minute per connection
 
     ## Error Handling
@@ -72,117 +72,6 @@ paths:
   # ============================================
   # Authentication Endpoints
   # ============================================
-  /auth/login:
-    post:
-      tags:
-        - Authentication
-      summary: Login with OAuth code
-      description: |
-        Authenticates user using OAuth authorization code from Keycloak.
-        Returns access and refresh tokens along with user information.
-      operationId: login
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/LoginRequest"
-            example:
-              code: "authorization_code_from_keycloak"
-              redirect_uri: "http://localhost:8080/callback"
-      responses:
-        "200":
-          description: Successful authentication
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/LoginResponse"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          description: Invalid credentials
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-              example:
-                success: false
-                error:
-                  code: "INVALID_CREDENTIALS"
-                  message: "Invalid OAuth code or credentials"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
-  /auth/logout:
-    post:
-      tags:
-        - Authentication
-      summary: Logout current session
-      description: Invalidates the current session and refresh token
-      operationId: logout
-      responses:
-        "200":
-          description: Successfully logged out
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  data:
-                    type: object
-                    properties:
-                      message:
-                        type: string
-                        example: "Logged out successfully"
-        "401":
-          $ref: "#/components/responses/UnauthorizedError"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
-  /auth/refresh:
-    post:
-      tags:
-        - Authentication
-      summary: Refresh access token
-      description: |
-        Refreshes the access token using a valid refresh token.
-        The endpoint accepts expired access tokens.
-      operationId: refreshToken
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/RefreshRequest"
-            example:
-              refresh_token: "refresh_token_here"
-      responses:
-        "200":
-          description: Token refreshed successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/RefreshResponse"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          description: Invalid or expired refresh token
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-              example:
-                success: false
-                error:
-                  code: "INVALID_REFRESH_TOKEN"
-                  message: "Refresh token is invalid or expired"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
   /auth/me:
     get:
       tags:
@@ -2022,7 +1911,7 @@ paths:
         Establishes a WebSocket connection for real-time updates.
 
         Authentication can be provided via:
-        - Query parameter: `?token=<jwt_token>`
+        - Query parameter: `?token=<token>`
         - Authorization header: `Authorization: Bearer <token>`
 
         ## Message Types
@@ -2049,7 +1938,7 @@ paths:
       parameters:
         - name: token
           in: query
-          description: JWT access token
+          description: Owner access token
           schema:
             type: string
       responses:
@@ -2066,8 +1955,7 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
-      bearerFormat: JWT
-      description: JWT token obtained from /auth/login
+      description: Owner access token configured on the server (only its SHA-256 is stored)
 
   # ============================================
   # Parameters
@@ -2357,70 +2245,6 @@ components:
                 type: string
 
     # Authentication schemas
-    LoginRequest:
-      type: object
-      required:
-        - code
-        - redirect_uri
-      properties:
-        code:
-          type: string
-          description: OAuth authorization code from Keycloak
-        redirect_uri:
-          type: string
-          description: Redirect URI used in the OAuth flow
-
-    LoginResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-          example: true
-        data:
-          type: object
-          properties:
-            access_token:
-              type: string
-              description: JWT access token
-            refresh_token:
-              type: string
-              description: Refresh token for obtaining new access tokens
-            expires_in:
-              type: integer
-              description: Token expiration time in seconds
-              example: 900
-            user:
-              $ref: "#/components/schemas/UserDTO"
-
-    RefreshRequest:
-      type: object
-      required:
-        - refresh_token
-      properties:
-        refresh_token:
-          type: string
-          description: Valid refresh token
-
-    RefreshResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-          example: true
-        data:
-          type: object
-          properties:
-            access_token:
-              type: string
-              description: New JWT access token
-            refresh_token:
-              type: string
-              description: New refresh token
-            expires_in:
-              type: integer
-              description: Token expiration time in seconds
-
-    # User schemas
     UserDTO:
       type: object
       properties:

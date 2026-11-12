@@ -53,8 +53,7 @@ func requestPage(cookieValue string) *httptest.ResponseRecorder {
 
 func TestRequireAuth_OwnerToken(t *testing.T) {
 	usePageAuth(t, &httphandler.PageAuthConfig{
-		TokenValidator:   ownerValidator(t, "laptop-secret"),
-		RequireValidator: true,
+		TokenValidator: ownerValidator(t, "laptop-secret"),
 	})
 
 	tests := []struct {
@@ -82,34 +81,13 @@ func TestRequireAuth_OwnerToken(t *testing.T) {
 	}
 }
 
-func TestRequireAuth_MissingValidator(t *testing.T) {
-	t.Run("required validator rejects instead of using the mock user", func(t *testing.T) {
-		usePageAuth(t, &httphandler.PageAuthConfig{RequireValidator: true})
+func TestRequireAuth_MissingValidatorRejects(t *testing.T) {
+	for _, cfg := range []*httphandler.PageAuthConfig{nil, {}} {
+		usePageAuth(t, cfg)
 
 		rec := requestPage("mock-session-token")
 
 		assert.Equal(t, stdhttp.StatusFound, rec.Code)
 		assert.Equal(t, "/login", rec.Header().Get("Location"))
-	})
-
-	t.Run("development default keeps the mock user", func(t *testing.T) {
-		usePageAuth(t, &httphandler.PageAuthConfig{})
-
-		rec := requestPage("mock-session-token")
-
-		assert.Equal(t, stdhttp.StatusOK, rec.Code)
-	})
-}
-
-func TestDisabledAuthService_RefusesOAuthFlows(t *testing.T) {
-	svc := httphandler.NewDisabledAuthService()
-	c := echo.New().NewContext(httptest.NewRequest(stdhttp.MethodPost, "/api/v1/auth/login", nil), httptest.NewRecorder())
-
-	login, err := svc.Login(c, "mock-code", "http://127.0.0.1:8080/auth/callback")
-	require.ErrorIs(t, err, httphandler.ErrInvalidCredentials)
-	assert.Nil(t, login)
-
-	refreshed, err := svc.RefreshToken(c, "refresh")
-	require.ErrorIs(t, err, httphandler.ErrRefreshTokenInvalid)
-	assert.Nil(t, refreshed)
+	}
 }
