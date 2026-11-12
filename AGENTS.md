@@ -138,6 +138,12 @@ For typed entities (`task`, `bug`, `epic`) follow ADR-007 (`docs/architecture/ad
 - Keep assignee writes validated against real users.
 - Do not re-introduce `TaskResult.Events`; task side effects are handled centrally in services.
 
+Chat field writes from HTTP actions (`ActionService`) run in the request through `chatapp.CommandRunner`
+(per-chat lock, bounded retry with reload, `Idempotency-Key` stored with the events) and answer with a definite
+outcome (`docs/api/action-endpoints.md`). Do not route them through tag messages again: tags run after the
+response and have no outcome. Read models are written only with a version not older than the stored one
+(`mongodb.UpsertNewer`).
+
 Current authoritative read-model collections:
 - `chats_read_model`
 - `tasks_read_model`

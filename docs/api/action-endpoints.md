@@ -1,6 +1,7 @@
 # Action Endpoints (UI / HTMX)
 
-This document describes the HTTP action endpoints used by the UI for chat/task field changes that are routed through the message-based action system.
+This document describes the HTTP action endpoints that change a chat or task field. The UI and agents use the
+same endpoints.
 
 OpenAPI coverage note: the `/actions/*` paths are documented in `docs/api/openapi.yaml`; this page is the narrative reference focused on UI/HTMX usage and implementation nuances.
 
@@ -8,9 +9,10 @@ OpenAPI coverage note: the `/actions/*` paths are documented in `docs/api/openap
 
 These endpoints are different from direct task update endpoints (for example `PUT /tasks/:task_id/status`):
 
-- They are designed for UI actions (especially HTMX forms).
-- They create system messages / action events instead of directly mutating fields in place.
-- They return an empty success response plus an `Hx-Trigger` header for frontend refresh behavior.
+- They apply the change to the chat inside the request and answer with its outcome (see below).
+- After the change is applied, a human-readable line ("✅ … set due date to …") is posted to the thread. It is a
+  record for people, not part of the outcome: if posting it fails, the answer is still "applied".
+- They set an `Hx-Trigger` header for frontend refresh behavior.
 
 ## Base URL
 
@@ -37,14 +39,39 @@ Examples:
 - `due_date`
 - `title`
 
-## Response Format
+## Outcome Contract
 
-### Success responses (action endpoints)
+Every answer is one of three outcomes. "200 and then not applied" does not happen.
 
-Action endpoints return an empty body on success:
+| Outcome | HTTP | `error.code` | What the client does |
+|---|---|---|---|
+| Applied | `200` | — | Nothing. `data.version` is the chat version after the change |
+| Applied earlier with this key | `200` | — | Nothing. `data.replayed` is `true`, nothing was written now |
+| Not applied: validation or state | `400`, `403`, `404`, `422` | `INVALID_*`, `FORBIDDEN`, `NOT_FOUND`, `INVALID_STATE` | Fix the request |
+| Not applied: concurrent writers | `409` | `CONCURRENT_MODIFICATION` | Retry (same key or none) |
+| Not applied: key reused | `422` | `IDEMPOTENCY_KEY_REUSED` | Use a new key for a different request |
+| Unknown: the commit failed midway | `503` | `OUTCOME_UNKNOWN` | Retry with the same `Idempotency-Key` |
 
-- Chat action endpoints: `200 OK` + `Hx-Trigger: chatUpdated`
-- Task action endpoints: `204 No Content` + `Hx-Trigger: taskUpdated`
+Success body:
+
+```json
+{"success": true, "data": {"chat_id": "<uuid>", "version": 42, "replayed": false}}
+```
+
+- Concurrent changes of one chat queue up in the server and are retried with a reload of the chat a bounded number
+  of times; a `409` means the change was not applied.
+- `Idempotency-Key` (header, optional, up to 200 characters) makes a retry safe: a key already applied by the same
+  user on the same chat returns the stored outcome instead of applying the change twice. Use a fresh UUID per
+  intended change. Without a key the outcomes are the same, but after a `503` the client has to read the chat to
+  learn whether the change landed.
+- A key is recorded only when the change wrote something: re-sending a value the chat already has records nothing.
+- Only chat participants may change a chat (`403 FORBIDDEN` otherwise).
+
+### Changes through tags in message text
+
+A message such as `#status Done` posted through `POST .../messages` is answered when the message is saved; the
+tag runs after the response and its failure shows only as a bot reply in the thread. That path has no outcome
+contract. Agents that need to know whether a change landed use the action endpoints.
 
 ### Error responses
 
@@ -68,24 +95,26 @@ These endpoints operate on a chat directly and create system messages for chat/t
 
 | Method | Path | Body fields | Success | Trigger |
 |---|---|---|---|---|
-| POST | `/workspaces/:workspace_id/chats/:id/actions/status` | `status` (required) | `200` empty | `chatUpdated` |
-| POST | `/workspaces/:workspace_id/chats/:id/actions/priority` | `priority` (required) | `200` empty | `chatUpdated` |
-| POST | `/workspaces/:workspace_id/chats/:id/actions/assignee` | `assignee_id` (optional; empty clears) | `200` empty | `chatUpdated` |
-| POST | `/workspaces/:workspace_id/chats/:id/actions/due-date` | `due_date` (optional `YYYY-MM-DD`; empty clears) | `200` empty | `chatUpdated` |
-| POST | `/workspaces/:workspace_id/chats/:id/actions/close` | none | `200` empty | `chatUpdated` |
-| POST | `/workspaces/:workspace_id/chats/:id/actions/reopen` | none | `200` empty | `chatUpdated` |
-| POST | `/workspaces/:workspace_id/chats/:id/actions/rename` | `title` (required) | `200` empty | `chatUpdated` |
+| POST | `/workspaces/:workspace_id/chats/:id/actions/status` | `status` (required) | `200` outcome | `chatUpdated` |
+| POST | `/workspaces/:workspace_id/chats/:id/actions/priority` | `priority` (required) | `200` outcome | `chatUpdated` |
+| POST | `/workspaces/:workspace_id/chats/:id/actions/assignee` | `assignee_id` (optional; empty clears) | `200` outcome | `chatUpdated` |
+| POST | `/workspaces/:workspace_id/chats/:id/actions/due-date` | `due_date` (optional `YYYY-MM-DD`; empty clears) | `200` outcome | `chatUpdated` |
+| POST | `/workspaces/:workspace_id/chats/:id/actions/close` | none | `200` outcome | `chatUpdated` |
+| POST | `/workspaces/:workspace_id/chats/:id/actions/reopen` | none | `200` outcome | `chatUpdated` |
+| POST | `/workspaces/:workspace_id/chats/:id/actions/rename` | `title` (required) | `200` outcome | `chatUpdated` |
 
 ### Task action endpoints
 
-These endpoints resolve `task_id -> chat_id` internally, then delegate to the same action service used by chat actions.
+These endpoints resolve `task_id -> chat_id` internally, then delegate to the same action service used by chat
+actions. `PUT /tasks/:task_id/{status,assignee,priority,due-date}` does too: same outcomes and key, but its success
+body is the task read back after the change.
 
 | Method | Path | Body fields | Success | Trigger |
 |---|---|---|---|---|
-| POST | `/workspaces/:workspace_id/tasks/:task_id/actions/status` | `status` (required) | `204` empty | `taskUpdated` |
-| POST | `/workspaces/:workspace_id/tasks/:task_id/actions/priority` | `priority` (required) | `204` empty | `taskUpdated` |
-| POST | `/workspaces/:workspace_id/tasks/:task_id/actions/assignee` | `assignee_id` (optional; empty clears) | `204` empty | `taskUpdated` |
-| POST | `/workspaces/:workspace_id/tasks/:task_id/actions/due-date` | `due_date` (optional `YYYY-MM-DD`; empty clears) | `204` empty | `taskUpdated` |
+| POST | `/workspaces/:workspace_id/tasks/:task_id/actions/status` | `status` (required) | `200` outcome | `taskUpdated` |
+| POST | `/workspaces/:workspace_id/tasks/:task_id/actions/priority` | `priority` (required) | `200` outcome | `taskUpdated` |
+| POST | `/workspaces/:workspace_id/tasks/:task_id/actions/assignee` | `assignee_id` (optional; empty clears) | `200` outcome | `taskUpdated` |
+| POST | `/workspaces/:workspace_id/tasks/:task_id/actions/due-date` | `due_date` (optional `YYYY-MM-DD`; empty clears) | `200` outcome | `taskUpdated` |
 
 ## Endpoint Details
 
@@ -104,6 +133,7 @@ Example (JSON):
 ```bash
 curl -X POST "http://localhost:8080/api/v1/workspaces/<workspace_id>/chats/<chat_id>/actions/status" \
   -H "Authorization: Bearer <token>" \
+  -H "Idempotency-Key: $(uuidgen)" \
   -H "Content-Type: application/json" \
   -d '{"status":"In Progress"}' -i
 ```
@@ -183,7 +213,7 @@ curl -X POST "http://localhost:8080/api/v1/workspaces/<workspace_id>/chats/<chat
 - Success behavior:
   - Resolves task by `task_id`
   - Uses the task's `chat_id` internally
-  - Returns `204 No Content` + `Hx-Trigger: taskUpdated`
+  - Returns `200` with the outcome + `Hx-Trigger: taskUpdated`
 - Validation errors:
   - `INVALID_TASK_ID`
   - `INVALID_REQUEST`
@@ -239,9 +269,11 @@ In addition to handler-level validation errors above, action handlers may return
 - `UNAUTHORIZED` (`401`)
 - `FORBIDDEN` (`403`)
 - `NOT_FOUND` (`404`)
-- `CONCURRENT_MODIFICATION` (`409`)
+- `CONCURRENT_MODIFICATION` (`409`) — not applied
 - `INVALID_STATE` (`422`)
 - `INVALID_TRANSITION` (`422`)
+- `IDEMPOTENCY_KEY_REUSED` (`422`)
+- `OUTCOME_UNKNOWN` (`503`) — retry with the same `Idempotency-Key`
 - `INTERNAL_ERROR` (`500`)
 
 ## Frontend Integration Notes (HTMX)
@@ -250,7 +282,7 @@ Current UI usage patterns (examples in `web/templates/chat/task-sidebar.html` an
 
 - `hx-post` with `name` attributes matching handler form fields
 - `hx-trigger="change"` for selects/date inputs
-- `hx-swap="none"` because the server returns no body
+- `hx-swap="none"`: the outcome body is for API clients, the UI ignores it
 - UI refresh/event handling is triggered by `Hx-Trigger` (`chatUpdated` or `taskUpdated`)
 
 Example:
@@ -269,4 +301,6 @@ Example:
 - Routes: `cmd/api/routes.go`
 - Chat action handler: `internal/handler/http/chat_action_handler.go`
 - Task action handler: `internal/handler/http/task_action_handler.go`
+- Action service: `internal/service/action_service.go`
+- Per-chat runner, retries and keys: `internal/application/chat/command_runner.go`
 - Response envelope: `internal/infrastructure/httpserver/response.go`

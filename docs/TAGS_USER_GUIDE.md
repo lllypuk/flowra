@@ -12,6 +12,10 @@ Type tags in a chat message and send it. Flowra will:
 2. Apply valid tags
 3. Post a bot response showing what was applied and what failed
 
+Tags run after the message is saved: the answer to the send request says only that the message was saved, and a
+failed tag shows up only in the bot response. Clients that need to know whether a change landed (agents, scripts)
+use the action endpoints instead, which answer with the outcome: see `docs/api/action-endpoints.md`.
+
 Example:
 
 ```text
