@@ -686,11 +686,11 @@ make install-units
 Builds `bin/api` and `bin/leadfeed`; starts MongoDB and Redis through Compose; writes `~/.config/flowra/`
 (`config.yaml`, `flowra.env`, 0600) and the user units `flowra-api.service`, `leadfeed-sync.service` and
 `leadfeed-sync.timer` (every minute: export, import, deliver answers). The first run generates two tokens,
-`owner` (this laptop's browser) and `phone`, and prints them once; the files keep only SHA-256. Repeating the
+`owner` (this laptop's browser) and `phone`, and prints them once, before anything that can fail; the files keep only SHA-256. Repeating the
 command refreshes binaries and units and leaves the tokens alone.
 
-Override `LEAD_TASK` (path to `lead-task`), `LEAD_SESSION` and `AGTERM_SOCKET` in the environment on the first
-run; they are stored in `flowra.env`.
+Set `LEAD_TASK` (path to `lead-task`), `LEAD_SESSION` and `AGTERM_SOCKET` in the environment; they are stored in
+`flowra.env` and kept on reruns unless set again.
 
 Remove:
 

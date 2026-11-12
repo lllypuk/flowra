@@ -1,6 +1,8 @@
 package scripts_test
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -65,28 +67,50 @@ func newInstallEnv(t *testing.T) installEnv {
 		copyFile(t, filepath.Join(src, f), filepath.Join(env.root, f))
 	}
 
-	stub := "#!/usr/bin/env bash\necho \"$(basename \"$0\") $*\" >> " + env.log + "\n"
-	writeFile(t, filepath.Join(env.bin, "systemctl"), stub, 0o755)
-	writeFile(t, filepath.Join(env.bin, "docker-compose"), stub, 0o755)
-	writeFile(t, filepath.Join(env.bin, "go"), stub+
+	env.writeStubs(t)
+	return env
+}
+
+func (e installEnv) writeStubs(t *testing.T) {
+	t.Helper()
+	stub := "#!/usr/bin/env bash\necho \"$(basename \"$0\") $*\" >> " + e.log + "\n"
+	writeFile(t, filepath.Join(e.bin, "systemctl"), stub, 0o755)
+	writeFile(t, filepath.Join(e.bin, "docker-compose"), stub, 0o755)
+	writeFile(t, filepath.Join(e.bin, "go"), stub+
 		"while [[ $# -gt 0 ]]; do if [[ $1 == -o ]]; then mkdir -p \"$(dirname \"$2\")\"; "+
 		"printf '#!/bin/sh\\n' > \"$2\"; chmod +x \"$2\"; fi; shift; done\n", 0o755)
-	return env
+}
+
+func (e installEnv) exec(t *testing.T, vars ...string) (string, error) {
+	t.Helper()
+	cmd := exec.CommandContext(t.Context(), "bash", filepath.Join(e.root, "scripts/install-user-units.sh"))
+	cmd.Env = append([]string{"HOME=" + e.home, "PATH=" + e.bin + ":/usr/bin:/bin"}, vars...)
+	out, err := cmd.CombinedOutput()
+	return string(out), err
+}
+
+func (e installEnv) runBare(t *testing.T, vars ...string) string {
+	t.Helper()
+	out, err := e.exec(t, vars...)
+	require.NoError(t, err, out)
+	return out
 }
 
 func (e installEnv) run(t *testing.T, extra ...string) string {
 	t.Helper()
-	cmd := exec.CommandContext(t.Context(), "bash", filepath.Join(e.root, "scripts/install-user-units.sh"))
-	cmd.Env = []string{
-		"HOME=" + e.home,
-		"PATH=" + e.bin + ":/usr/bin:/bin",
-		"LEAD_TASK=/opt/fake/lead-task",
-		"AGTERM_SOCKET=" + filepath.Join(e.home, "agterm.sock"),
-	}
-	cmd.Env = append(cmd.Env, extra...)
-	out, err := cmd.CombinedOutput()
-	require.NoError(t, err, string(out))
-	return string(out)
+	vars := []string{"LEAD_TASK=/opt/fake/lead-task", "AGTERM_SOCKET=" + filepath.Join(e.home, "agterm.sock")}
+	return e.runBare(t, append(vars, extra...)...)
+}
+
+func (e installEnv) failStep(t *testing.T, name string) {
+	t.Helper()
+	stub := "#!/usr/bin/env bash\necho \"$(basename \"$0\") $*\" >> " + e.log + "\nexit 1\n"
+	writeFile(t, filepath.Join(e.bin, name), stub, 0o755)
+}
+
+func (e installEnv) envFile(t *testing.T) string {
+	t.Helper()
+	return readFile(t, filepath.Join(e.home, ".config/flowra/flowra.env"))
 }
 
 var tokenLine = regexp.MustCompile(`(?m)^(owner[^:]*|phone): ([0-9a-f]{64})$`)
@@ -101,6 +125,11 @@ func printedTokens(out string) map[string]string {
 		tokens[name] = m[2]
 	}
 	return tokens
+}
+
+func sha256Hex(s string) string {
+	sum := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(sum[:])
 }
 
 func readFile(t *testing.T, path string) string {
@@ -235,4 +264,57 @@ func TestInstallUserUnits_UnitsPassSystemdVerify(t *testing.T) {
 	cmd.Env = append(os.Environ(), "HOME="+env.home)
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(out))
+}
+
+func TestInstallUserUnits_RerunKeepsPersistedSettings(t *testing.T) {
+	env := newInstallEnv(t)
+	sock := filepath.Join(env.home, "custom.sock")
+	env.runBare(t, "LEAD_TASK=/opt/first/lead-task", "LEAD_SESSION=lead-first", "AGTERM_SOCKET="+sock)
+
+	env.runBare(t)
+	got := env.envFile(t)
+	require.Contains(t, got, "LEAD_TASK=/opt/first/lead-task\n")
+	require.Contains(t, got, "LEAD_SESSION=lead-first\n")
+	require.Contains(t, got, "AGTERM_SOCKET="+sock+"\n")
+}
+
+func TestInstallUserUnits_RerunOverridesOneSetting(t *testing.T) {
+	env := newInstallEnv(t)
+	sock := filepath.Join(env.home, "custom.sock")
+	env.runBare(t, "LEAD_TASK=/opt/first/lead-task", "LEAD_SESSION=lead-first", "AGTERM_SOCKET="+sock)
+
+	env.runBare(t, "LEAD_SESSION=lead-second")
+	got := env.envFile(t)
+	require.Contains(t, got, "LEAD_SESSION=lead-second\n")
+	require.NotContains(t, got, "lead-first")
+	require.Contains(t, got, "LEAD_TASK=/opt/first/lead-task\n")
+	require.Contains(t, got, "AGTERM_SOCKET="+sock+"\n")
+
+	env.runBare(t, "LEAD_TASK=/opt/second/lead-task", "AGTERM_SOCKET=/run/other.sock")
+	got = env.envFile(t)
+	require.Contains(t, got, "LEAD_TASK=/opt/second/lead-task\n")
+	require.Contains(t, got, "AGTERM_SOCKET=/run/other.sock\n")
+	require.Contains(t, got, "LEAD_SESSION=lead-second\n")
+}
+
+func TestInstallUserUnits_FailedFirstRunNeverLeavesUnseenDigest(t *testing.T) {
+	for _, step := range []string{"go", "docker-compose", "systemctl"} {
+		t.Run(step, func(t *testing.T) {
+			env := newInstallEnv(t)
+			env.failStep(t, step)
+			out, err := env.exec(t)
+			require.Error(t, err)
+
+			shown := printedTokens(out)
+			require.Len(t, shown, 2, "tokens must be shown before the failing step:\n"+out)
+
+			cfgDir := filepath.Join(env.home, ".config/flowra")
+			require.Contains(t, env.envFile(t), "AUTH_OWNER_TOKEN_SHA256="+sha256Hex(shown["owner"]))
+			require.Contains(t, readFile(t, filepath.Join(cfgDir, "config.yaml")), sha256Hex(shown["phone"]))
+
+			env.writeStubs(t)
+			again := env.runBare(t)
+			require.Empty(t, printedTokens(again))
+		})
+	}
 }
