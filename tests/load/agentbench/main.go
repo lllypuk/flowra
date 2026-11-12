@@ -28,6 +28,9 @@ type config struct {
 	bodyBytes int
 	thread    int
 	statusPct int
+	mongoURI  string
+	mongoDB   string
+	settle    time.Duration
 }
 
 type client struct {
@@ -46,6 +49,11 @@ type envelope struct {
 }
 
 func (c *client) do(ctx context.Context, method, path string, body any) (int, json.RawMessage, error) {
+	return c.doKey(ctx, method, path, body, "")
+}
+
+// doKey sends a request with an Idempotency-Key header when key is set.
+func (c *client) doKey(ctx context.Context, method, path string, body any, key string) (int, json.RawMessage, error) {
 	var reader io.Reader
 	if body != nil {
 		raw, err := json.Marshal(body)
@@ -59,6 +67,9 @@ func (c *client) do(ctx context.Context, method, path string, body any) (int, js
 		return 0, nil, err
 	}
 	req.Header.Set("Authorization", "Bearer "+c.token)
+	if key != "" {
+		req.Header.Set("Idempotency-Key", key)
+	}
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
@@ -175,6 +186,14 @@ func main() {
 	flag.IntVar(&cfg.bodyBytes, "body", 1024, "message body size in bytes")
 	flag.IntVar(&cfg.thread, "thread", 50, "thread length for the read scenario")
 	flag.IntVar(&cfg.statusPct, "status-pct", 10, "share of status changes among writes, percent")
+	flag.StringVar(&cfg.mongoURI, "mongo-uri", "", "MongoDB URI for the contend check; empty skips it")
+	flag.StringVar(&cfg.mongoDB, "mongo-db", "flowra_bench", "database for the contend check")
+	flag.DurationVar(
+		&cfg.settle,
+		"settle",
+		8*time.Second,
+		"wait before the contend check for work finished after the response",
+	)
 	flag.Parse()
 
 	raw, err := os.ReadFile(tokenFile)
@@ -282,7 +301,9 @@ func runWrites(ctx context.Context, c *client, cfg config, wsID string, chats in
 			}
 			turn := 0
 			for pace(deadline, &next, cfg.rate) {
-				op, path, payload := "message", "/workspaces/"+wsID+"/chats/"+chatID+"/messages", any(map[string]string{"content": text})
+				op, path, payload := "message", "/workspaces/"+wsID+"/chats/"+chatID+"/messages", any(
+					map[string]string{"content": text},
+				)
 				if rng.IntN(100) < cfg.statusPct {
 					turn++
 					final[agent] = statuses[turn%len(statuses)]
@@ -307,13 +328,16 @@ func runWrites(ctx context.Context, c *client, cfg config, wsID string, chats in
 	return extra
 }
 
-// runContend makes every agent set a unique due date on one shared task.
-// Each accepted request must leave exactly one chat.due_date_set event, so the caller can count lost updates.
-// (The rename action cannot serve here: it posts a confirmation message without renaming the chat.)
+// runContend makes every agent set a unique due date on one shared task, each request with its own
+// Idempotency-Key. A request whose outcome is unknown (503 OUTCOME_UNKNOWN) is retried with the same key.
 func runContend(ctx context.Context, c *client, cfg config, wsID string, rec *recorder) map[string]any {
 	chatID := createTaskChats(ctx, c, wsID, 1)[0]
 	path := "/workspaces/" + wsID + "/chats/" + chatID + "/actions/due-date"
-	tomorrow := time.Now().AddDate(0, 0, 1)
+	tomorrow := time.Now().UTC().AddDate(0, 0, 1)
+
+	var mu sync.Mutex
+	outcomes := map[string]int{} // due date -> final HTTP status
+	retried := 0
 
 	begin := time.Now()
 	deadline := begin.Add(cfg.duration)
@@ -322,17 +346,45 @@ func runContend(ctx context.Context, c *client, cfg config, wsID string, rec *re
 		wg.Go(func() {
 			next := begin
 			for n := 0; pace(deadline, &next, cfg.rate); n++ {
+				due := tomorrow.AddDate(0, 0, n*cfg.agents+agent).Format(time.DateOnly)
+				key := fmt.Sprintf("bench-%s-%s", chatID, due)
 				started := time.Now()
-				due := tomorrow.AddDate(0, 0, n*cfg.agents+agent).Format("2006-01-02")
-				status, _, err := c.do(ctx, http.MethodPost, path, map[string]string{"due_date": due})
+				status, data, err := c.doKey(ctx, http.MethodPost, path, map[string]string{"due_date": due}, key)
+				for try := 0; try < 3 && err == nil && isUnknown(status, data); try++ {
+					mu.Lock()
+					retried++
+					mu.Unlock()
+					status, data, err = c.doKey(ctx, http.MethodPost, path, map[string]string{"due_date": due}, key)
+				}
 				rec.add(sample{op: "due_date", status: status, latency: time.Since(started),
 					failed: err != nil || status >= http.StatusBadRequest})
+				mu.Lock()
+				outcomes[due] = status
+				mu.Unlock()
 			}
 		})
 	}
 	wg.Wait()
 
-	return map[string]any{"measured_seconds": time.Since(begin).Seconds(), "chat_id": chatID}
+	extra := map[string]any{
+		"measured_seconds": time.Since(begin).Seconds(),
+		"chat_id":          chatID,
+		"unknown_retries":  retried,
+	}
+	if cfg.mongoURI != "" {
+		time.Sleep(cfg.settle)
+		check, err := checkContend(ctx, cfg, chatID, outcomes)
+		if err != nil {
+			extra["check_error"] = err.Error()
+		} else {
+			extra["check"] = check
+		}
+	}
+	return extra
+}
+
+func isUnknown(status int, data json.RawMessage) bool {
+	return status == http.StatusServiceUnavailable && strings.Contains(string(data), "OUTCOME_UNKNOWN")
 }
 
 // settleStatuses waits until each chat shows the last status its agent asked for; status changes are applied

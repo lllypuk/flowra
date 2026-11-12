@@ -21,7 +21,7 @@ trap cleanup EXIT
 docker rm -f flowra-bench-mongo flowra-bench-redis >/dev/null 2>&1 || true
 # The replica set is named and addressed by the bench port, so a driver can never fall through to another mongod.
 docker run -d --name flowra-bench-mongo -p "127.0.0.1:$MONGO_PORT:$MONGO_PORT" mongo:6.0 \
-	--replSet rsbench --port "$MONGO_PORT" --bind_ip_all >/dev/null
+	--replSet rsbench --port "$MONGO_PORT" --bind_ip_all ${BENCH_MONGO_ARGS:-} >/dev/null
 docker run -d --name flowra-bench-redis -p "127.0.0.1:$REDIS_PORT:6379" redis:7-alpine >/dev/null
 for _ in $(seq 1 60); do
 	docker exec flowra-bench-mongo mongosh --quiet --port "$MONGO_PORT" --eval 'db.adminCommand("ping").ok' >/dev/null 2>&1 && break
@@ -34,7 +34,8 @@ for _ in $(seq 1 60); do
 	sleep 1
 done
 
-go build -o "$OUT/api" ./cmd/api
+# BENCH_API_BIN measures another build, e.g. the API of the base branch for a before/after pair.
+if [[ -n "${BENCH_API_BIN:-}" ]]; then cp "$BENCH_API_BIN" "$OUT/api"; else go build -o "$OUT/api" ./cmd/api; fi
 go build -o "$OUT/agentbench" ./tests/load/agentbench
 go build -o "$OUT/leadfeed" ./cmd/leadfeed
 
@@ -64,31 +65,31 @@ mem() {
 }
 bench() { "$OUT/agentbench" -base "http://127.0.0.1:$API_PORT" -token-file "$OUT/token" -duration "$DURATION" "$@"; }
 
-# contend prints the bench line, then how many of the accepted due-date changes of one shared task left an event.
-contend() {
-	local line chat accepted applied
-	line="$(bench -scenario contend "$@")"
-	echo "$line"
-	chat="$(sed -E 's/.*"chat_id":"([^"]+)".*/\1/' <<<"$line")"
-	accepted="$(sed -E 's/.*"statuses":\{"200":([0-9]+)\}.*/\1/' <<<"$line")"
-	sleep 8 # tag execution retries for up to ~3 s inside a 5 s detached timeout
-	applied="$(docker exec flowra-bench-mongo mongosh --quiet --port "$MONGO_PORT" flowra_bench --eval \
-		"db.events.countDocuments({aggregate_id:'$chat',event_type:'chat.due_date_set'})")"
-	printf '{"point":"contend-%s","accepted":%s,"applied":%s,"lost":%s}\n' "$*" "$accepted" "$applied" "$((accepted - applied))"
-}
+# contend checks every answer against the events and both read models; the wait covers tag work after the response.
+contend() { bench -scenario contend -mongo-uri "$MONGODB_URI" -mongo-db "$MONGODB_DATABASE" -settle 8s "$@"; }
 
+RUNS="${BENCH_RUNS:-1}"
 contention() {
 	# Lost updates: many agents change one field of one shared task.
-	contend -agents 1 -rate 1
-	contend -agents 2 -rate 1
-	contend -agents 10 -rate 1
-	contend -agents 50 -rate 1
+	for agents in 1 2 10 50; do
+		for _ in $(seq 1 "$RUNS"); do contend -agents "$agents" -rate 1; done
+	done
 }
 
-if [[ "${BENCH_ONLY:-}" == "contend" ]]; then
-	contention | tee "$OUT/results.jsonl"
-	exit 0
-fi
+# latency: the "peak" (50 agents, a write per 10 s) and "stress" (100 agents, a write per second) profile modes.
+latency() {
+	for _ in $(seq 1 "$RUNS"); do
+		# 60 s, not 15: at a write per 10 s a short window has only ~10 status changes.
+		bench -scenario write-own -agents 50 -rate 0.1 -duration 60s
+		bench -scenario write-own -agents 100 -rate 1
+	done
+}
+
+case "${BENCH_ONLY:-}" in
+contend) contention | tee "$OUT/results.jsonl"; exit 0 ;;
+latency) latency | tee "$OUT/results.jsonl"; exit 0 ;;
+acceptance) { contention; latency; mem after-acceptance; } | tee "$OUT/results.jsonl"; exit 0 ;;
+esac
 
 {
 	mem idle
