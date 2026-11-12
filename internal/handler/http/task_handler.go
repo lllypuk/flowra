@@ -832,27 +832,6 @@ func parseTaskPagination(c echo.Context, defaultLimit int) (int, int) {
 	return limit, offset
 }
 
-func sameUUIDPtr(a, b *uuid.UUID) bool {
-	if a == nil && b == nil {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
-	}
-	return *a == *b
-}
-
-// sameDate compares due dates by calendar day (YYYY-MM-DD).
-func sameDate(a, b *time.Time) bool {
-	if a == nil && b == nil {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
-	}
-	return a.Format("2006-01-02") == b.Format("2006-01-02")
-}
-
 // ToTaskResponseFromReadModel converts a ReadModel to TaskResponse.
 func ToTaskResponseFromReadModel(rm *taskapp.ReadModel) TaskResponse {
 	resp := TaskResponse{
