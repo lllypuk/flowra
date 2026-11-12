@@ -19,8 +19,7 @@ tests/
 │   ├── assertions.go     # Custom assertion helpers
 │   ├── helpers.go        # Context helpers
 │   ├── mongodb.go        # MongoDB testcontainer
-│   ├── redis.go          # Redis testcontainer
-│   └── keycloak.go       # Keycloak testcontainer
+│   └── redis.go          # Redis testcontainer
 ├── integration/           # Integration tests
 │   └── ...
 └── e2e/                   # End-to-end tests
@@ -282,6 +281,18 @@ Check:
 2. Use `InMemoryEventStore` instead of database
 3. Avoid `time.Sleep()` in tests
 4. Use mocks for external dependencies
+
+## Removed With Keycloak
+
+Sign-in is by owner tokens only (`internal/middleware/token_auth.go`). These checks were deleted together with the
+code they covered, and nothing replaces them:
+
+- OAuth code exchange and refresh (`/api/v1/auth/login`, `/api/v1/auth/refresh`, `/auth/callback`), including e2e
+- Keycloak JWT validation: JWKS, issuer, audience
+- Keycloak groups on workspace creation and invite acceptance
+- User sync from Keycloak (worker)
+- Production realm import and a real Keycloak in testcontainers
+- The mock login paths (mock session cookie, static token validator, `MockAuthService`)
 
 ## References
 

@@ -16,12 +16,10 @@ import (
 
 // Test configuration
 const (
-	baseURL          = "http://localhost:8080"
-	defaultTimeout   = 30 * time.Second
-	keycloakUser     = "testuser"
-	keycloakPassword = "test123"
-	defaultHeadless  = true
-	slowMo           = 0 // Set to 100 for debugging
+	baseURL         = "http://localhost:8080"
+	defaultTimeout  = 30 * time.Second
+	defaultHeadless = true
+	slowMo          = 0 // Set to 100 for debugging
 )
 
 var (
@@ -124,40 +122,28 @@ func (s *TestSuite) newPage(t *testing.T) playwright.Page {
 	return page
 }
 
-// loginAsTestUser performs login via Keycloak SSO.
+// loginAsTestUser signs in with the owner token from E2E_TOKEN; without it the test is skipped.
 func loginAsTestUser(t *testing.T, page playwright.Page) {
 	t.Helper()
 
-	// Navigate to login page
+	token := os.Getenv("E2E_TOKEN")
+	if token == "" {
+		t.Skip("E2E_TOKEN is not set: the server accepts only owner tokens")
+	}
+
 	_, err := page.Goto(baseURL + "/login")
 	require.NoError(t, err, "Failed to navigate to login page")
 
-	// Click SSO login button
-	err = page.Click("text=Sign in with SSO")
-	require.NoError(t, err, "Failed to click SSO button")
+	err = page.Fill("#token", token)
+	require.NoError(t, err, "Failed to fill the token")
 
-	// Wait for Keycloak login form
-	_, err = page.WaitForSelector("#username", playwright.PageWaitForSelectorOptions{
+	err = page.Click("button[type=submit]")
+	require.NoError(t, err, "Failed to submit the token")
+
+	err = page.WaitForURL("**/feed**", playwright.PageWaitForURLOptions{
 		Timeout: playwright.Float(float64(defaultTimeout.Milliseconds())),
 	})
-	require.NoError(t, err, "Keycloak login form not found")
-
-	// Fill credentials
-	err = page.Fill("#username", keycloakUser)
-	require.NoError(t, err, "Failed to fill username")
-
-	err = page.Fill("#password", keycloakPassword)
-	require.NoError(t, err, "Failed to fill password")
-
-	// Submit login
-	err = page.Click("#kc-login")
-	require.NoError(t, err, "Failed to click login button")
-
-	// Wait for redirect to workspaces page
-	err = page.WaitForURL("**/workspaces**", playwright.PageWaitForURLOptions{
-		Timeout: playwright.Float(float64(defaultTimeout.Milliseconds())),
-	})
-	require.NoError(t, err, "Failed to redirect to workspaces after login")
+	require.NoError(t, err, "Failed to reach the feed after login")
 }
 
 // ============================================================
@@ -180,11 +166,10 @@ func TestFrontend_LoginPage_Renders(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, title, "Login")
 
-	// Check SSO button is visible
-	ssoButton := page.Locator("text=Sign in with SSO")
-	visible, err := ssoButton.IsVisible()
+	tokenField := page.Locator("#token")
+	visible, err := tokenField.IsVisible()
 	require.NoError(t, err)
-	require.True(t, visible, "SSO button should be visible")
+	require.True(t, visible, "token field should be visible")
 }
 
 func TestFrontend_LoginFlow(t *testing.T) {
