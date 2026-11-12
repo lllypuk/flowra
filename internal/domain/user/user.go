@@ -10,12 +10,12 @@ import (
 // User represents user sistemy
 type User struct {
 	id            uuid.UUID
-	externalID    string // ID from vneshney sistemy autentifikatsii (Keycloak, Auth0, etc.)
+	externalID    string // identity the access token resolves to
 	username      string
 	email         string
 	displayName   string
 	isSystemAdmin bool
-	isActive      bool // flag aktivnosti user (for soft-delete at udalenii from Keycloak)
+	isActive      bool // inactive users are kept but treated as removed
 	createdAt     time.Time
 	updatedAt     time.Time
 }
@@ -143,36 +143,4 @@ func (u *User) SetAdmin(isAdmin bool) {
 func (u *User) SetActive(isActive bool) {
 	u.isActive = isActive
 	u.updatedAt = time.Now()
-}
-
-// UpdateFromSync obnovlyaet data user from vneshney sistemy (Keycloak)
-// returns true, if data byli izmeneny
-func (u *User) UpdateFromSync(username, email, displayName string, isActive bool) bool {
-	updated := false
-
-	if u.username != username {
-		u.username = username
-		updated = true
-	}
-
-	if u.email != email {
-		u.email = email
-		updated = true
-	}
-
-	if u.displayName != displayName {
-		u.displayName = displayName
-		updated = true
-	}
-
-	if u.isActive != isActive {
-		u.isActive = isActive
-		updated = true
-	}
-
-	if updated {
-		u.updatedAt = time.Now()
-	}
-
-	return updated
 }

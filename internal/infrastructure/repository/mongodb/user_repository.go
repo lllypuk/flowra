@@ -260,7 +260,7 @@ func (r *MongoUserRepository) Count(ctx context.Context) (int, error) {
 // userDocument represents strukturu dokumenta in MongoDB
 type userDocument struct {
 	UserID        string    `bson:"user_id"`
-	KeycloakID    *string   `bson:"keycloak_id,omitempty"`
+	ExternalID    *string   `bson:"keycloak_id,omitempty"` // storage name kept from Keycloak days
 	Username      string    `bson:"username"`
 	Email         string    `bson:"email"`
 	DisplayName   string    `bson:"display_name"`
@@ -283,7 +283,7 @@ func (r *MongoUserRepository) userToDocument(user *userdomain.User) userDocument
 		UpdatedAt:     user.UpdatedAt(),
 	}
 
-	doc.KeycloakID = StringPtr(user.ExternalID())
+	doc.ExternalID = StringPtr(user.ExternalID())
 
 	return doc
 }
@@ -299,7 +299,7 @@ func (r *MongoUserRepository) documentToUser(doc *userDocument) (*userdomain.Use
 		return nil, errs.ErrInvalidInput
 	}
 
-	externalID := StringValue(doc.KeycloakID)
+	externalID := StringValue(doc.ExternalID)
 
 	return userdomain.Reconstruct(
 		id,
@@ -357,38 +357,4 @@ func (r *MongoUserRepository) Search(ctx context.Context, query string, limit in
 	}
 
 	return users, nil
-}
-
-// ListExternalIDs returns list all external ID (Keycloak ID) users
-func (r *MongoUserRepository) ListExternalIDs(ctx context.Context) ([]string, error) {
-	filter := bson.M{
-		"keycloak_id": bson.M{"$exists": true, "$ne": nil},
-	}
-
-	cursor, err := r.collection.Find(ctx, filter, options.Find().SetProjection(bson.M{"keycloak_id": 1}))
-	if err != nil {
-		return nil, HandleMongoError(err, "users")
-	}
-	defer cursor.Close(ctx)
-
-	var externalIDs []string
-	for cursor.Next(ctx) {
-		var doc struct {
-			KeycloakID *string `bson:"keycloak_id"`
-		}
-		decodeErr := cursor.Decode(&doc)
-		if decodeErr != nil {
-			continue
-		}
-		if doc.KeycloakID != nil && *doc.KeycloakID != "" {
-			externalIDs = append(externalIDs, *doc.KeycloakID)
-		}
-	}
-
-	cursorErr := cursor.Err()
-	if cursorErr != nil {
-		return nil, HandleMongoError(cursorErr, "users")
-	}
-
-	return externalIDs, nil
 }

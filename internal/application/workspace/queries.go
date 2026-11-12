@@ -13,12 +13,3 @@ type GetWorkspaceQuery struct {
 }
 
 func (q GetWorkspaceQuery) QueryName() string { return "GetWorkspace" }
-
-// ListUserWorkspacesQuery - list workspace user
-type ListUserWorkspacesQuery struct {
-	UserID uuid.UUID
-	Offset int
-	Limit  int
-}
-
-func (q ListUserWorkspacesQuery) QueryName() string { return "ListUserWorkspaces" }

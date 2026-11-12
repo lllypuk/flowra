@@ -9,7 +9,7 @@ type Command interface {
 
 // RegisterUserCommand - registratsiya user
 type RegisterUserCommand struct {
-	ExternalID  string // ID from vneshney sistemy autentifikatsii (Keycloak, Auth0, etc.)
+	ExternalID  string // identity the access token resolves to
 	Username    string
 	Email       string
 	DisplayName string

@@ -424,49 +424,6 @@ func TestMongoUserRepository_DocumentToUser(t *testing.T) {
 	assert.WithinDuration(t, user.UpdatedAt(), loaded.UpdatedAt(), time.Millisecond)
 }
 
-// TestMongoUserRepository_ListExternalIDs checks retrieval list all external ID
-func TestMongoUserRepository_ListExternalIDs(t *testing.T) {
-	repo := setupTestUserRepository(t)
-	ctx := context.Background()
-
-	// Create multiple users
-	user1 := createTestUser(t, "ext1")
-	user2 := createTestUser(t, "ext2")
-	user3 := createTestUser(t, "ext3")
-
-	err := repo.Save(ctx, user1)
-	require.NoError(t, err)
-	err = repo.Save(ctx, user2)
-	require.NoError(t, err)
-	err = repo.Save(ctx, user3)
-	require.NoError(t, err)
-
-	// List all external IDs
-	externalIDs, err := repo.ListExternalIDs(ctx)
-	require.NoError(t, err)
-	require.Len(t, externalIDs, 3)
-
-	// Verify all external IDs are present
-	expectedIDs := map[string]bool{
-		user1.ExternalID(): true,
-		user2.ExternalID(): true,
-		user3.ExternalID(): true,
-	}
-	for _, id := range externalIDs {
-		assert.True(t, expectedIDs[id], "unexpected external ID: %s", id)
-	}
-}
-
-// TestMongoUserRepository_ListExternalIDs_Empty checks empty list
-func TestMongoUserRepository_ListExternalIDs_Empty(t *testing.T) {
-	repo := setupTestUserRepository(t)
-	ctx := context.Background()
-
-	externalIDs, err := repo.ListExternalIDs(ctx)
-	require.NoError(t, err)
-	assert.Empty(t, externalIDs)
-}
-
 // TestMongoUserRepository_IsActive_Persistence checks save flaga isActive
 func TestMongoUserRepository_IsActive_Persistence(t *testing.T) {
 	repo := setupTestUserRepository(t)
