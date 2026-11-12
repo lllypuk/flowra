@@ -888,9 +888,10 @@ func (c *Container) setupHTTPHandlers() {
 
 	// Configure page auth middleware with token validator and user resolver
 	httphandler.SetPageAuthConfig(&httphandler.PageAuthConfig{
-		TokenValidator: c.TokenValidator,
-		UserResolver:   c.UserResolver,
-		Logger:         c.Logger,
+		TokenValidator:   c.TokenValidator,
+		UserResolver:     c.UserResolver,
+		Logger:           c.Logger,
+		RequireValidator: c.Config.Auth.IsTokenMode(),
 	})
 
 	// === 9. Notification Service and Template Handler ===
@@ -1003,6 +1004,11 @@ func (c *Container) createChatService() *service.ChatService {
 // createAuthService creates the auth service.
 // Uses mock if Keycloak is not configured, real otherwise.
 func (c *Container) createAuthService() httphandler.AuthService {
+	if c.Config.Auth.IsTokenMode() {
+		c.Logger.Debug("token auth mode: OAuth login endpoints are disabled")
+		return httphandler.NewDisabledAuthService()
+	}
+
 	// Check if Keycloak is configured
 	if c.Config.Keycloak.URL == "" || c.Config.Keycloak.ClientID == "" {
 		c.Logger.Warn("Keycloak not configured, using mock auth service")
@@ -2272,6 +2278,11 @@ func (c *Container) createUserRepoAdapter() httphandler.UserRepository {
 // setupTokenValidator configures the JWT token validator.
 // Uses KeycloakValidatorAdapter when Keycloak is enabled, otherwise falls back to static validator.
 func (c *Container) setupTokenValidator() {
+	if c.Config.Auth.IsTokenMode() {
+		c.setupOwnerTokenValidator()
+		return
+	}
+
 	if c.Config.Keycloak.Enabled && c.Config.Keycloak.URL != "" {
 		// Create Keycloak JWT validator
 		// JWTAudience is separate from ClientID: empty = skip audience validation
@@ -2306,6 +2317,28 @@ func (c *Container) setupTokenValidator() {
 		c.Logger.Warn("Keycloak not enabled, using static token validator (development mode)")
 		c.TokenValidator = middleware.NewStaticTokenValidator(c.Config.Auth.JWTSecret)
 	}
+}
+
+// setupOwnerTokenValidator configures token mode.
+// On error TokenValidator stays nil, so wiring validation stops startup instead of falling back to mock auth.
+func (c *Container) setupOwnerTokenValidator() {
+	configured := c.Config.Auth.OwnerTokens()
+	tokens := make([]middleware.OwnerToken, 0, len(configured))
+	for _, token := range configured {
+		tokens = append(tokens, middleware.OwnerToken{Name: token.Name, SHA256: token.SHA256})
+	}
+
+	validator, err := middleware.NewOwnerTokenValidator(tokens, middleware.OwnerIdentity{
+		Username: c.Config.Auth.Owner.Username,
+		Email:    c.Config.Auth.Owner.Email,
+	}, c.Logger)
+	if err != nil {
+		c.Logger.Error("failed to create owner token validator", slog.String("error", err.Error()))
+		return
+	}
+
+	c.TokenValidator = validator
+	c.Logger.Info("token validator initialized with owner tokens", slog.Int("tokens", len(tokens)))
 }
 
 // setupUserResolver configures the user resolver for mapping external IDs to internal IDs.

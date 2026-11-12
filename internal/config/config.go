@@ -2,8 +2,11 @@
 package config
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"reflect"
 	"strconv"
@@ -28,6 +31,7 @@ const (
 
 	DefaultAccessTokenTTL  = 15 * time.Minute
 	DefaultRefreshTokenTTL = 7 * 24 * time.Hour // 7 days
+	DefaultSessionTTL      = 30 * 24 * time.Hour
 
 	DefaultWSBufferSize   = 1024
 	DefaultWSPingInterval = 30 * time.Second
@@ -159,9 +163,60 @@ type JWTConfig struct {
 //
 //nolint:golines // Struct tags require longer lines for readability
 type AuthConfig struct {
+	// Mode selects who vouches for a request: "keycloak" (default) or "token".
+	Mode            AuthMode      `yaml:"mode" env:"AUTH_MODE"`
 	JWTSecret       string        `yaml:"jwt_secret" env:"AUTH_JWT_SECRET"`
 	AccessTokenTTL  time.Duration `yaml:"access_token_ttl" env:"AUTH_ACCESS_TOKEN_TTL"`
 	RefreshTokenTTL time.Duration `yaml:"refresh_token_ttl" env:"AUTH_REFRESH_TOKEN_TTL"`
+
+	// Tokens are the named owner tokens of token mode; only SHA-256 digests are configured.
+	Tokens []AuthToken `yaml:"tokens"`
+	// OwnerTokenSHA256 adds a token named "owner": the env loader cannot fill the Tokens list.
+	OwnerTokenSHA256 string `yaml:"owner_token_sha256" env:"AUTH_OWNER_TOKEN_SHA256"`
+	// Owner is the single user every token resolves to.
+	Owner OwnerConfig `yaml:"owner"`
+	// SessionTTL is the lifetime of the web session cookie in token mode.
+	SessionTTL time.Duration `yaml:"session_ttl" env:"AUTH_SESSION_TTL"`
+}
+
+// AuthMode names the authentication mechanism.
+type AuthMode string
+
+const (
+	// AuthModeKeycloak validates Keycloak JWTs.
+	AuthModeKeycloak AuthMode = "keycloak"
+	// AuthModeToken validates static owner tokens and never falls back to mock auth.
+	AuthModeToken AuthMode = "token"
+
+	// EnvOwnerTokenName is the name of the token configured through AUTH_OWNER_TOKEN_SHA256.
+	EnvOwnerTokenName = "owner"
+)
+
+// AuthToken is one named owner token, stored as the hex SHA-256 of a random secret.
+type AuthToken struct {
+	Name   string `yaml:"name"`
+	SHA256 string `yaml:"sha256"`
+}
+
+// OwnerConfig describes the owner user; it does not depend on any token.
+type OwnerConfig struct {
+	Username    string `yaml:"username" env:"AUTH_OWNER_USERNAME"`
+	Email       string `yaml:"email" env:"AUTH_OWNER_EMAIL"`
+	DisplayName string `yaml:"display_name" env:"AUTH_OWNER_DISPLAY_NAME"`
+}
+
+// IsTokenMode reports whether owner tokens are the only accepted credentials.
+func (c AuthConfig) IsTokenMode() bool {
+	return c.Mode == AuthModeToken
+}
+
+// OwnerTokens returns the configured tokens, including the one set through the environment.
+func (c AuthConfig) OwnerTokens() []AuthToken {
+	tokens := append([]AuthToken{}, c.Tokens...)
+	if c.OwnerTokenSHA256 != "" {
+		tokens = append(tokens, AuthToken{Name: EnvOwnerTokenName, SHA256: c.OwnerTokenSHA256})
+	}
+	return tokens
 }
 
 // EventBusConfig holds event bus configuration.
@@ -221,6 +276,10 @@ var (
 	ErrInvalidEventBusType = errors.New("invalid event bus type: must be redis or inmemory")
 	ErrInvalidAppMode      = errors.New("invalid app mode: must be real or mock")
 	ErrMockModeInProd      = errors.New("mock mode is not allowed in production")
+
+	ErrInvalidAuthMode        = errors.New("invalid auth mode: must be keycloak or token")
+	ErrNoOwnerTokens          = errors.New("auth.mode token needs at least one owner token")
+	ErrTokenAuthNeedsLoopback = errors.New("auth.mode token requires server.host to be a loopback address")
 )
 
 // DefaultConfig returns a Config with sensible default values.
@@ -261,8 +320,15 @@ func DefaultConfig() *Config {
 		},
 		Auth: AuthConfig{
 			JWTSecret:       "dev-secret-change-in-production",
+			Mode:            AuthModeKeycloak,
 			AccessTokenTTL:  DefaultAccessTokenTTL,
 			RefreshTokenTTL: DefaultRefreshTokenTTL,
+			Owner: OwnerConfig{
+				Username:    "owner",
+				Email:       "owner@flowra.local",
+				DisplayName: "Owner",
+			},
+			SessionTTL: DefaultSessionTTL,
 		},
 		EventBus: EventBusConfig{
 			Type:               "redis",
@@ -384,7 +450,61 @@ func (c *Config) validateAuth(errs []error) []error {
 	if c.Auth.RefreshTokenTTL <= 0 {
 		errs = append(errs, errors.New("auth.refresh_token_ttl must be positive"))
 	}
+
+	switch c.Auth.Mode {
+	case "", AuthModeKeycloak:
+		return errs
+	case AuthModeToken:
+		return c.validateTokenAuth(errs)
+	default:
+		return append(errs, fmt.Errorf("%w: got %q", ErrInvalidAuthMode, c.Auth.Mode))
+	}
+}
+
+// validateTokenAuth validates token mode, which trusts bearer secrets and so must stay on loopback.
+func (c *Config) validateTokenAuth(errs []error) []error {
+	if c.Keycloak.Enabled {
+		errs = append(errs, errors.New("keycloak.enabled must be false when auth.mode is token"))
+	}
+	if !isLoopbackHost(c.Server.Host) {
+		errs = append(errs, fmt.Errorf("%w: got %q", ErrTokenAuthNeedsLoopback, c.Server.Host))
+	}
+	if c.Auth.Owner.Username == "" || c.Auth.Owner.Email == "" {
+		errs = append(errs, errors.New("auth.owner.username and auth.owner.email are required when auth.mode is token"))
+	}
+	if c.Auth.SessionTTL <= 0 {
+		errs = append(errs, errors.New("auth.session_ttl must be positive when auth.mode is token"))
+	}
+
+	tokens := c.Auth.OwnerTokens()
+	if len(tokens) == 0 {
+		errs = append(errs, ErrNoOwnerTokens)
+	}
+	seen := make(map[string]struct{}, len(tokens))
+	for _, token := range tokens {
+		if token.Name == "" {
+			errs = append(errs, errors.New("auth.tokens: every token needs a name"))
+			continue
+		}
+		if _, dup := seen[token.Name]; dup {
+			errs = append(errs, fmt.Errorf("auth.tokens: duplicate token name %q", token.Name))
+		}
+		seen[token.Name] = struct{}{}
+
+		digest, decodeErr := hex.DecodeString(token.SHA256)
+		if decodeErr != nil || len(digest) != sha256.Size {
+			errs = append(errs, fmt.Errorf("auth.tokens: token %q needs a hex SHA-256 digest", token.Name))
+		}
+	}
 	return errs
+}
+
+func isLoopbackHost(host string) bool {
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 // validateLog validates logging configuration.

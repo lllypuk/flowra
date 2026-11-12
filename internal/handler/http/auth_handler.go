@@ -293,6 +293,29 @@ func ToUserDTO(u *user.User) UserDTO {
 	}
 }
 
+// DisabledAuthService refuses the OAuth code and refresh flows; token auth mode has no such flows.
+type DisabledAuthService struct{}
+
+// NewDisabledAuthService creates an auth service that rejects every login and refresh.
+func NewDisabledAuthService() *DisabledAuthService {
+	return &DisabledAuthService{}
+}
+
+// Login always fails with ErrInvalidCredentials.
+func (s *DisabledAuthService) Login(_ echo.Context, _, _ string) (*LoginResult, error) {
+	return nil, ErrInvalidCredentials
+}
+
+// Logout has no server-side session to drop.
+func (s *DisabledAuthService) Logout(_ echo.Context, _ uuid.UUID) error {
+	return nil
+}
+
+// RefreshToken always fails with ErrRefreshTokenInvalid.
+func (s *DisabledAuthService) RefreshToken(_ echo.Context, _ string) (*RefreshResult, error) {
+	return nil, ErrRefreshTokenInvalid
+}
+
 // MockAuthService is a mock implementation of AuthService for testing and development.
 type MockAuthService struct {
 	users map[string]*user.User // code -> user

@@ -16,6 +16,7 @@ import (
 	"github.com/lllypuk/flowra/internal/domain/event"
 	taskdomain "github.com/lllypuk/flowra/internal/domain/task"
 	"github.com/lllypuk/flowra/internal/domain/uuid"
+	httphandler "github.com/lllypuk/flowra/internal/handler/http"
 	"github.com/lllypuk/flowra/internal/infrastructure/httpserver"
 	mongodbinfra "github.com/lllypuk/flowra/internal/infrastructure/mongodb"
 	"github.com/lllypuk/flowra/internal/infrastructure/repair"
@@ -1012,4 +1013,72 @@ func TestTaskReadModelDoc_FieldMapping(t *testing.T) {
 	assert.Equal(t, taskID, readModel.ID, "ID should be correctly parsed")
 	assert.Equal(t, chatID, readModel.ChatID, "ChatID should be correctly parsed")
 	assert.Equal(t, taskdomain.StatusToDo, readModel.Status)
+}
+
+const ownerSecretDigest = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08" // sha256("test")
+
+func tokenModeContainer(tokens ...config.AuthToken) *Container {
+	cfg := config.DefaultConfig()
+	cfg.Auth.Mode = config.AuthModeToken
+	cfg.Auth.Tokens = tokens
+	cfg.Keycloak.Enabled = false
+	cfg.Server.Host = "127.0.0.1"
+	return &Container{Logger: slog.Default(), Config: cfg}
+}
+
+func TestContainer_SetupTokenValidator_TokenMode(t *testing.T) {
+	c := tokenModeContainer(config.AuthToken{Name: "laptop", SHA256: ownerSecretDigest})
+
+	c.setupTokenValidator()
+
+	require.IsType(t, &middleware.OwnerTokenValidator{}, c.TokenValidator)
+
+	claims, err := c.TokenValidator.ValidateToken(context.Background(), "test")
+	require.NoError(t, err)
+	assert.Equal(t, middleware.OwnerExternalID, claims.ExternalUserID)
+
+	_, err = c.TokenValidator.ValidateToken(context.Background(), "dev-token-123")
+	require.ErrorIs(t, err, middleware.ErrInvalidToken)
+}
+
+func TestContainer_SetupTokenValidator_TokenMode_FailsClosed(t *testing.T) {
+	tests := []struct {
+		name   string
+		tokens []config.AuthToken
+	}{
+		{name: "no tokens"},
+		{name: "malformed digest", tokens: []config.AuthToken{{Name: "laptop", SHA256: "secret"}}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := tokenModeContainer(tt.tokens...)
+
+			c.setupTokenValidator()
+
+			assert.Nil(t, c.TokenValidator)
+			err := c.validateWiring()
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "token validator not initialized")
+		})
+	}
+}
+
+func TestContainer_SetupTokenValidator_KeycloakDisabledKeepsStaticValidator(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.Keycloak.Enabled = false
+	c := &Container{Logger: slog.Default(), Config: cfg}
+
+	c.setupTokenValidator()
+
+	assert.IsType(t, &middleware.StaticTokenValidator{}, c.TokenValidator)
+}
+
+func TestContainer_CreateAuthService_TokenModeDisablesOAuthLogin(t *testing.T) {
+	c := tokenModeContainer(config.AuthToken{Name: "laptop", SHA256: ownerSecretDigest})
+
+	authService := c.createAuthService()
+
+	require.IsType(t, &httphandler.DisabledAuthService{}, authService)
+	assert.Nil(t, c.OAuthClient)
 }

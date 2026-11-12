@@ -26,6 +26,9 @@ type PageAuthConfig struct {
 
 	// Logger for auth events.
 	Logger *slog.Logger
+
+	// RequireValidator rejects every session when TokenValidator is missing instead of using the mock user.
+	RequireValidator bool
 }
 
 // globalPageAuthConfig holds the global configuration for page auth middleware.
@@ -89,6 +92,10 @@ func OptionalAuth(next echo.HandlerFunc) echo.HandlerFunc {
 // validateAndSetUserContext validates the JWT token and sets user info in context.
 func validateAndSetUserContext(c echo.Context, token string) error {
 	config := globalPageAuthConfig
+
+	if config != nil && config.RequireValidator && config.TokenValidator == nil {
+		return middleware.ErrInvalidToken
+	}
 
 	// If no config is set, use mock mode for development
 	if config == nil || config.TokenValidator == nil {

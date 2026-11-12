@@ -738,3 +738,130 @@ func TestConfig_Validate_ProductionRequiresKeycloakJWTAudience(t *testing.T) {
 	require.ErrorIs(t, err, config.ErrConfigInvalid)
 	assert.Contains(t, err.Error(), "keycloak.jwt_audience is required in production when keycloak is enabled")
 }
+
+const testTokenDigest = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+
+func tokenModeConfig() *config.Config {
+	cfg := config.DefaultConfig()
+	cfg.Auth.Mode = config.AuthModeToken
+	cfg.Auth.Tokens = []config.AuthToken{{Name: "laptop", SHA256: testTokenDigest}}
+	cfg.Keycloak.Enabled = false
+	cfg.Server.Host = "127.0.0.1"
+	return cfg
+}
+
+func TestConfig_Validate_TokenAuth_Valid(t *testing.T) {
+	for _, host := range []string{"127.0.0.1", "::1", "localhost"} {
+		t.Run(host, func(t *testing.T) {
+			cfg := tokenModeConfig()
+			cfg.Server.Host = host
+			require.NoError(t, cfg.Validate())
+			assert.True(t, cfg.Auth.IsTokenMode())
+		})
+	}
+}
+
+func TestConfig_Validate_TokenAuth_Invalid(t *testing.T) {
+	tests := []struct {
+		name   string
+		modify func(*config.Config)
+		errMsg string
+	}{
+		{
+			name:   "no tokens",
+			modify: func(c *config.Config) { c.Auth.Tokens = nil },
+			errMsg: config.ErrNoOwnerTokens.Error(),
+		},
+		{
+			name:   "non-loopback host",
+			modify: func(c *config.Config) { c.Server.Host = "0.0.0.0" },
+			errMsg: config.ErrTokenAuthNeedsLoopback.Error(),
+		},
+		{
+			name:   "lan address",
+			modify: func(c *config.Config) { c.Server.Host = "192.168.1.10" },
+			errMsg: config.ErrTokenAuthNeedsLoopback.Error(),
+		},
+		{
+			name:   "keycloak still enabled",
+			modify: func(c *config.Config) { c.Keycloak.Enabled = true },
+			errMsg: "keycloak.enabled must be false when auth.mode is token",
+		},
+		{
+			name: "raw secret instead of digest",
+			modify: func(c *config.Config) {
+				c.Auth.Tokens = []config.AuthToken{{Name: "laptop", SHA256: "my-secret"}}
+			},
+			errMsg: `token "laptop" needs a hex SHA-256 digest`,
+		},
+		{
+			name: "token without a name",
+			modify: func(c *config.Config) {
+				c.Auth.Tokens = []config.AuthToken{{SHA256: testTokenDigest}}
+			},
+			errMsg: "every token needs a name",
+		},
+		{
+			name: "duplicate token name",
+			modify: func(c *config.Config) {
+				c.Auth.Tokens = append(c.Auth.Tokens, config.AuthToken{Name: "laptop", SHA256: testTokenDigest})
+			},
+			errMsg: `duplicate token name "laptop"`,
+		},
+		{
+			name:   "owner without username",
+			modify: func(c *config.Config) { c.Auth.Owner.Username = "" },
+			errMsg: "auth.owner.username and auth.owner.email are required",
+		},
+		{
+			name:   "zero session ttl",
+			modify: func(c *config.Config) { c.Auth.SessionTTL = 0 },
+			errMsg: "auth.session_ttl must be positive",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := tokenModeConfig()
+			tt.modify(cfg)
+			err := cfg.Validate()
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.errMsg)
+		})
+	}
+}
+
+func TestConfig_Validate_UnknownAuthMode(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.Auth.Mode = "basic"
+	err := cfg.Validate()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), config.ErrInvalidAuthMode.Error())
+}
+
+func TestConfig_KeycloakModeIgnoresTokenRules(t *testing.T) {
+	cfg := config.DefaultConfig()
+	require.NoError(t, cfg.Validate())
+	assert.False(t, cfg.Auth.IsTokenMode())
+	assert.Empty(t, cfg.Auth.OwnerTokens())
+}
+
+func TestAuthConfig_OwnerTokens_FromEnv(t *testing.T) {
+	t.Setenv("AUTH_MODE", "token")
+	t.Setenv("AUTH_OWNER_TOKEN_SHA256", testTokenDigest)
+	t.Setenv("SERVER_HOST", "127.0.0.1")
+	t.Setenv("KEYCLOAK_ENABLED", "false")
+
+	configPath := filepath.Join(t.TempDir(), "config.yaml")
+	require.NoError(t, os.WriteFile(configPath, []byte("auth:\n  tokens:\n    - name: phone\n      sha256: "+
+		testTokenDigest+"\n"), 0o644))
+
+	cfg, err := config.LoadFromPath(configPath)
+	require.NoError(t, err)
+
+	tokens := cfg.Auth.OwnerTokens()
+	require.Len(t, tokens, 2)
+	assert.Equal(t, "phone", tokens[0].Name)
+	assert.Equal(t, config.EnvOwnerTokenName, tokens[1].Name)
+	assert.Equal(t, "owner", cfg.Auth.Owner.Username)
+}
