@@ -118,22 +118,22 @@
 - Modify: `internal/domain/errs/*.go`
 - Create/Modify: тесты event store (testcontainers)
 
-- [ ] `appcore.WithCommand`/`CommandFrom`, `ErrDuplicateCommand`, `errs.ErrOutcomeUnknown`, `errs.ErrIdempotencyKeyReused`
-- [ ] `EventDocument.CommandID`, `CommandFP` (omitempty), ставятся на последний документ пачки
-- [ ] индекс `idx_events_aggregate_command_unique`, частичный по `command_id`
-- [ ] `SaveEvents`: дубликат по этому индексу → `ErrDuplicateCommand`; ошибка после завершения колбэка → `ErrOutcomeUnknown`
-- [ ] `FindCommand(ctx, aggregateID, commandID) (version int, fp string, found bool, err error)`
-- [ ] тесты: запись с ключом и поиск; повтор ключа → `ErrDuplicateCommand`; без ключа как раньше
+- [x] `appcore.WithCommand`/`CommandFrom`, `ErrDuplicateCommand`, `errs.ErrOutcomeUnknown`, `errs.ErrIdempotencyKeyReused`
+- [x] `EventDocument.CommandID`, `CommandFP` (omitempty), ставятся на последний документ пачки
+- [x] индекс `idx_events_aggregate_command_unique`, частичный по `command_id`
+- [x] `SaveEvents`: дубликат по этому индексу → `ErrDuplicateCommand`; ошибка после завершения колбэка → `ErrOutcomeUnknown`
+- [x] `FindCommand(ctx, aggregateID, commandID) (version int, fp string, found bool, err error)`
+- [x] тесты: запись с ключом и поиск; повтор ключа → `ErrDuplicateCommand`; без ключа как раньше
 
 ### Task 2: `CommandRunner`
 
 **Files:**
 - Create: `internal/application/chat/command_runner.go`, `command_runner_test.go`
 
-- [ ] блокировка на чат с ограниченным ожиданием и освобождением записи после последнего пользователя
-- [ ] поиск ключа под блокировкой, отпечаток, повтор с перезагрузкой до 5 попыток, джиттер
-- [ ] `ErrDuplicateCommand` → чтение сохранённого итога
-- [ ] тесты: применено; конфликт разрешился повтором; исчерпано → `ErrConcurrentModification`; повтор ключа;
+- [x] блокировка на чат с ограниченным ожиданием и освобождением записи после последнего пользователя
+- [x] поиск ключа под блокировкой, отпечаток, повтор с перезагрузкой до 5 попыток, джиттер
+- [x] `ErrDuplicateCommand` → чтение сохранённого итога
+- [x] тесты: применено; конфликт разрешился повтором; исчерпано → `ErrConcurrentModification`; повтор ключа;
   другой отпечаток; неизвестный исход не повторяется; параллельные вызовы на один чат сериализуются
 
 ### Task 3: Проекции с проверкой версии
@@ -142,9 +142,9 @@
 - Modify: `internal/infrastructure/repository/mongodb/chat_repository.go`
 - Modify: `internal/infrastructure/projector/chat_projector.go`, `chat_to_task_read_model_projector.go`
 
-- [ ] `chats_read_model` хранит `version`; запись при сохранённой `version <= v` или без поля; дубликат ключа при upsert — пропуск
-- [ ] то же для `tasks_read_model` (поле `version` там уже есть)
-- [ ] тесты: старая версия не затирает новую; документ без версии обновляется
+- [x] `chats_read_model` хранит `version`; запись при сохранённой `version <= v` или без поля; дубликат ключа при upsert — пропуск
+- [x] то же для `tasks_read_model` (поле `version` там уже есть)
+- [x] тесты: старая версия не затирает новую; документ без версии обновляется
 
 ### Task 4: `ActionService` исполняет команды синхронно
 
@@ -154,14 +154,14 @@
 - Modify: `internal/domain/chat/chat.go` (ошибки `Close`/`Reopen`)
 - Modify: `cmd/api/container.go`
 
-- [ ] статус, приоритет, исполнитель, срок, закрыть, открыть, переименовать — через `CommandRunner` и use case;
+- [x] статус, приоритет, исполнитель, срок, закрыть, открыть, переименовать — через `CommandRunner` и use case;
   системное сообщение с тегом больше не пишется
-- [ ] `ActionResult` несёт `ChatID`, `Version`, `Replayed`; ключ и отпечаток приходят параметром
-- [ ] сбой синхронизации проекции и сообщения в тред не превращает «применено» в ошибку
-- [ ] `CloseChatUseCase`, `ReopenChatUseCase` — через `CommandRepository`
-- [ ] проверка участника чата; отвязанный контекст со сроком
-- [ ] после повтора по ключу — пересборка обеих проекций
-- [ ] тесты: каждое действие применяет событие; `rename` меняет имя и проекцию задачи; не участник — отказ;
+- [x] `ActionResult` несёт `ChatID`, `Version`, `Replayed`; ключ и отпечаток приходят параметром
+- [x] сбой синхронизации проекции и сообщения в тред не превращает «применено» в ошибку
+- [x] `CloseChatUseCase`, `ReopenChatUseCase` — через `CommandRepository`
+- [x] проверка участника чата; отвязанный контекст со сроком
+- [x] после повтора по ключу — пересборка обеих проекций
+- [x] тесты: каждое действие применяет событие; `rename` меняет имя и проекцию задачи; не участник — отказ;
   сбой проекции не меняет «применено»; ошибки use case доходят до вызывающего
 
 ### Task 5: HTTP-ответ с итогом
@@ -170,41 +170,41 @@
 - Modify: `internal/handler/http/chat_action_handler.go`, `task_action_handler.go`, `task_handler.go` и тесты
 - Modify: `internal/infrastructure/httpserver/response.go`
 
-- [ ] читать `Idempotency-Key`, проверять длину; то же в `PUT /tasks/...`
-- [ ] убрать ярлыки «нет изменений» и «status update queued» в `task_action_handler.go`, `task_handler.go`
-- [ ] 200 с телом итога; `Hx-Trigger` сохранить
-- [ ] `mapError`: `ErrOutcomeUnknown` → 503, `ErrIdempotencyKeyReused` → 422
-- [ ] тесты обработчиков и отображения ошибок
+- [x] читать `Idempotency-Key`, проверять длину; то же в `PUT /tasks/...`
+- [x] убрать ярлыки «нет изменений» и «status update queued» в `task_action_handler.go`, `task_handler.go`
+- [x] 200 с телом итога; `Hx-Trigger` сохранить
+- [x] `mapError`: `ErrOutcomeUnknown` → 503, `ErrIdempotencyKeyReused` → 422
+- [x] тесты обработчиков и отображения ошибок
 
 ### Task 6: Исполнитель тегов через `CommandRunner`
 
 **Files:**
 - Modify: `internal/domain/tag/executor.go`, тесты; `cmd/api/container.go`
 
-- [ ] заменить свой повтор на `CommandRunner` без ключа
-- [ ] тесты исполнителя проходят
+- [x] заменить свой повтор на `CommandRunner` без ключа
+- [x] тесты исполнителя проходят
 
 ### Task 7: agentbench и приёмка
 
 **Files:**
 - Modify: `tests/load/agentbench/main.go`, `run.sh`
 
-- [ ] `contend`: ключ на каждый запрос, запись принятых значений и кодов ответа
-- [ ] сверка: каждое принятое значение срока ровно одним событием, событий без принятого запроса нет (кроме
+- [x] `contend`: ключ на каждый запрос, запись принятых значений и кодов ответа
+- [x] сверка: каждое принятое значение срока ровно одним событием, событий без принятого запроса нет (кроме
   неизвестных исходов), итог в `chats_read_model` и `tasks_read_model` равен последнему событию
-- [ ] `BENCH_API_BIN` для прогона «до» на бинаре базовой ветки
-- [ ] прогоны: 1, 2, 10, 50 агентов × 3 до и после; пик и стресс × 3 до и после
+- [x] `BENCH_API_BIN` для прогона «до» на бинаре базовой ветки
+- [x] прогоны: 1, 2, 10, 50 агентов × 3 до и после; пик и стресс × 3 до и после
 
 ### Task 8: Verify acceptance criteria
 
-- [ ] `make lint`, `go test ./...`, интеграционные тесты затронутых пакетов
-- [ ] таблицы до/после совпадают с требованиями Overview
+- [x] `make lint`, `go test ./...`, интеграционные тесты затронутых пакетов
+- [x] таблицы до/после совпадают с требованиями Overview
 
 ### Task 9: [Final] Update documentation
 
-- [ ] `docs/api/action-endpoints.md`, `openapi.yaml`: итоги, коды, `Idempotency-Key`, тег-путь отложенный
-- [ ] `docs/min-infra-review.md`: результаты приёмки, ссылка на замеры
-- [ ] план — в `docs/plans/completed/`
+- [x] `docs/api/action-endpoints.md`, `openapi.yaml`: итоги, коды, `Idempotency-Key`, тег-путь отложенный
+- [x] `docs/min-infra-review.md`: результаты приёмки, ссылка на замеры
+- [x] план — в `docs/plans/completed/`
 
 ## Post-Completion
 
