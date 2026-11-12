@@ -31,6 +31,9 @@ Server-side behavior (`internal/handler/websocket/handler.go`):
 - A cookie-authenticated handshake must carry an `Origin` (or `Referer`) equal to the request `Host`; otherwise the
   server returns `403` `ORIGIN_MISMATCH`. A handshake with an `Authorization` header skips this check, so non-browser
   clients need no `Origin`. The check is `middleware.RequireSameOriginForCookie`, shared with the feed's write routes.
+- After that the WebSocket upgrader applies its own default rule to every handshake, Bearer included: an `Origin`
+  header, when present, must match `Host`, otherwise the upgrade fails with a plain-text `403`. A Bearer client should
+  send no `Origin`, or a matching one.
 
 If authentication fails, the server returns `401` JSON (no upgrade).
 
@@ -380,7 +383,10 @@ Authorization: Bearer <token>
 ### `403` `ORIGIN_MISMATCH` before upgrade
 
 - A cookie-authenticated client sent no `Origin`/`Referer`, or one that differs from the `Host` (for example, behind
-  a proxy that rewrites `Host`); send `Authorization: Bearer` instead of the cookie
+  a proxy that rewrites `Host`). A browser cannot set `Authorization` on a WebSocket, so the fix is a proxy that
+  keeps `Host`; a non-browser client can use `Authorization: Bearer` without `Origin`
+- A plain-text `403` ("request origin not allowed") comes from the upgrader: the client sent an `Origin` that differs
+  from `Host`
 
 ### Connected but no chat events
 
