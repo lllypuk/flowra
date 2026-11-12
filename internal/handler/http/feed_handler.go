@@ -21,6 +21,14 @@ const (
 	feedCodeInvalidCursor   = "INVALID_CURSOR"
 	feedCodeInvalidLimit    = "INVALID_LIMIT"
 	feedCodeUnavailable     = "FEED_UNAVAILABLE"
+
+	feedCodeQuestionNotFound = "FEED_QUESTION_NOT_FOUND"
+	feedCodeAlreadyAnswered  = "QUESTION_ALREADY_ANSWERED"
+	feedCodeQuestionClosed   = "QUESTION_CLOSED"
+	feedCodeKeyRequired      = "IDEMPOTENCY_KEY_REQUIRED"
+	feedCodeKeyReused        = "IDEMPOTENCY_KEY_REUSED"
+	feedCodeInvalidAnswer    = "INVALID_ANSWER"
+	feedCodeOriginMismatch   = "ORIGIN_MISMATCH"
 )
 
 // FeedService reads the published lead feed; every call answers from one snapshot.
@@ -31,10 +39,18 @@ type FeedService interface {
 	Records(ctx context.Context, taskID string, limit int, cursor string) (leadfeed.RecordPage, error)
 }
 
-// FeedHandler serves the read-only lead feed API. It has no write routes by design.
+// FeedQuestionService shows questions of the published feed and accepts the owner's answer.
+type FeedQuestionService interface {
+	List(ctx context.Context) (leadfeed.QuestionList, error)
+	Question(ctx context.Context, qid string) (leadfeed.QuestionDetail, error)
+	Answer(ctx context.Context, cmd leadfeed.AnswerCommand) (leadfeed.SaveAnswerResult, error)
+}
+
+// FeedHandler serves the lead feed API. The only write route records the owner's answer outside the projection.
 type FeedHandler struct {
-	service FeedService
-	logger  *slog.Logger
+	service   FeedService
+	questions FeedQuestionService
+	logger    *slog.Logger
 }
 
 // NewFeedHandler creates a feed handler.
@@ -45,12 +61,23 @@ func NewFeedHandler(service FeedService, logger *slog.Logger) *FeedHandler {
 	return &FeedHandler{service: service, logger: logger}
 }
 
-// RegisterRoutes registers the feed routes; only GET is served.
+// WithQuestions enables the question routes.
+func (h *FeedHandler) WithQuestions(questions FeedQuestionService) *FeedHandler {
+	h.questions = questions
+	return h
+}
+
+// RegisterRoutes registers the feed routes: reads, and the owner's answer when questions are enabled.
 func (h *FeedHandler) RegisterRoutes(r *httpserver.Router) {
 	r.Auth().GET("/feed/status", h.Status)
 	r.Auth().GET("/feed/tasks", h.ListTasks)
 	r.Auth().GET("/feed/tasks/:id", h.GetTask)
 	r.Auth().GET("/feed/tasks/:id/records", h.ListRecords)
+	if h.questions != nil {
+		r.Auth().GET("/feed/questions", h.ListQuestions)
+		r.Auth().GET("/feed/questions/:qid", h.GetQuestion)
+		r.Auth().POST("/feed/questions/:qid/answer", h.AnswerQuestion, RequireSameOriginForCookie)
+	}
 }
 
 // FeedTime is a UTC instant printed with fixed millisecond precision, the way the source prints it.
@@ -299,6 +326,20 @@ func (h *FeedHandler) respondFeedError(c echo.Context, err error) error {
 	switch {
 	case errors.Is(err, leadfeed.ErrTaskNotFound):
 		return httpserver.RespondErrorWithCode(c, http.StatusNotFound, feedCodeTaskNotFound, "feed task not found")
+	case errors.Is(err, leadfeed.ErrQuestionNotFound):
+		return httpserver.RespondErrorWithCode(c, http.StatusNotFound, feedCodeQuestionNotFound,
+			"feed question not found")
+	case errors.Is(err, leadfeed.ErrAlreadyAnswered):
+		return httpserver.RespondErrorWithCode(c, http.StatusConflict, feedCodeAlreadyAnswered,
+			"the question is already answered")
+	case errors.Is(err, leadfeed.ErrQuestionClosed):
+		return httpserver.RespondErrorWithCode(c, http.StatusConflict, feedCodeQuestionClosed,
+			"the question is closed")
+	case errors.Is(err, leadfeed.ErrIdempotencyKeyReused):
+		return httpserver.RespondErrorWithCode(c, http.StatusConflict, feedCodeKeyReused,
+			"the Idempotency-Key was used with another answer")
+	case errors.Is(err, leadfeed.ErrInvalidAnswer):
+		return httpserver.RespondErrorWithCode(c, http.StatusUnprocessableEntity, feedCodeInvalidAnswer, err.Error())
 	case errors.Is(err, leadfeed.ErrRevisionChanged):
 		return httpserver.RespondErrorWithCode(c, http.StatusConflict, feedCodeRevisionChanged,
 			"the feed was republished; restart paging without a cursor")

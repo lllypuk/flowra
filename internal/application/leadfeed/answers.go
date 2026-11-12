@@ -58,6 +58,8 @@ type AnswerStore interface {
 	// SaveAnswer checks the idempotency key before the question state: a repeat returns the original answer.
 	// It returns ErrIdempotencyKeyReused or ErrAlreadyAnswered.
 	SaveAnswer(ctx context.Context, answer OwnerAnswer) (SaveAnswerResult, error)
+	// FindAnswerByKey returns the answer stored under an idempotency key, in any epoch, or ErrAnswerNotFound.
+	FindAnswerByKey(ctx context.Context, commandID string) (*OwnerAnswer, error)
 	// FindAnswer returns ErrAnswerNotFound when the question has no answer.
 	FindAnswer(ctx context.Context, source, epoch, qid string) (*OwnerAnswer, error)
 	// ListAnswers returns the answers of one epoch, oldest first.

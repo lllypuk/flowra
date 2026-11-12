@@ -5,10 +5,12 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/labstack/echo/v4"
+	"github.com/lllypuk/flowra/internal/application/leadfeed"
 	"github.com/lllypuk/flowra/internal/config"
 	httphandler "github.com/lllypuk/flowra/internal/handler/http"
 	"github.com/lllypuk/flowra/internal/infrastructure/httpserver"
@@ -377,7 +379,21 @@ func TestCreatePlaceholderHandler(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "Test service not available")
 }
 
-func TestSetupRoutes_FeedRoutesAreReadOnly(t *testing.T) {
+type stubQuestions struct{}
+
+func (stubQuestions) List(context.Context) (leadfeed.QuestionList, error) {
+	return leadfeed.QuestionList{}, nil
+}
+
+func (stubQuestions) Question(context.Context, string) (leadfeed.QuestionDetail, error) {
+	return leadfeed.QuestionDetail{}, nil
+}
+
+func (stubQuestions) Answer(context.Context, leadfeed.AnswerCommand) (leadfeed.SaveAnswerResult, error) {
+	return leadfeed.SaveAnswerResult{}, nil
+}
+
+func TestSetupRoutes_FeedWritesOnlyAnswerQuestions(t *testing.T) {
 	cfg := config.DefaultConfig()
 
 	c := &Container{
@@ -386,7 +402,7 @@ func TestSetupRoutes_FeedRoutesAreReadOnly(t *testing.T) {
 		TokenValidator: testTokenValidator(t),
 		AccessChecker:  middleware.NewMockWorkspaceAccessChecker(),
 		Hub:            websocket.NewHub(),
-		FeedHandler:    httphandler.NewFeedHandler(nil, slog.Default()),
+		FeedHandler:    httphandler.NewFeedHandler(nil, slog.Default()).WithQuestions(stubQuestions{}),
 	}
 
 	e := SetupRoutes(c).Echo()
@@ -399,21 +415,45 @@ func TestSetupRoutes_FeedRoutesAreReadOnly(t *testing.T) {
 	}
 
 	assert.Equal(t, map[string][]string{
-		"/api/v1/feed/status":            {http.MethodGet},
-		"/api/v1/feed/tasks":             {http.MethodGet},
-		"/api/v1/feed/tasks/:id":         {http.MethodGet},
-		"/api/v1/feed/tasks/:id/records": {http.MethodGet},
+		"/api/v1/feed/status":                {http.MethodGet},
+		"/api/v1/feed/tasks":                 {http.MethodGet},
+		"/api/v1/feed/tasks/:id":             {http.MethodGet},
+		"/api/v1/feed/tasks/:id/records":     {http.MethodGet},
+		"/api/v1/feed/questions":             {http.MethodGet},
+		"/api/v1/feed/questions/:qid":        {http.MethodGet},
+		"/api/v1/feed/questions/:qid/answer": {http.MethodPost},
 	}, feedRoutes)
 
 	for _, method := range []string{http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
-		for path := range feedRoutes {
-			req := httptest.NewRequest(method, strings.ReplaceAll(path, ":id", "T-0001"), nil)
+		for path, methods := range feedRoutes {
+			if slices.Contains(methods, method) {
+				continue
+			}
+			target := strings.NewReplacer(":id", "T-0001", ":qid", "Q-0001").Replace(path)
+			req := httptest.NewRequest(method, target, nil)
 			req.Header.Set("Authorization", "Bearer test")
 			rec := httptest.NewRecorder()
 
 			e.ServeHTTP(rec, req)
 
 			assert.Contains(t, []int{http.StatusNotFound, http.StatusMethodNotAllowed}, rec.Code, "%s %s", method, path)
+		}
+	}
+}
+
+func TestSetupRoutes_FeedWithoutQuestionsStaysReadOnly(t *testing.T) {
+	c := &Container{
+		Config:         config.DefaultConfig(),
+		Logger:         slog.Default(),
+		TokenValidator: testTokenValidator(t),
+		AccessChecker:  middleware.NewMockWorkspaceAccessChecker(),
+		Hub:            websocket.NewHub(),
+		FeedHandler:    httphandler.NewFeedHandler(nil, slog.Default()),
+	}
+
+	for _, r := range SetupRoutes(c).Echo().Routes() {
+		if strings.HasPrefix(r.Path, "/api/v1/feed") {
+			assert.Equal(t, http.MethodGet, r.Method, r.Path)
 		}
 	}
 }

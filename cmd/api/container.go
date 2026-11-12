@@ -164,6 +164,7 @@ type Container struct {
 
 	// Lead feed: read-only projection of the lead's task journal
 	FeedService         *leadfeed.QueryService
+	QuestionService     *leadfeed.QuestionService
 	FeedHandler         *httphandler.FeedHandler
 	FeedTemplateHandler *httphandler.FeedTemplateHandler
 
@@ -1005,11 +1006,13 @@ func (c *Container) createChatService() *service.ChatService {
 	})
 }
 
-// setupLeadFeed wires the read-only lead feed. Imports are done by cmd/leadfeed, never by the API.
+// setupLeadFeed wires the lead feed. Imports are done by cmd/leadfeed, never by the API.
 func (c *Container) setupLeadFeed() {
 	feedRepo := mongodb.NewMongoLeadFeedRepository(c.MongoDB, c.MongoDB.Database(c.MongoDBName))
 	c.FeedService = leadfeed.NewQueryService(feedRepo)
-	c.FeedHandler = httphandler.NewFeedHandler(c.FeedService, c.Logger)
+	answerRepo := mongodb.NewMongoOwnerAnswerRepository(c.MongoDB.Database(c.MongoDBName))
+	c.QuestionService = leadfeed.NewQuestionService(feedRepo, answerRepo)
+	c.FeedHandler = httphandler.NewFeedHandler(c.FeedService, c.Logger).WithQuestions(c.QuestionService)
 	if c.TemplateRenderer != nil {
 		c.FeedTemplateHandler = httphandler.NewFeedTemplateHandler(c.TemplateRenderer, c.FeedService, c.Logger)
 	}

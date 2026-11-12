@@ -41,3 +41,16 @@ func respondAction(c echo.Context, res *appcore.ActionResult, err error, trigger
 func outcomeOf(res *appcore.ActionResult) actionOutcome {
 	return actionOutcome{ChatID: res.ChatID.String(), Version: res.Version, Replayed: res.Replayed}
 }
+
+// requiredIdempotencyKey is idempotencyKey for routes that must not run without one.
+func requiredIdempotencyKey(c echo.Context) (string, bool, error) {
+	key, ok, err := idempotencyKey(c)
+	if !ok {
+		return "", false, err
+	}
+	if key == "" {
+		return "", false, httpserver.RespondErrorWithCode(c, http.StatusBadRequest, "IDEMPOTENCY_KEY_REQUIRED",
+			"Idempotency-Key header is required")
+	}
+	return key, true, nil
+}

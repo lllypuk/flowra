@@ -1723,7 +1723,7 @@ paths:
           $ref: "#/components/responses/NotFoundError"
 
   # ============================================
-  # Lead Feed Endpoints (read-only)
+  # Lead Feed Endpoints (reads, and the owner's answer to a question)
   # ============================================
   /feed/status:
     get:
@@ -1835,6 +1835,127 @@ paths:
           $ref: "#/components/responses/NotFoundError"
         "409":
           $ref: "#/components/responses/FeedRevisionChangedError"
+        "503":
+          $ref: "#/components/responses/FeedUnavailableError"
+
+  /feed/questions:
+    get:
+      tags:
+        - Feed
+      summary: List questions of the feed
+      description: >-
+        Questions of the published snapshot with the owner's answer laid over them; those waiting for an answer
+        come first. `state` is `waiting`, `answered` (Flowra holds an answer the lead has not confirmed yet),
+        `delivered` (the lead's mailbox accepted it) or `handled` (the lead closed the question).
+      operationId: listFeedQuestions
+      responses:
+        "200":
+          description: Questions of one snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedQuestionListResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "503":
+          $ref: "#/components/responses/FeedUnavailableError"
+
+  /feed/questions/{qid}:
+    get:
+      tags:
+        - Feed
+      summary: Get a feed question
+      operationId: getFeedQuestion
+      parameters:
+        - $ref: "#/components/parameters/FeedQuestionIdPath"
+      responses:
+        "200":
+          description: Question with its answer and state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedQuestionDetailResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "503":
+          $ref: "#/components/responses/FeedUnavailableError"
+
+  /feed/questions/{qid}/answer:
+    post:
+      tags:
+        - Feed
+      summary: Answer a feed question
+      description: >-
+        Records the owner's decision, scoped by the question's `scope`; it grants no permission to run commands.
+        The answer is stored outside the feed projection and handed to the lead by the sync. It cannot be
+        edited: a second answer is 409. A repeated `Idempotency-Key` returns the first result whatever the
+        question became since. With a session cookie the `Origin` (or `Referer`) must match the request host;
+        a Bearer request is not checked.
+      operationId: answerFeedQuestion
+      parameters:
+        - $ref: "#/components/parameters/FeedQuestionIdPath"
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Up to 200 characters
+          schema:
+            type: string
+            maxLength: 200
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FeedAnswerRequest"
+      responses:
+        "200":
+          description: The same key and body were accepted before; the first result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedAnswerResultResponse"
+        "201":
+          description: Answer accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedAnswerResultResponse"
+        "400":
+          description: "`IDEMPOTENCY_KEY_REQUIRED` or `INVALID_IDEMPOTENCY_KEY`"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          description: "`ORIGIN_MISMATCH`: a cookie request from another origin"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: "`FEED_QUESTION_NOT_FOUND`: no such question in the published snapshot"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: >-
+            `QUESTION_ALREADY_ANSWERED` (in Flowra or in the snapshot), `QUESTION_CLOSED` (closed without an
+            answer), `IDEMPOTENCY_KEY_REUSED` (the same key, another body)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: "`INVALID_ANSWER`: neither option nor text, unknown option, or text over 4000 characters"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "503":
           $ref: "#/components/responses/FeedUnavailableError"
 
@@ -1967,6 +2088,15 @@ components:
       schema:
         type: string
         maxLength: 200
+
+    FeedQuestionIdPath:
+      name: qid
+      in: path
+      required: true
+      description: Question id as issued by the lead tool
+      schema:
+        type: string
+        example: "Q-0001"
 
     FeedTaskIdPath:
       name: id
@@ -3255,6 +3385,151 @@ components:
               properties:
                 task:
                   $ref: "#/components/schemas/FeedTask"
+
+    FeedAnswer:
+      type: object
+      properties:
+        answer_id:
+          type: string
+          description: UUID issued by Flowra; the lead's journal confirms the answer by it
+        option_id:
+          type: [string, "null"]
+        option_label:
+          type: [string, "null"]
+        text:
+          type: string
+        answered_at:
+          type: string
+          format: date-time
+        late:
+          type: boolean
+          description: Given after the lead closed the question
+        delivered:
+          type: boolean
+          description: The snapshot confirms this answer and the lead's mailbox accepted it
+
+    FeedQuestion:
+      type: object
+      properties:
+        qid:
+          type: string
+          example: "Q-0001"
+        record_id:
+          type: string
+        task:
+          type: string
+        task_title:
+          type: string
+        asked_at:
+          type: string
+          format: date-time
+        body:
+          type: [string, "null"]
+          description: Question text with context, verbatim
+        format:
+          type: string
+        options:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              label:
+                type: string
+        recommendation:
+          oneOf:
+            - type: "null"
+            - type: object
+              properties:
+                option_id:
+                  type: [string, "null"]
+                why:
+                  type: string
+        scope:
+          type: string
+          description: What the answer applies to and what it does not allow
+        state:
+          type: string
+          enum: [waiting, answered, delivered, handled]
+        closed_in_session:
+          type: boolean
+          description: The lead closed the question while an answer is still unconfirmed
+        answer:
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/FeedAnswer"
+        resolved:
+          oneOf:
+            - type: "null"
+            - type: object
+              properties:
+                at:
+                  type: string
+                  format: date-time
+                note:
+                  type: string
+                elsewhere:
+                  type: boolean
+
+    FeedQuestionListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          allOf:
+            - $ref: "#/components/schemas/FeedMeta"
+            - type: object
+              properties:
+                waiting:
+                  type: integer
+                  description: Questions in state `waiting`
+                items:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/FeedQuestion"
+
+    FeedQuestionDetailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          allOf:
+            - $ref: "#/components/schemas/FeedMeta"
+            - type: object
+              properties:
+                question:
+                  $ref: "#/components/schemas/FeedQuestion"
+
+    FeedAnswerRequest:
+      type: object
+      description: At least one of `option_id` and `text`
+      properties:
+        option_id:
+          type: [string, "null"]
+        text:
+          type: string
+          maxLength: 4000
+
+    FeedAnswerResultResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            qid:
+              type: string
+            answer:
+              $ref: "#/components/schemas/FeedAnswer"
+            replayed:
+              type: boolean
 
     FeedRecordListResponse:
       type: object

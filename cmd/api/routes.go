@@ -87,7 +87,7 @@ func SetupRoutes(c *Container) *httpserver.Router {
 	return router
 }
 
-// registerFeedRoutes registers the read-only lead feed API.
+// registerFeedRoutes registers the lead feed API.
 func registerFeedRoutes(r *httpserver.Router, c *Container) {
 	if c.FeedHandler != nil {
 		c.FeedHandler.RegisterRoutes(r)

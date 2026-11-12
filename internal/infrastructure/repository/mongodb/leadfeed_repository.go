@@ -458,6 +458,25 @@ func (v leadFeedView) Question(ctx context.Context, qid string) (*leadfeed.Recor
 	return &rec, nil
 }
 
+func (v leadFeedView) Questions(ctx context.Context) ([]leadfeed.Record, error) {
+	opts := options.Find().SetSort(bson.D{{Key: "at", Value: 1}, {Key: "_id", Value: 1}})
+	cursor, err := v.repo.records.Find(ctx, bson.M{"question.qid": bson.M{"$type": "string"}}, opts)
+	if err != nil {
+		return nil, fmt.Errorf("find feed questions: %w", err)
+	}
+
+	var docs []leadFeedRecordDoc
+	if err = cursor.All(ctx, &docs); err != nil {
+		return nil, fmt.Errorf("decode feed questions: %w", err)
+	}
+
+	records := make([]leadfeed.Record, 0, len(docs))
+	for i := range docs {
+		records = append(records, leadFeedRecordFromDoc(&docs[i]))
+	}
+	return records, nil
+}
+
 // mongoTime drops sub-millisecond precision so that stored and compared times agree.
 func mongoTime(t time.Time) time.Time {
 	return t.UTC().Truncate(time.Millisecond)

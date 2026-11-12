@@ -83,4 +83,6 @@ type View interface {
 	Records(ctx context.Context, taskID string, offset, limit int) ([]Record, error)
 	// Question returns the record of kind question with that qid, or ErrQuestionNotFound.
 	Question(ctx context.Context, qid string) (*Record, error)
+	// Questions returns every question record of the feed, oldest first.
+	Questions(ctx context.Context) ([]Record, error)
 }

@@ -91,6 +91,23 @@ func (r *MongoOwnerAnswerRepository) byKey(
 	return leadfeed.SaveAnswerResult{Outcome: leadfeed.AnswerRepeated, Answer: ownerAnswerFromDoc(&existing)}, true, nil
 }
 
+// FindAnswerByKey returns the answer stored under an idempotency key.
+func (r *MongoOwnerAnswerRepository) FindAnswerByKey(
+	ctx context.Context,
+	commandID string,
+) (*leadfeed.OwnerAnswer, error) {
+	var doc ownerAnswerDoc
+	err := r.answers.FindOne(ctx, bson.M{"command_id": commandID}).Decode(&doc)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return nil, leadfeed.ErrAnswerNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("find owner answer by key: %w", err)
+	}
+	answer := ownerAnswerFromDoc(&doc)
+	return &answer, nil
+}
+
 // FindAnswer returns the answer of one question.
 func (r *MongoOwnerAnswerRepository) FindAnswer(
 	ctx context.Context,

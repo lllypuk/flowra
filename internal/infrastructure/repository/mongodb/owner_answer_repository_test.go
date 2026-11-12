@@ -61,6 +61,22 @@ func TestOwnerAnswerRepository_FirstAnswerKeepsDeliveryData(t *testing.T) {
 	require.ErrorIs(t, err, leadfeed.ErrAnswerNotFound)
 }
 
+func TestOwnerAnswerRepository_FindByKey(t *testing.T) {
+	repo, _ := setupOwnerAnswers(t)
+	ctx := context.Background()
+
+	want := newAnswer("epoch-1", "Q-0001", "key-1", "go ahead")
+	_, err := repo.SaveAnswer(ctx, want)
+	require.NoError(t, err)
+
+	got, err := repo.FindAnswerByKey(ctx, "key-1")
+	require.NoError(t, err)
+	assert.Equal(t, want, *got)
+
+	_, err = repo.FindAnswerByKey(ctx, "key-2")
+	require.ErrorIs(t, err, leadfeed.ErrAnswerNotFound)
+}
+
 func TestOwnerAnswerRepository_SameKeyRepeats(t *testing.T) {
 	repo, _ := setupOwnerAnswers(t)
 	ctx := context.Background()

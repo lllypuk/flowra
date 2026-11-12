@@ -453,6 +453,10 @@ func TestLeadFeedRepository_QuestionSurvivesPublication(t *testing.T) {
 			assert.Equal(t, want, *got, "question %s", want.Question.QID)
 		}
 
+		all, listErr := view.Questions(ctx)
+		require.NoError(t, listErr)
+		assert.Len(t, all, 7)
+
 		_, missingErr := view.Question(ctx, "Q-9999")
 		require.ErrorIs(t, missingErr, leadfeed.ErrQuestionNotFound)
 

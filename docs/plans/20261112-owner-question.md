@@ -427,16 +427,18 @@ HTTPS только внутри частной сети и проксирует 
 - Modify: `internal/handler/http/feed_handler.go`, `feed_handler_test.go`
 - Modify: `internal/handler/http/action_outcome.go`
 - Modify: `cmd/api/container.go`, `cmd/api/routes.go`, `cmd/api/routes_test.go`
+- Create: `internal/handler/http/feed_question_handler.go`, `feed_question_handler_test.go` (ручки вопросов отдельным файлом)
+- Modify: `internal/application/leadfeed/store.go`, `answers.go`, `internal/infrastructure/repository/mongodb/` (`View.Questions`, `AnswerStore.FindAnswerByKey`)
 - Modify: `docs/api/openapi.yaml`
 - Modify: `AGENTS.md`
 
-- [ ] сервис: вопросы снимка с наложенным ответом и состоянием по таблице «Состояния вопроса»; приём ответа по правилам разделов «Доставка» п. 1 и «Хранилище ответов»
-- [ ] ручки по разделу «HTTP»; обязательный ключ через общий `idempotencyKey()`; сверка `Origin` с `Host` для запросов с кукой
-- [ ] `AGENTS.md`, «Lead Feed Boundary»: лента по-прежнему меняется только импортом; единственная пишущая ручка работает с ответами владельца в `owner_answers`, вне проекции
-- [ ] `routes_test.go`: пишущие пути ленты — только ответ на вопрос (API и форма); остальные — `GET`
-- [ ] описать ручки в `openapi.yaml`
-- [ ] тесты: каждый код раздела «HTTP»; повтор ключа после смены состояния вопроса — первоначальный результат; ответ на вопрос с ответом в снимке и без записи во Flowra — 409; `record_id` в снимке сменился — 404; чужой `Origin` с кукой — отказ, Bearer без `Origin` — принят
-- [ ] прогнать обязательные проверки
+- [x] сервис: вопросы снимка с наложенным ответом и состоянием по таблице «Состояния вопроса»; приём ответа по правилам разделов «Доставка» п. 1 и «Хранилище ответов»
+- [x] ручки по разделу «HTTP»; обязательный ключ через общий `idempotencyKey()`; сверка `Origin` с `Host` для запросов с кукой
+- [x] `AGENTS.md`, «Lead Feed Boundary»: лента по-прежнему меняется только импортом; единственная пишущая ручка работает с ответами владельца в `owner_answers`, вне проекции
+- [x] `routes_test.go`: пишущие пути ленты — только ответ на вопрос (API и форма); остальные — `GET`
+- [x] описать ручки в `openapi.yaml`
+- [x] тесты: каждый код раздела «HTTP»; повтор ключа после смены состояния вопроса — первоначальный результат; ответ на вопрос с ответом в снимке и без записи во Flowra — 409; `record_id` в снимке сменился — 404; чужой `Origin` с кукой — отказ, Bearer без `Origin` — принят
+- [x] прогнать обязательные проверки
 
 ### Task 6: Страницы вопросов для узкого экрана
 
