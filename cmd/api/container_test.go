@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
@@ -272,34 +273,23 @@ func TestMapTaskWriteError_AssigneeNotFound(t *testing.T) {
 
 // ========== Container Wiring Tests (Task 06) ==========
 
-func TestContainer_ValidateWiring_MockAccessCheckerInProduction(t *testing.T) {
-	// Test that mock access checker is rejected in production mode
-	c := &Container{
-		Logger: slog.Default(),
-		Config: &config.Config{
-			App: config.AppConfig{
-				Mode: config.AppModeReal,
-				Name: "test",
-			},
-			Server: config.ServerConfig{
-				Host: "localhost",
-				Port: 8080,
-			},
-		},
-		MongoDB:        nil,
-		Redis:          nil,
-		Hub:            nil,
-		EventBus:       nil,
-		TokenValidator: testTokenValidator(t),
-		AccessChecker:  middleware.NewMockWorkspaceAccessChecker(),
-	}
+func TestContainer_ValidateWiring_MockAccessCheckerOnlyInMockMode(t *testing.T) {
+	const refused = "mock access checker is allowed only in app.mode mock"
+	for mode, wantRefused := range map[config.AppMode]bool{config.AppModeReal: true, config.AppModeMock: false} {
+		t.Run(string(mode), func(t *testing.T) {
+			c := &Container{
+				Logger:         slog.Default(),
+				Config:         &config.Config{App: config.AppConfig{Mode: mode, Name: "test"}},
+				TokenValidator: testTokenValidator(t),
+				AccessChecker:  middleware.NewMockWorkspaceAccessChecker(),
+			}
 
-	// In real mode, but without production env, mock should be allowed
-	// (production check only happens in production environment)
-	err := c.validateWiring()
-	// Will fail on infrastructure checks first
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "mongodb client not initialized")
+			err := c.validateWiring()
+
+			require.Error(t, err, "infrastructure is not wired")
+			assert.Equal(t, wantRefused, strings.Contains(err.Error(), refused))
+		})
+	}
 }
 
 func TestContainer_RealWorkspaceAccessChecker_Type(t *testing.T) {
@@ -1007,17 +997,14 @@ func testTokenValidator(t *testing.T) *middleware.OwnerTokenValidator {
 	return v
 }
 
-func tokenModeContainer(tokens ...config.AuthToken) *Container {
+func tokenContainer(tokens ...config.AuthToken) *Container {
 	cfg := config.DefaultConfig()
-	cfg.Auth.Mode = config.AuthModeToken
 	cfg.Auth.Tokens = tokens
-	cfg.Keycloak.Enabled = false
-	cfg.Server.Host = "127.0.0.1"
 	return &Container{Logger: slog.Default(), Config: cfg}
 }
 
-func TestContainer_SetupTokenValidator_TokenMode(t *testing.T) {
-	c := tokenModeContainer(config.AuthToken{Name: "laptop", SHA256: ownerSecretDigest})
+func TestContainer_SetupTokenValidator(t *testing.T) {
+	c := tokenContainer(config.AuthToken{Name: "laptop", SHA256: ownerSecretDigest})
 
 	c.setupTokenValidator()
 
@@ -1031,7 +1018,7 @@ func TestContainer_SetupTokenValidator_TokenMode(t *testing.T) {
 	require.ErrorIs(t, err, middleware.ErrInvalidToken)
 }
 
-func TestContainer_SetupTokenValidator_TokenMode_FailsClosed(t *testing.T) {
+func TestContainer_SetupTokenValidator_FailsClosed(t *testing.T) {
 	tests := []struct {
 		name   string
 		tokens []config.AuthToken
@@ -1042,7 +1029,7 @@ func TestContainer_SetupTokenValidator_TokenMode_FailsClosed(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := tokenModeContainer(tt.tokens...)
+			c := tokenContainer(tt.tokens...)
 
 			c.setupTokenValidator()
 

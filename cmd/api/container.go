@@ -251,13 +251,11 @@ func (c *Container) logWiringMode() {
 		c.Logger.Warn("container starting in MOCK mode",
 			slog.String("mode", string(mode)),
 			slog.Bool("is_development", c.Config.IsDevelopment()),
-			slog.Bool("is_production", c.Config.IsProduction()),
 		)
 	} else {
 		c.Logger.Info("container starting in REAL mode",
 			slog.String("mode", string(mode)),
 			slog.Bool("is_development", c.Config.IsDevelopment()),
-			slog.Bool("is_production", c.Config.IsProduction()),
 		)
 	}
 }
@@ -330,10 +328,9 @@ func (c *Container) validateHandlers(errs []error) []error {
 		errs = append(errs, errors.New("websocket handler not initialized in real mode"))
 	}
 
-	// Check for mock access checker in production
-	if c.Config.IsProduction() && c.AccessChecker != nil {
+	if !c.Config.App.IsMockMode() && c.AccessChecker != nil {
 		if _, isMock := c.AccessChecker.(*middleware.MockWorkspaceAccessChecker); isMock {
-			errs = append(errs, errors.New("mock access checker is not allowed in production"))
+			errs = append(errs, errors.New("mock access checker is allowed only in app.mode mock"))
 		}
 	}
 

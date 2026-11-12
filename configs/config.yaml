@@ -7,7 +7,8 @@ app:
   name: "flowra"
 
 server:
-  host: "0.0.0.0"
+  # Tokens are bearer secrets over plain HTTP: the API refuses to start on a non-loopback address.
+  host: "127.0.0.1"
   port: 8080
   read_timeout: 30s
   write_timeout: 30s
@@ -28,25 +29,16 @@ redis:
   db: 0
   pool_size: 10
 
-keycloak:
-  enabled: true # Set to true when Keycloak is running
-  url: "http://localhost:8090"
-  public_url: "http://localhost:8090"
-  realm: "flowra"
-  client_id: "flowra-backend"
-  client_secret: "flowra-dev-secret-change-in-production"
-  # Audience for JWT validation. Empty = skip validation. Set to client_id after configuring audience mapper.
-  jwt_audience: ""
-  admin_username: "admin"
-  admin_password: "admin123"
-  jwt:
-    leeway: "30s"
-    refresh_interval: "1h"
-
 auth:
-  jwt_secret: "dev-secret-change-in-production"
-  access_token_ttl: 15m
-  refresh_token_ttl: 7d
+  # The token named "owner" comes from AUTH_OWNER_TOKEN_SHA256 (hex SHA-256 of a random secret).
+  # More tokens, one per device:
+  # tokens:
+  #   - name: "phone"
+  #     sha256: "<hex sha256 of a random secret>"
+  owner:
+    username: "owner"
+    email: "owner@flowra.local"
+  session_ttl: 720h
 
 eventbus:
   type: "redis" # redis | inmemory

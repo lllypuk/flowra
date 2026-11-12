@@ -265,11 +265,11 @@ func TestConfigProd_HasNoBakedSecrets(t *testing.T) {
 	configData := readYAMLMap(t, configPath)
 
 	auth := mustMapValue(t, configData["auth"], "auth section is required")
-	require.Empty(t, auth["jwt_secret"])
+	require.Empty(t, auth["tokens"], "token digests come from the environment")
+	require.Empty(t, auth["owner_token_sha256"], "token digests come from the environment")
 
-	keycloak := mustMapValue(t, configData["keycloak"], "keycloak section is required")
-	require.Empty(t, keycloak["client_secret"])
-	require.Empty(t, keycloak["admin_password"])
+	server := mustMapValue(t, configData["server"], "server section is required")
+	require.Equal(t, "127.0.0.1", server["host"], "the API refuses a non-loopback address")
 
 	rawConfig, err := os.ReadFile(configPath)
 	require.NoError(t, err)

@@ -3,14 +3,13 @@
 help: ## Show this help
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-dev: ## Run full-stack development mode (infra + API + worker)
+dev: ## Run MongoDB, Redis and one API process with the worker on loopback (needs AUTH_OWNER_TOKEN_SHA256)
 	bash ./scripts/dev-full-stack.sh
 
-dev-local: ## Run without Keycloak: one API process with the worker, owner token auth on loopback (needs AUTH_OWNER_TOKEN_SHA256)
-	FLOWRA_LOCAL=1 bash ./scripts/dev-full-stack.sh
+dev-local: dev ## Same as dev
 
-dev-lite: ## Run lightweight development mode (API only)
-	FLOWRA_DEV_MODE=lite go run ./cmd/api
+dev-lite: ## Run the API without the worker (needs AUTH_OWNER_TOKEN_SHA256 and running infra)
+	FLOWRA_DEV_MODE=lite FLOWRA_WORKER=false go run ./cmd/api
 
 build: ## Build binaries
 	go build -o bin/api ./cmd/api
@@ -61,10 +60,10 @@ lint: ## Run linter and format code
 	@golangci-lint run --fix
 
 docker-up: ## Start Docker services
-	docker-compose --profile keycloak up -d
+	docker-compose up -d
 
 docker-down: ## Stop Docker services
-	docker-compose --profile keycloak down
+	docker-compose down
 
 docker-logs: ## Show Docker logs
 	docker-compose logs -f

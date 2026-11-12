@@ -134,10 +134,7 @@ func getEnvironment(cfg *config.Config) string {
 	if cfg.IsDevelopment() {
 		return "development"
 	}
-	if cfg.IsProduction() {
-		return "production"
-	}
-	return "unknown"
+	return "production"
 }
 
 // connectMongoDB establishes a connection to MongoDB.

@@ -45,7 +45,7 @@ chmod 600 "$OUT/token"
 
 export MONGODB_URI="mongodb://127.0.0.1:$MONGO_PORT/?replicaSet=rsbench"
 export MONGODB_DATABASE=flowra_bench
-SERVER_PORT="$API_PORT" REDIS_ADDR="127.0.0.1:$REDIS_PORT" CONFIG_PATH=configs/config.token.yaml \
+SERVER_PORT="$API_PORT" REDIS_ADDR="127.0.0.1:$REDIS_PORT" CONFIG_PATH=configs/config.yaml \
 	AUTH_OWNER_TOKEN_SHA256="$(printf %s "$token" | sha256sum | cut -d' ' -f1)" \
 	FLOWRA_WORKER=true LOG_LEVEL=warn "$OUT/api" > "$OUT/api.log" 2>&1 &
 api_pid=$!

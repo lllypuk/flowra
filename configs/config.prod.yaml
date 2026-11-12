@@ -3,42 +3,31 @@ app:
   name: "flowra"
 
 server:
-  host: "0.0.0.0"
+  # The app runs on the host network and must stay on loopback.
+  host: "127.0.0.1"
   port: 8080
   read_timeout: 30s
   write_timeout: 30s
   shutdown_timeout: 10s
 
 mongodb:
-  uri: "mongodb://mongodb:27017/?replicaSet=rs0"
+  uri: "mongodb://localhost:27017/?directConnection=true"
   database: "flowra"
   timeout: 10s
   max_pool_size: 100
 
 redis:
-  addr: "redis:6379"
+  addr: "localhost:6379"
   password: ""
   db: 0
   pool_size: 10
 
-keycloak:
-  enabled: true
-  url: "http://keycloak:8080"
-  public_url: "http://localhost:8090"
-  realm: "flowra"
-  client_id: "flowra-backend"
-  client_secret: ""
-  jwt_audience: "flowra-backend"
-  admin_username: "admin"
-  admin_password: ""
-  jwt:
-    leeway: "30s"
-    refresh_interval: "1h"
-
 auth:
-  jwt_secret: ""
-  access_token_ttl: 15m
-  refresh_token_ttl: 7d
+  # Token digests come from AUTH_OWNER_TOKEN_SHA256 or auth.tokens.
+  owner:
+    username: "owner"
+    email: "owner@flowra.local"
+  session_ttl: 720h
 
 eventbus:
   type: "redis"

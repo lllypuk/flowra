@@ -18,7 +18,7 @@ import (
 
 // Default configuration constants.
 const (
-	DefaultHost            = "0.0.0.0"
+	DefaultHost            = "127.0.0.1"
 	DefaultPort            = 8080
 	DefaultReadTimeout     = 30 * time.Second
 	DefaultWriteTimeout    = 30 * time.Second
@@ -29,16 +29,11 @@ const (
 
 	DefaultRedisPoolSize = 10
 
-	DefaultAccessTokenTTL  = 15 * time.Minute
-	DefaultRefreshTokenTTL = 7 * 24 * time.Hour // 7 days
-	DefaultSessionTTL      = 30 * 24 * time.Hour
+	DefaultSessionTTL = 30 * 24 * time.Hour
 
 	DefaultWSBufferSize   = 1024
 	DefaultWSPingInterval = 30 * time.Second
 	DefaultWSPongTimeout  = 60 * time.Second
-
-	DefaultJWTLeeway          = 30 * time.Second
-	DefaultJWTRefreshInterval = 1 * time.Hour
 
 	DefaultOutboxPollInterval    = 100 * time.Millisecond
 	DefaultOutboxBatchSize       = 100
@@ -70,7 +65,6 @@ type Config struct {
 	Server    ServerConfig    `yaml:"server"`
 	MongoDB   MongoDBConfig   `yaml:"mongodb"`
 	Redis     RedisConfig     `yaml:"redis"`
-	Keycloak  KeycloakConfig  `yaml:"keycloak"`
 	Auth      AuthConfig      `yaml:"auth"`
 	EventBus  EventBusConfig  `yaml:"eventbus"`
 	Log       LogConfig       `yaml:"log"`
@@ -135,62 +129,22 @@ type RedisConfig struct {
 	PoolSize int    `yaml:"pool_size" env:"REDIS_POOL_SIZE"`
 }
 
-// KeycloakConfig holds Keycloak connection configuration.
-//
-//nolint:golines // Struct tags require longer lines for readability
-type KeycloakConfig struct {
-	Enabled       bool      `yaml:"enabled" env:"KEYCLOAK_ENABLED"`
-	URL           string    `yaml:"url" env:"KEYCLOAK_URL"`
-	PublicURL     string    `yaml:"public_url" env:"KEYCLOAK_PUBLIC_URL"`
-	Realm         string    `yaml:"realm" env:"KEYCLOAK_REALM"`
-	ClientID      string    `yaml:"client_id" env:"KEYCLOAK_CLIENT_ID"`
-	ClientSecret  string    `yaml:"client_secret" env:"KEYCLOAK_CLIENT_SECRET"`
-	JWTAudience   string    `yaml:"jwt_audience" env:"KEYCLOAK_JWT_AUDIENCE"` // Audience for JWT validation. Empty = skip.
-	AdminUsername string    `yaml:"admin_username" env:"KEYCLOAK_ADMIN_USERNAME"`
-	AdminPassword string    `yaml:"admin_password" env:"KEYCLOAK_ADMIN_PASSWORD"`
-	JWT           JWTConfig `yaml:"jwt"`
-}
-
-// JWTConfig holds JWT validation configuration.
-//
-//nolint:golines // Struct tags require longer lines for readability
-type JWTConfig struct {
-	Leeway          time.Duration `yaml:"leeway" env:"KEYCLOAK_JWT_LEEWAY"`
-	RefreshInterval time.Duration `yaml:"refresh_interval" env:"KEYCLOAK_JWT_REFRESH_INTERVAL"`
-}
-
 // AuthConfig holds authentication configuration.
 //
 //nolint:golines // Struct tags require longer lines for readability
 type AuthConfig struct {
-	// Mode selects who vouches for a request: "keycloak" (default) or "token".
-	Mode            AuthMode      `yaml:"mode" env:"AUTH_MODE"`
-	JWTSecret       string        `yaml:"jwt_secret" env:"AUTH_JWT_SECRET"`
-	AccessTokenTTL  time.Duration `yaml:"access_token_ttl" env:"AUTH_ACCESS_TOKEN_TTL"`
-	RefreshTokenTTL time.Duration `yaml:"refresh_token_ttl" env:"AUTH_REFRESH_TOKEN_TTL"`
-
-	// Tokens are the named owner tokens of token mode; only SHA-256 digests are configured.
+	// Tokens are the named owner tokens; only SHA-256 digests are configured.
 	Tokens []AuthToken `yaml:"tokens"`
 	// OwnerTokenSHA256 adds a token named "owner": the env loader cannot fill the Tokens list.
 	OwnerTokenSHA256 string `yaml:"owner_token_sha256" env:"AUTH_OWNER_TOKEN_SHA256"`
 	// Owner is the single user every token resolves to.
 	Owner OwnerConfig `yaml:"owner"`
-	// SessionTTL is the lifetime of the web session cookie in token mode.
+	// SessionTTL is the lifetime of the web session cookie.
 	SessionTTL time.Duration `yaml:"session_ttl" env:"AUTH_SESSION_TTL"`
 }
 
-// AuthMode names the authentication mechanism.
-type AuthMode string
-
-const (
-	// AuthModeKeycloak validates Keycloak JWTs.
-	AuthModeKeycloak AuthMode = "keycloak"
-	// AuthModeToken validates static owner tokens and never falls back to mock auth.
-	AuthModeToken AuthMode = "token"
-
-	// EnvOwnerTokenName is the name of the token configured through AUTH_OWNER_TOKEN_SHA256.
-	EnvOwnerTokenName = "owner"
-)
+// EnvOwnerTokenName is the name of the token configured through AUTH_OWNER_TOKEN_SHA256.
+const EnvOwnerTokenName = "owner"
 
 // AuthToken is one named owner token, stored as the hex SHA-256 of a random secret.
 type AuthToken struct {
@@ -202,11 +156,6 @@ type AuthToken struct {
 type OwnerConfig struct {
 	Username string `yaml:"username" env:"AUTH_OWNER_USERNAME"`
 	Email    string `yaml:"email" env:"AUTH_OWNER_EMAIL"`
-}
-
-// IsTokenMode reports whether owner tokens are the only accepted credentials.
-func (c AuthConfig) IsTokenMode() bool {
-	return c.Mode == AuthModeToken
 }
 
 // OwnerTokens returns the configured tokens, including the one set through the environment.
@@ -274,11 +223,9 @@ var (
 	ErrInvalidLogFormat    = errors.New("invalid log format: must be json or text")
 	ErrInvalidEventBusType = errors.New("invalid event bus type: must be redis or inmemory")
 	ErrInvalidAppMode      = errors.New("invalid app mode: must be real or mock")
-	ErrMockModeInProd      = errors.New("mock mode is not allowed in production")
 
-	ErrInvalidAuthMode        = errors.New("invalid auth mode: must be keycloak or token")
-	ErrNoOwnerTokens          = errors.New("auth.mode token needs at least one owner token")
-	ErrTokenAuthNeedsLoopback = errors.New("auth.mode token requires server.host to be a loopback address")
+	ErrNoOwnerTokens          = errors.New("auth needs at least one owner token")
+	ErrTokenAuthNeedsLoopback = errors.New("token auth requires server.host to be a loopback address")
 )
 
 // DefaultConfig returns a Config with sensible default values.
@@ -307,21 +254,7 @@ func DefaultConfig() *Config {
 			DB:       0,
 			PoolSize: DefaultRedisPoolSize,
 		},
-		Keycloak: KeycloakConfig{
-			URL:       "http://localhost:8090",
-			PublicURL: "",
-			Realm:     "flowra",
-			ClientID:  "flowra-backend",
-			JWT: JWTConfig{
-				Leeway:          DefaultJWTLeeway,
-				RefreshInterval: DefaultJWTRefreshInterval,
-			},
-		},
 		Auth: AuthConfig{
-			JWTSecret:       "dev-secret-change-in-production",
-			Mode:            AuthModeKeycloak,
-			AccessTokenTTL:  DefaultAccessTokenTTL,
-			RefreshTokenTTL: DefaultRefreshTokenTTL,
 			Owner: OwnerConfig{
 				Username: "owner",
 				Email:    "owner@flowra.local",
@@ -365,8 +298,6 @@ func (c *Config) Validate() error {
 	errs = c.validateServer(errs)
 	errs = c.validateMongoDB(errs)
 	errs = c.validateRedis(errs)
-	errs = c.validateKeycloak(errs)
-	errs = c.validateAuth(errs)
 	errs = c.validateLog(errs)
 	errs = c.validateEventBus(errs)
 	errs = c.validateWebSocket(errs)
@@ -382,9 +313,6 @@ func (c *Config) Validate() error {
 func (c *Config) validateApp(errs []error) []error {
 	if c.App.Mode != "" && c.App.Mode != AppModeReal && c.App.Mode != AppModeMock {
 		errs = append(errs, fmt.Errorf("%w: got %q", ErrInvalidAppMode, c.App.Mode))
-	}
-	if c.App.IsMockMode() && c.IsProduction() {
-		errs = append(errs, ErrMockModeInProd)
 	}
 	return errs
 }
@@ -422,56 +350,18 @@ func (c *Config) validateRedis(errs []error) []error {
 	return errs
 }
 
-// validateKeycloak validates Keycloak configuration.
-func (c *Config) validateKeycloak(errs []error) []error {
-	if c.Keycloak.Enabled && c.Keycloak.URL == "" {
-		errs = append(errs, errors.New("keycloak.url is required when keycloak.enabled is true"))
-	}
-
-	if c.IsProduction() && c.Keycloak.Enabled && strings.TrimSpace(c.Keycloak.JWTAudience) == "" {
-		errs = append(errs, errors.New("keycloak.jwt_audience is required in production when keycloak is enabled"))
-	}
-
-	return errs
-}
-
-// validateAuth validates authentication configuration.
-func (c *Config) validateAuth(errs []error) []error {
-	if c.Auth.JWTSecret == "" {
-		errs = append(errs, errors.New("auth.jwt_secret is required"))
-	}
-	// Note: "dev-secret-change-in-production" is allowed for development
-	// In production, deployment validation should catch insecure secrets
-	if c.Auth.AccessTokenTTL <= 0 {
-		errs = append(errs, errors.New("auth.access_token_ttl must be positive"))
-	}
-	if c.Auth.RefreshTokenTTL <= 0 {
-		errs = append(errs, errors.New("auth.refresh_token_ttl must be positive"))
-	}
-
-	switch c.Auth.Mode {
-	case "", AuthModeKeycloak:
-		return errs
-	case AuthModeToken:
-		return c.validateTokenAuth(errs)
-	default:
-		return append(errs, fmt.Errorf("%w: got %q", ErrInvalidAuthMode, c.Auth.Mode))
-	}
-}
-
-// validateTokenAuth validates token mode, which trusts bearer secrets and so must stay on loopback.
-func (c *Config) validateTokenAuth(errs []error) []error {
-	if c.Keycloak.Enabled {
-		errs = append(errs, errors.New("keycloak.enabled must be false when auth.mode is token"))
-	}
+// ValidateAuth checks what the API needs to accept tokens; the worker and tools do not call it.
+// Tokens are bearer secrets over plain HTTP, so the server must stay on loopback.
+func (c *Config) ValidateAuth() error {
+	var errs []error
 	if !isLoopbackHost(c.Server.Host) {
 		errs = append(errs, fmt.Errorf("%w: got %q", ErrTokenAuthNeedsLoopback, c.Server.Host))
 	}
 	if c.Auth.Owner.Username == "" || c.Auth.Owner.Email == "" {
-		errs = append(errs, errors.New("auth.owner.username and auth.owner.email are required when auth.mode is token"))
+		errs = append(errs, errors.New("auth.owner.username and auth.owner.email are required"))
 	}
 	if c.Auth.SessionTTL <= 0 {
-		errs = append(errs, errors.New("auth.session_ttl must be positive when auth.mode is token"))
+		errs = append(errs, errors.New("auth.session_ttl must be positive"))
 	}
 
 	tokens := c.Auth.OwnerTokens()
@@ -494,7 +384,10 @@ func (c *Config) validateTokenAuth(errs []error) []error {
 			errs = append(errs, fmt.Errorf("auth.tokens: token %q needs a hex SHA-256 digest", token.Name))
 		}
 	}
-	return errs
+	if len(errs) > 0 {
+		return fmt.Errorf("%w: %w", ErrConfigInvalid, errors.Join(errs...))
+	}
+	return nil
 }
 
 func isLoopbackHost(host string) bool {
@@ -616,25 +509,12 @@ func (l *Loader) Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("failed to load config from environment: %w", err)
 	}
 
-	l.applyDerivedDefaults(cfg)
-
 	// Validate the final configuration
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
 
 	return cfg, nil
-}
-
-// applyDerivedDefaults applies computed defaults after file and env loading.
-func (l *Loader) applyDerivedDefaults(cfg *Config) {
-	if cfg == nil {
-		return
-	}
-
-	if strings.TrimSpace(cfg.Keycloak.PublicURL) == "" {
-		cfg.Keycloak.PublicURL = cfg.Keycloak.URL
-	}
 }
 
 // loadFromFile loads configuration from a YAML file.
@@ -751,10 +631,4 @@ func (l *Loader) setFieldFromEnv(field reflect.Value, value string) error {
 // IsDevelopment returns true if the log level indicates a development environment.
 func (c *Config) IsDevelopment() bool {
 	return strings.ToLower(c.Log.Level) == "debug"
-}
-
-// IsProduction returns true if authentication appears configured for production.
-func (c *Config) IsProduction() bool {
-	return c.Auth.JWTSecret != "dev-secret-change-in-production" &&
-		c.Auth.JWTSecret != ""
 }

@@ -35,14 +35,9 @@ func TestDefaultConfig(t *testing.T) {
 	assert.Equal(t, 0, cfg.Redis.DB)
 	assert.Equal(t, config.DefaultRedisPoolSize, cfg.Redis.PoolSize)
 
-	// Keycloak defaults
-	assert.Equal(t, "http://localhost:8090", cfg.Keycloak.URL)
-	assert.Empty(t, cfg.Keycloak.PublicURL)
-
 	// Auth defaults
-	assert.Equal(t, "dev-secret-change-in-production", cfg.Auth.JWTSecret)
-	assert.Equal(t, config.DefaultAccessTokenTTL, cfg.Auth.AccessTokenTTL)
-	assert.Equal(t, config.DefaultRefreshTokenTTL, cfg.Auth.RefreshTokenTTL)
+	assert.Equal(t, "owner", cfg.Auth.Owner.Username)
+	assert.Equal(t, config.DefaultSessionTTL, cfg.Auth.SessionTTL)
 
 	// EventBus defaults
 	assert.Equal(t, "redis", cfg.EventBus.Type)
@@ -184,13 +179,6 @@ func TestConfig_Validate_MissingRequiredFields(t *testing.T) {
 			},
 			errMsg: "redis.addr is required",
 		},
-		{
-			name: "missing jwt secret",
-			modify: func(c *config.Config) {
-				c.Auth.JWTSecret = ""
-			},
-			errMsg: "auth.jwt_secret is required",
-		},
 	}
 
 	for _, tt := range tests {
@@ -275,26 +263,6 @@ func TestConfig_IsDevelopment(t *testing.T) {
 	}
 }
 
-func TestConfig_IsProduction(t *testing.T) {
-	tests := []struct {
-		name      string
-		jwtSecret string
-		expected  bool
-	}{
-		{"dev secret", "dev-secret-change-in-production", false},
-		{"empty secret", "", false},
-		{"production secret", "my-secure-production-secret", true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cfg := config.DefaultConfig()
-			cfg.Auth.JWTSecret = tt.jwtSecret
-			assert.Equal(t, tt.expected, cfg.IsProduction())
-		})
-	}
-}
-
 func TestLoadFromPath_ValidYAML(t *testing.T) {
 	// Create a temporary config file
 	tmpDir := t.TempDir()
@@ -321,12 +289,10 @@ redis:
   pool_size: 20
 
 auth:
-  jwt_secret: "test-secret-key"
-  access_token_ttl: 30m
-  refresh_token_ttl: 24h
-
-keycloak:
-  jwt_audience: "flowra-backend"
+  session_ttl: 24h
+  owner:
+    username: "lead"
+    email: "lead@example.com"
 
 log:
   level: "debug"
@@ -363,9 +329,8 @@ websocket:
 	assert.Equal(t, 1, cfg.Redis.DB)
 	assert.Equal(t, 20, cfg.Redis.PoolSize)
 
-	assert.Equal(t, "test-secret-key", cfg.Auth.JWTSecret)
-	assert.Equal(t, 30*time.Minute, cfg.Auth.AccessTokenTTL)
-	assert.Equal(t, 24*time.Hour, cfg.Auth.RefreshTokenTTL)
+	assert.Equal(t, 24*time.Hour, cfg.Auth.SessionTTL)
+	assert.Equal(t, "lead", cfg.Auth.Owner.Username)
 
 	assert.Equal(t, "debug", cfg.Log.Level)
 	assert.Equal(t, "text", cfg.Log.Format)
@@ -408,8 +373,7 @@ func TestLoader_LoadFromEnv(t *testing.T) {
 	t.Setenv("SERVER_PORT", "3333")
 	t.Setenv("MONGODB_URI", "mongodb://env-mongo:27017")
 	t.Setenv("REDIS_ADDR", "env-redis:6379")
-	t.Setenv("AUTH_JWT_SECRET", "env-jwt-secret")
-	t.Setenv("KEYCLOAK_JWT_AUDIENCE", "flowra-backend")
+	t.Setenv("AUTH_OWNER_USERNAME", "env-owner")
 	t.Setenv("LOG_LEVEL", "warn")
 
 	// Create a minimal config file
@@ -431,7 +395,7 @@ server:
 	assert.Equal(t, 3333, cfg.Server.Port)
 	assert.Equal(t, "mongodb://env-mongo:27017", cfg.MongoDB.URI)
 	assert.Equal(t, "env-redis:6379", cfg.Redis.Addr)
-	assert.Equal(t, "env-jwt-secret", cfg.Auth.JWTSecret)
+	assert.Equal(t, "env-owner", cfg.Auth.Owner.Username)
 	assert.Equal(t, "warn", cfg.Log.Level)
 }
 
@@ -465,8 +429,6 @@ mongodb:
   database: "testdb"
 redis:
   addr: "localhost:6379"
-auth:
-  jwt_secret: "test-secret"
 log:
   level: "info"
   format: "json"
@@ -477,8 +439,6 @@ websocket:
   write_buffer_size: 1024
   ping_interval: 30s
   pong_timeout: 60s
-keycloak:
-  jwt_audience: "flowra-backend"
 `
 	err := os.WriteFile(configPath, []byte(configContent), 0o644)
 	require.NoError(t, err)
@@ -539,39 +499,6 @@ func TestConfig_Validate_WebSocketConfig(t *testing.T) {
 				c.WebSocket.PongTimeout = 0
 			},
 			errMsg: "websocket.pong_timeout must be positive",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cfg := config.DefaultConfig()
-			tt.modify(cfg)
-			err := cfg.Validate()
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), tt.errMsg)
-		})
-	}
-}
-
-func TestConfig_Validate_AuthTokenTTL(t *testing.T) {
-	tests := []struct {
-		name   string
-		modify func(*config.Config)
-		errMsg string
-	}{
-		{
-			name: "zero access token TTL",
-			modify: func(c *config.Config) {
-				c.Auth.AccessTokenTTL = 0
-			},
-			errMsg: "auth.access_token_ttl must be positive",
-		},
-		{
-			name: "negative refresh token TTL",
-			modify: func(c *config.Config) {
-				c.Auth.RefreshTokenTTL = -1 * time.Hour
-			},
-			errMsg: "auth.refresh_token_ttl must be positive",
 		},
 	}
 
@@ -652,33 +579,9 @@ func TestConfig_Validate_ValidAppModes(t *testing.T) {
 		t.Run(string(mode), func(t *testing.T) {
 			cfg := config.DefaultConfig()
 			cfg.App.Mode = mode
-			// Ensure we're not in production mode for mock to pass
-			cfg.Auth.JWTSecret = "dev-secret-change-in-production"
-			err := cfg.Validate()
-			require.NoError(t, err)
+			require.NoError(t, cfg.Validate())
 		})
 	}
-}
-
-func TestConfig_Validate_MockModeInProduction(t *testing.T) {
-	cfg := config.DefaultConfig()
-	cfg.App.Mode = config.AppModeMock
-	cfg.Auth.JWTSecret = "production-secret-not-dev" // Makes IsProduction() return true
-	cfg.Keycloak.JWTAudience = "flowra-backend"
-
-	err := cfg.Validate()
-	require.Error(t, err)
-	require.ErrorIs(t, err, config.ErrConfigInvalid)
-	require.ErrorIs(t, err, config.ErrMockModeInProd)
-}
-
-func TestConfig_Validate_MockModeInDevelopment(t *testing.T) {
-	cfg := config.DefaultConfig()
-	cfg.App.Mode = config.AppModeMock
-	cfg.Auth.JWTSecret = "dev-secret-change-in-production" // Makes IsProduction() return false
-
-	err := cfg.Validate()
-	require.NoError(t, err)
 }
 
 func TestAppModeConstants(t *testing.T) {
@@ -686,82 +589,25 @@ func TestAppModeConstants(t *testing.T) {
 	assert.Equal(t, config.AppModeMock, config.AppMode("mock"))
 }
 
-func TestLoadFromPath_KeycloakPublicURLFallsBackToKeycloakURL(t *testing.T) {
-	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "config.yaml")
-
-	configContent := `
-keycloak:
-  url: "https://sso.example.com"
-  public_url: ""
-auth:
-  jwt_secret: "dev-secret-change-in-production"
-`
-	err := os.WriteFile(configPath, []byte(configContent), 0o644)
-	require.NoError(t, err)
-
-	cfg, err := config.LoadFromPath(configPath)
-	require.NoError(t, err)
-	require.NotNil(t, cfg)
-	assert.Equal(t, "https://sso.example.com", cfg.Keycloak.PublicURL)
-}
-
-func TestLoadFromPath_KeycloakPublicURLFallsBackWhenOnlyEnvURLIsSet(t *testing.T) {
-	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "config.yaml")
-
-	configContent := `
-auth:
-  jwt_secret: "dev-secret-change-in-production"
-`
-	err := os.WriteFile(configPath, []byte(configContent), 0o644)
-	require.NoError(t, err)
-
-	t.Setenv("KEYCLOAK_URL", "https://sso.example.com")
-	t.Setenv("KEYCLOAK_PUBLIC_URL", "")
-
-	cfg, err := config.LoadFromPath(configPath)
-	require.NoError(t, err)
-	require.NotNil(t, cfg)
-	assert.Equal(t, "https://sso.example.com", cfg.Keycloak.PublicURL)
-}
-
-func TestConfig_Validate_ProductionRequiresKeycloakJWTAudience(t *testing.T) {
-	cfg := config.DefaultConfig()
-	cfg.Auth.JWTSecret = "production-secret-not-dev"
-	cfg.Keycloak.Enabled = true
-	cfg.Keycloak.URL = "https://sso.example.com"
-	cfg.Keycloak.JWTAudience = ""
-
-	err := cfg.Validate()
-	require.Error(t, err)
-	require.ErrorIs(t, err, config.ErrConfigInvalid)
-	assert.Contains(t, err.Error(), "keycloak.jwt_audience is required in production when keycloak is enabled")
-}
-
 const testTokenDigest = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
 
-func tokenModeConfig() *config.Config {
+func tokenConfig() *config.Config {
 	cfg := config.DefaultConfig()
-	cfg.Auth.Mode = config.AuthModeToken
 	cfg.Auth.Tokens = []config.AuthToken{{Name: "laptop", SHA256: testTokenDigest}}
-	cfg.Keycloak.Enabled = false
-	cfg.Server.Host = "127.0.0.1"
 	return cfg
 }
 
-func TestConfig_Validate_TokenAuth_Valid(t *testing.T) {
+func TestConfig_ValidateAuth_Valid(t *testing.T) {
 	for _, host := range []string{"127.0.0.1", "::1", "localhost"} {
 		t.Run(host, func(t *testing.T) {
-			cfg := tokenModeConfig()
+			cfg := tokenConfig()
 			cfg.Server.Host = host
-			require.NoError(t, cfg.Validate())
-			assert.True(t, cfg.Auth.IsTokenMode())
+			require.NoError(t, cfg.ValidateAuth())
 		})
 	}
 }
 
-func TestConfig_Validate_TokenAuth_Invalid(t *testing.T) {
+func TestConfig_ValidateAuth_Invalid(t *testing.T) {
 	tests := []struct {
 		name   string
 		modify func(*config.Config)
@@ -781,11 +627,6 @@ func TestConfig_Validate_TokenAuth_Invalid(t *testing.T) {
 			name:   "lan address",
 			modify: func(c *config.Config) { c.Server.Host = "192.168.1.10" },
 			errMsg: config.ErrTokenAuthNeedsLoopback.Error(),
-		},
-		{
-			name:   "keycloak still enabled",
-			modify: func(c *config.Config) { c.Keycloak.Enabled = true },
-			errMsg: "keycloak.enabled must be false when auth.mode is token",
 		},
 		{
 			name: "raw secret instead of digest",
@@ -822,35 +663,18 @@ func TestConfig_Validate_TokenAuth_Invalid(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg := tokenModeConfig()
+			cfg := tokenConfig()
 			tt.modify(cfg)
-			err := cfg.Validate()
+			err := cfg.ValidateAuth()
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tt.errMsg)
+			require.NoError(t, cfg.Validate(), "the worker and tools load the config without auth")
 		})
 	}
 }
 
-func TestConfig_Validate_UnknownAuthMode(t *testing.T) {
-	cfg := config.DefaultConfig()
-	cfg.Auth.Mode = "basic"
-	err := cfg.Validate()
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), config.ErrInvalidAuthMode.Error())
-}
-
-func TestConfig_KeycloakModeIgnoresTokenRules(t *testing.T) {
-	cfg := config.DefaultConfig()
-	require.NoError(t, cfg.Validate())
-	assert.False(t, cfg.Auth.IsTokenMode())
-	assert.Empty(t, cfg.Auth.OwnerTokens())
-}
-
 func TestAuthConfig_OwnerTokens_FromEnv(t *testing.T) {
-	t.Setenv("AUTH_MODE", "token")
 	t.Setenv("AUTH_OWNER_TOKEN_SHA256", testTokenDigest)
-	t.Setenv("SERVER_HOST", "127.0.0.1")
-	t.Setenv("KEYCLOAK_ENABLED", "false")
 
 	configPath := filepath.Join(t.TempDir(), "config.yaml")
 	require.NoError(t, os.WriteFile(configPath, []byte("auth:\n  tokens:\n    - name: phone\n      sha256: "+
@@ -866,25 +690,43 @@ func TestAuthConfig_OwnerTokens_FromEnv(t *testing.T) {
 	assert.Equal(t, "owner", cfg.Auth.Owner.Username)
 }
 
-func TestLoadFromPath_TokenConfig(t *testing.T) {
-	const tokenConfig = "../../configs/config.token.yaml"
+func TestLoadFromPath_KeycloakEraKeysAreIgnored(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "config.yaml")
+	require.NoError(t, os.WriteFile(configPath, []byte(`
+keycloak:
+  enabled: true
+  url: "https://sso.example.com"
+auth:
+  mode: "keycloak"
+  jwt_secret: "old"
+  access_token_ttl: 15m
+`), 0o644))
+
+	cfg, err := config.LoadFromPath(configPath)
+	require.NoError(t, err)
+	assert.Equal(t, config.DefaultHost, cfg.Server.Host)
+}
+
+func TestLoadFromPath_ShippedConfig(t *testing.T) {
+	const shipped = "../../configs/config.yaml"
 
 	t.Run("valid with the owner token digest from env", func(t *testing.T) {
 		t.Setenv("AUTH_OWNER_TOKEN_SHA256", testTokenDigest)
 
-		cfg, err := config.LoadFromPath(tokenConfig)
+		cfg, err := config.LoadFromPath(shipped)
 		require.NoError(t, err)
 
-		assert.True(t, cfg.Auth.IsTokenMode())
-		assert.False(t, cfg.Keycloak.Enabled)
 		assert.Equal(t, "127.0.0.1", cfg.Server.Host)
 		require.Len(t, cfg.Auth.OwnerTokens(), 1)
+		require.NoError(t, cfg.ValidateAuth())
 	})
 
-	t.Run("refused without any token", func(t *testing.T) {
+	t.Run("loads without a token, the API refuses it", func(t *testing.T) {
 		t.Setenv("AUTH_OWNER_TOKEN_SHA256", "")
 
-		_, err := config.LoadFromPath(tokenConfig)
+		cfg, err := config.LoadFromPath(shipped)
+		require.NoError(t, err)
+		err = cfg.ValidateAuth()
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), config.ErrNoOwnerTokens.Error())
 	})

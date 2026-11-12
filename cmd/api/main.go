@@ -32,6 +32,11 @@ func main() {
 		slog.Error("failed to load configuration", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
+	if err = cfg.ValidateAuth(); err != nil {
+		//nolint:sloglint // No context available before logger setup
+		slog.Error("invalid auth configuration", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
 
 	// Setup logger
 	logger := setupLogger(cfg)
@@ -159,10 +164,7 @@ func getEnvironment(cfg *config.Config) string {
 	if cfg.IsDevelopment() {
 		return "development"
 	}
-	if cfg.IsProduction() {
-		return "production"
-	}
-	return "unknown"
+	return "production"
 }
 
 // gracefulShutdown handles graceful shutdown on OS signals.

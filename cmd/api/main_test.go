@@ -36,45 +36,11 @@ func TestParseLogLevel(t *testing.T) {
 }
 
 func TestGetEnvironment(t *testing.T) {
-	tests := []struct {
-		name      string
-		logLevel  string
-		jwtSecret string
-		expected  string
-	}{
-		{
-			name:      "development when debug",
-			logLevel:  "debug",
-			jwtSecret: "any-secret",
-			expected:  "development",
-		},
-		{
-			name:      "production when secure secret",
-			logLevel:  "info",
-			jwtSecret: "my-secure-production-secret",
-			expected:  "production",
-		},
-		{
-			name:      "unknown when info with dev secret",
-			logLevel:  "info",
-			jwtSecret: "dev-secret-change-in-production",
-			expected:  "unknown",
-		},
-		{
-			name:      "development takes priority over production",
-			logLevel:  "debug",
-			jwtSecret: "my-secure-production-secret",
-			expected:  "development",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for level, expected := range map[string]string{"debug": "development", "info": "production", "warn": "production"} {
+		t.Run(level, func(t *testing.T) {
 			cfg := config.DefaultConfig()
-			cfg.Log.Level = tt.logLevel
-			cfg.Auth.JWTSecret = tt.jwtSecret
-			result := getEnvironment(cfg)
-			assert.Equal(t, tt.expected, result)
+			cfg.Log.Level = level
+			assert.Equal(t, expected, getEnvironment(cfg))
 		})
 	}
 }
