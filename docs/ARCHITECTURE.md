@@ -1,979 +1,329 @@
 # Flowra Architecture
 
-This document provides a comprehensive overview of the Flowra system architecture, design decisions, and key components.
+Flowra is a task tracker and messenger for one owner's development agents (later, a small team of people and many
+agents). Product scope: [README](../README.md). Contributor rules: [AGENTS.md](../AGENTS.md).
 
-## Table of Contents
+## Contents
 
-1. [System Overview](#system-overview)
-2. [Architecture Diagram](#architecture-diagram)
-3. [Core Principles](#core-principles)
-4. [Layer Architecture](#layer-architecture)
-5. [Key Components](#key-components)
-6. [Tag System](#tag-system)
-7. [Data Flow](#data-flow)
-8. [Event Sourcing & Event Flow](#event-sourcing--event-flow)
-9. [Technology Stack](#technology-stack)
-10. [Architectural Decisions](#architectural-decisions)
-11. [Security Model](#security-model)
-12. [Scalability Considerations](#scalability-considerations)
+1. [Components](#components)
+2. [Lead Feed](#lead-feed)
+3. [Owner Questions and Answers](#owner-questions-and-answers)
+4. [Sync and Delivery](#sync-and-delivery)
+5. [Contract with the Lead's Journal](#contract-with-the-leads-journal)
+6. [Authentication](#authentication)
+7. [Kept from the Earlier Product (Not Developed)](#kept-from-the-earlier-product-not-developed)
+8. [Technology Stack](#technology-stack)
+9. [Architectural Decisions](#architectural-decisions)
 
 ---
 
-## System Overview
+## Components
 
-Flowra is a task tracker and messenger for one owner's development agents (later, a small team of people and many agents). The lead feed (a read projection of the lead's journal, with owner questions) is the current work; workspaces, chats, WebSocket and the board are kept from the earlier chat product and are not developed. See the [README](../README.md).
+```
+ lead's journal ──lead-task export──▶ leadfeed import ──▶ MongoDB: leadfeed_* (projection)
+       ▲                                                          │ read in one snapshot
+       │ lead-task answer                                         ▼
+ leadfeed deliver ◀── MongoDB: owner_answers ◀── API (Echo): /feed pages, /api/v1/feed
+                                                      ▲
+                                  owner (browser, Bearer token), agents
+```
 
-### Key Capabilities
+| Part | What it is |
+|---|---|
+| `cmd/api` | HTTP server (Echo): JSON API, HTMX pages, WebSocket; runs the worker loops with `FLOWRA_WORKER=true` |
+| `cmd/worker` | Worker loops alone: outbox publisher and repair of read models (`internal/worker`) |
+| `cmd/leadfeed` | `import`, `deliver`, `status`, `fail`; talks to MongoDB directly, not through the API |
+| `scripts/leadfeed-sync.sh` | One sync run; started every minute by the systemd timer from `scripts/units` |
+| MongoDB | Replica set: the feed is written and read in transactions |
+| Redis | Event bus (pub/sub), rate-limit store, dead-letter list |
 
-- **Real-time Communication** - WebSocket-based chat with presence tracking
-- **Task Management** - Kanban-style workflows with status transitions
-- **Workspace Organization** - Multi-tenant workspaces with role-based access
-- **Event-Driven Architecture** - Loosely coupled components via domain events
-- **Token Sign-in** - named owner tokens, loopback-only server
+Layers inside `internal/`: `domain` (aggregates, events), `application` (use cases and services), `infrastructure`
+(MongoDB, Redis, event store), `handler/http` and `handler/websocket`, `middleware`. Dependencies point inward;
+interfaces are declared by the consumer (ADR-006). The lead feed follows this: `application/leadfeed` defines the
+`Reader`, `Publisher`, `AnswerStore` and `AnswerSender` interfaces, MongoDB implements them in
+`infrastructure/repository/mongodb`.
 
 ---
 
-## Architecture Diagram
+## Lead Feed
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                                 CLIENTS                                      │
-│                                                                             │
-│    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐                │
-│    │  Web Browser │    │ Mobile App   │    │  API Client  │                │
-│    │   (HTMX)     │    │  (Future)    │    │  (REST)      │                │
-│    └──────┬───────┘    └──────┬───────┘    └──────┬───────┘                │
-│           │                    │                    │                       │
-└───────────┼────────────────────┼────────────────────┼───────────────────────┘
-            │                    │                    │
-            ▼                    ▼                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           REVERSE PROXY (Traefik)                           │
-│                     TLS Termination • Load Balancing                        │
-└─────────────────────────────────────────────────────────────────────────────┘
-            │                    │
-            ▼                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           APPLICATION LAYER                                  │
-│                                                                             │
-│  ┌──────────────────────────────────────────────────────────────────────┐  │
-│  │                        API SERVER (Echo)                              │  │
-│  │                                                                       │  │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ │  │
-│  │  │    Auth     │  │  Workspace  │  │    Chat     │  │   Message   │ │  │
-│  │  │  Handlers   │  │  Handlers   │  │  Handlers   │  │  Handlers   │ │  │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘ │  │
-│  │                                                                       │  │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ │  │
-│  │  │    Task     │  │Notification │  │    User     │  │  WebSocket  │ │  │
-│  │  │  Handlers   │  │  Handlers   │  │  Handlers   │  │   Handler   │ │  │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘ │  │
-│  └──────────────────────────────────────────────────────────────────────┘  │
-│                                                                             │
-│  ┌──────────────────────────────────────────────────────────────────────┐  │
-│  │                     WEBSOCKET SERVER (gorilla/websocket)              │  │
-│  │                                                                       │  │
-│  │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐      │  │
-│  │  │   Connection    │  │    Message      │  │    Presence     │      │  │
-│  │  │     Hub         │  │   Broadcasting  │  │    Tracking     │      │  │
-│  │  └─────────────────┘  └─────────────────┘  └─────────────────┘      │  │
-│  └──────────────────────────────────────────────────────────────────────┘  │
-│                                                                             │
-│  ┌──────────────────────────────────────────────────────────────────────┐  │
-│  │                        WORKER SERVICE                                 │  │
-│  │                                                                       │  │
-│  │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐      │  │
-│  │  │  Event Handler  │  │  Notification   │  │   SLA Monitor   │      │  │
-│  │  │   (Projections) │  │    Sender       │  │    (Future)     │      │  │
-│  │  └─────────────────┘  └─────────────────┘  └─────────────────┘      │  │
-│  └──────────────────────────────────────────────────────────────────────┘  │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-            │                    │                    │
-            ▼                    ▼                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           INFRASTRUCTURE LAYER                               │
-│                                                                             │
-│  ┌──────────────────┐  ┌──────────────────┐                                │
-│  │     MongoDB      │  │      Redis       │                                │
-│  │   (Primary DB)   │  │  (Cache/PubSub)  │                                │
-│  │                  │  │                  │                                │
-│  │ • Documents      │  │ • Event pub/sub  │                                │
-│  │ • Event store    │  │ • Rate limiting  │                                │
-│  │ • Read models    │  │                  │                                │
-│  └──────────────────┘  └──────────────────┘                                │
-│                                                                             │
-│  ┌──────────────────┐                                                       │
-│  │   File Storage   │                                                       │
-│  │    (Local FS)    │                                                       │
-│  │                  │                                                       │
-│  │ • Message files  │                                                       │
-│  │ • Task files     │                                                       │
-│  │ • Metadata in DB │                                                       │
-│  └──────────────────┘                                                       │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+A read projection of the lead's task journal: `internal/application/leadfeed`, collections `leadfeed_tasks`,
+`leadfeed_records`, `leadfeed_state`. It is not part of the Chat write model and never goes through tag parsing
+(boundary rules: [AGENTS.md](../AGENTS.md#lead-feed-boundary)).
+
+**Snapshot.** `lead-task export` writes JSON lines: a header, tasks, records, a footer. `ParseSnapshot` accepts schema
+1 and 2 and rejects the whole snapshot when:
+
+- the footer is missing or the header says `complete: false`;
+- the content does not match the `revision` in the header;
+- a `question` record appears in schema 1.
+
+The source writes schema 2 only when the export holds a question, so a build that predates questions rejects the
+snapshot instead of silently dropping them. `source`, `epoch` and `revision` name one immutable content set; a new
+`epoch` means another journal installation.
+
+**Importer.** `Importer.Import` reads at most `DefaultMaxSnapshotBytes` (32 MiB) into memory, validates, and only
+then publishes. Every attempt, successful or not, is recorded in its own document in `leadfeed_state`; it never moves
+the published revision or `as_of`. An attempt is detached from the request context, so an interrupted import still
+leaves its record.
+
+**Publication.** `MongoLeadFeedRepository.Publish` replaces tasks, records and state in one transaction (snapshot
+read concern, majority write concern). The freshness check on `as_of` lives inside that transaction because the
+driver may re-run it:
+
+| Snapshot against the published one | Result |
+|---|---|
+| older `as_of` | `ErrSnapshotStale`, rejected |
+| same source, epoch and revision | `refreshed`: only `as_of` and `published_at` move; the watermark must advance, because a late older snapshot is judged by it |
+| same `as_of`, other content | `ErrSnapshotConflict`, rejected |
+| otherwise | `published`; `PreviousEpoch` is set when the epoch changed |
+
+An unknown transaction commit becomes `ErrCommitUnknown`: the feed holds the old or the new snapshot in full, which
+one is not known. `leadfeed import` exits with 3 for it.
+
+**Read.** `QuestionService` and the query service read through `Reader.Read`, one snapshot-isolated transaction, so a
+list, its `State` and the tasks it shows come from the same revision. The callback may run more than once and must
+rebuild its result each time. List cursors carry the revision; a republish between pages gives
+`ErrRevisionChanged` and paging restarts.
+
+Source statuses are stored and returned verbatim. `StatusLabel` and `StatusGroup` are display-only; an unknown status
+is shown as is and grouped `unknown`.
+
+Routes: [docs/api/README.md](./api/README.md), questions in [docs/api/feed-questions.md](./api/feed-questions.md).
 
 ---
 
-## Core Principles
+## Owner Questions and Answers
 
-### 1. Domain-Driven Design (DDD)
+The lead asks through its journal (a `question` record in the snapshot); the owner answers in Flowra; the answer
+goes back through `lead-task`. API, codes and states: [docs/api/feed-questions.md](./api/feed-questions.md).
 
-Business logic is organized around domain concepts:
+**Storage.** An answer is stored in `owner_answers`, outside the projection: an import replaces `leadfeed_*` and
+never touches it, and nothing writes answers into `leadfeed_*`. The document holds everything needed to deliver
+without a snapshot (`OwnerAnswer`).
 
-- **Aggregates** - Consistency boundaries (Chat, Message, Task, Notification)
-- **Entities** - Objects with identity (User, Workspace)
-- **Value Objects** - Immutable domain concepts (UUID, Priority, Status)
-- **Domain Events** - Business facts that happened
+**Identity.** `(source, epoch, qid)` is the document `_id`; the feed revision is deliberately not part of it, so an
+answer survives republication. One answer per question follows from the unique `_id`. A second unique index is on
+`command_id`, the idempotency key. Answers of another epoch are kept and counted but never delivered.
 
-### 2. Event-Driven Architecture
+**Accepting an answer** (`QuestionService.Answer`), in this order:
 
-Components communicate through domain events:
+1. Key and body checks (`Idempotency-Key` required; an option or a text; text at most 4000 characters).
+2. Lookup by key, in any epoch. Same key and same body fingerprint: return the original answer (`repeated`), whatever
+   the question became since. Same key, other body: `ErrIdempotencyKeyReused`.
+3. Only then the question state in one snapshot: unknown option, already answered (stored or in the snapshot),
+   closed by the lead.
+4. `SaveAnswer` inserts; a concurrent request with the same key that wins the insert is a repeat, not a conflict.
 
-```
-┌──────────────┐    ┌──────────────┐    ┌──────────────┐
-│   Command    │───▶│   Domain     │───▶│    Event     │
-│   Handler    │    │   Logic      │    │   Published  │
-└──────────────┘    └──────────────┘    └──────────────┘
-                                               │
-        ┌──────────────────────────────────────┼──────────────────┐
-        │                                      │                  │
-        ▼                                      ▼                  ▼
-┌──────────────┐               ┌──────────────┐     ┌──────────────┐
-│  Projection  │               │  Notification │     │   WebSocket  │
-│   Handler    │               │    Service    │     │   Broadcast  │
-└──────────────┘               └──────────────┘     └──────────────┘
-```
+The key goes first so that a response lost on the way can be retried safely after the question moved on.
 
-### 3. CQRS (Command Query Responsibility Segregation)
-
-Separate models for reading and writing:
-
-- **Commands** - Change state (CreateChat, SendMessage, AssignTask)
-- **Queries** - Read state (ListChats, GetMessages, GetTasks)
-- **Read Models** - Optimized for queries (task board view, chat list)
-
-### 4. Clean Architecture
-
-Dependencies point inward:
-
-```
-┌─────────────────────────────────────────────────┐
-│                  Handlers                        │
-│              (HTTP, WebSocket)                   │
-│  ┌─────────────────────────────────────────┐    │
-│  │           Application Layer              │    │
-│  │         (Use Cases, Services)            │    │
-│  │  ┌─────────────────────────────────┐    │    │
-│  │  │         Domain Layer            │    │    │
-│  │  │  (Aggregates, Entities, Events) │    │    │
-│  │  └─────────────────────────────────┘    │    │
-│  └─────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────┘
-        ▲                            │
-        │                            ▼
-┌─────────────────────────────────────────────────┐
-│              Infrastructure Layer                │
-│    (Repositories, Event Store, External APIs)   │
-└─────────────────────────────────────────────────┘
-```
+**Confirmation.** Flowra does not mark an answer delivered itself. The lead's journal records the answer under the
+`answer_id` Flowra generated, and the next snapshot shows it with `delivered: true`. `isConfirmed` accepts only the
+same `answer_id` marked delivered: a closed question or another answer is not confirmation. Until then the state is
+`answered`.
 
 ---
 
-## Layer Architecture
+## Sync and Delivery
 
-### 1. Handler Layer (`internal/handler/`)
+`scripts/leadfeed-sync.sh`, one run:
 
-Handles HTTP requests and WebSocket connections.
+1. Takes `flock` on a lock file (waits up to `LEADFEED_SYNC_LOCK_WAIT` seconds, 90 by default), so runs do not
+   overlap.
+2. `lead-task export` into a temp file. The import starts only after the exporter finished with success: a footer
+   proves the content is whole, not that the exporter ended well. On export failure `leadfeed fail` records the
+   reason and nothing is imported.
+3. `leadfeed import <file>`.
+4. `leadfeed deliver --lead-task PATH` runs whatever happened to the import: an answer must not wait for a healthy
+   export.
+5. The exit code is non-zero if the export, the import or the delivery failed.
 
-```go
-// HTTP handler example
-type ChatHandler struct {
-    chatService ChatService  // Interface defined by handler
-}
+`Deliverer.Run` reads the published feed in one snapshot, then for every stored answer of the current epoch that
+the snapshot does not confirm calls `lead-task answer <qid>` with the answer JSON on stdin (`execSender`, bounded
+by a timeout). Delivery is at-least-once: repeated calls are safe because the journal checks `answer_id`. An answer
+whose question is not in the published snapshot, or whose record changed, is counted as failed and not sent. The
+outcome of the run (`sent`, `failed`, `unconfirmed`, oldest unconfirmed time, other-epoch count, last error) is
+stored apart from the import attempt and shown by `leadfeed status`.
 
-func (h *ChatHandler) Create(c echo.Context) error {
-    var req CreateChatRequest
-    if err := c.Bind(&req); err != nil {
-        return httpserver.RespondError(c, err)
-    }
-    
-    result, err := h.chatService.CreateChat(ctx, cmd)
-    if err != nil {
-        return httpserver.RespondError(c, err)
-    }
-    
-    return httpserver.RespondCreated(c, ToChatResponse(result))
-}
-```
-
-### 2. Application Layer (`internal/application/`)
-
-Orchestrates use cases and coordinates domain logic.
-
-```go
-// Application service example
-type ChatUseCase struct {
-    chatRepo   ChatRepository    // Interfaces
-    eventStore EventStore
-    eventBus   EventBus
-}
-
-func (uc *ChatUseCase) CreateChat(ctx context.Context, cmd CreateChatCommand) (Result, error) {
-    // 1. Load or create aggregate
-    chat, err := chat.NewChat(cmd.WorkspaceID, cmd.CreatorID, cmd.Name)
-    if err != nil {
-        return Result{}, err
-    }
-    
-    // 2. Save aggregate and events
-    if err := uc.chatRepo.Save(ctx, chat); err != nil {
-        return Result{}, err
-    }
-    
-    // 3. Publish domain events
-    for _, event := range chat.Events() {
-        uc.eventBus.Publish(ctx, event)
-    }
-    
-    return Result{Value: chat}, nil
-}
-```
-
-### 3. Domain Layer (`internal/domain/`)
-
-Contains business logic and domain models.
-
-```go
-// Aggregate example
-type Chat struct {
-    id           uuid.UUID
-    workspaceID  uuid.UUID
-    name         string
-    participants []Participant
-    events       []event.Event  // Uncommitted domain events
-}
-
-func (c *Chat) Rename(newName string, byUser uuid.UUID) error {
-    // Business rule validation
-    if !c.hasPermission(byUser, PermissionRename) {
-        return ErrNotChatAdmin
-    }
-    
-    if newName == c.name {
-        return nil
-    }
-    
-    // Apply change
-    c.name = newName
-    
-    // Record domain event
-    c.recordEvent(ChatRenamed{
-        ChatID:   c.id,
-        NewName:  newName,
-        RenamedBy: byUser,
-    })
-    
-    return nil
-}
-```
-
-### 4. Infrastructure Layer (`internal/infrastructure/`)
-
-Implements interfaces defined by upper layers.
-
-```go
-// Repository implementation
-type MongoChatRepository struct {
-    collection *mongo.Collection
-}
-
-func (r *MongoChatRepository) Save(ctx context.Context, chat *chat.Chat) error {
-    doc := toDocument(chat)
-    _, err := r.collection.ReplaceOne(ctx, 
-        bson.M{"_id": chat.ID()},
-        doc,
-        options.Replace().SetUpsert(true),
-    )
-    return err
-}
-```
+`sent` counts calls the journal accepted; the snapshot confirms them one import later. `leadfeed deliver` exits with
+1 if any answer failed.
 
 ---
 
-## Key Components
+## Contract with the Lead's Journal
 
-### Domain Aggregates
+The journal is the source of tasks and questions. Flowra never writes it except through `lead-task answer`,
+which only `leadfeed deliver` invokes; the only other call is `lead-task export`.
 
-| Aggregate | Description | Key Operations |
-|-----------|-------------|----------------|
-| **Chat** | Conversation room | Create, Rename, AddParticipant, RemoveParticipant |
-| **Message** | Chat message | Send, Edit, Delete, AddReaction |
-| **Task** | Trackable work item | Create, ChangeStatus, Assign, SetPriority |
-| **Notification** | User notification | Create, MarkAsRead, Delete |
+| Call | Made by | Failure |
+|---|---|---|
+| `lead-task export` | `leadfeed-sync.sh` | nothing is imported, the attempt is recorded as failed |
+| `lead-task answer <qid>` | `leadfeed deliver` | the answer stays unconfirmed and is retried on the next run |
 
-### Domain Entities
-
-| Entity | Description | Belongs To |
-|--------|-------------|------------|
-| **User** | System user | Global |
-| **Workspace** | Organizational unit | Global |
-| **Participant** | Chat member with role | Chat |
-| **Attachment** | File attached to message or task | Message, Task |
-
-### Domain Events
-
-| Event | Trigger | Handlers |
-|-------|---------|----------|
-| `ChatCreated` | New chat | Notification, Analytics |
-| `MessagePosted` | New message | WebSocket, Notification |
-| `TaskStatusChanged` | Status update | WebSocket, Notification |
-| `UserMentioned` | @mention in message | Notification |
+A non-zero exit of `lead-task answer` is not interpreted by Flowra beyond "not delivered"; the exit codes and the
+payload fields are defined in the contract section of the design plan, which is design history, not the source of
+behaviour: [lead-task contract](./plans/20261112-owner-question.md#контракт-lead-task). What Flowra sends is
+`answerPayload` in `internal/application/leadfeed/delivery.go`.
 
 ---
 
-## Tag System
+## Authentication
 
-Tags are the primary mechanism for task management through chat. All task operations (status changes, assignments, priority updates) happen via tags in messages.
+Flowra authenticates requests itself: the server holds SHA-256 digests of owner tokens and resolves every valid
+token to the owner user.
 
-### Design Principles
+- **Tokens, not sessions.** `Authorization: Bearer <token>` for API and agents; the web form `POST /login` checks
+  the token the same way and stores it in the HttpOnly `flowra_session` cookie.
+- **Digests only.** `auth.tokens[{name, sha256}]` and `AUTH_OWNER_TOKEN_SHA256`; tokens are named so one can be
+  dropped without changing the others. The check is a constant-time comparison.
+- **Loopback only.** `Config.ValidateAuth` (called by `cmd/api`) refuses a non-loopback `server.host`: a token is a
+  bearer secret over plain HTTP.
+- **No fallbacks.** Without a validator a request is rejected, never served as a mock user.
+- **Cookie writes.** A write authenticated by cookie must carry `Origin` or `Referer` matching `Host`
+  (`RequireSameOriginForCookie`); Bearer requests skip the check.
+- **WebSocket.** `/api/v1/ws` sits behind the same middleware. `websocket.Handler.getUserID` also reads a `token`
+  query parameter when the context has no user; the request log redacts that parameter.
 
-| Principle | Description |
-|-----------|-------------|
-| **Simplicity** | Easy to remember basic syntax |
-| **Tag names are case-sensitive** | `#status` ≠ `#Status` (prevents accidental triggers) |
-| **Enum values are forgiving** | Values like status/priority/severity are matched case-insensitively and normalized |
-| **Partial Application** | Valid tags apply even when others fail |
-| **Known Tags Only** | Only registered tags are parsed (`#` in regular text is ignored) |
+### Several Users: What Is Missing
 
-### Tag Positioning
+The model "several named tokens, different users" is possible but not built:
 
-Tags can appear:
-1. **At the start of a message** (first line)
-2. **On a separate line** after regular text
-
-```
-Valid:
-#status Done #assignee @alex
-Finished the work, ready for review
-
-Also valid:
-Finished working on the task
-#status Done
-#assignee @alex
-
-Invalid (not parsed):
-Finished work #status Done — sending for review
-```
-
-### System Tags
-
-User-facing reference with examples and troubleshooting: `docs/TAGS_USER_GUIDE.md`
-
-#### Entity Creation Tags
-
-| Tag | Description | Example |
-|-----|-------------|---------|
-| `#task <title>` | Create a Task | `#task Implement OAuth` |
-| `#bug <title>` | Create a Bug | `#bug Login fails on Chrome` |
-| `#epic <title>` | Create an Epic | `#epic User Management` |
-
-#### Entity Management Tags
-
-| Tag | Format | Description |
-|-----|--------|-------------|
-| `#status <value>` | Enum (case-insensitive input) | Change status |
-| `#assignee @user` | Username | Assign to user |
-| `#priority <value>` | High/Medium/Low | Set priority |
-| `#due <date>` | ISO 8601 (YYYY-MM-DD) | Set deadline |
-| `#title <text>` | Free text | Change task title |
-| `#severity <value>` | Critical/Major/Minor/Trivial | Bug severity only |
-
-#### Participant Management Tags
-
-| Tag | Format | Description |
-|-----|--------|-------------|
-| `#invite @user` | Username | Add participant to chat |
-| `#remove @user` | Username | Remove participant from chat |
-
-#### Chat Lifecycle Tags
-
-| Tag | Format | Description |
-|-----|--------|-------------|
-| `#close` | No value | Close/archive current chat |
-| `#reopen` | No value | Reopen chat |
-| `#delete` | No value | Delete chat (parses today; execution currently not implemented) |
-
-**Status Values by Type:**
-- **Task:** To Do, In Progress, Done
-- **Bug:** New, Investigating, Fixed, Verified
-- **Epic:** Planned, In Progress, Completed
-
-**Priority via tags:** `High`, `Medium`, `Low` (tag commands do not currently support `Critical`).
-
-### Validation Strategy
-
-**Partial Application:** Each tag is validated independently. Valid tags are applied, invalid tags are reported but don't block others.
-
-```
-Input: "#status Done #assignee @unknown #priority High"
-
-Result:
-✅ status → "Done" (applied)
-❌ assignee → error "user @unknown not found: ..." (not applied)
-✅ priority → "High" (applied)
-
-Bot response:
-"✅ Status changed to Done
- ✅ Priority changed to High
- ❌ user @unknown not found: ..."
-```
-
-### Error Types
-
-| Type | Example | Message Format |
-|------|---------|----------------|
-| **Syntax** | `#assignee alex` (missing @) | `❌ invalid assignee format. Use @username` |
-| **Semantic** | `#status Completed` (invalid value) | `❌ invalid status 'Completed' for Task. Available: To Do, In Progress, Done` |
-| **Business** | `#assignee @nonexistent` | `❌ user @nonexistent not found: ...` |
-
-Business-layer errors may include wrapped context from executors/use cases (for example `failed to assign user: ...`).
-
-**Important:** Messages are always saved, even if all tags are invalid. Tag errors don't prevent message posting.
+- a token has no identity of its own: it needs `tokens[].user {username, email}` and an `ExternalUserID` taken from
+  the token instead of the constant `owner`, plus a uniqueness check between tokens;
+- `userResolver` falls back to an existing user with the same `username`; with several identities a token with a
+  colliding username would silently sign in as that user, so this must be refused;
+- `AcceptInviteUseCase` is not wired to HTTP and grants no membership; people can be added only as existing users
+  through the workspace invite form, and a token can be issued only by editing the config and restarting;
+- a team on several machines needs network access with TLS, which loopback-only does not give.
 
 ---
 
-## Data Flow
+## Kept from the Earlier Product (Not Developed)
 
-### REST API Request Flow
+Workspaces, chats, tags, WebSocket and the HTMX board come from the earlier chat product. They work and have
+tests; nothing new is built on them. The one rule that still binds new work is Chat=SoT
+([ADR-007](./architecture/adr-007-chat-sot.md)): for typed entities (`task`, `bug`, `epic`) the Chat aggregate is
+the only write model and emits `chat.*` events only; `tasks_read_model` is a projection.
 
-```
-Client Request
-     │
-     ▼
-┌─────────────────┐
-│    Middleware   │  ─── Auth, Logging, CORS, Rate Limiting
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│     Handler     │  ─── Parse request, validate input
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│   Application   │  ─── Execute use case
-│     Service     │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│     Domain      │  ─── Business logic, create events
-│    Aggregate    │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│   Repository    │  ─── Persist changes
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│    Event Bus    │  ─── Publish domain events
-└────────┬────────┘
-         │
-         ▼
-Response to Client
-```
+### Domain
 
-### WebSocket Message Flow
+| Aggregate / entity | Where |
+|---|---|
+| Chat (also Task, Bug, Epic as typed chats) | `internal/domain/chat` |
+| Message | `internal/domain/message` |
+| Notification | `internal/domain/notification` |
+| User, Workspace | `internal/domain/user`, `internal/domain/workspace` |
+
+Workspace roles are enforced by `middleware.RequireWorkspaceAdmin` / `RequireWorkspaceOwner` on the
+workspace-scoped routes (`cmd/api/routes.go`).
+
+### Task actions and tags
+
+Field writes from HTTP actions run in the request through `chatapp.CommandRunner` (per-chat lock, bounded retry with
+reload, `Idempotency-Key` stored with the events) and answer with a definite outcome
+([docs/api/action-endpoints.md](./api/action-endpoints.md)). Tags (`#status`, `#assignee`, ...) are the other
+route, from chat messages: only messages of type `user` are parsed, tags run after the response and have no
+outcome, and a valid tag applies even when another in the same message fails. Syntax, values and errors:
+[docs/TAGS_USER_GUIDE.md](./TAGS_USER_GUIDE.md).
+
+### Event flow
 
 ```
-Client Message
-     │
-     ▼
-┌─────────────────┐
-│    WebSocket    │  ─── Validate connection, parse message
-│     Handler     │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│      Hub        │  ─── Route message based on type
-└────────┬────────┘
-         │
-    ┌────┴────┐
-    │         │
-    ▼         ▼
-Subscribe   Typing
-to Chat    Indicator
-    │         │
-    ▼         ▼
-Update    Broadcast
-Subscriptions  to Chat
+Command ─▶ Chat aggregate ─▶ event store (events) + outbox ─▶ outbox worker ─▶ Redis pub/sub
+                                                                                   │
+                                          projection handlers · notification handler · WebSocket hub
 ```
 
-### Event Processing Flow
+- **Event store.** Collection `events`: `aggregate_id`, `aggregate_type`, `event_type`, `version`, `data`,
+  `metadata`, `occurred_at`; optional `command_id` and `command_fp` for idempotent commands. Unique indexes on
+  `(aggregate_id, version)` and on the aggregate's command id.
+- **Outbox.** Events also go to the `outbox` collection; the outbox worker polls it (`outbox.*` config: interval,
+  batch, retries, cleanup) and publishes to the Redis bus, channel `events:<event type>` by default. Delivery to
+  subscribers is at-most-once on the Redis side; the outbox is what makes publication retryable.
+- **Read models.** `chats_read_model` and `tasks_read_model`, written by projectors only with a version not older
+  than the stored one (`mongodb.UpsertNewer`). The repair worker rebuilds a model from the event store using the
+  `repair_queue` collection. Legacy `chat_read_model` and `task_read_model` are not authoritative (`make reset-data`
+  cleans them).
+- **Dead letters.** `DeadLetterHandler` keeps failed events in the Redis list `events:dead_letter`; the health check
+  reports it.
 
-```
-Domain Event Published
-        │
-        ▼
-┌─────────────────┐
-│   Event Bus     │  ─── Redis Pub/Sub
-│    (Redis)      │
-└────────┬────────┘
-         │
-    ┌────┴────┬────────────┐
-    │         │            │
-    ▼         ▼            ▼
-Projection  Notification  WebSocket
-Handler     Service       Broadcast
-    │         │            │
-    ▼         ▼            ▼
-Update     Create      Push to
-Read Model Notification  Clients
-```
+### WebSocket
 
----
+Handler in `internal/handler/websocket`, hub in `internal/infrastructure/websocket`. HTMX 2 pages open the socket
+through the `ws` extension; client-side pitfalls are in [AGENTS.md](../AGENTS.md). Protocol:
+[docs/api/websocket-protocol.md](./api/websocket-protocol.md). Authentication: see above.
 
-## Event Sourcing & Event Flow
+### Board and pages
 
-The system uses **Event Sourcing** for storing state changes and **Event-Driven Architecture** for communication between bounded contexts. Events are the single source of truth; all read models (projections) are built from the event stream.
-
-### Event Store
-
-**MongoDB Collection:** `events`
-
-```javascript
-{
-  "_id": "event-uuid",
-  "aggregateId": "chat-uuid",
-  "aggregateType": "Chat",
-  "eventType": "MessagePosted",
-  "eventData": {
-    "messageId": "msg-uuid",
-    "chatId": "chat-uuid",
-    "authorId": "user-uuid",
-    "content": "Finished work\n#status Done",
-    "timestamp": "2025-09-30T10:00:00Z"
-  },
-  "version": 142,
-  "timestamp": "2025-09-30T10:00:00Z",
-  "metadata": {
-    "correlationId": "req-uuid",
-    "causationId": "parent-event-id",
-    "userId": "user-uuid"
-  }
-}
-```
-
-**Key Indexes:**
-- `{ aggregateId: 1, version: 1 }` — unique, for loading aggregate events
-- `{ eventType: 1, timestamp: 1 }` — for filtering by event type
-- `{ timestamp: 1 }` — for chronological queries
-
-### Event Metadata
-
-| Field | Purpose |
-|-------|---------|
-| `correlationId` | Traces all events from a single user request |
-| `causationId` | Links to the event that caused this one |
-| `userId` | Who initiated the action |
-
-This enables full request tracing through the event chain.
-
-### Event Bus (Redis Pub/Sub)
-
-**Channel Strategy:** By event type
-
-```
-Channel: events.MessagePosted
-Channel: events.ChatTypeChanged
-Channel: events.TagsParsed
-Channel: events.StatusChanged
-Channel: events.TaskCreated
-```
-
-### Delivery Guarantees
-
-**Now: at-most-once**
-- Redis Pub/Sub doesn't guarantee delivery
-- If subscriber is offline, event is lost
-- **Mitigation:** Events stored in Event Store; state can be rebuilt
-
-**V2: At-least-once** (Transactional Outbox pattern)
-
-### Idempotency
-
-**Problem:** Events may be redelivered (reconnections, retries).
-
-**Solution:** Track processed events.
-
-```javascript
-// Collection: processed_events
-{
-  "eventId": "event-uuid",
-  "handlerName": "TagParserService",
-  "processedAt": ISODate("..."),
-  "expiresAt": ISODate("...") // TTL = 7 days
-}
-```
-
-Each handler checks if event was already processed before handling.
-
-### Retry & Error Handling
-
-**Strategy:** Exponential Backoff + Dead Letter Queue
-
-```
-1. Event processing fails
-2. Retry: 1s → 2s → 4s → 8s → 16s
-3. After MaxRetries → Dead Letter Queue
-4. Manual replay by administrator
-```
-
-**Dead Letter Queue Collection:** `dead_letter_queue`
-- Stores failed events with error details
-- Admin can replay or discard entries
-
-### Event Ordering
-
-**Problem:** Events for same aggregate may process out of order.
-
-**Solution:** Partition by aggregateId.
-
-- Events for `chat-uuid-1` process sequentially
-- Events for `chat-uuid-2` process in parallel with `chat-uuid-1`
-- No race conditions on same aggregate
-
-### Example Event Chain
-
-```
-User sends: "Finished work\n#status Done"
-
-[1] MessagePosted
-    ↓ (causationId)
-[2] TagsParsed
-    ↓ (causationId)
-[3] StatusChanged
-    ↓ (causationId)
-[4] UserNotified
-
-All events share same correlationId
-```
-
-### Aggregate Recovery
-
-Aggregates are rebuilt from event stream:
-
-1. Load snapshot (if exists)
-2. Load events after snapshot version
-3. Apply events to rebuild current state
-
-**Snapshots:** Created every ~100 events to optimize recovery time.
+Server-rendered HTMX templates in `web/templates` with Pico CSS (`internal/handler/http/*template*`). Frontend
+notes: [FRONTEND_DEV_GUIDE.md](./FRONTEND_DEV_GUIDE.md).
 
 ---
 
 ## Technology Stack
 
-### Backend
-
-| Technology | Purpose | Version |
-|------------|---------|---------|
-| **Go** | Primary language | 1.26+ |
-| **Echo** | HTTP framework | v4 |
-| **gorilla/websocket** | WebSocket | Latest |
-| **MongoDB Go Driver** | Database driver | v2 |
-| **go-redis** | Redis client | v9 |
-
-### Frontend
-
-| Technology | Purpose | Version |
-|------------|---------|---------|
-| **HTMX** | Dynamic updates | 2+ |
-| **Pico CSS** | Styling | v2 |
-| **Vanilla JS (ES Modules)** | Client interactions | Built-in |
-
-### Infrastructure
-
-| Technology | Purpose | Version |
-|------------|---------|---------|
-| **MongoDB** | Primary database | 6+ |
-| **Redis** | Cache, Pub/Sub | 7+ |
-| **Docker** | Containerization | 24+ |
+| Technology | Purpose |
+|---|---|
+| Go 1.26+, Echo v4 | Backend, HTTP |
+| MongoDB 6+ (Go driver v2), replica set | Primary store, feed transactions |
+| Redis 7+ (go-redis v9) | Event bus, rate limiting |
+| gorilla/websocket | WebSocket (kept) |
+| HTMX 2, Pico CSS v2, vanilla JS modules | Web pages |
+| Docker Compose | Local and self-hosted runtime |
 
 ---
 
 ## Architectural Decisions
 
+Records written as the system grew. ADR-001 to ADR-003, ADR-005 and ADR-006 date from the earlier product and still
+describe the code; ADR-004 replaced the earlier identity provider.
+
 ### ADR-001: MongoDB for Primary Storage
 
-**Context:** Need a database for storing documents with flexible schema.
+**Decision:** MongoDB is the primary database; the document model fits aggregates.
 
-**Decision:** Use MongoDB as the primary database.
-
-**Rationale:**
-- Document model fits well with aggregates
-- Flexible schema for evolving domain
-- Good Go driver support (v2)
-- Built-in sharding for scale
-
-**Consequences:**
-- Need to manage consistency at application level
-- No ACID transactions across documents (acceptable for our use case)
-
----
+**Consequences:** consistency across documents is managed in the application, except where a transaction is
+used (feed publication and feed reads), which is why a replica set is required.
 
 ### ADR-002: Event-Driven Architecture
 
-**Context:** Need loose coupling between components and real-time updates.
+**Decision:** components communicate through domain events (outbox, Redis bus).
 
-**Decision:** Implement event-driven architecture with domain events.
+**Consequences:** eventual consistency between write and read models; failed events land in the dead-letter list.
+The feed does not use it: it is a snapshot import.
 
-**Rationale:**
-- Decouples components (producers don't know consumers)
-- Enables real-time updates via WebSocket
-- Supports future event sourcing
-- Facilitates audit logging
+### ADR-003: Redis for Pub/Sub and Rate Limiting
 
-**Consequences:**
-- Eventual consistency between components
-- Need dead letter queue for failed events
-- More complex debugging
+**Decision:** Redis carries the event bus and the rate-limit store.
 
----
-
-### ADR-003: Redis for Pub/Sub and Caching
-
-**Context:** Need fast cache and inter-service communication.
-
-**Decision:** Use Redis for caching, session storage, and event pub/sub.
-
-**Rationale:**
-- Fast in-memory operations
-- Built-in pub/sub for events
-- Simple deployment
-- Excellent Go client
-
-**Consequences:**
-- Additional infrastructure component
-- Need persistence configuration for reliability
-
----
+**Consequences:** one more infrastructure component, needed by the kept chat parts; the feed does not need it.
 
 ### ADR-004: Owner Tokens for Authentication
 
-**Context:** The service is for one owner and agents, at most a small team. Keycloak and its Postgres cost about
-770 MB and were not started in practice. Owner decision of 12.11.2026: remove Keycloak.
+**Context:** the service is for one owner and agents, at most a small team. Keycloak and its Postgres cost about
+770 MB and were not started in practice. Owner decision of 12.11.2026: remove Keycloak
+([plan](./plans/completed/20261112-remove-keycloak.md)).
 
-**Decision:** Accept only named owner tokens configured as SHA-256 digests; every token resolves to the owner
+**Decision:** accept only named owner tokens configured as SHA-256 digests; every token resolves to the owner
 identity. Keycloak, OAuth login, user and group sync and the mock login paths are removed.
 
 **Consequences:**
-- No external identity provider; a token is a bearer secret, so the server listens on loopback only
-- Several people cannot sign in as different users yet (see Security Model)
+- no external identity provider; the server listens on loopback only;
+- several people cannot sign in as different users yet (see [Authentication](#authentication)).
 
----
+### ADR-005: CQRS
 
-### ADR-005: CQRS Pattern
-
-**Context:** Different read and write requirements.
-
-**Decision:** Implement CQRS with separate read models.
-
-**Rationale:**
-- Read models optimized for queries
-- Write models focused on consistency
-- Easier scaling of read-heavy workloads
-- Clear separation of concerns
-
-**Consequences:**
-- Eventual consistency between read/write models
-- Need to maintain projections
-- More complex data management
-
----
+**Decision:** separate read models for queries; write side through aggregates. The feed is a pure read side with its
+own write path (import) and a separate answer store.
 
 ### ADR-006: Interface Declaration on Consumer Side
 
-**Context:** Need clean architecture with proper dependency management.
+**Decision:** interfaces live where they are used, so consumers define their dependencies and tests use small fakes.
 
-**Decision:** Declare interfaces where they are used (consumer side).
+### ADR-007: Chat as Source of Truth for Typed Entities
 
-**Rationale:**
-- Follows Go idioms ("Accept interfaces, return structs")
-- Consumers define their dependencies
-- Loose coupling between packages
-- Easier testing with mocks
-
-**Consequences:**
-- May have similar interfaces in multiple places
-- Need clear naming conventions
+See [adr-007-chat-sot.md](./architecture/adr-007-chat-sot.md).
 
 ---
 
-## Security Model
-
-Flowra authenticates requests itself: the server holds SHA-256 digests of owner tokens and resolves every valid
-token to the owner user. Workspace and chat membership live in Flowra's own collections.
-
-### Core Principles
-
-- **Tokens, not sessions**: `Authorization: Bearer <token>` for API and agents; the web form sets an HttpOnly
-  cookie holding the same token
-- **Digests only**: `auth.tokens[{name, sha256}]` and `AUTH_OWNER_TOKEN_SHA256`; tokens are named so one can be
-  dropped without changing the others
-- **Loopback only**: `Config.ValidateAuth` refuses a non-loopback `server.host`
-- **No fallbacks**: without a validator a request is rejected, never served as a mock user
-- **Workspace Isolation**: users work within workspace context
-
-### Several Users: What Is Missing
-
-The model "several named tokens → different users" is kept possible but not built:
-
-- a token has no identity of its own: it needs `tokens[].user {username, email}` and an `ExternalUserID` taken
-  from the token instead of the constant `owner`, plus a uniqueness check between tokens
-- `userResolver` falls back to an existing user with the same `username`; with several identities a token with a
-  colliding username would silently sign in as that user, so this must be refused
-- `AcceptInviteUseCase` is not wired to HTTP and grants no membership; people can be added only as existing users
-  through the workspace invite form, and a token can be issued only by editing the config and restarting
-- a team on several machines needs network access with TLS, which loopback-only does not give
-
-### Access Hierarchy
-
-```
-System Level (owner identity, system admin flag)
-    ↓
-Workspace Level (Flowra membership)
-    ↓
-Chat Level (Application)
-    ↓
-Message Level (Application)
-```
-
-### Permission Tables
-
-#### System Level
-
-| Role | Capabilities |
-|------|-------------|
-| **system-admin** | Access all workspaces, manage any chat/task, view logs |
-| **user** | Create workspaces, join via invite |
-
-#### Workspace Level
-
-| Action | workspace-admin | workspace-member | non-member |
-|--------|----------------|------------------|------------|
-| View public chats | ✅ | ✅ | ❌ |
-| Create chat | ✅ | ✅ | ❌ |
-| Generate invite links | ✅ | ❌ | ❌ |
-| Manage settings | ✅ | ❌ | ❌ |
-| Remove members | ✅ | ❌ | ❌ |
-
-#### Chat Level
-
-| Action | Chat Admin | Chat Member | Workspace Member (not in chat) |
-|--------|------------|-------------|-------------------------------|
-| View private chat | ✅ | ✅ | ❌ |
-| View public chat | ✅ | ✅ | ✅ (read-only) |
-| Send messages | ✅ | ✅ | ❌ (needs Join) |
-| Apply tags | ✅ | ✅ | ❌ |
-| Add/remove participants | ✅ | ❌ | ❌ |
-| Delete chat | ✅ | ❌ | ❌ |
-
-#### Message Level
-
-| Action | Author (< 5 min) | Author (> 5 min) | Chat Admin |
-|--------|-----------------|------------------|------------|
-| Edit own message | ✅ | ❌ | ✅ |
-| Delete own message | ✅ | ❌ | ✅ |
-| Delete others' messages | ❌ | ❌ | ✅ |
-
-### Workspace Management
-
-**Self-Service Creation:**
-1. User clicks "Create Workspace"
-2. Workspace record created in database
-3. User is added as workspace owner
-
-**Invite Links:**
-```
-InviteLink:
-├─ Token: "secure-random-token"
-├─ WorkspaceID: UUID
-├─ ExpiresAt: timestamp
-├─ MaxUses: int (null = unlimited)
-└─ UsedCount: int
-```
-
-### Authentication Flow
-
-```
-┌────────┐                         ┌────────┐
-│ Client │──── Bearer <token> ────▶│  API   │  sha256(token) matches a configured digest?
-└────────┘                         └────────┘    yes → owner user (created on first use)
-                                                 no  → 401
-```
-
-The web form `POST /login` checks the token the same way and stores it in the `flowra_session` cookie.
-
-### WebSocket Authentication
-
-`/api/v1/ws` sits behind the same auth middleware as the API: the browser connects with its `flowra_session`
-cookie, other clients send `Authorization: Bearer <token>` on the handshake. A token in the query string is not
-accepted, and the request log redacts a `token` parameter.
-
-### Security Best Practices
-
-| Practice | Implementation |
-|----------|----------------|
-| **Token Check** | Constant-time comparison of SHA-256 digests; tokens never logged |
-| **CORS** | Whitelist allowed origins, enable credentials for cookies |
-| **Rate Limiting** | Per IP + UserID, stricter for auth endpoints |
-| **Input Validation** | Validate and sanitize all user input |
-| **Audit Logging** | Log security-relevant actions with user/IP/timestamp |
-
----
-
-## Scalability Considerations
-
-### Horizontal Scaling
-
-```
-                    ┌──────────────┐
-                    │ Load Balancer│
-                    └──────┬───────┘
-           ┌───────────────┼───────────────┐
-           │               │               │
-           ▼               ▼               ▼
-    ┌────────────┐  ┌────────────┐  ┌────────────┐
-    │ API Server │  │ API Server │  │ API Server │
-    │     #1     │  │     #2     │  │     #3     │
-    └─────┬──────┘  └─────┬──────┘  └─────┬──────┘
-          │               │               │
-          └───────────────┼───────────────┘
-                          │
-          ┌───────────────┴───────────────┐
-          │                               │
-          ▼                               ▼
-     ┌────────┐                      ┌────────┐
-     │MongoDB │                      │ Redis  │
-     │Replica │                      │Cluster │
-     │  Set   │                      │        │
-     └────────┘                      └────────┘
-```
-
-### Performance Optimizations
-
-- **Connection pooling** for MongoDB and Redis
-- **Read replicas** for query-heavy workloads
-- **Caching** of frequently accessed data
-- **Event batching** for high-volume scenarios
-- **Pagination** for all list endpoints
-
----
-
-*Last updated: February 2026*
+*Last updated: November 2026*

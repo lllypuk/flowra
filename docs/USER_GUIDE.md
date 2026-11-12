@@ -1,188 +1,90 @@
-# Flowra User Guide
+# Flowra Owner's Guide
 
-Flowra is a task tracker and messenger for the owner's development agents. This guide covers the web UI: the lead feed and owner questions are the current features; workspaces, chats and the board are kept from the earlier product and are not developed.
+The web UI of the lead feed: tasks, their threads, and the lead's questions. The pages are in Russian; the labels below are translated. Product overview: [README](../README.md). Phone access: [DEPLOYMENT.md](./DEPLOYMENT.md#phone).
 
-## Getting Started
+## Signing in
 
-### 1. Login
+1. Open `/login`, paste the access token, press **Sign in**.
+2. On success the server sets the `flowra_session` cookie (HttpOnly, SameSite Lax, 30 days by default, `AUTH_SESSION_TTL`) and redirects to the page you asked for, else to `/feed`.
 
-Flowra signs you in with an access token issued by whoever runs the server:
+The cookie holds the token itself; the server compares its SHA-256 with the stored digests.
 
-1. Go to the login page
-2. Paste your access token and click **Sign in**
-3. You'll be redirected to the feed; workspaces are in the menu
+- A wrong token: the form reappears with "Invalid token." (HTTP 401). The attempt is logged with the IP, not the token.
+- "The sign-in form expired": the form carries a one-time state tied to a cookie; reload `/login` and retry.
+- An unauthenticated request for a page redirects to `/login`; a token the server no longer accepts clears the cookie and does the same.
+- `/login` with a cookie already set redirects to `/workspaces`, not to the feed; open `/feed` directly.
 
-### 2. Create or Join a Workspace
+Tokens are issued by whoever runs the server ([DEPLOYMENT.md](./DEPLOYMENT.md)).
 
-A workspace is a shared space for your team:
+## Feed: `/feed`
 
-- Click **+ New Workspace** to create one
-- Enter a name and optional description
-- Invite team members by their email
+Tasks from the lead's journal, read only. Times are in the server's time zone.
 
-### 3. Start Chatting
+Under the [snapshot banner](#snapshot-banner) tasks are grouped by who is expected to act:
 
-Workspaces contain chat channels for team communication:
+| Group | Statuses |
+|---|---|
+| Waiting on the owner | `wait_user` ("waits for you") |
+| Waiting on the lead | `question` ("question to the lead"), `review` ("with the lead for review") |
+| With the agent | `queued`, `work` |
+| Unknown | any status the page does not know; shown as is |
+| Closed | `done` ("accepted"), `cancelled` |
 
-- Click **+ New Chat** to create a chat channel
-- Select participants
-- Start messaging!
+A row shows the id, project, title and the lead's note, the status (label and the source status beside it) and the time in that status. The age is counted to the snapshot time, not to now.
 
-## Features
+If the feed holds questions, a link "Lead's questions" shows how many wait for an answer. A feed longer than one page shows a note that only part is listed.
 
-### Chat
+## Task thread: `/feed/tasks/{id}`
 
-Flowra chat supports:
+- Facts: project, agent, status, **waiting on** (who the lead's journal says the task waits on: lead, agent, owner, or "nobody"), time in status, creation time, number of returns.
+- "Time and transitions" (collapsed): time spent in queue, work, waiting on the lead, waiting on the owner; the status history with the record that caused each change.
+- Records, oldest first: a kind (letter, question, report, decision, observation), the author, the time, the record id and where the lead found it. A question record links to its page.
 
-- **Markdown formatting** - Use `**bold**`, `*italic*`, and `` `code` ``
-- **Tags** - Type `#` to see available commands:
-  - `#task Title` - Create a new task from your message
-  - `#bug Title` - Mark as a bug report
-  - `#epic Title` - Create an epic
-  - `#status Done`, `#assignee @user`, `#priority High` - Manage existing tasks
-  - See the full guide: [`docs/TAGS_USER_GUIDE.md`](./TAGS_USER_GUIDE.md)
-- **Mentions** - Use `@username` to notify team members (autocomplete available)
-- **Tag autocomplete** - Type `#` to see tag suggestions
-- **File attachments** - Attach files using the paperclip button
-- **Typing indicators** - See when others are typing
-- **Real-time updates** - Messages appear instantly for all participants
+Markers in dashed boxes mean the lead's export guessed, not read:
 
-**Keyboard Shortcuts:**
-- `Ctrl+Enter` or `Cmd+Enter` - Send message
-- `Escape` - Close any open dialogs
+- "derived" next to a transition or an author: inferred, not written in the journal.
+- "text from transcript": the text is not in the journal; it was found in the agent's transcript by the event time and may be the wrong one.
+- "No text: ..." in italics: the text could not be found; the reason follows.
 
-### Kanban Board
+Long threads are paged ("Next"). After the feed is republished an old page link restarts the thread from the top.
 
-View and manage tasks on the visual board:
+## Questions: `/feed/questions`
 
-- **Columns:** TODO → In Progress → Review → Done
-- **Drag and drop** cards between columns to change status
-- **Click a card** to see full task details
-- **Filter** by type, assignee, or priority
+The list shows questions of the current snapshot, waiting ones first, then newest first: id, state, time asked, task, first line.
 
-**Card Information:**
-- Task title
-- Type indicator (Task, Bug, Epic)
-- Priority border (Critical=red, High=orange, Medium=blue, Low=green)
-- Assignee avatar
-- Due date (highlighted if overdue)
+A question page (`/feed/questions/{qid}`) shows:
 
-### Task Details
+- the text, the task and the time asked;
+- **scope**: what the answer applies to; check it before answering;
+- options, if the lead offered any, and **the lead's recommendation** with the reason. The recommended option is marked in the form but not preselected;
+- the answer form: an option and/or text up to 4000 characters. An option or a non-empty text is required; an invalid answer shows the form again with your text and an error.
 
-Click any task card to open the sidebar:
+An answer cannot be edited or withdrawn. If it was wrong, the lead has to ask a new question. Pressing the button twice, or an answer to a question that is already answered or closed, shows the current state of the question instead of an error.
 
-- **Edit title** - Click the title to edit inline
-- **Change status** - Use the dropdown
-- **Set priority** - Low, Medium, High, Critical
-- **Assign** - Select team member from dropdown
-- **Due date** - Pick a date from the calendar
-- **Description** - Add detailed information
-- **Activity** - View the full history of changes
+States as the page shows them:
 
-### File Attachments
+| State | Meaning |
+|---|---|
+| waiting for an answer | No answer anywhere, the lead has not closed it. The only state with a form |
+| answered, the lead has not received it yet | Flowra holds your answer; the lead's journal has not confirmed it. Normal for up to a minute after sending: delivery goes through `leadfeed deliver` and the next import |
+| handed to the lead | The journal confirmed your answer and the lead's mailbox accepted it |
+| handled | The lead closed the question and your answer, if any, is confirmed. Closed without an answer: the page says so and shows the lead's note; "answered in the session" means you replied outside Flowra |
 
-Attach files to messages and tasks:
+"Answered, ... question closed in the session": the lead closed the question before your answer was confirmed; the answer is still passed on. An answer marked "after the question was closed" arrived late.
 
-- Click the **paperclip icon** in the message input to attach a file
-- Supported file types: images, documents, archives
-- Task attachments can be added from the task detail sidebar
-- Files download securely with your session token
+Delivery and the state table: [feed-questions.md](./api/feed-questions.md).
 
-### Dark Mode
+## Snapshot banner
 
-Toggle dark mode using the **moon/sun icon** in the navigation bar. Your preference is saved locally.
+At the top of every feed page. The feed is a snapshot, and the banner says how far to trust it.
 
-### Global Search
+- **Snapshot from ... (N ago)**: when the lead's journal was exported; also when it was published here and its revision. "The feed is empty: no snapshot imported yet" before the first import.
+- **Snapshot is stale**: older than 5 minutes; the sync does not keep up. The banner turns orange. Question pages show only this and the snapshot time.
+- **Last import failed (outcome: error)**: the latest import did not pass; the previous snapshot is still shown.
+- **Answers without the lead's confirmation: N, the oldest ...**: your answers the snapshot does not confirm yet. Older than 5 minutes: orange, "the answer does not reach the lead". An error from the delivery command is shown next to it ("Answer delivery: ...").
 
-Press `Ctrl+K` (or `Cmd+K`) or click the search bar in the navigation to search across the workspace:
+Sync and delivery units: [DEPLOYMENT.md](./DEPLOYMENT.md).
 
-- Searches tasks, messages, and members
-- Results update as you type
+## Kept from the earlier product
 
-### User Profile & Settings
-
-Click your avatar in the navigation bar to access:
-
-- **Profile** - View and update your display name and avatar
-- **Settings** - Account preferences
-
-### Workspace Settings
-
-Workspace admins can access settings via the workspace menu:
-
-- **Members** - View and manage workspace members
-- **Invite** - Generate invite links for new members
-- **Transfer** - Transfer workspace ownership to another member
-- **General** - Rename or delete the workspace
-
-### Notifications
-
-Stay informed about important updates:
-
-- **Bell icon** shows unread count
-- Click to see recent notifications
-- Notification types:
-  - Mentions in chat
-  - Task assignments
-  - Status changes
-  - Comments on your tasks
-- Click a notification to go directly to the relevant item
-
-## Keyboard Shortcuts
-
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl+K` / `Cmd+K` | Quick search |
-| `Ctrl+Enter` / `Cmd+Enter` | Submit form / Send message |
-| `Escape` | Close modal or dropdown |
-| `?` | Show keyboard shortcuts help |
-| `Tab` | Navigate between elements |
-
-## Accessibility
-
-Flowra is designed to be accessible:
-
-- **Keyboard navigation** - All features are accessible via keyboard
-- **Screen reader support** - Proper ARIA labels throughout
-- **Skip links** - Press Tab on any page to access skip links
-- **High contrast** - Respects system high contrast settings
-- **Reduced motion** - Animations are reduced when system preference is set
-
-## Mobile Access
-
-Flowra works on mobile devices:
-
-- **Responsive layout** - Adapts to screen size
-- **Touch-friendly** - Large touch targets (44px minimum)
-- **Hamburger menu** - Mobile navigation menu
-- **Swipe gestures** - Horizontal scroll for kanban board
-
-## Tips & Best Practices
-
-1. **Use tags consistently** - Agree on tag usage with your team
-2. **Set due dates** - Keep track of deadlines
-3. **Assign tasks** - Make ownership clear
-4. **Check notifications** - Stay updated on team activity
-5. **Use keyboard shortcuts** - Work faster with shortcuts
-
-## Getting Help
-
-If you encounter any issues:
-
-1. Check this user guide
-2. Press `?` for keyboard shortcuts
-3. Contact your workspace administrator
-4. Report issues at https://github.com/lllypuk/flowra/issues
-
-## Browser Support
-
-Flowra works best on:
-
-| Browser | Version |
-|---------|---------|
-| Chrome | 90+ |
-| Firefox | 88+ |
-| Safari | 14+ |
-| Edge | 90+ |
-| Mobile Chrome | Latest |
-| Mobile Safari | iOS 14+ |
+Workspaces, chats, the HTMX board, invites and notifications still work but are not developed here and are not described. Tags: [TAGS_USER_GUIDE.md](./TAGS_USER_GUIDE.md).

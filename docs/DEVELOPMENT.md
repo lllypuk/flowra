@@ -2,6 +2,9 @@
 
 This guide covers setting up the development environment and working with the Flowra codebase.
 
+Local runs must not use the live install's ports (`127.0.0.1:8080`, `27017`, `6379`) or its Compose containers;
+see [Working Rules](../AGENTS.md#working-rules).
+
 ## Table of Contents
 
 1. [Prerequisites](#prerequisites)
@@ -111,11 +114,11 @@ make dev-lite
 
 ```bash
 # Health check
-curl http://localhost:8080/health
+curl http://127.0.0.1:8080/health
 # Expected: {"status":"healthy"}
 
 # Readiness check
-curl http://localhost:8080/ready
+curl http://127.0.0.1:8080/ready
 # Expected: {"status":"ready","components":{...}}
 ```
 
@@ -151,7 +154,7 @@ by `make feed-status`, by `GET /api/v1/feed/status` and on the feed pages.
 To run the parser against real exports, which must stay out of the repository:
 
 ```bash
-LEADFEED_SAMPLE_DIR=~/projects/lead/tasks/samples go test ./internal/application/leadfeed/
+LEADFEED_SAMPLE_DIR=/path/to/exports go test ./internal/application/leadfeed/
 ```
 
 ---
@@ -245,53 +248,38 @@ git push origin feature/my-feature
 
 ```
 .
-├── cmd/                   # Application entry points
-│   ├── api/               # HTTP API server
-│   │   ├── main.go        # Entry point
-│   │   ├── container.go   # Dependency injection
-│   │   └── routes.go      # Route registration
-│   └── worker/            # Background worker
-│
-├── internal/              # Private application code
-│   ├── application/       # Application services (use cases)
-│   ├── domain/           # Domain models and business logic
-│   │   ├── chat/         # Chat aggregate
-│   │   ├── message/      # Message aggregate
-│   │   ├── task/         # Shared task entity state/event contracts (query-side support)
-│   │   ├── notification/ # Notification aggregate
-│   │   ├── user/         # User entity
-│   │   ├── workspace/    # Workspace entity
-│   │   ├── event/        # Domain events
-│   │   ├── tag/          # Tag system
-│   │   ├── uuid/         # UUID utilities
-│   │   └── errs/         # Domain errors
-│   ├── handler/          # HTTP and WebSocket handlers
-│   │   ├── http/         # REST API handlers
-│   │   └── websocket/    # WebSocket handler
-│   ├── infrastructure/   # External dependencies
-│   │   ├── repository/   # Data access (MongoDB)
-│   │   ├── eventstore/   # Event persistence
-│   │   ├── filestorage/  # Local file storage (uploads/attachments)
-│   │   ├── httpserver/   # HTTP server utilities
-│   │   └── websocket/    # WebSocket infrastructure
-│   ├── middleware/       # HTTP middleware
-│   └── config/           # Configuration
-│
-├── web/                   # Frontend resources
-│   ├── templates/        # HTML templates
-│   ├── static/           # Static assets
-│   └── components/       # HTMX components
-│
-├── tests/                # Test suites
-│   ├── e2e/             # End-to-end tests (API + frontend)
-│   ├── integration/     # Integration tests
-│   ├── load/            # Manual k6 load tests
-│   ├── mocks/           # Reusable mocks/fakes
-│   └── testutil/        # Test utilities
-│
-├── configs/             # Configuration files
-├── docs/                # Documentation
-└── docker-compose.yml   # Local development services
+├── cmd/
+│   ├── api/               # HTTP API server (main.go, container.go DI, routes.go)
+│   ├── worker/            # Standalone background worker
+│   ├── leadfeed/          # Feed CLI: import, deliver, status
+│   └── tools/reset_data/  # Local data reset (make reset-data)
+├── internal/
+│   ├── application/       # Use cases
+│   │   ├── leadfeed/      # Lead feed projection, owner questions, answer delivery
+│   │   └── ...            # appcore, auth, chat, eventhandler, message, notification, task, user, workspace
+│   ├── domain/            # Aggregates, entities, events, tags, errors
+│   ├── service/           # Task actions and workspace/chat/member services
+│   ├── handler/           # http/ (REST, HTMX pages), websocket/
+│   ├── infrastructure/    # mongodb (indexes), eventstore, eventbus, outbox, projector, repair,
+│   │                      # repository, filestorage, httpserver, healthcheck, metrics, websocket
+│   ├── middleware/        # HTTP middleware
+│   ├── worker/            # Outbox and repair workers
+│   └── config/            # Configuration
+├── web/                   # templates/, static/, components/ (HTMX), embed.go
+├── scripts/
+│   ├── units/             # systemd user unit templates
+│   └── *.sh               # dev stack, feed sync, unit install, data reset
+├── tests/
+│   ├── e2e/               # API tests; frontend/ holds Playwright tests
+│   ├── integration/       # Testcontainers-based tests
+│   ├── scripts/           # Tests of scripts/
+│   ├── fixtures/leadfeed/ # Synthetic feed snapshots
+│   ├── load/              # Manual load tests (k6, agentbench)
+│   ├── mocks/             # Reusable mocks
+│   └── testutil/          # Test helpers
+├── configs/               # config.yaml, dev/prod overlays, Prometheus/Grafana
+├── docs/                  # Documentation; plans/ is design history
+└── docker-compose.yml     # Local MongoDB and Redis on loopback
 ```
 
 ### Architecture Layers
@@ -326,18 +314,7 @@ git push origin feature/my-feature
 
 ### Test Structure
 
-```
-tests/
-├── e2e/              # End-to-end API tests
-│   ├── auth_test.go
-│   ├── workspace_test.go
-│   └── ...
-├── integration/      # Integration tests
-└── testutil/         # Shared test utilities
-    ├── db.go         # Database helpers
-    ├── mongodb.go    # MongoDB test setup
-    └── fixtures.go   # Test data fixtures
-```
+See the `tests/` tree above and [tests/README.md](../tests/README.md).
 
 ### Running Tests
 
@@ -399,74 +376,13 @@ func TestChat_Rename(t *testing.T) {
 }
 ```
 
-#### Integration Tests
+#### Integration and E2E Tests
 
-```go
-// tests/integration/repository_test.go
-//go:build integration
-
-package integration
-
-import (
-    "context"
-    "testing"
-
-    "github.com/lllypuk/flowra/tests/testutil"
-)
-
-func TestChatRepository_Save(t *testing.T) {
-    // Setup test database
-    db := testutil.SetupTestDB(t)
-    defer testutil.CleanupTestDB(t, db)
-
-    repo := repository.NewMongoChatRepository(db)
-
-    // Test implementation...
-}
-```
-
-#### E2E Tests
-
-```go
-// tests/e2e/workspace_test.go
-//go:build e2e
-
-package e2e
-
-import (
-    "net/http"
-    "testing"
-)
-
-func TestWorkspace_Create(t *testing.T) {
-    client := setupTestClient(t)
-
-    resp, err := client.Post("/api/v1/workspaces", map[string]any{
-        "name": "Test Workspace",
-    })
-
-    if err != nil {
-        t.Fatalf("request failed: %v", err)
-    }
-    if resp.StatusCode != http.StatusCreated {
-        t.Errorf("expected status 201, got %d", resp.StatusCode)
-    }
-}
-```
+Both are build-tagged (`integration`, `e2e`) and start containers; see `tests/integration/` and `tests/e2e/setup_test.go`.
 
 ### Test Utilities
 
-```go
-// Use testutil for common operations
-import "github.com/lllypuk/flowra/tests/testutil"
-
-// Create test database connection
-db := testutil.SetupTestDB(t)
-
-// Create test fixtures
-user := testutil.CreateTestUser(t, db)
-workspace := testutil.CreateTestWorkspace(t, db, user.ID())
-```
+`tests/testutil` provides MongoDB and Redis setup (`SetupTestMongoDB`, `SetupSharedTestMongoDB`, ...) on testcontainers.
 
 ---
 
@@ -523,27 +439,23 @@ make lint && make test
 
 ```bash
 # Connect to MongoDB
-mongosh "mongodb://admin:admin123@localhost:27017"
+mongosh "mongodb://127.0.0.1:27017/?replicaSet=rs0"
 
 # Switch to flowra database
 use flowra
 
 # Common operations
-db.chats.find().limit(10)
 db.users.countDocuments()
-db.messages.createIndex({ chat_id: 1, created_at: -1 })
+db.leadfeed_tasks.find().limit(5)
 ```
 
 ### Redis CLI
 
 ```bash
 # Connect to Redis
-redis-cli -h localhost -p 6379
+redis-cli -h 127.0.0.1 -p 6379
 
-# Common operations
-KEYS *
-GET session:user:123
-PUBLISH events.chat.message '{"type":"message_posted"}'
+PING
 ```
 
 ### Database Schema & Indexes
@@ -554,7 +466,7 @@ PUBLISH events.chat.message '{"type":"message_posted"}'
 
 Indexes are defined in `internal/infrastructure/mongodb/indexes.go` and created automatically:
 
-- **On API startup**: Indexes are created when the API server starts (in `cmd/api/container.go`)
+- **On API startup**: `CreateAllIndexes` in `cmd/api/container.go`
 - **In tests**: Indexes are created during test database setup
 
 #### Index Functions
@@ -575,6 +487,7 @@ mongodb.GetMessageIndexes()
 mongodb.GetNotificationIndexes()
 mongodb.GetWorkspaceIndexes()
 mongodb.GetMemberIndexes()
+// also Outbox, RepairQueue, FileMetadata, LeadFeed, OwnerAnswer
 ```
 
 #### Adding New Indexes
@@ -596,6 +509,8 @@ Main MongoDB collections:
 - `tasks_read_model` - Task read model
 - `messages` - Message read model
 - `notifications` - Notification read model
+- `outbox`, `repair_queue`, `file_metadata` - infrastructure
+- `leadfeed_tasks`, `leadfeed_records`, `leadfeed_state`, `owner_answers` - lead feed and owner answers
 
 ---
 
@@ -636,10 +551,6 @@ go tool pprof cpu.prof
 # Memory profiling
 go test -memprofile=mem.prof -bench=.
 go tool pprof mem.prof
-
-# Runtime profiling (if enabled)
-curl http://localhost:8080/debug/pprof/heap > heap.prof
-go tool pprof heap.prof
 ```
 
 ### Delve Debugger
@@ -737,4 +648,4 @@ Follow the project's interface design principles (see AGENTS.md):
 
 ---
 
-*Last updated: March 2026*
+*Last updated: November 2026*

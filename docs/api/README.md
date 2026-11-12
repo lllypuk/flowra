@@ -1,329 +1,94 @@
-# Flowra API Documentation
+# Flowra API
 
-This directory contains the complete API documentation for Flowra. The feed and owner-question routes are the current surface ([feed-questions.md](feed-questions.md)); workspace and chat routes are kept from the earlier product.
+Base path `/api/v1`, JSON. The current surface is the lead feed, owner questions and task actions; workspace and
+chat routes are kept from the earlier product and not developed. The full route list is in
+[openapi.yaml](./openapi.yaml).
 
-## Overview
-
-Flowra provides a RESTful API for managing workspaces, chats, messages, tasks, and notifications. Additionally, it offers WebSocket connectivity for real-time updates.
-
-## Quick Start
-
-### 1. Start the Development Environment
-
-```bash
-# Recommended full local runtime (infra + worker + API)
-make dev
-
-# Optional API-only mode
-# make dev-lite
-```
-
-### 2. Authenticate
-
-All API requests except health checks require an owner access token. Generate one and give the server its digest:
-
-```bash
-token=$(openssl rand -hex 32); echo "$token"
-export AUTH_OWNER_TOKEN_SHA256=$(printf %s "$token" | sha256sum | cut -d' ' -f1)
-```
-
-### 3. Make Authenticated Requests
-
-```bash
-curl http://localhost:8080/api/v1/workspaces \
-  -H "Authorization: Bearer <access_token>"
-```
-
-## API Documentation
-
-### OpenAPI Specification
-
-The complete API is documented in OpenAPI 3.1 format:
-
-- **[openapi.yaml](./openapi.yaml)** - Full API specification with all endpoints, schemas, and examples
-- **[action-endpoints.md](./action-endpoints.md)** - UI/HTMX action endpoints reference (chat/task action routes)
-- **[feed-questions.md](./feed-questions.md)** - Lead questions and the owner's answer (feed API, form route, `lead-task` contract)
-- **[websocket-protocol.md](./websocket-protocol.md)** - Current WebSocket protocol reference (messages, events, reconnect)
-
-### View Documentation
-
-You can view the API documentation using:
-
-1. **Swagger UI** (recommended):
-   ```bash
-   # Install Swagger UI locally or use the online editor
-   open https://editor.swagger.io/
-   # Then import openapi.yaml
-   ```
-
-2. **Redoc**:
-   ```bash
-   npx @redocly/cli preview-docs openapi.yaml
-   ```
-
-3. **VS Code Extension**:
-   - Install "OpenAPI (Swagger) Editor" extension
-   - Open `openapi.yaml`
-
-## Base URL
-
-| Environment | URL |
-|-------------|-----|
-| Local Development | `http://localhost:8080/api/v1` |
-| Production | `https://api.flowra.com/api/v1` |
+| File | Content |
+|---|---|
+| [openapi.yaml](./openapi.yaml) | OpenAPI 3.1 specification |
+| [feed-questions.md](./feed-questions.md) | Owner questions and answers, `lead-task` contract |
+| [action-endpoints.md](./action-endpoints.md) | Chat and task actions, outcome contract |
+| [websocket-protocol.md](./websocket-protocol.md) | WebSocket protocol |
+| [postman_collection.json](./postman_collection.json) | Postman collection |
 
 ## Authentication
 
-Every token configured on the server signs in as the owner. Tokens are named (`auth.tokens`) so one can be
-removed without changing the others; the server never issues or refreshes them.
+Every route except `/health`, `/ready`, `/health/details` and `/metrics` (outside `/api/v1`) needs the owner
+token, which the server only checks against configured digests and never issues; setup is in
+[DEPLOYMENT.md](../DEPLOYMENT.md#auth-configuration).
 
-### Headers
-
-```http
-Authorization: Bearer <token>
-Content-Type: application/json
+```bash
+curl http://localhost:8080/api/v1/feed/status -H "Authorization: Bearer $token"
 ```
 
-## API Endpoints Overview
+- API clients send `Authorization: Bearer <token>`. The web sign-in sets the `flowra_session` cookie, which the
+  same middleware accepts when there is no `Authorization` header.
+- A missing, malformed or unknown token is `401 UNAUTHORIZED`. `404` means the token passed and the resource
+  does not exist.
+- A cookie-authenticated write to the owner answer route must carry a matching `Origin` or `Referer`
+  (`403 ORIGIN_MISMATCH`); Bearer requests skip the check.
 
-### Authentication
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/auth/me` | Get current user |
-
-### Users
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/users/me` | Get current user profile |
-| PUT | `/users/me` | Update current user profile |
-| GET | `/users/{id}` | Get user by ID |
-
-### Workspaces
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/workspaces` | List user workspaces |
-| POST | `/workspaces` | Create workspace |
-| GET | `/workspaces/{id}` | Get workspace |
-| PUT | `/workspaces/{id}` | Update workspace |
-| DELETE | `/workspaces/{id}` | Delete workspace |
-| POST | `/workspaces/{id}/members` | Add member |
-| DELETE | `/workspaces/{id}/members/{user_id}` | Remove member |
-| PUT | `/workspaces/{id}/members/{user_id}/role` | Update member role |
-
-### Chats
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/workspaces/{id}/chats` | List chats |
-| POST | `/workspaces/{id}/chats` | Create chat |
-| GET | `/workspaces/{id}/chats/{chat_id}` | Get chat |
-| PUT | `/workspaces/{id}/chats/{chat_id}` | Update chat |
-| DELETE | `/workspaces/{id}/chats/{chat_id}` | Delete chat |
-| POST | `/workspaces/{id}/chats/{chat_id}/participants` | Add participant |
-| DELETE | `/workspaces/{id}/chats/{chat_id}/participants/{user_id}` | Remove participant |
-
-### Messages
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/workspaces/{id}/chats/{chat_id}/messages` | List messages |
-| POST | `/workspaces/{id}/chats/{chat_id}/messages` | Send message |
-| PUT | `/messages/{message_id}` | Edit message |
-| DELETE | `/messages/{message_id}` | Delete message |
-
-### Tasks
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/workspaces/{id}/tasks` | List tasks |
-| POST | `/workspaces/{id}/tasks` | Create task |
-| GET | `/workspaces/{id}/tasks/{task_id}` | Get task |
-| DELETE | `/workspaces/{id}/tasks/{task_id}` | Delete task |
-| PUT | `/workspaces/{id}/tasks/{task_id}/status` | Change status |
-| PUT | `/workspaces/{id}/tasks/{task_id}/assignee` | Assign task |
-| PUT | `/workspaces/{id}/tasks/{task_id}/priority` | Change priority |
-| PUT | `/workspaces/{id}/tasks/{task_id}/due-date` | Set due date |
-
-### Notifications
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/notifications` | List notifications |
-| GET | `/notifications/unread/count` | Get unread count |
-| PUT | `/notifications/{id}/read` | Mark as read |
-| PUT | `/notifications/mark-all-read` | Mark all as read |
-| DELETE | `/notifications/{id}` | Delete notification |
-
-### WebSocket
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/ws` | WebSocket connection |
-
-### Health Checks
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/health` | Liveness probe |
-| GET | `/ready` | Readiness probe |
-
-## Response Format
-
-### Success Response
+## Responses
 
 ```json
-{
-  "success": true,
-  "data": {
-    // Response data
-  }
-}
+{"success": true, "data": {}}
+{"success": false, "error": {"code": "FEED_TASK_NOT_FOUND", "message": "feed task not found"}}
 ```
 
-### Error Response
+Handlers pick the code; branch on `error.code`, not on the message.
 
-```json
-{
-  "success": false,
-  "error": {
-    "code": "ERROR_CODE",
-    "message": "Human-readable error message",
-    "details": {
-      // Optional field-level errors
-    }
-  }
-}
-```
+## Lead feed
 
-### Common Error Codes
+Read projection of the lead's journal, republished by `leadfeed import`. Every response carries `revision` and
+`as_of` of the snapshot it was read from (both empty before the first import).
 
-| Code | HTTP Status | Description |
-|------|-------------|-------------|
-| `UNAUTHORIZED` | 401 | Authentication required |
-| `FORBIDDEN` | 403 | Insufficient permissions |
-| `NOT_FOUND` | 404 | Resource not found |
-| `VALIDATION_ERROR` | 400 | Invalid request data |
-| `CONFLICT` | 409 | Resource conflict |
-| `INTERNAL_ERROR` | 500 | Server error |
+| Method | Path | Result |
+|---|---|---|
+| GET | `/feed/status` | Projection health: `published`, `healthy`, counts, last import attempt |
+| GET | `/feed/tasks` | Page of tasks; filters `status`, `waiting_on`; `limit`, `cursor` |
+| GET | `/feed/tasks/{id}` | One task with its transitions |
+| GET | `/feed/tasks/{id}/records` | Page of the task thread; `limit`, `cursor` |
 
-## Pagination
+Paging:
 
-List endpoints support pagination via query parameters:
+- `limit` defaults to 50; above 200 it is clamped to 200; zero or non-numeric is `400 INVALID_LIMIT`.
+- `next_cursor` is bound to the revision it was issued in. If the feed was republished meanwhile, the next page
+  is `409 FEED_REVISION_CHANGED`: restart without a cursor. A malformed cursor is `400 INVALID_CURSOR`.
+- `status` in a task is the source value; `status_label` and `group` are for display only.
 
-```
-GET /api/v1/workspaces?limit=20&offset=0
-```
+| Code | HTTP | When |
+|---|---|---|
+| `FEED_TASK_NOT_FOUND` | 404 | No such task in the snapshot |
+| `FEED_REVISION_CHANGED` | 409 | Cursor from an older revision |
+| `INVALID_CURSOR`, `INVALID_LIMIT` | 400 | Bad paging parameters |
+| `FEED_UNAVAILABLE` | 503 | The snapshot could not be read; retry |
 
-| Parameter | Type | Default | Max | Description |
-|-----------|------|---------|-----|-------------|
-| `limit` | integer | 20 | 100 | Results per page |
-| `offset` | integer | 0 | - | Skip results |
+## Owner questions
 
-### Cursor-based Pagination
+`GET /feed/questions`, `GET /feed/questions/{qid}`, `POST /feed/questions/{qid}/answer` (requires
+`Idempotency-Key`). States, codes and the delivery to the lead: [feed-questions.md](./feed-questions.md).
 
-Some endpoints (messages) support cursor-based pagination:
+## Task actions
 
-```
-GET /api/v1/chats/{id}/messages?limit=50&before=<message_id>
-```
+Changes of status, priority, assignee and due date answer with a defined outcome: applied, not applied, or
+unknown (`503 OUTCOME_UNKNOWN`, retry with the same `Idempotency-Key`). Routes and the contract:
+[action-endpoints.md](./action-endpoints.md).
 
-## Rate Limiting
+## Workspaces, chats and the rest
 
-| Endpoint Type | Limit | Window |
-|--------------|-------|--------|
-| General API | 100 requests | 1 minute |
-| Auth endpoints | 10 requests | 1 minute |
-| WebSocket messages | 60 messages | 1 minute |
+Kept from the earlier product, not developed. Workspace-scoped routes need workspace membership; the list is in
+[openapi.yaml](./openapi.yaml).
 
-Rate limit headers:
-```http
-X-RateLimit-Limit: 100
-X-RateLimit-Remaining: 95
-X-RateLimit-Reset: 1704067200
-```
-
-## WebSocket API
-
-Connect to `/api/v1/ws` with an access token for real-time updates.
-
-For the current protocol (message types, payload envelope, HTMX integration, and reconnect behavior), see:
-
-- **[websocket-protocol.md](./websocket-protocol.md)**
-
-### Connection
-
-```javascript
-// Browsers authenticate with the session cookie; other clients send Authorization: Bearer <token>.
-const ws = new WebSocket('ws://127.0.0.1:8080/api/v1/ws');
-```
-
-### Client Messages
-
-```json
-// Subscribe to chat updates
-{"type": "subscribe", "chat_id": "uuid"}
-
-// Unsubscribe from chat
-{"type": "unsubscribe", "chat_id": "uuid"}
-
-// Send typing indicator
-{"type": "chat.typing", "chat_id": "uuid"}
-
-// Keepalive ping
-{"type": "ping"}
-```
-
-### Server Messages
-
-```json
-// Ack after subscribe/unsubscribe
-{"type": "ack", "action": "subscribed", "chat_id": "uuid"}
-
-// Domain event broadcast (example)
-{"type": "chat.message.posted", "chat_id": "uuid", "data": {...}}
-
-// Presence update
-{"type": "presence.changed", "user_id": "uuid", "is_online": true}
-
-// Typing indicator
-{"type": "chat.typing", "chat_id": "uuid", "user_id": "uuid"}
-
-// User-specific notification
-{"type": "notification.new", "data": {...}}
-```
-
-## Postman Collection
-
-Import the Postman collection for easy API testing:
-
-1. Open Postman
-2. Import → Upload Files → Select `postman_collection.json`
-3. Set environment variables:
-   - `base_url`: `http://localhost:8080/api/v1`
-   - `access_token`: Your owner access token
+- `/auth/me`, `/users/*`, `/notifications/*`
+- `/workspaces/{id}` with members, `/chats` (and `/actions/*`), `/chats/{chat_id}/messages`, `/messages/{id}`,
+  `/tasks`
+- file routes registered by the file handler
+- `GET /ws`: WebSocket, see [websocket-protocol.md](./websocket-protocol.md)
 
 ## Development
 
-### Validate OpenAPI Spec
-
 ```bash
-# Using npx
-npx @redocly/cli lint openapi.yaml
-
-# Using spectral
-npx @stoplight/spectral-cli lint openapi.yaml
+make dev                              # infrastructure, worker and API
+npx @redocly/cli lint openapi.yaml    # validate the specification
 ```
-
-### Generate Client SDK
-
-```bash
-# Generate TypeScript client
-npx openapi-generator-cli generate -i openapi.yaml -g typescript-fetch -o ./sdk/typescript
-
-# Generate Go client
-openapi-generator-cli generate -i openapi.yaml -g go -o ./sdk/go
-```
-
-## Resources
-
-- [OpenAPI 3.1 Specification](https://spec.openapis.org/oas/v3.1.0)
-- [Swagger Editor](https://editor.swagger.io/)
-- [Echo Framework](https://echo.labstack.com/)
-
----
-
-*Last updated: January 2026*
