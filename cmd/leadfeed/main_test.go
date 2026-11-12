@@ -156,3 +156,22 @@ func TestRun_UnreachableMongoFails(t *testing.T) {
 	assert.Equal(t, exitFailed, code)
 	assert.NotEmpty(t, stderr.String())
 }
+
+func TestRun_FailRecordsSourceFailureWithoutTouchingTheFeed(t *testing.T) {
+	c := newCLI(t)
+	code, _, stderr := c.run(fixture(t), "import")
+	require.Equal(t, exitOK, code, stderr)
+
+	code, stdout, stderr := c.run("", "fail", "lead-task export exited with 1")
+	require.Equal(t, exitOK, code, stderr)
+	assert.Empty(t, stdout)
+
+	_, status, _ := c.run("", "status")
+	assert.Contains(t, status, "published: revision=389227faca902622")
+	assert.Contains(t, status, "last attempt: failed")
+	assert.Contains(t, status, "last error: lead-task export exited with 1")
+
+	code, _, stderr = c.run("", "fail")
+	assert.Equal(t, exitUsage, code)
+	assert.Contains(t, stderr, "usage:")
+}

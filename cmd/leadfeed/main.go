@@ -40,6 +40,7 @@ const (
 const usage = `usage:
   leadfeed [flags] import [file|-]   publish a snapshot (stdin by default)
   leadfeed [flags] status            show the published snapshot and the last attempt
+  leadfeed [flags] fail <reason>     record that the source could not produce a snapshot
 
 flags:
 `
@@ -91,6 +92,14 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 		}
 		return withRepo(ctx, *mongoURI, *mongoDB, stderr, func(repo *mongorepo.MongoLeadFeedRepository) int {
 			return runStatus(ctx, repo, stdout, stderr)
+		})
+	case "fail":
+		if len(rest) != 2 { //nolint:mnd // command plus reason
+			flags.Usage()
+			return exitUsage
+		}
+		return withRepo(ctx, *mongoURI, *mongoDB, stderr, func(repo *mongorepo.MongoLeadFeedRepository) int {
+			return runFail(ctx, repo, rest[1], stderr)
 		})
 	default:
 		fmt.Fprintf(stderr, "leadfeed: unknown command %q\n", rest[0])
@@ -170,6 +179,16 @@ func runImport(
 		result.Outcome, result.Revision, result.AsOf.UTC().Format(time.RFC3339Nano), result.Tasks, result.Records)
 	if result.PreviousEpoch != "" {
 		fmt.Fprintf(stdout, "source journal changed: previous epoch %s\n", result.PreviousEpoch)
+	}
+	return exitOK
+}
+
+// runFail makes a source-side failure visible in the feed status; the published snapshot is not touched.
+func runFail(ctx context.Context, repo *mongorepo.MongoLeadFeedRepository, reason string, stderr io.Writer) int {
+	err := repo.RecordAttempt(ctx, leadfeed.Attempt{At: time.Now(), Outcome: leadfeed.AttemptFailed, Error: reason})
+	if err != nil {
+		fmt.Fprintf(stderr, "leadfeed: %v\n", err)
+		return exitFailed
 	}
 	return exitOK
 }

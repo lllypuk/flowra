@@ -1,0 +1,12 @@
+# Copy to ~/.config/systemd/user/leadfeed-sync.timer, then:
+#   systemctl --user daemon-reload && systemctl --user enable --now leadfeed-sync.timer
+[Unit]
+Description=Refresh the Flowra lead feed every minute
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=1min
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target

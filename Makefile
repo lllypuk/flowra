@@ -1,4 +1,4 @@
-.PHONY: help dev dev-local dev-lite build test lint docker-up docker-down docker-logs docker-build docker-prod-up docker-prod-down docker-prod-logs clean deps test-unit test-integration test-e2e test-e2e-frontend test-e2e-frontend-smoke test-coverage playwright-install test-load-tags reset-data
+.PHONY: help dev dev-local dev-lite build feed-sync feed-status test lint docker-up docker-down docker-logs docker-build docker-prod-up docker-prod-down docker-prod-logs clean deps test-unit test-integration test-e2e test-e2e-frontend test-e2e-frontend-smoke test-coverage playwright-install test-load-tags reset-data
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -15,6 +15,14 @@ dev-lite: ## Run lightweight development mode (API only)
 build: ## Build binaries
 	go build -o bin/api ./cmd/api
 	go build -o bin/worker ./cmd/worker
+	go build -o bin/leadfeed ./cmd/leadfeed
+
+feed-sync: ## Publish the lead task snapshot into the feed (needs running MongoDB)
+	go build -o bin/leadfeed ./cmd/leadfeed
+	bash ./scripts/leadfeed-sync.sh
+
+feed-status: ## Show the published feed snapshot and the last import attempt
+	go run ./cmd/leadfeed status
 
 test: ## Run all tests with coverage
 	go test -v -race -coverprofile=coverage.out ./...
