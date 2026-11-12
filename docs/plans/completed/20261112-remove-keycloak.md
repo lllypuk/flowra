@@ -92,6 +92,11 @@ mock-сессия в двух middleware, `NoOpKeycloakClient`. Владелец
 
 ## Implementation Steps
 
+Отклонения при исполнении: задача 2 (воркер) сделана до HTTP и конфига, иначе сборка ломалась; группы
+Keycloak убраны и из `TokenClaims` (`Groups`, `InGroup`, `RequireGroup` — источником были только токены Keycloak);
+`AuthHandler` потерял `FindByExternalID`, им пользовались только вход и обновление.
+
+
 ### Task 1: Workspace без групп Keycloak
 
 - [x] убрать `keycloakGroupID` из агрегата, `Reconstruct`, события, документа, `FindByKeycloakGroup` и индекс
@@ -106,10 +111,10 @@ mock-сессия в двух middleware, `NoOpKeycloakClient`. Владелец
 `internal/domain/user/user.go`, `internal/application/user/commands.go`,
 `internal/infrastructure/repository/mongodb/user_repository.go` (+ тесты); `internal/application/workspace/queries.go`
 
-- [ ] убрать `UserSyncWorker` из воркера (тесты воркера были только про синхронизацию)
-- [ ] удалить `UpdateFromSync`, `ListExternalIDs` и их тесты; Go-поле `KeycloakID` → `ExternalID`, тег прежний
-- [ ] удалить `ListUserWorkspacesQuery`
-- [ ] `go build`, `go vet -tags=integration,e2e`, `go test ./...`
+- [x] убрать `UserSyncWorker` из воркера (тесты воркера были только про синхронизацию)
+- [x] удалить `UpdateFromSync`, `ListExternalIDs` и их тесты; Go-поле `KeycloakID` → `ExternalID`, тег прежний
+- [x] удалить `ListUserWorkspacesQuery`
+- [x] `go build`, `go vet -tags=integration,e2e`, `go test ./...`
 
 ### Task 3: Вход только токеном в HTTP и проводке
 
@@ -120,14 +125,14 @@ mock-сессия в двух middleware, `NoOpKeycloakClient`. Владелец
 `tests/testutil/keycloak.go`; `tests/e2e/setup_test.go`, `tests/e2e/auth_test.go`;
 `docs/api/{openapi.yaml,postman_collection.json,README.md}`
 
-- [ ] `setupTokenValidator` → только `OwnerTokenValidator`; удалить `createAuthService`, OAuth-адаптер
-- [ ] удалить mock-сессию, `setMockUserContext`, `RequireValidator`, `StaticTokenValidator`, `MockAuthService`, `DisabledAuthService`
-- [ ] `TemplateHandler`: только форма токена; удалить `/auth/callback`, `GetRedirectURI`, шаблон callback
-- [ ] API: удалить `login/refresh/logout` и их `SkipPaths`/`AllowExpiredForPaths`; оставить `me`; OpenAPI
-- [ ] удалить пакет keycloak, `AuthService`, token store, интеграционные тесты Keycloak и контейнер в testutil
-- [ ] e2e: `setup_test.go` без `MockAuthService`; `auth_test.go` — оставить `me` и отказы без токена, вход/обновление удалить
-- [ ] тесты: страница входа (верный/неверный токен, просроченный state), middleware без валидатора отклоняет, `/auth/me`
-- [ ] `go build`, `go vet -tags=integration,e2e`, `go test ./...`, `go test -tags=e2e ./tests/e2e/` (без frontend)
+- [x] `setupTokenValidator` → только `OwnerTokenValidator`; удалить `createAuthService`, OAuth-адаптер
+- [x] удалить mock-сессию, `setMockUserContext`, `RequireValidator`, `StaticTokenValidator`, `MockAuthService`, `DisabledAuthService`
+- [x] `TemplateHandler`: только форма токена; удалить `/auth/callback`, `GetRedirectURI`, шаблон callback
+- [x] API: удалить `login/refresh/logout` и их `SkipPaths`/`AllowExpiredForPaths`; оставить `me`; OpenAPI
+- [x] удалить пакет keycloak, `AuthService`, token store, интеграционные тесты Keycloak и контейнер в testutil
+- [x] e2e: `setup_test.go` без `MockAuthService`; `auth_test.go` — оставить `me` и отказы без токена, вход/обновление удалить
+- [x] тесты: страница входа (верный/неверный токен, просроченный state), middleware без валидатора отклоняет, `/auth/me`
+- [x] `go build`, `go vet -tags=integration,e2e`, `go test ./...`, `go test -tags=e2e ./tests/e2e/` (без frontend)
 
 ### Task 4: Конфиг без режимов входа
 
@@ -135,46 +140,48 @@ mock-сессия в двух middleware, `NoOpKeycloakClient`. Владелец
 (+ тест), `configs/config.yaml`, `config.dev.yaml`, `config.prod.yaml`; Delete: `configs/config.token.yaml`;
 `scripts/dev-full-stack.sh`, `Makefile`
 
-- [ ] удалить `KeycloakConfig`, `AuthMode`, `JWTSecret`, TTL токенов, `IsTokenMode`; `DefaultHost` = `127.0.0.1`
-- [ ] `ValidateAuth()` с проверками бывшего режима токена; вызов из `cmd/api` до сборки контейнера
-- [ ] удалить `IsProduction`, `ErrMockModeInProd`; mock-проверка доступа — только при `app.mode: mock`; `getEnvironment`
-- [ ] `config.yaml` = бывший `config.token.yaml`; скрипт и `make dev`/`dev-local`/`dev-lite` на нём
-- [ ] тесты: `ValidateAuth` (нет токена, владельца, loopback, `session_ttl`); `Validate` их не требует; старый YAML с `keycloak:` и `auth.mode` загружается; mock-проверка доступа вне mock-режима отклоняется
-- [ ] `go build`, `go vet -tags=integration,e2e`, `go test ./...`
+- [x] удалить `KeycloakConfig`, `AuthMode`, `JWTSecret`, TTL токенов, `IsTokenMode`; `DefaultHost` = `127.0.0.1`
+- [x] `ValidateAuth()` с проверками бывшего режима токена; вызов из `cmd/api` до сборки контейнера
+- [x] удалить `IsProduction`, `ErrMockModeInProd`; mock-проверка доступа — только при `app.mode: mock`; `getEnvironment`
+- [x] `config.yaml` = бывший `config.token.yaml`; скрипт и `make dev`/`dev-local`/`dev-lite` на нём
+- [x] тесты: `ValidateAuth` (нет токена, владельца, loopback, `session_ttl`); `Validate` их не требует; старый YAML с `keycloak:` и `auth.mode` загружается; mock-проверка доступа вне mock-режима отклоняется
+- [x] `go build`, `go vet -tags=integration,e2e`, `go test ./...`
 
 ### Task 5: Compose, скрипты, go.mod
 
 **Files:** `docker-compose.yml`, `docker-compose.prod.yml`, `internal/config/docker_compose_prod_test.go`,
 `.env.example`, `.golangci.yml`; Delete: `scripts/setup-keycloak.sh`, `configs/keycloak/`, `configs/keycloak-prod/`
 
-- [ ] dev compose без сервиса и профиля `keycloak`
-- [ ] prod compose: без Keycloak, `app` с `network_mode: host`, без `networks`/`ports`; MongoDB/Redis на `127.0.0.1`; URI `directConnection=true`; обязательная переменная — `AUTH_OWNER_TOKEN_SHA256`
-- [ ] тест prod compose: нет Keycloak, `network_mode: host`, loopback-порты, обязательные переменные
-- [ ] `go mod tidy`, записать убранные зависимости
-- [ ] `docker compose -f docker-compose.prod.yml config`; `go build`, `go vet -tags=integration,e2e`, `go test ./...`
+- [x] dev compose без сервиса и профиля `keycloak`
+- [x] prod compose: без Keycloak, `app` с `network_mode: host`, без `networks`/`ports`; MongoDB/Redis на `127.0.0.1`; URI `directConnection=true`; обязательная переменная — `AUTH_OWNER_TOKEN_SHA256`
+- [x] тест prod compose: нет Keycloak, `network_mode: host`, loopback-порты, обязательные переменные
+- [x] `go mod tidy`, записать убранные зависимости
+- [x] `docker compose -f docker-compose.prod.yml config`; `go build`, `go vet -tags=integration,e2e`, `go test ./...`
 
 ### Task 6: Браузерные e2e на токен
 
 **Files:** `tests/e2e/frontend/frontend_test.go`, `smoke_regression_test.go`, `README.md`; `tests/README.md`
 
-- [ ] `loginAsTestUser`: форма токена, токен из `E2E_TOKEN`, без него — пропуск с причиной
-- [ ] `tests/README.md`: что перестало проверяться
-- [ ] `go vet -tags=e2e ./tests/e2e/frontend/`; прогон против живого `make dev` с `E2E_TOKEN`, если Playwright установлен
+- [x] `loginAsTestUser`: форма токена, токен из `E2E_TOKEN`, без него — пропуск с причиной
+- [x] `tests/README.md`: что перестало проверяться
+- [x] `go vet -tags=e2e ./tests/e2e/frontend/`
+- ⚠️ прогон в браузере не делался: Playwright и его браузеры на машине не установлены
 
 ### Task 7: Документация
 
-- [ ] AGENTS.md, README.md, docs/ARCHITECTURE.md, DEPLOYMENT.md (шаг миграции владельца), DEVELOPMENT.md,
+- [x] AGENTS.md, README.md, docs/ARCHITECTURE.md, DEPLOYMENT.md (шаг миграции владельца), DEVELOPMENT.md,
   development/setup.md, USER_GUIDE.md, min-infra-review.md, `web/templates/home.html`, `tests/load/tag-system/README.md`
-- [ ] раздел «несколько пользователей: чего не хватает» в `docs/ARCHITECTURE.md`
+- [x] раздел «несколько пользователей: чего не хватает» в `docs/ARCHITECTURE.md`
 
 ### Task 8: Verify acceptance criteria
 
-- [ ] `command grep -rni keycloak` вне `docs/plans/completed`: только тег `bson:"keycloak_id"`, имя индекса
+- [x] `command grep -rni keycloak` вне `docs/plans/completed`: только тег `bson:"keycloak_id"`, имя индекса
   `idx_users_keycloak_unique`, фикстура `keycloak_group_id` в тесте старого документа, упоминания в этом плане
-- [ ] `make lint` (новые замечания относительно `fix/write-contract`), `go test ./...`, интеграционные и e2e API
-- [ ] живой `make dev-local`: вход формой токена, лента, действие с ответом `{chat_id, version, replayed}`
-- [ ] живой prod compose с токеном: `/health`, запрос с Bearer
-- [ ] перенести план в `docs/plans/completed/`
+- [x] `make lint` (новые замечания относительно `fix/write-contract`), `go test ./...`, интеграционные и e2e API
+- [x] живой `make dev-local`: вход формой токена, лента, действие с ответом `{chat_id, version, replayed}`
+- [x] живой prod compose с токеном: `/health`, запрос с Bearer, запись действия; порты 8080/27017/6379 только на `127.0.0.1`
+- ➕ prod-стек не стартовал и до этой ветки: `mongod --auth --replSet` без `keyFile` (с `bcd2c04`); ключ создаётся при старте контейнера
+- [x] перенести план в `docs/plans/completed/`
 
 ## Post-Completion
 
