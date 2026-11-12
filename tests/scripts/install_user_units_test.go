@@ -172,7 +172,7 @@ func TestInstallUserUnits_FirstRunWritesFilesAndHidesTokens(t *testing.T) {
 		"LEAD_TASK=/opt/fake/lead-task",
 		"LEAD_SESSION=lead-test",
 		"AGTERM_SOCKET=" + filepath.Join(env.home, "agterm.sock"),
-		"PATH=",
+		"PATH=/usr/local/bin:/usr/bin:/bin\n",
 	} {
 		require.Contains(t, envFile, want)
 	}
@@ -317,4 +317,37 @@ func TestInstallUserUnits_FailedFirstRunNeverLeavesUnseenDigest(t *testing.T) {
 			require.Empty(t, printedTokens(again))
 		})
 	}
+}
+
+func (e installEnv) stubAgtermctl(t *testing.T, dir string) {
+	t.Helper()
+	writeFile(t, filepath.Join(dir, "agtermctl"), "#!/bin/sh\n", 0o755)
+}
+
+func TestInstallUserUnits_PathKeepsAgtermctlDirAcrossReruns(t *testing.T) {
+	env := newInstallEnv(t)
+	first := filepath.Join(env.home, "first/bin")
+	env.stubAgtermctl(t, first)
+	env.runBare(t, "PATH="+first+":"+env.bin+":/usr/bin:/bin")
+	want := "PATH=" + first + ":/usr/local/bin:/usr/bin:/bin\n"
+	require.Contains(t, env.envFile(t), want)
+
+	out := env.runBare(t)
+	require.Contains(t, env.envFile(t), want)
+	require.NotContains(t, out, "agtermctl not found")
+
+	second := filepath.Join(env.home, "second/bin")
+	env.stubAgtermctl(t, second)
+	env.runBare(t, "PATH="+second+":"+env.bin+":/usr/bin:/bin")
+	got := env.envFile(t)
+	require.Contains(t, got, "PATH="+second+":/usr/local/bin:/usr/bin:/bin\n")
+	require.NotContains(t, got, first)
+}
+
+func TestInstallUserUnits_WarnsWhenAgtermctlUnknown(t *testing.T) {
+	env := newInstallEnv(t)
+	out := env.runBare(t)
+	require.Contains(t, out, "agtermctl not found")
+	require.Contains(t, out, "exits 3")
+	require.Contains(t, env.envFile(t), "PATH=/usr/local/bin:/usr/bin:/bin\n")
 }

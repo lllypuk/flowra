@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Builds the binaries and installs the API and the feed sync as systemd user units; safe to repeat.
 # Tokens are printed once, the moment they are generated and before anything is written or can fail;
-# the files keep only SHA-256 digests. Settings in flowra.env persist unless set in the environment again.
+# the files keep only SHA-256 digests. Settings in flowra.env persist unless set in the environment again;
+# PATH keeps the agtermctl directory until agtermctl is found elsewhere.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -56,9 +57,19 @@ awk -v digest="$phone_digest" '
 ' "$ROOT_DIR/configs/config.yaml" > "$CONFIG_FILE.tmp"
 mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
 
+base_path="/usr/local/bin:/usr/bin:/bin"
 agterm_dir=""
 if agtermctl_path="$(command -v agtermctl)"; then
-	agterm_dir="$(dirname "$agtermctl_path"):"
+	agterm_dir="$(dirname "$agtermctl_path")"
+else
+	persisted_path="$(env_value PATH)"
+	[[ "$persisted_path" == *":$base_path" ]] && agterm_dir="${persisted_path%":$base_path"}"
+fi
+if [[ -n "$agterm_dir" ]]; then
+	service_path="$agterm_dir:$base_path"
+else
+	service_path="$base_path"
+	echo "[install] warning: agtermctl not found; owner answers will not reach the lead (lead-task exits 3)" >&2
 fi
 lead_session_line=""
 [[ -n "$LEAD_SESSION" ]] && lead_session_line="LEAD_SESSION=$LEAD_SESSION"
@@ -69,7 +80,7 @@ FLOWRA_WORKER=true
 LEAD_TASK=$LEAD_TASK
 ${lead_session_line}
 AGTERM_SOCKET=$AGTERM_SOCKET
-PATH=${agterm_dir}/usr/local/bin:/usr/bin:/bin
+PATH=$service_path
 ENV
 mv "$ENV_FILE.tmp" "$ENV_FILE"
 
