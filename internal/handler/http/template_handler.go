@@ -485,7 +485,7 @@ func (h *TemplateHandler) LoginSubmit(c echo.Context) error {
 
 	redirectURL := getRedirectCookie(c)
 	if redirectURL == "" {
-		redirectURL = "/workspaces"
+		redirectURL = "/feed"
 	}
 	clearRedirectCookie(c)
 

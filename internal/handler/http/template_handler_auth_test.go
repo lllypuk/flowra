@@ -123,7 +123,7 @@ func TestLoginSubmit_TokenMode(t *testing.T) {
 			assert.True(t, session.HttpOnly)
 			assert.Equal(t, stdhttp.SameSiteLaxMode, session.SameSite)
 			assert.Equal(t, 24*60*60, session.MaxAge)
-			assert.Equal(t, "/workspaces", rec.Header().Get("Location"))
+			assert.Equal(t, "/feed", rec.Header().Get("Location"), "the owner signs in to read the feed")
 		})
 	}
 }
