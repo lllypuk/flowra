@@ -26,10 +26,9 @@ make deps
 make dev
 ```
 
-`make dev` starts a full local runtime:
-- MongoDB, Redis, Keycloak (via docker-compose)
-- worker
-- API server
+`make dev` starts a full local runtime (needs `AUTH_OWNER_TOKEN_SHA256`, see `README.md`):
+- MongoDB, Redis (via docker-compose)
+- one API process with the worker inside, on `127.0.0.1:8080`
 
 Health check:
 
@@ -115,7 +114,7 @@ make reset-data
 
 ### Frontend E2E tests are skipped
 
-Ensure the app is reachable at `http://localhost:8080` and Keycloak is running.
+Ensure the app is reachable at `http://localhost:8080` and `E2E_TOKEN` holds the owner token.
 
 ### Outbox-related stale UI updates in local run
 

@@ -141,7 +141,7 @@ func GetUserIndexes() []IndexDefinition {
 			Options:    options.Index().SetUnique(true).SetName("idx_users_email_unique"),
 		},
 		{
-			// Unique sparse index for Keycloak ID (sparse because not all users have it)
+			// Unique sparse index for the external identity; field and index names are kept from the Keycloak era
 			Collection: CollectionUsers,
 			Keys:       bson.D{{Key: "keycloak_id", Value: 1}},
 			Options:    options.Index().SetUnique(true).SetSparse(true).SetName("idx_users_keycloak_unique"),

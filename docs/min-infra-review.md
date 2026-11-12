@@ -251,6 +251,9 @@ Codex числа в днях для опыта не даёт: без разло�
 отдельной задачей, профиль раздела 3 принят. Ветка `fix/write-contract`, план —
 `docs/plans/completed/20261112-write-contract.md`.
 
+Keycloak удалён в ветке `feat/remove-keycloak`, план — `docs/plans/completed/20261112-remove-keycloak.md`; ниже
+упоминания Keycloak и `make dev-local` описывают состояние на момент замеров.
+
 **Шаг 1.** `make dev-local` запускает один процесс API с воркером внутри (`FLOWRA_WORKER=true`), отдельного
 `cmd/worker` нет. `make dev` с Keycloak не менялся. Сам `make dev-local` не запускался: он поднимает Compose на
 портах стека лида; режим тот же, что в замерах ниже.

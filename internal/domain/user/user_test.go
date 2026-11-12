@@ -14,19 +14,19 @@ import (
 
 func TestNewUser_Success(t *testing.T) {
 	// Arrange
-	keycloakID := "external-123"
+	externalID := "external-123"
 	username := "john_doe"
 	email := "john@example.com"
 	displayName := "John Doe"
 
 	// Act
-	user, err := userDomain.NewUser(keycloakID, username, email, displayName)
+	user, err := userDomain.NewUser(externalID, username, email, displayName)
 
 	// Assert
 	require.NoError(t, err)
 	assert.NotNil(t, user)
 	assert.False(t, user.ID().IsZero())
-	assert.Equal(t, keycloakID, user.ExternalID())
+	assert.Equal(t, externalID, user.ExternalID())
 	assert.Equal(t, username, user.Username())
 	assert.Equal(t, email, user.Email())
 	assert.Equal(t, displayName, user.DisplayName())
@@ -69,12 +69,12 @@ func TestNewUser_EmptyEmail(t *testing.T) {
 
 func TestNewUser_EmptyDisplayName_Allowed(t *testing.T) {
 	// Arrange - display name mozhet byt pustym
-	keycloakID := "external-123"
+	externalID := "external-123"
 	username := "john_doe"
 	email := "john@example.com"
 
 	// Act
-	user, err := userDomain.NewUser(keycloakID, username, email, "")
+	user, err := userDomain.NewUser(externalID, username, email, "")
 
 	// Assert
 	require.NoError(t, err)
@@ -85,7 +85,7 @@ func TestNewUser_EmptyDisplayName_Allowed(t *testing.T) {
 func TestReconstruct(t *testing.T) {
 	// Arrange
 	id := uuid.NewUUID()
-	keycloakID := "external-jane"
+	externalID := "external-jane"
 	username := "jane_doe"
 	email := "jane@example.com"
 	displayName := "Jane Doe"
@@ -96,7 +96,7 @@ func TestReconstruct(t *testing.T) {
 	// Act
 	user := userDomain.Reconstruct(
 		id,
-		keycloakID,
+		externalID,
 		username,
 		email,
 		displayName,
@@ -109,7 +109,7 @@ func TestReconstruct(t *testing.T) {
 	// Assert
 	assert.NotNil(t, user)
 	assert.Equal(t, id, user.ID())
-	assert.Equal(t, keycloakID, user.ExternalID())
+	assert.Equal(t, externalID, user.ExternalID())
 	assert.Equal(t, username, user.Username())
 	assert.Equal(t, email, user.Email())
 	assert.Equal(t, displayName, user.DisplayName())
@@ -200,7 +200,7 @@ func TestUser_SetAdmin_RevokeRights(t *testing.T) {
 func TestUser_AllGetters(t *testing.T) {
 	// Arrange
 	id := uuid.NewUUID()
-	keycloakID := "external-test"
+	externalID := "external-test"
 	username := "testuser"
 	email := "test@example.com"
 	displayName := "Test User"
@@ -208,7 +208,7 @@ func TestUser_AllGetters(t *testing.T) {
 	createdAt := time.Now().Add(-48 * time.Hour)
 	updatedAt := time.Now().Add(-24 * time.Hour)
 
-	user := userDomain.Reconstruct(id, keycloakID, username, email, displayName, isAdmin, true, createdAt, updatedAt)
+	user := userDomain.Reconstruct(id, externalID, username, email, displayName, isAdmin, true, createdAt, updatedAt)
 
 	// Act & Assert
 	t.Run("ID", func(t *testing.T) {
@@ -216,7 +216,7 @@ func TestUser_AllGetters(t *testing.T) {
 	})
 
 	t.Run("ExternalID", func(t *testing.T) {
-		assert.Equal(t, keycloakID, user.ExternalID())
+		assert.Equal(t, externalID, user.ExternalID())
 	})
 
 	t.Run("Username", func(t *testing.T) {

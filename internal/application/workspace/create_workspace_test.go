@@ -12,18 +12,18 @@ import (
 
 // mockWorkspaceRepository - mok repozitoriya for testing
 type mockWorkspaceRepository struct {
-	workspaces           map[uuid.UUID]*domainworkspace.Workspace
-	invitesByToken       map[string]*domainworkspace.Invite
-	members              map[string]*domainworkspace.Member // key: "workspaceID:userID"
-	saveError            error
-	findError            error
+	workspaces     map[uuid.UUID]*domainworkspace.Workspace
+	invitesByToken map[string]*domainworkspace.Invite
+	members        map[string]*domainworkspace.Member // key: "workspaceID:userID"
+	saveError      error
+	findError      error
 }
 
 func newMockWorkspaceRepository() *mockWorkspaceRepository {
 	return &mockWorkspaceRepository{
-		workspaces:           make(map[uuid.UUID]*domainworkspace.Workspace),
-		invitesByToken:       make(map[string]*domainworkspace.Invite),
-		members:              make(map[string]*domainworkspace.Member),
+		workspaces:     make(map[uuid.UUID]*domainworkspace.Workspace),
+		invitesByToken: make(map[string]*domainworkspace.Invite),
+		members:        make(map[string]*domainworkspace.Member),
 	}
 }
 

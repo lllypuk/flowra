@@ -121,9 +121,7 @@ func (s *WorkspaceService) GetWorkspace(
 	return result.Value, nil
 }
 
-// ListUserWorkspaces returns list workspaces user.
-// uses repository napryamuyu, tak as ListUserWorkspacesUseCase
-// trebuet dopolnitelnyh methods Keycloak, kotorye poka not realizovany.
+// ListUserWorkspaces returns the workspaces the user is a member of.
 func (s *WorkspaceService) ListUserWorkspaces(
 	ctx context.Context,
 	userID uuid.UUID,

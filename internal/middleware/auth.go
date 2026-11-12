@@ -20,7 +20,7 @@ const (
 	// ContextKeyUserID is the context key for user ID.
 	ContextKeyUserID contextKey = "user_id"
 
-	// ContextKeyExternalUserID is the context key for external user ID (from Keycloak).
+	// ContextKeyExternalUserID is the context key for the identity the token resolves to.
 	ContextKeyExternalUserID contextKey = "external_user_id"
 
 	// ContextKeyUsername is the context key for username.

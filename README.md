@@ -33,8 +33,8 @@ A comprehensive chat system with integrated task tracker, help desk functionalit
 - ✅ **WebSocket:** Real-time communication with Hub pattern
 - ✅ **Middleware:** Auth, CORS, Logging, Recovery, Rate Limiting, Workspace Access
 - ✅ **Services:** Workspace Access Checker, Chat, Member, Auth services
-- ✅ **Keycloak Integration:** Full SSO integration (JWT, OAuth, User Sync)
-- ✅ **Entry Points:** API server, Worker (with User Sync)
+- ✅ **Token Sign-in:** named owner tokens, only their SHA-256 in config, loopback-only server
+- ✅ **Entry Points:** API server (worker inside by default), Worker
 - ✅ **E2E Tests:** Full coverage of critical flows
 - ✅ **API Documentation:** OpenAPI 3.1, Postman collection
 - ✅ **Tag System Frontend:** Human-readable messages, visual grouping, sidebar integration
@@ -67,44 +67,23 @@ make deps
 
 ### 2. Start Full-Stack Runtime
 
+The server accepts only owner tokens and keeps their SHA-256; it listens on `127.0.0.1:8080`.
+
 ```bash
-# Starts infra (MongoDB, Redis, Keycloak) + worker + API
-make dev
+token=$(openssl rand -hex 32); echo "$token"          # keep it: it is the sign-in secret
+export AUTH_OWNER_TOKEN_SHA256=$(printf %s "$token" | sha256sum | cut -d' ' -f1)
+make dev                                              # MongoDB, Redis, one API process with the worker
 ```
 
 ### 3. Verify
 
 ```bash
-# Health check
-curl http://localhost:8080/health
+curl http://127.0.0.1:8080/health
 # Expected: {"status":"healthy"}
-
-# API documentation
-# Linux
-xdg-open http://localhost:8080/docs
-
-# macOS
-open http://localhost:8080/docs
-```
-
-### 4. Test Authentication
-
-Access Keycloak at http://localhost:8090 (admin/admin123) to configure OAuth.
-
-Test user for app login: `testuser` / `test123`.
-
-### Run Without Keycloak (single owner)
-
-`make dev-local` starts MongoDB, Redis and one API process with the worker inside on `127.0.0.1:8080` with owner-token auth
-(`configs/config.token.yaml`). The server keeps only the SHA-256 of the token:
-
-```bash
-token=$(openssl rand -hex 32); echo "$token"          # keep it: it is the sign-in secret
-export AUTH_OWNER_TOKEN_SHA256=$(printf %s "$token" | sha256sum | cut -d' ' -f1)
-make dev-local
 ```
 
 Sign in at http://127.0.0.1:8080/login with the token, or send it as `Authorization: Bearer <token>`.
+More tokens, one per device, go to `auth.tokens` in `configs/config.yaml`.
 
 ### Lead Feed (read-only)
 
@@ -165,7 +144,7 @@ event/read-model shape mismatches.
 - **Command system** for managing tasks directly from chat
 - **Task management** with state machine for statuses
 - **Help Desk** functionality with SLA tracking
-- **Keycloak integration** for SSO and user management
+- **Token sign-in** for a single owner and agents
 - **HTMX + vanilla JS modules** for dynamic UI behavior
 - **WebSocket** for real-time updates
 - **Event Sourcing** for complete change history
@@ -232,7 +211,6 @@ event/read-model shape mismatches.
 | **gorilla/websocket** | WebSocket | Latest |
 | **MongoDB** | Primary database | 6+ |
 | **Redis** | Cache/Pub-Sub | 7+ |
-| **Keycloak** | Authentication | 23+ |
 
 ### Frontend
 | Technology | Purpose | Version |
@@ -272,8 +250,7 @@ event/read-model shape mismatches.
 │   │   ├── repository/       # MongoDB repositories
 │   │   ├── eventstore/       # Event store
 │   │   ├── eventbus/         # Redis event bus
-│   │   ├── websocket/        # WebSocket hub
-│   │   └── keycloak/         # Keycloak integration
+│   │   └── websocket/        # WebSocket hub
 │   ├── handler/              # HTTP/WS handlers (28 files)
 │   ├── middleware/           # HTTP middleware (14 files)
 │   └── service/              # Business services (13 files)
@@ -288,7 +265,7 @@ event/read-model shape mismatches.
 │   ├── e2e/                  # End-to-end tests (incl. bot response/tag flow scenarios)
 │   ├── integration/          # Integration tests (incl. concurrent tag processing)
 │   ├── load/                 # Manual load tests (k6 scripts and docs)
-│   ├── testutil/             # Test utilities (shared Mongo/Keycloak containers)
+│   ├── testutil/             # Test utilities (shared Mongo/Redis containers)
 │   └── mocks/                # Mock implementations
 │
 ├── docs/                      # Documentation
@@ -304,7 +281,7 @@ event/read-model shape mismatches.
 
 ## 🔐 Security
 
-- **Authentication**: Keycloak SSO with JWT tokens
+- **Authentication**: named owner tokens; the server stores only their SHA-256 and listens on loopback
 - **Authorization**: Role-based access control (RBAC)
 - **Workspace Access**: Access verification middleware
 - **Input Validation**: Validation at all levels
@@ -346,10 +323,9 @@ make test-e2e-frontend-smoke
 
 | Service | URL | Credentials |
 |---------|-----|-------------|
-| **Web App (SSO)** | http://localhost:8080 | `testuser` / `test123` |
-| **API Server** | http://localhost:8080 | Bearer JWT token |
-| **API Docs** | http://localhost:8080/docs | - |
-| **Keycloak** | http://localhost:8090 | admin/admin123 |
+| **Web App** | http://127.0.0.1:8080 | owner token |
+| **API Server** | http://127.0.0.1:8080 | `Authorization: Bearer <token>` |
+| **API Docs** | http://127.0.0.1:8080/docs | - |
 | **MongoDB** | localhost:27017 | admin/admin123 |
 | **Redis** | localhost:6379 | - |
 
@@ -365,7 +341,7 @@ make test-e2e-frontend-smoke
 - HTTP handlers for all endpoints (40+ REST endpoints)
 - WebSocket real-time communication (Hub pattern)
 - Authentication & authorization middleware (7 middleware components)
-- Keycloak SSO integration (JWT, OAuth, User Sync)
+- Owner token sign-in
 - Business services (Workspace Access, Chat, Member, Auth)
 - E2E test coverage (all critical flows)
 - API documentation (OpenAPI 3.1, Postman collection)

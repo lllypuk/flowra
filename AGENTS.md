@@ -11,7 +11,7 @@ Core stack:
 - Backend: Go 1.26+ with Echo v4.
 - Data: MongoDB 6+ (Go Driver v2) + Redis.
 - Frontend: HTMX 2+, Pico CSS v2, vanilla JS modules.
-- Auth: Keycloak SSO.
+- Auth: named owner tokens (SHA-256 digests in config), loopback only.
 - Runtime: Docker Compose for local/dev and self-hosted helpers.
 
 ## Project Structure & Module Organization
@@ -21,7 +21,7 @@ Core stack:
 - **`internal/`**: Private application code organized by layer:
   - `domain/`: Aggregates, entities, events, domain logic (6 aggregates, 30+ events)
   - `application/`: Use cases and business workflows (40+ use cases)
-  - `infrastructure/`: External dependencies (MongoDB, Redis, Keycloak, EventStore)
+  - `infrastructure/`: External dependencies (MongoDB, Redis, EventStore)
   - `handler/http/`: HTTP request handlers (REST + HTMX endpoints)
   - `handler/websocket/`: WebSocket handlers for real-time updates
   - `middleware/`: HTTP middleware (auth, CORS, logging, rate limiting)
@@ -42,14 +42,11 @@ Core stack:
 
 ### Development
 ```bash
-# Start full development environment (recommended)
-make dev                    # Docker infra + worker + API
+# Start MongoDB, Redis and one API process with the worker on 127.0.0.1 (needs AUTH_OWNER_TOKEN_SHA256)
+make dev                    # make dev-local is the same
 
-# Start API only (no worker, limited features)
-make dev-lite              # FLOWRA_DEV_MODE=lite go run ./cmd/api
-
-# Start without Keycloak: owner-token auth, loopback only (needs AUTH_OWNER_TOKEN_SHA256)
-make dev-local
+# Start API only (no worker, infra already running)
+make dev-lite
 
 # Build binaries
 make build                 # Creates bin/api, bin/worker and bin/leadfeed
@@ -59,7 +56,7 @@ make feed-sync             # Export, validate and publish a snapshot
 make feed-status           # Published revision and last import attempt
 
 # Manage infrastructure
-make docker-up            # Start MongoDB, Redis, Keycloak
+make docker-up            # Start MongoDB, Redis
 make docker-down          # Stop all services
 make reset-data           # Reset Chat=SoT data (when switching branches)
 ```
@@ -110,8 +107,7 @@ make docker-prod-down      # Stop production stack
 - Main local app URL: `http://localhost:8080`
 - API docs: `http://localhost:8080/docs`
 - Health: `http://localhost:8080/health`
-- Keycloak admin: `http://localhost:8090` (`admin/admin123`)
-- Test user login: `testuser` / `test123`
+- Sign-in: the owner token whose SHA-256 is in `AUTH_OWNER_TOKEN_SHA256` or `auth.tokens`
 
 Runtime toggles for API binary:
 - `FLOWRA_WORKER=true` enables unified API + worker loops.
@@ -159,9 +155,12 @@ The lead feed (`internal/application/leadfeed`, collections `leadfeed_*`, routes
 - Source statuses are stored and returned verbatim; labels and groups are display-only (`leadfeed.StatusLabel`, `leadfeed.StatusGroup`).
 - Real exports contain private text: keep them out of the repository, fixtures are synthetic.
 
-## Token Auth Mode
+## Authentication
 
-With `auth.mode: token` only configured owner tokens are accepted. Do not add fallbacks to `StaticTokenValidator`, the mock session or `MockAuthService` in this mode, and keep the loopback-only check in config validation.
+Only configured owner tokens are accepted (`middleware.OwnerTokenValidator`); every token resolves to the owner
+identity. Without a validator a request is rejected, never served as a mock user. Do not add static, mock or
+session-only fallbacks, and keep the loopback-only check in `Config.ValidateAuth` (called only by `cmd/api`).
+What several users would need is in `docs/ARCHITECTURE.md` (Authentication).
 
 ## Frontend & HTMX Operational Notes
 
@@ -300,7 +299,7 @@ const (
 - **Unit tests**: Beside implementation in `internal/**/*_test.go`
 - **Integration tests**: `tests/integration/` with `//go:build integration`
 - **E2E tests**: `tests/e2e/` with `//go:build e2e`
-- **Shared utilities**: `tests/testutil/` (MongoDB/Redis/Keycloak containers)
+- **Shared utilities**: `tests/testutil/` (MongoDB/Redis containers)
 - **Mocks**: `tests/mocks/` for shared fakes
 
 ### Test Structure (Table-Driven Pattern)

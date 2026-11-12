@@ -208,4 +208,3 @@ func TestAcceptInviteUseCase_Validate_InvalidUserID(t *testing.T) {
 		t.Fatal("expected validation error for invalid userID")
 	}
 }
-

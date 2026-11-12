@@ -6,12 +6,11 @@ Welcome to Flowra! This guide will help you get started with team collaboration 
 
 ### 1. Login
 
-Flowra uses Single Sign-On (SSO) for authentication:
+Flowra signs you in with an access token issued by whoever runs the server:
 
 1. Go to the login page
-2. Click **Sign in with SSO**
-3. Enter your organization credentials in Keycloak
-4. You'll be redirected to your workspaces
+2. Paste your access token and click **Sign in**
+3. You'll be redirected to the feed; workspaces are in the menu
 
 ### 2. Create or Join a Workspace
 

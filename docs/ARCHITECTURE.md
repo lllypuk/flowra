@@ -29,7 +29,7 @@ Flowra is a **Chat System with Task Management** designed for team collaboration
 - **Task Management** - Kanban-style workflows with status transitions
 - **Workspace Organization** - Multi-tenant workspaces with role-based access
 - **Event-Driven Architecture** - Loosely coupled components via domain events
-- **SSO Integration** - Keycloak-based authentication
+- **Token Sign-in** - named owner tokens, loopback-only server
 
 ---
 
@@ -94,14 +94,14 @@ Flowra is a **Chat System with Task Management** designed for team collaboration
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           INFRASTRUCTURE LAYER                               │
 │                                                                             │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐          │
-│  │     MongoDB      │  │      Redis       │  │    Keycloak      │          │
-│  │   (Primary DB)   │  │  (Cache/PubSub)  │  │   (Auth/SSO)     │          │
-│  │                  │  │                  │  │                  │          │
-│  │ • Documents      │  │ • Session cache  │  │ • User mgmt      │          │
-│  │ • Event store    │  │ • Event pub/sub  │  │ • OAuth 2.0      │          │
-│  │ • Read models    │  │ • Rate limiting  │  │ • JWT tokens     │          │
-│  └──────────────────┘  └──────────────────┘  └──────────────────┘          │
+│  ┌──────────────────┐  ┌──────────────────┐                                │
+│  │     MongoDB      │  │      Redis       │                                │
+│  │   (Primary DB)   │  │  (Cache/PubSub)  │                                │
+│  │                  │  │                  │                                │
+│  │ • Documents      │  │ • Event pub/sub  │                                │
+│  │ • Event store    │  │ • Rate limiting  │                                │
+│  │ • Read models    │  │                  │                                │
+│  └──────────────────┘  └──────────────────┘                                │
 │                                                                             │
 │  ┌──────────────────┐                                                       │
 │  │   File Storage   │                                                       │
@@ -703,7 +703,6 @@ Aggregates are rebuilt from event stream:
 |------------|---------|---------|
 | **MongoDB** | Primary database | 6+ |
 | **Redis** | Cache, Pub/Sub | 7+ |
-| **Keycloak** | Authentication | 23+ |
 | **Docker** | Containerization | 24+ |
 
 ---
@@ -765,22 +764,17 @@ Aggregates are rebuilt from event stream:
 
 ---
 
-### ADR-004: Keycloak for Authentication
+### ADR-004: Owner Tokens for Authentication
 
-**Context:** Need secure authentication with SSO capabilities.
+**Context:** The service is for one owner and agents, at most a small team. Keycloak and its Postgres cost about
+770 MB and were not started in practice. Owner decision of 12.11.2026: remove Keycloak.
 
-**Decision:** Use Keycloak for authentication and user management.
-
-**Rationale:**
-- Industry-standard OAuth 2.0 / OpenID Connect
-- Built-in user management
-- Supports multiple identity providers
-- Reduces security burden
+**Decision:** Accept only named owner tokens configured as SHA-256 digests; every token resolves to the owner
+identity. Keycloak, OAuth login, user and group sync and the mock login paths are removed.
 
 **Consequences:**
-- Additional infrastructure dependency
-- Learning curve for configuration
-- JWT token handling complexity
+- No external identity provider; a token is a bearer secret, so the server listens on loopback only
+- Several people cannot sign in as different users yet (see Security Model)
 
 ---
 
@@ -823,67 +817,37 @@ Aggregates are rebuilt from event stream:
 
 ## Security Model
 
-The system uses **Keycloak** for user management, authentication, and authorization. User and role logic is delegated to Keycloak; the application works with JWT tokens in a stateless manner.
+Flowra authenticates requests itself: the server holds SHA-256 digests of owner tokens and resolves every valid
+token to the owner user. Workspace and chat membership live in Flowra's own collections.
 
 ### Core Principles
 
-- **Keycloak as Source of Truth** for users, roles, workspace membership
-- **Stateless Authorization** via JWT tokens
-- **RBAC** (Role-Based Access Control) at Keycloak level
-- **Workspace Isolation** — users work within workspace context
-- **Self-Service** — users can create workspaces and invite others
+- **Tokens, not sessions**: `Authorization: Bearer <token>` for API and agents; the web form sets an HttpOnly
+  cookie holding the same token
+- **Digests only**: `auth.tokens[{name, sha256}]` and `AUTH_OWNER_TOKEN_SHA256`; tokens are named so one can be
+  dropped without changing the others
+- **Loopback only**: `Config.ValidateAuth` refuses a non-loopback `server.host`
+- **No fallbacks**: without a validator a request is rejected, never served as a mock user
+- **Workspace Isolation**: users work within workspace context
 
-### Keycloak Configuration
+### Several Users: What Is Missing
 
-```
-Realm: flowra
+The model "several named tokens → different users" is kept possible but not built:
 
-Realm Roles:
-├─ user              — base role (all registered users)
-└─ system-admin      — superadmin (full access)
-
-Client: flowra-app
-├─ Client ID: flowra-app
-├─ Protocol: openid-connect
-├─ Access Type: confidential
-└─ Client Roles:
-   ├─ workspace-admin   — workspace administrator
-   └─ workspace-member  — workspace member
-
-Groups (created dynamically):
-├─ "Engineering Team"
-│  ├─ Attributes: { workspace_id: "uuid" }
-│  └─ Members with roles
-└─ "Marketing Team"
-   └─ ...
-```
-
-### JWT Token Structure
-
-```json
-{
-  "sub": "user-uuid",
-  "email": "alice@example.com",
-  "preferred_username": "alice",
-  "realm_access": {
-    "roles": ["user"]
-  },
-  "resource_access": {
-    "flowra-app": {
-      "roles": ["workspace-admin", "workspace-member"]
-    }
-  },
-  "groups": ["/Engineering Team", "/Marketing Team"],
-  "aud": "flowra-app"
-}
-```
+- a token has no identity of its own: it needs `tokens[].user {username, email}` and an `ExternalUserID` taken
+  from the token instead of the constant `owner`, plus a uniqueness check between tokens
+- `userResolver` falls back to an existing user with the same `username`; with several identities a token with a
+  colliding username would silently sign in as that user, so this must be refused
+- `AcceptInviteUseCase` is not wired to HTTP and grants no membership; people can be added only as existing users
+  through the workspace invite form, and a token can be issued only by editing the config and restarting
+- a team on several machines needs network access with TLS, which loopback-only does not give
 
 ### Access Hierarchy
 
 ```
-System Level (Keycloak Realm)
+System Level (owner identity, system admin flag)
     ↓
-Workspace Level (Keycloak Groups)
+Workspace Level (Flowra membership)
     ↓
 Chat Level (Application)
     ↓
@@ -932,9 +896,8 @@ Message Level (Application)
 
 **Self-Service Creation:**
 1. User clicks "Create Workspace"
-2. Backend creates Keycloak Group with workspace attributes
-3. User is added as workspace-admin
-4. Workspace record created in database
+2. Workspace record created in database
+3. User is added as workspace owner
 
 **Invite Links:**
 ```
@@ -949,25 +912,13 @@ InviteLink:
 ### Authentication Flow
 
 ```
-┌────────┐     ┌────────┐     ┌──────────┐
-│ Client │────▶│  API   │────▶│ Keycloak │
-└────────┘     └────────┘     └──────────┘
-     │              │               │
-     │  1. Login    │               │
-     │─────────────▶│   2. Validate │
-     │              │──────────────▶│
-     │              │   3. Token    │
-     │              │◀──────────────│
-     │  4. JWT      │               │
-     │◀─────────────│               │
-     │              │               │
-     │  5. Request  │               │
-     │─────────────▶│               │
-     │   + JWT      │ 6. Validate   │
-     │              │   locally     │
-     │  7. Response │               │
-     │◀─────────────│               │
+┌────────┐                         ┌────────┐
+│ Client │──── Bearer <token> ────▶│  API   │  sha256(token) matches a configured digest?
+└────────┘                         └────────┘    yes → owner user (created on first use)
+                                                 no  → 401
 ```
+
+The web form `POST /login` checks the token the same way and stores it in the `flowra_session` cookie.
 
 ### WebSocket Authentication
 
@@ -978,13 +929,13 @@ const wsURL = `ws://localhost:8080/ws?token=${accessToken}`;
 const ws = new WebSocket(wsURL);
 ```
 
-Backend validates JWT from query parameter, extracts user ID, and registers the client.
+Backend validates the token from the query parameter or the session cookie, resolves the user and registers the client.
 
 ### Security Best Practices
 
 | Practice | Implementation |
 |----------|----------------|
-| **JWT Validation** | Verify signature via Keycloak JWKS endpoint, check audience/issuer/expiry |
+| **Token Check** | Constant-time comparison of SHA-256 digests; tokens never logged |
 | **CORS** | Whitelist allowed origins, enable credentials for cookies |
 | **Rate Limiting** | Per IP + UserID, stricter for auth endpoints |
 | **Input Validation** | Validate and sanitize all user input |
@@ -1010,14 +961,14 @@ Backend validates JWT from query parameter, extracts user ID, and registers the 
           │               │               │
           └───────────────┼───────────────┘
                           │
-    ┌─────────────────────┼─────────────────────┐
-    │                     │                     │
-    ▼                     ▼                     ▼
-┌────────┐           ┌────────┐           ┌────────┐
-│MongoDB │           │ Redis  │           │Keycloak│
-│Replica │           │Cluster │           │HA Mode │
-│  Set   │           │        │           │        │
-└────────┘           └────────┘           └────────┘
+          ┌───────────────┴───────────────┐
+          │                               │
+          ▼                               ▼
+     ┌────────┐                      ┌────────┐
+     │MongoDB │                      │ Redis  │
+     │Replica │                      │Cluster │
+     │  Set   │                      │        │
+     └────────┘                      └────────┘
 ```
 
 ### Performance Optimizations

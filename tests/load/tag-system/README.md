@@ -24,7 +24,7 @@ This targets the real API path (HTTP + middleware + app layer + async tag handli
 ## Prerequisites
 
 - `k6` installed locally
-- Docker services running (`mongo`, `redis`, `keycloak`) and app started (`make dev` or equivalent)
+- Docker services running (`mongo`, `redis`) and app started (`make dev` or equivalent)
 - A valid bearer token for a real user in your local/dev environment
 
 Recommended startup:

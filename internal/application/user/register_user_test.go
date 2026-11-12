@@ -14,7 +14,7 @@ import (
 type mockUserRepository struct {
 	users               map[string]*domainuser.User    // username -> user
 	usersByEmail        map[string]*domainuser.User    // email -> user
-	usersByExternalID   map[string]*domainuser.User    // keycloakID -> user
+	usersByExternalID   map[string]*domainuser.User    // externalID -> user
 	usersByID           map[uuid.UUID]*domainuser.User // id -> user
 	saveError           error
 	findByUsernameError error
@@ -37,8 +37,8 @@ func (m *mockUserRepository) FindByID(_ context.Context, id uuid.UUID) (*domainu
 	return nil, errors.New("not found")
 }
 
-func (m *mockUserRepository) FindByExternalID(_ context.Context, keycloakID string) (*domainuser.User, error) {
-	if usr, ok := m.usersByExternalID[keycloakID]; ok {
+func (m *mockUserRepository) FindByExternalID(_ context.Context, externalID string) (*domainuser.User, error) {
+	if usr, ok := m.usersByExternalID[externalID]; ok {
 		return usr, nil
 	}
 	return nil, errors.New("not found")
@@ -132,7 +132,7 @@ func TestRegisterUserUseCase_Execute_Success(t *testing.T) {
 	}
 
 	if result.Value.ExternalID() != cmd.ExternalID {
-		t.Errorf("expected keycloakID %s, got %s", cmd.ExternalID, result.Value.ExternalID())
+		t.Errorf("expected externalID %s, got %s", cmd.ExternalID, result.Value.ExternalID())
 	}
 
 	// check that user sav
@@ -209,7 +209,7 @@ func TestRegisterUserUseCase_Validate_MissingExternalID(t *testing.T) {
 
 	// Assert
 	if err == nil {
-		t.Fatal("expected validation error for missing keycloakID")
+		t.Fatal("expected validation error for missing externalID")
 	}
 }
 

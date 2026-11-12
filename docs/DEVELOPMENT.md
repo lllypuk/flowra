@@ -72,7 +72,7 @@ go mod tidy
 ### 3. Start Infrastructure Services (Optional)
 
 ```bash
-# Start MongoDB, Redis, and Keycloak manually (optional)
+# Start MongoDB and Redis manually (optional)
 docker-compose up -d
 
 # Verify services are running
@@ -81,7 +81,6 @@ docker-compose ps
 # Expected output:
 # flowra-mongodb   running   0.0.0.0:27017->27017/tcp
 # flowra-redis     running   0.0.0.0:6379->6379/tcp
-# flowra-keycloak  running   0.0.0.0:8090->8080/tcp
 ```
 
 `make dev` already starts these services automatically. Manual startup is useful when you need to run `make reset-data`
@@ -90,8 +89,9 @@ before launching the full stack.
 ### 4. Configure Application
 
 ```bash
-# Configuration is in configs/config.yaml
-# Default values work for local development
+# Configuration is in configs/config.yaml; the API needs an owner token digest
+token=$(openssl rand -hex 32); echo "$token"
+export AUTH_OWNER_TOKEN_SHA256=$(printf %s "$token" | sha256sum | cut -d' ' -f1)
 
 # Optionally, override via environment variables:
 export LOG_LEVEL=debug
@@ -100,14 +100,11 @@ export LOG_LEVEL=debug
 ### 5. Start the Application
 
 ```bash
-# Full-stack development mode (infra + worker + API)
+# Infra + one API process with the worker inside (make dev-local is the same)
 make dev
 
-# Lightweight API-only mode (explicit opt-in, limited)
+# API only, infra already running
 make dev-lite
-
-# Or directly (API only)
-FLOWRA_DEV_MODE=lite go run ./cmd/api
 ```
 
 ### 6. Verify Setup
@@ -122,16 +119,10 @@ curl http://localhost:8080/ready
 # Expected: {"status":"ready","components":{...}}
 ```
 
-### 7. Run Without Keycloak
+### 7. Sign-in
 
-Token mode is for a single owner on one machine. It refuses to start on a non-loopback `server.host`,
-and nothing in it falls back to mock or development auth.
-
-```bash
-token=$(openssl rand -hex 32)
-export AUTH_OWNER_TOKEN_SHA256=$(printf %s "$token" | sha256sum | cut -d' ' -f1)
-make dev-local        # MongoDB + Redis + API with the worker inside, config: configs/config.token.yaml
-```
+The server is for a single owner on one machine. It refuses to start on a non-loopback `server.host`, and
+nothing falls back to mock or development auth.
 
 - Web: http://127.0.0.1:8080/login takes the token and sets an HttpOnly session cookie.
 - API: `Authorization: Bearer <token>`.
@@ -173,7 +164,7 @@ LEADFEED_SAMPLE_DIR=~/projects/lead/tasks/samples go test ./internal/application
 make help
 
 # Common commands:
-make dev           # Run full-stack development mode (infra + worker + API)
+make dev           # Run infra + API with the worker inside (needs AUTH_OWNER_TOKEN_SHA256)
 make dev-lite      # Run lightweight API-only mode (no worker)
 make build         # Build binaries
 make test          # Run all tests
@@ -742,7 +733,6 @@ Follow the project's interface design principles (see AGENTS.md):
 - [Echo Framework](https://echo.labstack.com/guide/)
 - [MongoDB Go Driver](https://www.mongodb.com/docs/drivers/go/current/)
 - [gorilla/websocket](https://pkg.go.dev/github.com/gorilla/websocket)
-- [Keycloak Documentation](https://www.keycloak.org/documentation)
 
 ---
 

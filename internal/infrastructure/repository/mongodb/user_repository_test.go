@@ -118,7 +118,7 @@ func TestMongoUserRepository_FindByUsername(t *testing.T) {
 	assert.ErrorIs(t, err, errs.ErrNotFound)
 }
 
-// TestMongoUserRepository_FindByExternalID checks search user po Keycloak ID
+// TestMongoUserRepository_FindByExternalID checks search user by external ID
 func TestMongoUserRepository_FindByExternalID(t *testing.T) {
 	repo := setupTestUserRepository(t)
 	ctx := context.Background()
@@ -137,7 +137,7 @@ func TestMongoUserRepository_FindByExternalID(t *testing.T) {
 	assert.Equal(t, user.ExternalID(), loaded.ExternalID())
 
 	// Find by non-existent external ID
-	_, err = repo.FindByExternalID(ctx, "nonexistent-keycloak-id")
+	_, err = repo.FindByExternalID(ctx, "nonexistent-external-id")
 	assert.ErrorIs(t, err, errs.ErrNotFound)
 }
 

@@ -50,7 +50,7 @@ type AppMode string
 
 // Application wiring modes.
 const (
-	// AppModeReal uses real implementations (MongoDB, Redis, Keycloak, etc.).
+	// AppModeReal uses real implementations (MongoDB, Redis).
 	// This is the default mode and should be used in production.
 	AppModeReal AppMode = "real"
 
