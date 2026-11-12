@@ -21,23 +21,21 @@ const (
 type Created struct {
 	event.BaseEvent
 
-	Name            string
-	KeycloakGroupID string
-	CreatedBy       uuid.UUID
+	Name      string
+	CreatedBy uuid.UUID
 }
 
 // NewWorkspaceCreated creates new event WorkspaceCreated
 func NewWorkspaceCreated(
 	workspaceID uuid.UUID,
-	name, keycloakGroupID string,
+	name string,
 	createdBy uuid.UUID,
 	metadata event.Metadata,
 ) *Created {
 	return &Created{
-		BaseEvent:       event.NewBaseEvent(EventTypeWorkspaceCreated, workspaceID.String(), "Workspace", 1, metadata),
-		Name:            name,
-		KeycloakGroupID: keycloakGroupID,
-		CreatedBy:       createdBy,
+		BaseEvent: event.NewBaseEvent(EventTypeWorkspaceCreated, workspaceID.String(), "Workspace", 1, metadata),
+		Name:      name,
+		CreatedBy: createdBy,
 	}
 }
 

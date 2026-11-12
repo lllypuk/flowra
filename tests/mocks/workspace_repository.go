@@ -11,24 +11,22 @@ import (
 
 // MockWorkspaceRepository implements the workspaces repository for testing
 type MockWorkspaceRepository struct {
-	mu                   sync.RWMutex
-	workspaces           map[uuid.UUID]*workspace.Workspace
-	workspacesByKeycloak map[string]*workspace.Workspace
-	invitesByToken       map[string]*workspace.Invite
-	members              map[string]*workspace.Member // key: "workspaceID:userID"
-	calls                map[string]int
-	SaveError            error
-	FindError            error
+	mu             sync.RWMutex
+	workspaces     map[uuid.UUID]*workspace.Workspace
+	invitesByToken map[string]*workspace.Invite
+	members        map[string]*workspace.Member // key: "workspaceID:userID"
+	calls          map[string]int
+	SaveError      error
+	FindError      error
 }
 
 // NewMockWorkspaceRepository creates a new mock repository
 func NewMockWorkspaceRepository() *MockWorkspaceRepository {
 	return &MockWorkspaceRepository{
-		workspaces:           make(map[uuid.UUID]*workspace.Workspace),
-		workspacesByKeycloak: make(map[string]*workspace.Workspace),
-		invitesByToken:       make(map[string]*workspace.Invite),
-		members:              make(map[string]*workspace.Member),
-		calls:                make(map[string]int),
+		workspaces:     make(map[uuid.UUID]*workspace.Workspace),
+		invitesByToken: make(map[string]*workspace.Invite),
+		members:        make(map[string]*workspace.Member),
+		calls:          make(map[string]int),
 	}
 }
 
@@ -54,28 +52,6 @@ func (r *MockWorkspaceRepository) FindByID(
 	return ws, nil
 }
 
-// FindByKeycloakGroup finds a workspace by Keycloak group ID
-func (r *MockWorkspaceRepository) FindByKeycloakGroup(
-	_ context.Context,
-	keycloakGroupID string,
-) (*workspace.Workspace, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	r.calls["FindByKeycloakGroup"]++
-
-	if r.FindError != nil {
-		return nil, r.FindError
-	}
-
-	ws, ok := r.workspacesByKeycloak[keycloakGroupID]
-	if !ok {
-		return nil, errs.ErrNotFound
-	}
-
-	return ws, nil
-}
-
 // Save saves a workspace
 func (r *MockWorkspaceRepository) Save(_ context.Context, ws *workspace.Workspace) error {
 	r.mu.Lock()
@@ -88,7 +64,6 @@ func (r *MockWorkspaceRepository) Save(_ context.Context, ws *workspace.Workspac
 	}
 
 	r.workspaces[ws.ID()] = ws
-	r.workspacesByKeycloak[ws.KeycloakGroupID()] = ws
 
 	// Save invites
 	for _, invite := range ws.Invites() {
@@ -105,12 +80,10 @@ func (r *MockWorkspaceRepository) Delete(_ context.Context, id uuid.UUID) error 
 
 	r.calls["Delete"]++
 
-	ws, ok := r.workspaces[id]
-	if !ok {
+	if _, ok := r.workspaces[id]; !ok {
 		return errs.ErrNotFound
 	}
 
-	delete(r.workspacesByKeycloak, ws.KeycloakGroupID())
 	delete(r.workspaces, id)
 
 	// Delete workspace members
@@ -353,7 +326,6 @@ func (r *MockWorkspaceRepository) Reset() {
 	defer r.mu.Unlock()
 
 	r.workspaces = make(map[uuid.UUID]*workspace.Workspace)
-	r.workspacesByKeycloak = make(map[string]*workspace.Workspace)
 	r.invitesByToken = make(map[string]*workspace.Invite)
 	r.members = make(map[string]*workspace.Member)
 	r.calls = make(map[string]int)

@@ -74,31 +74,6 @@ func (r *MongoWorkspaceRepository) FindByID(ctx context.Context, id uuid.UUID) (
 	return r.documentToWorkspace(&doc)
 }
 
-// FindByKeycloakGroup finds workspace space po ID groups Keycloak
-func (r *MongoWorkspaceRepository) FindByKeycloakGroup(
-	ctx context.Context,
-	keycloakGroupID string,
-) (*workspacedomain.Workspace, error) {
-	if keycloakGroupID == "" {
-		return nil, errs.ErrInvalidInput
-	}
-
-	filter := bson.M{"keycloak_group_id": keycloakGroupID}
-	var doc workspaceDocument
-	err := r.collection.FindOne(ctx, filter).Decode(&doc)
-	if err != nil {
-		if !errors.Is(err, mongo.ErrNoDocuments) {
-			r.logger.ErrorContext(ctx, "failed to find workspace by Keycloak group",
-				slog.String("keycloak_group_id", keycloakGroupID),
-				slog.String("error", err.Error()),
-			)
-		}
-		return nil, HandleMongoError(err, "workspace")
-	}
-
-	return r.documentToWorkspace(&doc)
-}
-
 // Save saves workspace space
 func (r *MongoWorkspaceRepository) Save(ctx context.Context, workspace *workspacedomain.Workspace) error {
 	if workspace == nil {
@@ -199,14 +174,13 @@ func (r *MongoWorkspaceRepository) FindInviteByToken(
 
 // workspaceDocument represents strukturu dokumenta in MongoDB
 type workspaceDocument struct {
-	WorkspaceID     string           `bson:"workspace_id"`
-	Name            string           `bson:"name"`
-	Description     string           `bson:"description"`
-	KeycloakGroupID string           `bson:"keycloak_group_id"`
-	CreatedBy       string           `bson:"created_by"`
-	CreatedAt       time.Time        `bson:"created_at"`
-	UpdatedAt       time.Time        `bson:"updated_at"`
-	Invites         []inviteDocument `bson:"invites"`
+	WorkspaceID string           `bson:"workspace_id"`
+	Name        string           `bson:"name"`
+	Description string           `bson:"description"`
+	CreatedBy   string           `bson:"created_by"`
+	CreatedAt   time.Time        `bson:"created_at"`
+	UpdatedAt   time.Time        `bson:"updated_at"`
+	Invites     []inviteDocument `bson:"invites"`
 }
 
 // inviteDocument represents priglashenie in dokumente
@@ -241,14 +215,13 @@ func (r *MongoWorkspaceRepository) workspaceToDocument(ws *workspacedomain.Works
 	}
 
 	return workspaceDocument{
-		WorkspaceID:     ws.ID().String(),
-		Name:            ws.Name(),
-		Description:     ws.Description(),
-		KeycloakGroupID: ws.KeycloakGroupID(),
-		CreatedBy:       ws.CreatedBy().String(),
-		CreatedAt:       ws.CreatedAt(),
-		UpdatedAt:       ws.UpdatedAt(),
-		Invites:         invites,
+		WorkspaceID: ws.ID().String(),
+		Name:        ws.Name(),
+		Description: ws.Description(),
+		CreatedBy:   ws.CreatedBy().String(),
+		CreatedAt:   ws.CreatedAt(),
+		UpdatedAt:   ws.UpdatedAt(),
+		Invites:     invites,
 	}
 }
 
@@ -282,7 +255,6 @@ func (r *MongoWorkspaceRepository) documentToWorkspace(doc *workspaceDocument) (
 		id,
 		doc.Name,
 		doc.Description,
-		doc.KeycloakGroupID,
 		createdBy,
 		doc.CreatedAt,
 		doc.UpdatedAt,

@@ -12,6 +12,7 @@ import (
 	"github.com/lllypuk/flowra/tests/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 // setupTestWorkspaceRepository creates test repozitoriy workspace
@@ -30,12 +31,8 @@ func createTestWorkspace(t *testing.T, suffix string) *workspace.Workspace {
 	t.Helper()
 
 	createdBy := uuid.NewUUID()
-	ws, err := workspace.NewWorkspace(
-		"Test Workspace "+suffix,
-		"Test description "+suffix,
-		"keycloak-group-"+suffix,
-		createdBy,
-	)
+	ws, err := workspace.NewWorkspace("Test Workspace "+suffix, "Test description "+suffix, createdBy)
+
 	require.NoError(t, err)
 	return ws
 }
@@ -58,8 +55,32 @@ func TestMongoWorkspaceRepository_Save_And_FindByID(t *testing.T) {
 	// Verify all fields
 	assert.Equal(t, ws.ID(), loaded.ID())
 	assert.Equal(t, ws.Name(), loaded.Name())
-	assert.Equal(t, ws.KeycloakGroupID(), loaded.KeycloakGroupID())
 	assert.Equal(t, ws.CreatedBy(), loaded.CreatedBy())
+}
+
+// TestMongoWorkspaceRepository_FindByID_LegacyGroupField loads a document written while workspaces had Keycloak groups.
+func TestMongoWorkspaceRepository_FindByID_LegacyGroupField(t *testing.T) {
+	db := testutil.SetupTestMongoDB(t)
+	repo := mongodb.NewMongoWorkspaceRepository(db.Collection("workspaces"), db.Collection("workspace_members"))
+	ctx := context.Background()
+
+	id := uuid.NewUUID()
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	_, err := db.Collection("workspaces").InsertOne(ctx, bson.M{
+		"workspace_id":      id.String(),
+		"name":              "Legacy",
+		"description":       "",
+		"keycloak_group_id": "group-1",
+		"created_by":        uuid.NewUUID().String(),
+		"created_at":        now,
+		"updated_at":        now,
+		"invites":           bson.A{},
+	})
+	require.NoError(t, err)
+
+	loaded, err := repo.FindByID(ctx, id)
+	require.NoError(t, err)
+	assert.Equal(t, "Legacy", loaded.Name())
 }
 
 // TestMongoWorkspaceRepository_FindByID_NotFound checks search existing workspace
@@ -69,29 +90,6 @@ func TestMongoWorkspaceRepository_FindByID_NotFound(t *testing.T) {
 
 	// Try to find non-existent workspace
 	_, err := repo.FindByID(ctx, uuid.NewUUID())
-	assert.ErrorIs(t, err, errs.ErrNotFound)
-}
-
-// TestMongoWorkspaceRepository_FindByKeycloakGroup checks searching workspace po Keycloak group ID
-func TestMongoWorkspaceRepository_FindByKeycloakGroup(t *testing.T) {
-	repo := setupTestWorkspaceRepository(t)
-	ctx := context.Background()
-
-	// Create and save workspace
-	ws := createTestWorkspace(t, "keycloak")
-	err := repo.Save(ctx, ws)
-	require.NoError(t, err)
-
-	// Find by Keycloak group ID
-	loaded, err := repo.FindByKeycloakGroup(ctx, ws.KeycloakGroupID())
-	require.NoError(t, err)
-	require.NotNil(t, loaded)
-
-	assert.Equal(t, ws.ID(), loaded.ID())
-	assert.Equal(t, ws.KeycloakGroupID(), loaded.KeycloakGroupID())
-
-	// Find by non-existent Keycloak group ID
-	_, err = repo.FindByKeycloakGroup(ctx, "non-existent-group")
 	assert.ErrorIs(t, err, errs.ErrNotFound)
 }
 
@@ -281,11 +279,6 @@ func TestMongoWorkspaceRepository_InputValidation(t *testing.T) {
 		assert.ErrorIs(t, err, errs.ErrInvalidInput)
 	})
 
-	t.Run("FindByKeycloakGroup with empty group ID", func(t *testing.T) {
-		_, err := repo.FindByKeycloakGroup(ctx, "")
-		assert.ErrorIs(t, err, errs.ErrInvalidInput)
-	})
-
 	t.Run("Save with nil workspace", func(t *testing.T) {
 		err := repo.Save(ctx, nil)
 		assert.ErrorIs(t, err, errs.ErrInvalidInput)
@@ -324,7 +317,6 @@ func TestMongoWorkspaceRepository_DocToWorkspace(t *testing.T) {
 	// Verify all fields are correctly restored
 	assert.Equal(t, ws.ID(), loaded.ID())
 	assert.Equal(t, ws.Name(), loaded.Name())
-	assert.Equal(t, ws.KeycloakGroupID(), loaded.KeycloakGroupID())
 	assert.Equal(t, ws.CreatedBy(), loaded.CreatedBy())
 	assert.Len(t, loaded.Invites(), 1)
 

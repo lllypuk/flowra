@@ -171,12 +171,6 @@ func GetWorkspaceIndexes() []IndexDefinition {
 			Options:    options.Index().SetUnique(true).SetName("idx_workspaces_id_unique"),
 		},
 		{
-			// Unique sparse index for Keycloak group ID
-			Collection: CollectionWorkspaces,
-			Keys:       bson.D{{Key: "keycloak_group_id", Value: 1}},
-			Options:    options.Index().SetUnique(true).SetSparse(true).SetName("idx_workspaces_keycloak_unique"),
-		},
-		{
 			// Index for workspace name search
 			Collection: CollectionWorkspaces,
 			Keys:       bson.D{{Key: "name", Value: 1}},

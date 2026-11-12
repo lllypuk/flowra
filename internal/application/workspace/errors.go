@@ -20,13 +20,4 @@ var (
 
 	// ErrInvalidInviteToken is returned when invite token is invalid
 	ErrInvalidInviteToken = errors.New("invalid invite token")
-
-	// ErrKeycloakGroupCreationFailed is returned when Keycloak group creation fails
-	ErrKeycloakGroupCreationFailed = errors.New("failed to create Keycloak group")
-
-	// ErrKeycloakGroupDeletionFailed is returned when Keycloak group deletion fails
-	ErrKeycloakGroupDeletionFailed = errors.New("failed to delete Keycloak group")
-
-	// ErrKeycloakUserAddFailed is returned when adding user to Keycloak group fails
-	ErrKeycloakUserAddFailed = errors.New("failed to add user to Keycloak group")
 )

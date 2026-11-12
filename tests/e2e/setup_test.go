@@ -475,7 +475,7 @@ func (s *E2ETestSuite) CreateTestUser(username string) *TestUser {
 func (s *E2ETestSuite) CreateTestWorkspace(name string, owner *TestUser) *workspace.Workspace {
 	s.t.Helper()
 
-	ws, err := workspace.NewWorkspace(name, "Test workspace", "keycloak-group-test", owner.ID)
+	ws, err := workspace.NewWorkspace(name, "Test workspace", owner.ID)
 	require.NoError(s.t, err)
 
 	// Add to mock service with member count

@@ -14,18 +14,13 @@ import (
 func TestAcceptInviteUseCase_Execute_Success(t *testing.T) {
 	// Arrange
 	repo := newMockWorkspaceRepository()
-	keycloakClient := newMockKeycloakClient()
-	useCase := workspace.NewAcceptInviteUseCase(repo, keycloakClient)
+	useCase := workspace.NewAcceptInviteUseCase(repo)
 
 	// Creating workspace with invite
-	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
+	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "", uuid.NewUUID())
 	expiresAt := time.Now().Add(24 * time.Hour)
 	invite, _ := ws.CreateInvite(uuid.NewUUID(), expiresAt, 0)
 	_ = repo.Save(context.Background(), ws)
-
-	// Creating group in Keycloak
-	keycloakClient.groups[ws.KeycloakGroupID()] = "Test Workspace"
-	keycloakClient.groupUsers[ws.KeycloakGroupID()] = []string{}
 
 	userID := uuid.NewUUID()
 	cmd := workspace.AcceptInviteCommand{
@@ -45,12 +40,6 @@ func TestAcceptInviteUseCase_Execute_Success(t *testing.T) {
 		t.Fatal("expected workspace to be returned")
 	}
 
-	// check that user dobavlen in groups Keycloak
-	groupUsers := keycloakClient.groupUsers[ws.KeycloakGroupID()]
-	if len(groupUsers) != 1 || groupUsers[0] != userID.String() {
-		t.Error("expected user to be added to Keycloak group")
-	}
-
 	// check that schetchik ispolzovaniy invayta uvelichilsya
 	updatedWs, _ := repo.FindByID(context.Background(), ws.ID())
 	updatedInvite, _ := updatedWs.FindInviteByToken(invite.Token())
@@ -62,8 +51,7 @@ func TestAcceptInviteUseCase_Execute_Success(t *testing.T) {
 func TestAcceptInviteUseCase_Execute_InviteNotFound(t *testing.T) {
 	// Arrange
 	repo := newMockWorkspaceRepository()
-	keycloakClient := newMockKeycloakClient()
-	useCase := workspace.NewAcceptInviteUseCase(repo, keycloakClient)
+	useCase := workspace.NewAcceptInviteUseCase(repo)
 
 	cmd := workspace.AcceptInviteCommand{
 		Token:  "invalid-token",
@@ -86,11 +74,10 @@ func TestAcceptInviteUseCase_Execute_InviteNotFound(t *testing.T) {
 func TestAcceptInviteUseCase_Execute_InviteExpired(t *testing.T) {
 	// Arrange
 	repo := newMockWorkspaceRepository()
-	keycloakClient := newMockKeycloakClient()
-	useCase := workspace.NewAcceptInviteUseCase(repo, keycloakClient)
+	useCase := workspace.NewAcceptInviteUseCase(repo)
 
 	// Creating workspace with invite kotoryy skoro istechet
-	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
+	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "", uuid.NewUUID())
 	// Creating s korotkim srokom deystviya (1 millisekunda in buduschem)
 	expiresAt := time.Now().Add(1 * time.Millisecond)
 	invite, err := ws.CreateInvite(uuid.NewUUID(), expiresAt, 0)
@@ -124,11 +111,10 @@ func TestAcceptInviteUseCase_Execute_InviteExpired(t *testing.T) {
 func TestAcceptInviteUseCase_Execute_InviteRevoked(t *testing.T) {
 	// Arrange
 	repo := newMockWorkspaceRepository()
-	keycloakClient := newMockKeycloakClient()
-	useCase := workspace.NewAcceptInviteUseCase(repo, keycloakClient)
+	useCase := workspace.NewAcceptInviteUseCase(repo)
 
 	// Creating workspace s otozvannym invaytom
-	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
+	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "", uuid.NewUUID())
 	expiresAt := time.Now().Add(24 * time.Hour)
 	invite, _ := ws.CreateInvite(uuid.NewUUID(), expiresAt, 0)
 	_ = invite.Revoke()
@@ -155,17 +141,12 @@ func TestAcceptInviteUseCase_Execute_InviteRevoked(t *testing.T) {
 func TestAcceptInviteUseCase_Execute_InviteMaxUsesReached(t *testing.T) {
 	// Arrange
 	repo := newMockWorkspaceRepository()
-	keycloakClient := newMockKeycloakClient()
-	useCase := workspace.NewAcceptInviteUseCase(repo, keycloakClient)
+	useCase := workspace.NewAcceptInviteUseCase(repo)
 
 	// Creating workspace with invite s limitom ispolzovaniy
-	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
+	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "", uuid.NewUUID())
 	expiresAt := time.Now().Add(24 * time.Hour)
 	invite, _ := ws.CreateInvite(uuid.NewUUID(), expiresAt, 1) // maxUses = 1
-
-	// Creating group in Keycloak
-	keycloakClient.groups[ws.KeycloakGroupID()] = "Test Workspace"
-	keycloakClient.groupUsers[ws.KeycloakGroupID()] = []string{}
 
 	// ispolzuem invayt one raz
 	_ = invite.Use()
@@ -193,8 +174,7 @@ func TestAcceptInviteUseCase_Execute_InviteMaxUsesReached(t *testing.T) {
 func TestAcceptInviteUseCase_Validate_MissingToken(t *testing.T) {
 	// Arrange
 	repo := newMockWorkspaceRepository()
-	keycloakClient := newMockKeycloakClient()
-	useCase := workspace.NewAcceptInviteUseCase(repo, keycloakClient)
+	useCase := workspace.NewAcceptInviteUseCase(repo)
 
 	cmd := workspace.AcceptInviteCommand{
 		Token:  "",
@@ -213,8 +193,7 @@ func TestAcceptInviteUseCase_Validate_MissingToken(t *testing.T) {
 func TestAcceptInviteUseCase_Validate_InvalidUserID(t *testing.T) {
 	// Arrange
 	repo := newMockWorkspaceRepository()
-	keycloakClient := newMockKeycloakClient()
-	useCase := workspace.NewAcceptInviteUseCase(repo, keycloakClient)
+	useCase := workspace.NewAcceptInviteUseCase(repo)
 
 	cmd := workspace.AcceptInviteCommand{
 		Token:  "some-token",
@@ -230,37 +209,3 @@ func TestAcceptInviteUseCase_Validate_InvalidUserID(t *testing.T) {
 	}
 }
 
-func TestAcceptInviteUseCase_Execute_KeycloakAddUserError(t *testing.T) {
-	// Arrange
-	repo := newMockWorkspaceRepository()
-	keycloakClient := newMockKeycloakClient()
-	keycloakClient.addUserError = errors.New("Keycloak error")
-	useCase := workspace.NewAcceptInviteUseCase(repo, keycloakClient)
-
-	// Creating workspace with invite
-	ws, _ := domainworkspace.NewWorkspace("Test Workspace", "", "keycloak-group-id", uuid.NewUUID())
-	expiresAt := time.Now().Add(24 * time.Hour)
-	invite, _ := ws.CreateInvite(uuid.NewUUID(), expiresAt, 0)
-	_ = repo.Save(context.Background(), ws)
-
-	// Creating group in Keycloak
-	keycloakClient.groups[ws.KeycloakGroupID()] = "Test Workspace"
-	keycloakClient.groupUsers[ws.KeycloakGroupID()] = []string{}
-
-	cmd := workspace.AcceptInviteCommand{
-		Token:  invite.Token(),
-		UserID: uuid.NewUUID(),
-	}
-
-	// Act
-	_, err := useCase.Execute(context.Background(), cmd)
-
-	// Assert
-	if err == nil {
-		t.Fatal("expected error from Keycloak add user operation")
-	}
-
-	if !errors.Is(err, workspace.ErrKeycloakUserAddFailed) {
-		t.Errorf("expected ErrKeycloakUserAddFailed, got: %v", err)
-	}
-}

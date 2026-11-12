@@ -14,15 +14,13 @@ import (
 func TestNewWorkspace(t *testing.T) {
 	t.Run("successful creation", func(t *testing.T) {
 		name := "Test Workspace"
-		keycloakGroupID := "keycloak-group-123"
 		createdBy := uuid.NewUUID()
 
-		workspace, err := workspace.NewWorkspace(name, "", keycloakGroupID, createdBy)
+		workspace, err := workspace.NewWorkspace(name, "", createdBy)
 
 		require.NoError(t, err)
 		assert.False(t, workspace.ID().IsZero())
 		assert.Equal(t, name, workspace.Name())
-		assert.Equal(t, keycloakGroupID, workspace.KeycloakGroupID())
 		assert.Equal(t, createdBy, workspace.CreatedBy())
 		assert.False(t, workspace.CreatedAt().IsZero())
 		assert.False(t, workspace.UpdatedAt().IsZero())
@@ -30,24 +28,19 @@ func TestNewWorkspace(t *testing.T) {
 	})
 
 	t.Run("empty name", func(t *testing.T) {
-		_, err := workspace.NewWorkspace("", "", "keycloak-group-123", uuid.NewUUID())
-		assert.ErrorIs(t, err, errs.ErrInvalidInput)
-	})
-
-	t.Run("empty keycloak group ID", func(t *testing.T) {
-		_, err := workspace.NewWorkspace("Test Workspace", "", "", uuid.NewUUID())
+		_, err := workspace.NewWorkspace("", "", uuid.NewUUID())
 		assert.ErrorIs(t, err, errs.ErrInvalidInput)
 	})
 
 	t.Run("empty created by", func(t *testing.T) {
-		_, err := workspace.NewWorkspace("Test Workspace", "", "keycloak-group-123", "")
+		_, err := workspace.NewWorkspace("Test Workspace", "", "")
 		assert.ErrorIs(t, err, errs.ErrInvalidInput)
 	})
 }
 
 func TestWorkspace_UpdateName(t *testing.T) {
 	t.Run("successful update", func(t *testing.T) {
-		workspace, _ := workspace.NewWorkspace("Old Name", "", "keycloak-group-123", uuid.NewUUID())
+		workspace, _ := workspace.NewWorkspace("Old Name", "", uuid.NewUUID())
 		oldUpdatedAt := workspace.UpdatedAt()
 
 		time.Sleep(1 * time.Millisecond)
@@ -59,7 +52,7 @@ func TestWorkspace_UpdateName(t *testing.T) {
 	})
 
 	t.Run("empty name", func(t *testing.T) {
-		workspace, _ := workspace.NewWorkspace("Old Name", "", "keycloak-group-123", uuid.NewUUID())
+		workspace, _ := workspace.NewWorkspace("Old Name", "", uuid.NewUUID())
 		err := workspace.UpdateName("")
 		require.ErrorIs(t, err, errs.ErrInvalidInput)
 		assert.Equal(t, "Old Name", workspace.Name())
@@ -68,7 +61,7 @@ func TestWorkspace_UpdateName(t *testing.T) {
 
 func TestWorkspace_CreateInvite(t *testing.T) {
 	t.Run("successful creation", func(t *testing.T) {
-		workspace, _ := workspace.NewWorkspace("Test Workspace", "", "keycloak-group-123", uuid.NewUUID())
+		workspace, _ := workspace.NewWorkspace("Test Workspace", "", uuid.NewUUID())
 		createdBy := uuid.NewUUID()
 		expiresAt := time.Now().Add(24 * time.Hour)
 		maxUses := 5
@@ -84,7 +77,7 @@ func TestWorkspace_CreateInvite(t *testing.T) {
 	})
 
 	t.Run("empty created by", func(t *testing.T) {
-		workspace, _ := workspace.NewWorkspace("Test Workspace", "", "keycloak-group-123", uuid.NewUUID())
+		workspace, _ := workspace.NewWorkspace("Test Workspace", "", uuid.NewUUID())
 		expiresAt := time.Now().Add(24 * time.Hour)
 
 		_, err := workspace.CreateInvite("", expiresAt, 5)
@@ -92,7 +85,7 @@ func TestWorkspace_CreateInvite(t *testing.T) {
 	})
 
 	t.Run("expired date", func(t *testing.T) {
-		workspace, _ := workspace.NewWorkspace("Test Workspace", "", "keycloak-group-123", uuid.NewUUID())
+		workspace, _ := workspace.NewWorkspace("Test Workspace", "", uuid.NewUUID())
 		expiresAt := time.Now().Add(-24 * time.Hour)
 
 		_, err := workspace.CreateInvite(uuid.NewUUID(), expiresAt, 5)
@@ -100,7 +93,7 @@ func TestWorkspace_CreateInvite(t *testing.T) {
 	})
 
 	t.Run("negative max uses", func(t *testing.T) {
-		workspace, _ := workspace.NewWorkspace("Test Workspace", "", "keycloak-group-123", uuid.NewUUID())
+		workspace, _ := workspace.NewWorkspace("Test Workspace", "", uuid.NewUUID())
 		expiresAt := time.Now().Add(24 * time.Hour)
 
 		_, err := workspace.CreateInvite(uuid.NewUUID(), expiresAt, -1)
@@ -108,7 +101,7 @@ func TestWorkspace_CreateInvite(t *testing.T) {
 	})
 
 	t.Run("unlimited uses (maxUses = 0)", func(t *testing.T) {
-		workspace, _ := workspace.NewWorkspace("Test Workspace", "", "keycloak-group-123", uuid.NewUUID())
+		workspace, _ := workspace.NewWorkspace("Test Workspace", "", uuid.NewUUID())
 		expiresAt := time.Now().Add(24 * time.Hour)
 
 		invite, err := workspace.CreateInvite(uuid.NewUUID(), expiresAt, 0)
@@ -119,7 +112,7 @@ func TestWorkspace_CreateInvite(t *testing.T) {
 
 func TestWorkspace_FindInviteByToken(t *testing.T) {
 	t.Run("found", func(t *testing.T) {
-		workspace, _ := workspace.NewWorkspace("Test Workspace", "", "keycloak-group-123", uuid.NewUUID())
+		workspace, _ := workspace.NewWorkspace("Test Workspace", "", uuid.NewUUID())
 		expiresAt := time.Now().Add(24 * time.Hour)
 		invite, _ := workspace.CreateInvite(uuid.NewUUID(), expiresAt, 5)
 
@@ -130,7 +123,7 @@ func TestWorkspace_FindInviteByToken(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		workspace, _ := workspace.NewWorkspace("Test Workspace", "", "keycloak-group-123", uuid.NewUUID())
+		workspace, _ := workspace.NewWorkspace("Test Workspace", "", uuid.NewUUID())
 
 		_, err := workspace.FindInviteByToken("non-existent-token")
 		assert.ErrorIs(t, err, errs.ErrNotFound)

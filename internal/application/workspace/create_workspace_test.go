@@ -13,7 +13,6 @@ import (
 // mockWorkspaceRepository - mok repozitoriya for testing
 type mockWorkspaceRepository struct {
 	workspaces           map[uuid.UUID]*domainworkspace.Workspace
-	workspacesByKeycloak map[string]*domainworkspace.Workspace
 	invitesByToken       map[string]*domainworkspace.Invite
 	members              map[string]*domainworkspace.Member // key: "workspaceID:userID"
 	saveError            error
@@ -23,7 +22,6 @@ type mockWorkspaceRepository struct {
 func newMockWorkspaceRepository() *mockWorkspaceRepository {
 	return &mockWorkspaceRepository{
 		workspaces:           make(map[uuid.UUID]*domainworkspace.Workspace),
-		workspacesByKeycloak: make(map[string]*domainworkspace.Workspace),
 		invitesByToken:       make(map[string]*domainworkspace.Invite),
 		members:              make(map[string]*domainworkspace.Member),
 	}
@@ -39,25 +37,11 @@ func (m *mockWorkspaceRepository) FindByID(_ context.Context, id uuid.UUID) (*do
 	return nil, errors.New("not found")
 }
 
-func (m *mockWorkspaceRepository) FindByKeycloakGroup(
-	_ context.Context,
-	keycloakGroupID string,
-) (*domainworkspace.Workspace, error) {
-	if m.findError != nil {
-		return nil, m.findError
-	}
-	if ws, ok := m.workspacesByKeycloak[keycloakGroupID]; ok {
-		return ws, nil
-	}
-	return nil, errors.New("not found")
-}
-
 func (m *mockWorkspaceRepository) Save(_ context.Context, ws *domainworkspace.Workspace) error {
 	if m.saveError != nil {
 		return m.saveError
 	}
 	m.workspaces[ws.ID()] = ws
-	m.workspacesByKeycloak[ws.KeycloakGroupID()] = ws
 
 	// Saving invayty
 	for _, invite := range ws.Invites() {
@@ -224,75 +208,10 @@ func (m *mockWorkspaceRepository) UpdateMember(
 	return nil
 }
 
-// mockKeycloakClient - mok klienta Keycloak for testing
-type mockKeycloakClient struct {
-	groups           map[string]string   // groupID -> name
-	groupUsers       map[string][]string // groupID -> []userID
-	createGroupError error
-	deleteGroupError error
-	addUserError     error
-	removeUserError  error
-	nextGroupID      int
-}
-
-func newMockKeycloakClient() *mockKeycloakClient {
-	return &mockKeycloakClient{
-		groups:      make(map[string]string),
-		groupUsers:  make(map[string][]string),
-		nextGroupID: 1,
-	}
-}
-
-func (m *mockKeycloakClient) CreateGroup(_ context.Context, name string) (string, error) {
-	if m.createGroupError != nil {
-		return "", m.createGroupError
-	}
-	groupID := uuid.NewUUID().String()
-	m.groups[groupID] = name
-	m.groupUsers[groupID] = []string{}
-	return groupID, nil
-}
-
-func (m *mockKeycloakClient) DeleteGroup(_ context.Context, groupID string) error {
-	if m.deleteGroupError != nil {
-		return m.deleteGroupError
-	}
-	delete(m.groups, groupID)
-	delete(m.groupUsers, groupID)
-	return nil
-}
-
-func (m *mockKeycloakClient) AddUserToGroup(_ context.Context, userID, groupID string) error {
-	if m.addUserError != nil {
-		return m.addUserError
-	}
-	if _, ok := m.groupUsers[groupID]; !ok {
-		return errors.New("group not found")
-	}
-	m.groupUsers[groupID] = append(m.groupUsers[groupID], userID)
-	return nil
-}
-
-func (m *mockKeycloakClient) RemoveUserFromGroup(_ context.Context, userID, groupID string) error {
-	if m.removeUserError != nil {
-		return m.removeUserError
-	}
-	if users, ok := m.groupUsers[groupID]; ok {
-		for i, uid := range users {
-			if uid == userID {
-				m.groupUsers[groupID] = append(users[:i], users[i+1:]...)
-				break
-			}
-		}
-	}
-	return nil
-}
-
 func TestCreateWorkspaceUseCase_Execute_Success(t *testing.T) {
 	// Arrange
 	repo := newMockWorkspaceRepository()
-	keycloakClient := newMockKeycloakClient()
-	useCase := workspace.NewCreateWorkspaceUseCase(repo, keycloakClient)
+	useCase := workspace.NewCreateWorkspaceUseCase(repo)
 	creatorID := uuid.NewUUID()
 
 	cmd := workspace.CreateWorkspaceCommand{
@@ -325,27 +244,16 @@ func TestCreateWorkspaceUseCase_Execute_Success(t *testing.T) {
 		t.Errorf("expected 1 workspace in repository, got %d", len(repo.workspaces))
 	}
 
-	// check that groups sozdana in Keycloak
-	if len(keycloakClient.groups) != 1 {
-		t.Errorf("expected 1 Keycloak group, got %d", len(keycloakClient.groups))
-	}
-
-	// check that sozdatel dobavlen in groups
-	groupID := result.Value.KeycloakGroupID()
-	if users, ok := keycloakClient.groupUsers[groupID]; ok {
-		if len(users) != 1 || users[0] != creatorID.String() {
-			t.Errorf("expected creator to be added to Keycloak group")
-		}
-	} else {
-		t.Error("expected Keycloak group to exist")
+	owner, ok := repo.members[result.Value.ID().String()+":"+creatorID.String()]
+	if !ok || owner.Role() != domainworkspace.RoleOwner {
+		t.Error("expected creator to be the workspace owner")
 	}
 }
 
 func TestCreateWorkspaceUseCase_Validate_MissingName(t *testing.T) {
 	// Arrange
 	repo := newMockWorkspaceRepository()
-	keycloakClient := newMockKeycloakClient()
-	useCase := workspace.NewCreateWorkspaceUseCase(repo, keycloakClient)
+	useCase := workspace.NewCreateWorkspaceUseCase(repo)
 
 	cmd := workspace.CreateWorkspaceCommand{
 		Name:      "",
@@ -364,8 +272,7 @@ func TestCreateWorkspaceUseCase_Validate_MissingName(t *testing.T) {
 func TestCreateWorkspaceUseCase_Validate_NameTooLong(t *testing.T) {
 	// Arrange
 	repo := newMockWorkspaceRepository()
-	keycloakClient := newMockKeycloakClient()
-	useCase := workspace.NewCreateWorkspaceUseCase(repo, keycloakClient)
+	useCase := workspace.NewCreateWorkspaceUseCase(repo)
 
 	longName := make([]byte, 101)
 	for i := range longName {
@@ -389,8 +296,7 @@ func TestCreateWorkspaceUseCase_Validate_NameTooLong(t *testing.T) {
 func TestCreateWorkspaceUseCase_Validate_InvalidCreatedBy(t *testing.T) {
 	// Arrange
 	repo := newMockWorkspaceRepository()
-	keycloakClient := newMockKeycloakClient()
-	useCase := workspace.NewCreateWorkspaceUseCase(repo, keycloakClient)
+	useCase := workspace.NewCreateWorkspaceUseCase(repo)
 
 	cmd := workspace.CreateWorkspaceCommand{
 		Name:      "Test Workspace",
@@ -406,42 +312,11 @@ func TestCreateWorkspaceUseCase_Validate_InvalidCreatedBy(t *testing.T) {
 	}
 }
 
-func TestCreateWorkspaceUseCase_Execute_KeycloakCreateGroupError(t *testing.T) {
-	// Arrange
-	repo := newMockWorkspaceRepository()
-	keycloakClient := newMockKeycloakClient()
-	keycloakClient.createGroupError = errors.New("Keycloak error")
-	useCase := workspace.NewCreateWorkspaceUseCase(repo, keycloakClient)
-
-	cmd := workspace.CreateWorkspaceCommand{
-		Name:      "Test Workspace",
-		CreatedBy: uuid.NewUUID(),
-	}
-
-	// Act
-	_, err := useCase.Execute(context.Background(), cmd)
-
-	// Assert
-	if err == nil {
-		t.Fatal("expected error from Keycloak group creation")
-	}
-
-	if !errors.Is(err, workspace.ErrKeycloakGroupCreationFailed) {
-		t.Errorf("expected ErrKeycloakGroupCreationFailed, got: %v", err)
-	}
-
-	// check that workspace not sav
-	if len(repo.workspaces) != 0 {
-		t.Error("workspace should not be saved when Keycloak group creation fails")
-	}
-}
-
 func TestCreateWorkspaceUseCase_Execute_SaveError(t *testing.T) {
 	// Arrange
 	repo := newMockWorkspaceRepository()
 	repo.saveError = errors.New("database error")
-	keycloakClient := newMockKeycloakClient()
-	useCase := workspace.NewCreateWorkspaceUseCase(repo, keycloakClient)
+	useCase := workspace.NewCreateWorkspaceUseCase(repo)
 
 	cmd := workspace.CreateWorkspaceCommand{
 		Name:      "Test Workspace",
@@ -454,10 +329,5 @@ func TestCreateWorkspaceUseCase_Execute_SaveError(t *testing.T) {
 	// Assert
 	if err == nil {
 		t.Fatal("expected error from save operation")
-	}
-
-	// check that groups Keycloak byla udalena (rollback)
-	if len(keycloakClient.groups) != 0 {
-		t.Error("Keycloak group should be deleted when workspace save fails")
 	}
 }

@@ -11,18 +11,13 @@ import (
 type AcceptInviteUseCase struct {
 	appcore.BaseUseCase
 
-	workspaceRepo  Repository
-	keycloakClient KeycloakClient
+	workspaceRepo Repository
 }
 
 // NewAcceptInviteUseCase creates New AcceptInviteUseCase
-func NewAcceptInviteUseCase(
-	workspaceRepo Repository,
-	keycloakClient KeycloakClient,
-) *AcceptInviteUseCase {
+func NewAcceptInviteUseCase(workspaceRepo Repository) *AcceptInviteUseCase {
 	return &AcceptInviteUseCase{
-		workspaceRepo:  workspaceRepo,
-		keycloakClient: keycloakClient,
+		workspaceRepo: workspaceRepo,
 	}
 }
 
@@ -70,18 +65,6 @@ func (uc *AcceptInviteUseCase) Execute(
 	// save workspace s obnovlennym invaytom
 	if errSave := uc.workspaceRepo.Save(ctx, ws); errSave != nil {
 		return Result{}, uc.WrapError("save workspace", errSave)
-	}
-
-	// Adding user in groups Keycloak
-	errKeycloak := uc.keycloakClient.AddUserToGroup(
-		ctx,
-		cmd.UserID.String(),
-		ws.KeycloakGroupID(),
-	)
-	if errKeycloak != nil {
-		// otkatyvaem use invayta? no, t.to. uzhe sav.
-		// in realnom prilozhenii nuzhna tranzaktsionnost or saga pattern
-		return Result{}, uc.WrapError("add user to Keycloak group", ErrKeycloakUserAddFailed)
 	}
 
 	return Result{

@@ -9,22 +9,18 @@ import (
 
 // Workspace represents workspace space (komandu/organizatsiyu)
 type Workspace struct {
-	id              uuid.UUID
-	name            string
-	description     string
-	keycloakGroupID string
-	createdBy       uuid.UUID
-	createdAt       time.Time
-	updatedAt       time.Time
-	invites         []*Invite
+	id          uuid.UUID
+	name        string
+	description string
+	createdBy   uuid.UUID
+	createdAt   time.Time
+	updatedAt   time.Time
+	invites     []*Invite
 }
 
 // NewWorkspace creates new workspace space
-func NewWorkspace(name, description, keycloakGroupID string, createdBy uuid.UUID) (*Workspace, error) {
+func NewWorkspace(name, description string, createdBy uuid.UUID) (*Workspace, error) {
 	if name == "" {
-		return nil, errs.ErrInvalidInput
-	}
-	if keycloakGroupID == "" {
 		return nil, errs.ErrInvalidInput
 	}
 	if createdBy.IsZero() {
@@ -32,14 +28,13 @@ func NewWorkspace(name, description, keycloakGroupID string, createdBy uuid.UUID
 	}
 
 	return &Workspace{
-		id:              uuid.NewUUID(),
-		name:            name,
-		description:     description,
-		keycloakGroupID: keycloakGroupID,
-		createdBy:       createdBy,
-		createdAt:       time.Now(),
-		updatedAt:       time.Now(),
-		invites:         make([]*Invite, 0),
+		id:          uuid.NewUUID(),
+		name:        name,
+		description: description,
+		createdBy:   createdBy,
+		createdAt:   time.Now(),
+		updatedAt:   time.Now(),
+		invites:     make([]*Invite, 0),
 	}, nil
 }
 
@@ -48,7 +43,7 @@ func NewWorkspace(name, description, keycloakGroupID string, createdBy uuid.UUID
 // all parameters dolzhny byt valid values from save.
 func Reconstruct(
 	id uuid.UUID,
-	name, description, keycloakGroupID string,
+	name, description string,
 	createdBy uuid.UUID,
 	createdAt, updatedAt time.Time,
 	invites []*Invite,
@@ -57,14 +52,13 @@ func Reconstruct(
 		invites = make([]*Invite, 0)
 	}
 	return &Workspace{
-		id:              id,
-		name:            name,
-		description:     description,
-		keycloakGroupID: keycloakGroupID,
-		createdBy:       createdBy,
-		createdAt:       createdAt,
-		updatedAt:       updatedAt,
-		invites:         invites,
+		id:          id,
+		name:        name,
+		description: description,
+		createdBy:   createdBy,
+		createdAt:   createdAt,
+		updatedAt:   updatedAt,
+		invites:     invites,
 	}
 }
 
@@ -118,9 +112,6 @@ func (w *Workspace) Name() string { return w.name }
 
 // Description returns opisanie workspace prostranstva
 func (w *Workspace) Description() string { return w.description }
-
-// KeycloakGroupID returns ID groups Keycloak
-func (w *Workspace) KeycloakGroupID() string { return w.keycloakGroupID }
 
 // CreatedBy returns creator ID
 func (w *Workspace) CreatedBy() uuid.UUID { return w.createdBy }

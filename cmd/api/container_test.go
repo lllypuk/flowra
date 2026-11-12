@@ -332,27 +332,6 @@ func TestContainer_Services_NotNil(t *testing.T) {
 	assert.Nil(t, chatSvc) // Just a type check
 }
 
-func TestContainer_NoOpKeycloakClient(t *testing.T) {
-	// Test that NoOpKeycloakClient works correctly
-	client := service.NewNoOpKeycloakClient()
-	ctx := context.Background()
-
-	// CreateGroup should return a valid UUID string
-	// All operations should still succeed (they don't actually do anything)
-	groupID, err := client.CreateGroup(ctx, "test")
-	require.NoError(t, err)
-	assert.NotEmpty(t, groupID)
-
-	err = client.DeleteGroup(ctx, groupID)
-	require.NoError(t, err)
-
-	err = client.AddUserToGroup(ctx, "user", groupID)
-	require.NoError(t, err)
-
-	err = client.RemoveUserFromGroup(ctx, "user", groupID)
-	require.NoError(t, err)
-}
-
 // ========== Board Chat Creator Adapter Tests ==========
 
 func TestBoardChatCreatorAdapter_CreateChat_PartialFailureStillSyncsProjection(t *testing.T) {

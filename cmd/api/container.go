@@ -990,36 +990,8 @@ func (c *Container) setupHTTPHandlers() {
 
 // createWorkspaceService creates the workspace service with all dependencies.
 func (c *Container) createWorkspaceService() *service.WorkspaceService {
-	// Create Keycloak client or NoOp if not configured/enabled
-	var keycloakClient wsapp.KeycloakClient
-	if c.Config.Keycloak.Enabled && c.Config.Keycloak.URL != "" && c.Config.Keycloak.AdminUsername != "" {
-		c.Logger.Debug("using real Keycloak GroupClient for workspace service",
-			slog.String("url", c.Config.Keycloak.URL),
-			slog.String("realm", c.Config.Keycloak.Realm),
-		)
-
-		// Create admin token manager for authentication
-		tokenManager := keycloak.NewAdminTokenManager(keycloak.AdminTokenConfig{
-			KeycloakURL: c.Config.Keycloak.URL,
-			Realm:       "master", // Admin operations are typically against master realm
-			ClientID:    "admin-cli",
-			Username:    c.Config.Keycloak.AdminUsername,
-			Password:    c.Config.Keycloak.AdminPassword,
-			TokenBuffer: keycloakTokenBuffer,
-		})
-
-		// Create group client for workspace management
-		keycloakClient = keycloak.NewGroupClient(keycloak.GroupClientConfig{
-			KeycloakURL: c.Config.Keycloak.URL,
-			Realm:       c.Config.Keycloak.Realm,
-		}, tokenManager)
-	} else {
-		c.Logger.Debug("using NoOp Keycloak client for workspace service (admin not configured)")
-		keycloakClient = service.NewNoOpKeycloakClient()
-	}
-
 	// Create use cases
-	createUC := wsapp.NewCreateWorkspaceUseCase(c.WorkspaceRepo, keycloakClient)
+	createUC := wsapp.NewCreateWorkspaceUseCase(c.WorkspaceRepo)
 	getUC := wsapp.NewGetWorkspaceUseCase(c.WorkspaceRepo)
 	updateUC := wsapp.NewUpdateWorkspaceUseCase(c.WorkspaceRepo)
 

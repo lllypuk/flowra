@@ -2,7 +2,6 @@ package workspace
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/lllypuk/flowra/internal/application/appcore"
 	"github.com/lllypuk/flowra/internal/domain/workspace"
@@ -12,18 +11,13 @@ import (
 type CreateWorkspaceUseCase struct {
 	appcore.BaseUseCase
 
-	workspaceRepo  Repository
-	keycloakClient KeycloakClient
+	workspaceRepo Repository
 }
 
 // NewCreateWorkspaceUseCase creates New CreateWorkspaceUseCase
-func NewCreateWorkspaceUseCase(
-	workspaceRepo Repository,
-	keycloakClient KeycloakClient,
-) *CreateWorkspaceUseCase {
+func NewCreateWorkspaceUseCase(workspaceRepo Repository) *CreateWorkspaceUseCase {
 	return &CreateWorkspaceUseCase{
-		workspaceRepo:  workspaceRepo,
-		keycloakClient: keycloakClient,
+		workspaceRepo: workspaceRepo,
 	}
 }
 
@@ -42,27 +36,14 @@ func (uc *CreateWorkspaceUseCase) Execute(
 		return Result{}, uc.WrapError("validation failed", err)
 	}
 
-	// creation groups in Keycloak
-	keycloakGroupID, err := uc.keycloakClient.CreateGroup(ctx, cmd.Name)
-	if err != nil {
-		return Result{}, uc.WrapError(
-			"create Keycloak group",
-			fmt.Errorf("%w: %w", ErrKeycloakGroupCreationFailed, err),
-		)
-	}
-
 	// creation workspace
-	ws, err := workspace.NewWorkspace(cmd.Name, cmd.Description, keycloakGroupID, cmd.CreatedBy)
+	ws, err := workspace.NewWorkspace(cmd.Name, cmd.Description, cmd.CreatedBy)
 	if err != nil {
-		// Rollback: udalyaem groups in Keycloak
-		_ = uc.keycloakClient.DeleteGroup(ctx, keycloakGroupID)
 		return Result{}, uc.WrapError("create workspace entity", err)
 	}
 
 	// storage workspace
 	if errSave := uc.workspaceRepo.Save(ctx, ws); errSave != nil {
-		// Rollback: udalyaem groups in Keycloak
-		_ = uc.keycloakClient.DeleteGroup(ctx, keycloakGroupID)
 		return Result{}, uc.WrapError("save workspace", errSave)
 	}
 
@@ -73,10 +54,6 @@ func (uc *CreateWorkspaceUseCase) Execute(
 		// TODO: vozmozhno nuzhen rollback workspace
 		return Result{}, uc.WrapError("add owner member", errMember)
 	}
-
-	// Adding sozdatelya in groups Keycloak
-	// not kritichno, mozhno log, no not otkatyvaem workspace
-	_ = uc.keycloakClient.AddUserToGroup(ctx, cmd.CreatedBy.String(), keycloakGroupID)
 
 	return Result{
 		Result: appcore.Result[*workspace.Workspace]{

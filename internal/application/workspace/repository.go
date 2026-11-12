@@ -32,9 +32,6 @@ type QueryRepository interface {
 	// FindByID finds workspace space po ID
 	FindByID(ctx context.Context, id uuid.UUID) (*workspace.Workspace, error)
 
-	// FindByKeycloakGroup finds workspace space po ID groups Keycloak
-	FindByKeycloakGroup(ctx context.Context, keycloakGroupID string) (*workspace.Workspace, error)
-
 	// List returns list workspace prostranstv s paginatsiey
 	List(ctx context.Context, offset, limit int) ([]*workspace.Workspace, error)
 

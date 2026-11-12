@@ -118,7 +118,7 @@ func TestGetWorkspaceIndexes(t *testing.T) {
 
 	indexes := mongodb.GetWorkspaceIndexes()
 
-	assert.Len(t, indexes, 5)
+	assert.Len(t, indexes, 4)
 
 	// Check workspace_id unique index
 	wsIDIdx := findIndexByName(indexes, "idx_workspaces_id_unique")
@@ -415,11 +415,10 @@ func findIndexByName(indexes []mongodb.IndexDefinition, name string) *mongodb.In
 		"idx_users_display_name":    true,
 		"idx_users_system_admin":    true,
 		// Workspaces
-		"idx_workspaces_id_unique":       true,
-		"idx_workspaces_keycloak_unique": true,
-		"idx_workspaces_name":            true,
-		"idx_workspaces_created_by":      true,
-		"idx_workspaces_invite_token":    true,
+		"idx_workspaces_id_unique":    true,
+		"idx_workspaces_name":         true,
+		"idx_workspaces_created_by":   true,
+		"idx_workspaces_invite_token": true,
 		// Members
 		"idx_members_user_workspace_unique": true,
 		"idx_members_workspace":             true,

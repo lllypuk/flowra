@@ -54,7 +54,7 @@ func TestContainerWiring_MemberService(t *testing.T) {
 
 	// Create a workspace first
 	creatorID := uuid.NewUUID()
-	ws, err := workspace.NewWorkspace("Test Workspace", "", "keycloak-group-test", creatorID)
+	ws, err := workspace.NewWorkspace("Test Workspace", "", creatorID)
 	require.NoError(t, err)
 	require.NoError(t, workspaceRepo.Save(ctx, ws))
 
@@ -109,7 +109,7 @@ func TestContainerWiring_MemberService_OwnerProtection(t *testing.T) {
 
 	// Create workspace and add owner
 	creatorID := uuid.NewUUID()
-	ws, err := workspace.NewWorkspace("Owner Protected Workspace", "", "keycloak-group-owner", creatorID)
+	ws, err := workspace.NewWorkspace("Owner Protected Workspace", "", creatorID)
 	require.NoError(t, err)
 	require.NoError(t, workspaceRepo.Save(ctx, ws))
 
@@ -123,26 +123,6 @@ func TestContainerWiring_MemberService_OwnerProtection(t *testing.T) {
 	// Try to change owner role - should fail
 	_, err = memberService.UpdateMemberRole(ctx, ws.ID(), creatorID, workspace.RoleAdmin)
 	require.Error(t, err)
-}
-
-// TestContainerWiring_NoOpKeycloakClient verifies NoOpKeycloakClient works correctly.
-func TestContainerWiring_NoOpKeycloakClient(t *testing.T) {
-	ctx := context.Background()
-	client := service.NewNoOpKeycloakClient()
-
-	// Test complete workflow
-	groupID, err := client.CreateGroup(ctx, "test-workspace")
-	require.NoError(t, err)
-	require.NotEmpty(t, groupID)
-
-	err = client.AddUserToGroup(ctx, "user-123", groupID)
-	require.NoError(t, err)
-
-	err = client.RemoveUserFromGroup(ctx, "user-123", groupID)
-	require.NoError(t, err)
-
-	err = client.DeleteGroup(ctx, groupID)
-	require.NoError(t, err)
 }
 
 // TestContainerWiring_AccessChecker_WorkspaceExists verifies workspace existence check.
@@ -164,7 +144,7 @@ func TestContainerWiring_AccessChecker_WorkspaceExists(t *testing.T) {
 
 	// Create workspace
 	creatorID := uuid.NewUUID()
-	ws, err := workspace.NewWorkspace("Existing Workspace", "", "keycloak-exists", creatorID)
+	ws, err := workspace.NewWorkspace("Existing Workspace", "", creatorID)
 	require.NoError(t, err)
 	require.NoError(t, workspaceRepo.Save(ctx, ws))
 
@@ -189,7 +169,7 @@ func TestContainerWiring_FullMembershipFlow(t *testing.T) {
 
 	// Create workspace
 	creatorID := uuid.NewUUID()
-	ws, err := workspace.NewWorkspace("Membership Flow Workspace", "", "keycloak-flow", creatorID)
+	ws, err := workspace.NewWorkspace("Membership Flow Workspace", "", creatorID)
 	require.NoError(t, err)
 	require.NoError(t, workspaceRepo.Save(ctx, ws))
 
