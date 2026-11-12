@@ -7,7 +7,8 @@ OpenAPI coverage note: the `/actions/*` paths are documented in `docs/api/openap
 
 ## Scope
 
-These endpoints are different from direct task update endpoints (for example `PUT /tasks/:task_id/status`):
+Direct task updates (`PUT /tasks/:task_id/{status,assignee,priority,due-date}`) run through the same service; see
+[Task action endpoints](#task-action-endpoints) for how their answer differs.
 
 - They apply the change to the chat inside the request and answer with its outcome (see below).
 - After the change is applied, a human-readable line ("✅ … set due date to …") is posted to the thread. It is a
@@ -64,7 +65,12 @@ Success body:
   user on the same chat returns the stored outcome instead of applying the change twice. Use a fresh UUID per
   intended change. Without a key the outcomes are the same, but after a `503` the client has to read the chat to
   learn whether the change landed.
-- A key is recorded only when the change wrote something: re-sending a value the chat already has records nothing.
+- A key is recorded only when the change wrote something. If the chat already had the value, the key is not
+  stored: a retry with it applies the value again, possibly over a change someone made in between, and reusing it
+  for a different request is not rejected. This is a known limitation: the first request wrote nothing, so the
+  retry behaves like a late request with the same value.
+- After a `503` the server rebuilds the chat and task read models, so a read shows the change if the commit
+  landed. Live updates (WebSocket, notifications) for that change may be missing.
 - Only chat participants may change a chat (`403 FORBIDDEN` otherwise).
 
 ### Changes through tags in message text
