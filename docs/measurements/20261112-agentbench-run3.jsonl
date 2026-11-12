@@ -1,0 +1,8 @@
+{"agents":1,"body_bytes":1024,"extra":{"chat_id":"6b6781de-665d-4db1-ad8c-cbba76a92b77","measured_seconds":15.000142006},"ops":[{"op":"due_date","count":15,"errors":0,"per_sec":0.9999905330229578,"p50_ms":19.235,"p95_ms":62.106,"p99_ms":62.106,"max_ms":62.106,"statuses":{"200":15}}],"rate_per_agent":1,"scenario":"contend","seconds":15.000142006,"thread":50}
+{"point":"contend--agents 1 -rate 1","accepted":15,"applied":15,"lost":0}
+{"agents":2,"body_bytes":1024,"extra":{"chat_id":"5ad99010-6f06-4117-8f13-b38fe2819dbe","measured_seconds":15.000290674},"ops":[{"op":"due_date","count":30,"errors":0,"per_sec":1.9999612442176864,"p50_ms":23.555,"p95_ms":43.5,"p99_ms":50.684,"max_ms":50.684,"statuses":{"200":30}}],"rate_per_agent":1,"scenario":"contend","seconds":15.000290674,"thread":50}
+{"point":"contend--agents 2 -rate 1","accepted":30,"applied":30,"lost":0}
+{"agents":10,"body_bytes":1024,"extra":{"chat_id":"04d7e66f-48bd-403d-b6f0-0925db377879","measured_seconds":15.001117006},"ops":[{"op":"due_date","count":150,"errors":0,"per_sec":9.999255384782645,"p50_ms":41.109,"p95_ms":56.509,"p99_ms":57.85,"max_ms":61.651,"statuses":{"200":150}}],"rate_per_agent":1,"scenario":"contend","seconds":15.001117006,"thread":50}
+{"point":"contend--agents 10 -rate 1","accepted":150,"applied":148,"lost":2}
+{"agents":50,"body_bytes":1024,"extra":{"chat_id":"ab4a6036-e1a7-4aee-a760-122d818ec79f","measured_seconds":15.00175168},"ops":[{"op":"due_date","count":750,"errors":0,"per_sec":49.9941617484499,"p50_ms":153.427,"p95_ms":572.771,"p99_ms":654.375,"max_ms":847.282,"statuses":{"200":750}}],"rate_per_agent":1,"scenario":"contend","seconds":15.00175168,"thread":50}
+{"point":"contend--agents 50 -rate 1","accepted":750,"applied":449,"lost":301}
