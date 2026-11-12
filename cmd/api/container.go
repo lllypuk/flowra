@@ -164,8 +164,9 @@ type Container struct {
 	TaskDetailTemplateHandler   *httphandler.TaskDetailTemplateHandler
 
 	// Lead feed: read-only projection of the lead's task journal
-	FeedService *leadfeed.QueryService
-	FeedHandler *httphandler.FeedHandler
+	FeedService         *leadfeed.QueryService
+	FeedHandler         *httphandler.FeedHandler
+	FeedTemplateHandler *httphandler.FeedTemplateHandler
 
 	// Auth middleware components
 	TokenValidator middleware.TokenValidator
@@ -1061,6 +1062,9 @@ func (c *Container) setupLeadFeed() {
 	feedRepo := mongodb.NewMongoLeadFeedRepository(c.MongoDB, c.MongoDB.Database(c.MongoDBName))
 	c.FeedService = leadfeed.NewQueryService(feedRepo)
 	c.FeedHandler = httphandler.NewFeedHandler(c.FeedService, c.Logger)
+	if c.TemplateRenderer != nil {
+		c.FeedTemplateHandler = httphandler.NewFeedTemplateHandler(c.TemplateRenderer, c.FeedService, c.Logger)
+	}
 	c.Logger.Debug("lead feed handlers initialized")
 }
 

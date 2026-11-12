@@ -314,3 +314,29 @@ func TestQueryService_ReadError(t *testing.T) {
 
 	require.ErrorIs(t, err, context.DeadlineExceeded)
 }
+
+func TestQueryService_Thread(t *testing.T) {
+	feed := newMemFeed("rev-a", 2)
+	feed.attempt = &leadfeed.Attempt{Outcome: string(leadfeed.OutcomePublished)}
+	svc := leadfeed.NewQueryService(feed)
+	ctx := context.Background()
+
+	first, err := svc.Thread(ctx, "T-0001", 2, "")
+	require.NoError(t, err)
+	assert.Equal(t, "T-0001", first.Task.ID)
+	assert.Equal(t, "rev-a", first.Revision)
+	assert.True(t, first.Status.Healthy())
+	require.Len(t, first.Records, 2)
+	require.NotEmpty(t, first.NextCursor)
+
+	rest, err := svc.Thread(ctx, "T-0001", 2, first.NextCursor)
+	require.NoError(t, err)
+	require.Len(t, rest.Records, 1)
+	assert.Empty(t, rest.NextCursor)
+
+	_, err = svc.Thread(ctx, "T-0999", 0, "")
+	require.ErrorIs(t, err, leadfeed.ErrTaskNotFound)
+
+	_, err = svc.Thread(ctx, "T-0001", -1, "")
+	require.ErrorIs(t, err, leadfeed.ErrInvalidLimit)
+}

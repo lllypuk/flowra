@@ -1,0 +1,118 @@
+{{define "feed/list.html"}}
+{{template "base" .}}
+{{end}}
+
+{{define "feed-banner"}}
+<aside class="feed-banner {{if not .Healthy}}feed-banner-problem{{end}}" data-feed-banner>
+    {{if .Published}}
+    <span>Снимок от <strong>{{.AsOf}}</strong> ({{.AsOfAge}} назад)</span>
+    <span>опубликован {{.PublishedAt}}</span>
+    <span class="feed-muted">ревизия {{.Revision}}</span>
+    {{else}}
+    <span><strong>Лента пуста:</strong> ни один снимок ещё не импортирован.</span>
+    {{end}}
+    {{if .ShowError}}
+    <span class="feed-banner-error" data-feed-error>
+        Последний импорт {{.AttemptAt}} не прошёл ({{.Outcome}}){{if .LastError}}: {{.LastError}}{{end}}.
+        {{if .Published}}Показан прежний снимок.{{end}}
+    </span>
+    {{end}}
+</aside>
+{{end}}
+
+{{define "feed-styles"}}
+<style>
+    .feed-banner {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem 1.25rem;
+        padding: 0.6rem 0.9rem;
+        margin-bottom: 1.25rem;
+        border: 1px solid var(--pico-muted-border-color);
+        border-radius: 8px;
+        font-size: 0.9rem;
+    }
+    .feed-banner-problem { border-color: #d95926; }
+    .feed-banner-error { flex-basis: 100%; color: #d95926; }
+    .feed-muted { color: var(--pico-muted-color); }
+    .feed-group { margin-bottom: 1.75rem; }
+    .feed-group h2 { font-size: 1rem; margin-bottom: 0.4rem; }
+    .feed-table { font-size: 0.92rem; }
+    .feed-table td, .feed-table th { padding: 0.45rem 0.6rem; vertical-align: top; }
+    .feed-nowrap { white-space: nowrap; }
+    .feed-derived {
+        font-size: 0.75rem;
+        padding: 0 0.35rem;
+        border: 1px dashed var(--pico-muted-border-color);
+        border-radius: 4px;
+        color: var(--pico-muted-color);
+    }
+    .feed-record {
+        margin-bottom: 0.9rem;
+        padding: 0.7rem 0.9rem;
+        border: 1px solid var(--pico-muted-border-color);
+        border-radius: 8px;
+    }
+    .feed-record header { display: flex; flex-wrap: wrap; gap: 0.25rem 0.9rem; margin: 0; padding: 0; font-size: 0.85rem; }
+    .feed-body {
+        margin: 0.5rem 0 0;
+        padding: 0;
+        background: none;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        font-family: inherit;
+        font-size: 0.92rem;
+    }
+    .feed-missing { margin: 0.5rem 0 0; font-style: italic; color: var(--pico-muted-color); }
+    .feed-facts { display: flex; flex-wrap: wrap; gap: 0.25rem 1.5rem; font-size: 0.9rem; margin-bottom: 1rem; }
+</style>
+{{end}}
+
+{{define "feed-list-content"}}
+<section class="feed" data-feed-content>
+    <header class="page-header">
+        <h1>Лента лида</h1>
+        <p class="feed-muted">Только чтение: задачи и переписка из журнала лида. Задач: {{.Data.Total}}.</p>
+    </header>
+
+    {{template "feed-banner" .Data.Banner}}
+
+    {{if .Data.Truncated}}
+    <p class="feed-muted">Показана только часть задач: лента длиннее одной страницы.</p>
+    {{end}}
+
+    {{range .Data.Groups}}
+    <section class="feed-group" data-feed-group="{{.Key}}">
+        <h2>{{.Title}} <span class="feed-muted">· {{len .Tasks}}</span></h2>
+        <div class="overflow-auto">
+            <table class="feed-table">
+                <thead>
+                    <tr>
+                        <th scope="col">№</th>
+                        <th scope="col">Проект</th>
+                        <th scope="col">Задача</th>
+                        <th scope="col">Статус</th>
+                        <th scope="col">В статусе</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Tasks}}
+                    <tr>
+                        <td class="feed-nowrap"><a href="/feed/tasks/{{.ID}}">{{.ID}}</a></td>
+                        <td class="feed-nowrap">{{.Project}}</td>
+                        <td>
+                            <a href="/feed/tasks/{{.ID}}">{{.Title}}</a>
+                            {{if .Note}}<div class="feed-muted">{{.Note}}</div>{{end}}
+                        </td>
+                        <td class="feed-nowrap">{{.StatusLabel}} <span class="feed-muted">{{.Status}}</span></td>
+                        <td class="feed-nowrap">{{.StatusAge}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    {{end}}
+</section>
+{{template "feed-styles"}}
+{{end}}

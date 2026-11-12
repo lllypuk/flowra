@@ -118,6 +118,12 @@ type RecordPage struct {
 	NextCursor string
 }
 
+// Thread is a page of a task thread together with the feed status, for the thread page.
+type Thread struct {
+	RecordPage
+	Status FeedStatus
+}
+
 // Board is the whole feed, for the list page.
 type Board struct {
 	Meta
@@ -223,6 +229,47 @@ func (s *QueryService) Records(ctx context.Context, taskID string, limit int, cu
 			return err
 		}
 		out.Meta, out.Task = meta, *task
+
+		records, err := view.Records(ctx, taskID, offset, limit+1)
+		if err != nil {
+			return err
+		}
+		if len(records) > limit {
+			records = records[:limit]
+			out.NextCursor = encodeCursor(meta.Revision, offset+limit)
+		}
+		out.Records = records
+		return nil
+	})
+	return out, err
+}
+
+// Thread returns a page of a task thread and the feed status, from one snapshot.
+func (s *QueryService) Thread(ctx context.Context, taskID string, limit int, cursor string) (Thread, error) {
+	limit, err := pageLimit(limit)
+	if err != nil {
+		return Thread{}, err
+	}
+
+	var out Thread
+	err = s.reader.Read(ctx, func(ctx context.Context, view View) error {
+		out = Thread{}
+		meta, offset, err := startPage(ctx, view, cursor)
+		if err != nil {
+			return err
+		}
+		task, err := view.Task(ctx, taskID)
+		if err != nil {
+			return err
+		}
+		out.Meta, out.Task = meta, *task
+
+		if out.Status.State, err = view.State(ctx); err != nil {
+			return err
+		}
+		if out.Status.LastAttempt, err = view.LastAttempt(ctx); err != nil {
+			return err
+		}
 
 		records, err := view.Records(ctx, taskID, offset, limit+1)
 		if err != nil {

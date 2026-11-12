@@ -1,0 +1,84 @@
+{{define "feed/thread.html"}}
+{{template "base" .}}
+{{end}}
+
+{{define "feed-thread-content"}}
+<section class="feed" data-feed-content>
+    <nav aria-label="breadcrumb">
+        <ul>
+            <li><a href="/feed">Лента лида</a></li>
+            <li>{{.Data.Task.ID}}</li>
+        </ul>
+    </nav>
+
+    {{template "feed-banner" .Data.Banner}}
+
+    <header class="page-header">
+        <h1>{{.Data.Task.ID}} · {{.Data.Task.Title}}</h1>
+    </header>
+
+    <div class="feed-facts" data-feed-facts>
+        <span>проект <strong>{{.Data.Task.Project}}</strong></span>
+        <span>агент <strong>{{.Data.Agent}}</strong></span>
+        <span>статус <strong>{{.Data.Task.StatusLabel}}</strong> <span class="feed-muted">{{.Data.Task.Status}}</span></span>
+        <span>ждём <strong>{{.Data.WaitingOn}}</strong></span>
+        <span>в статусе {{.Data.Task.StatusAge}}, с {{.Data.StatusSince}}</span>
+        <span>поставлена {{.Data.CreatedAt}}</span>
+        {{if .Data.Returns}}<span>возвратов {{.Data.Returns}}</span>{{end}}
+    </div>
+    {{if .Data.Task.Note}}<p>{{.Data.Task.Note}}</p>{{end}}
+
+    <details>
+        <summary>Время и переходы</summary>
+        <div class="feed-facts">
+            {{range .Data.Spent}}<span>{{.Label}}: {{.Value}}</span>{{end}}
+        </div>
+        <table class="feed-table" data-feed-transitions>
+            <thead>
+                <tr>
+                    <th scope="col">Когда</th>
+                    <th scope="col">Статус</th>
+                    <th scope="col">Причина</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Data.Transitions}}
+                <tr>
+                    <td class="feed-nowrap">{{.At}}</td>
+                    <td>
+                        {{.StatusLabel}} <span class="feed-muted">{{.Status}}</span>
+                        {{if .Derived}}<span class="feed-derived" title="Переход выведен из транскрипта, а не записан в журнале">выведено</span>{{end}}
+                    </td>
+                    <td>{{if .Cause}}<a href="#rec-{{.Cause}}">{{.Cause}}</a>{{end}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </details>
+
+    <h2>Переписка</h2>
+    {{range .Data.Records}}
+    <article class="feed-record" id="rec-{{.ID}}" data-feed-record="{{.Kind}}">
+        <header>
+            <strong>{{.KindLabel}}</strong>
+            <span>{{.ActorLabel}}{{if .ActorDerived}} <span class="feed-derived" title="Автор выведен, а не записан">выведено</span>{{end}}</span>
+            <span>{{.At}}</span>
+            <span class="feed-muted">{{.ID}} · {{.SourceKind}}</span>
+            {{if and .HasBody .BodyDerived}}<span class="feed-derived" title="Текст найден в транскрипте агента по времени события">текст из транскрипта</span>{{end}}
+        </header>
+        {{if .HasBody}}
+        <pre class="feed-body">{{.Body}}</pre>
+        {{else}}
+        <p class="feed-missing" data-feed-missing>Текста нет: {{.BodyMissing}}</p>
+        {{end}}
+    </article>
+    {{else}}
+    <p class="feed-muted">Записей нет.</p>
+    {{end}}
+
+    {{if .Data.NextURL}}
+    <p><a href="{{.Data.NextURL}}">Дальше</a></p>
+    {{end}}
+</section>
+{{template "feed-styles"}}
+{{end}}

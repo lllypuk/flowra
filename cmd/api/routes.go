@@ -341,6 +341,11 @@ func registerPageRoutes(e *echo.Echo, c *Container) {
 		c.TaskDetailTemplateHandler.SetupTaskDetailRoutes(e)
 	}
 
+	// Lead feed pages (read-only)
+	if c.FeedTemplateHandler != nil {
+		c.FeedTemplateHandler.SetupFeedRoutes(e)
+	}
+
 	// TODO: Add more protected pages as frontend features are implemented:
 	// - /settings (user settings)
 }
