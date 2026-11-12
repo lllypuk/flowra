@@ -32,6 +32,9 @@ Finished the implementation
 - If a normal text line appears, tags in the middle of that line are treated as plain text
 - You can put multiple tags on one line
 - You can also put tags on separate lines
+- Lines inside a fenced code block (between lines starting with ```` ``` ````) are plain text
+- Only messages people type are parsed: system notes about actions and the bot's replies never run tags,
+  even when they quote text such as a new title
 
 Examples:
 

@@ -138,8 +138,9 @@ func (uc *SendMessageUseCase) Execute(
 		)
 	}
 
-	// 7. tag handling
-	if uc.tagProcessor != nil && uc.tagExecutor != nil {
+	// 7. tag handling. Only people's messages carry commands: system notes quote action parameters
+	// (a renamed title, a status), and parsing them would run text someone else supplied.
+	if msg.Type() == messagedomain.TypeUser && uc.tagProcessor != nil && uc.tagExecutor != nil {
 		uc.processTagsDetached(msg, cmd.AuthorID, chatReadModel.Type)
 	}
 
@@ -235,12 +236,6 @@ func (uc *SendMessageUseCase) processTags(
 				Severity: tag.ErrorSeverityError,
 			})
 		}
-	}
-
-	// System tag messages are internal action commands.
-	// They should execute tags but should not generate an extra bot response.
-	if msg.IsSystemMessage() {
-		return
 	}
 
 	// Resolve actor display name for bot response

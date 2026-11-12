@@ -19,6 +19,26 @@ func TestParse(t *testing.T) {
 		wantTags []tag.ParsedTag
 		wantText string
 	}{
+		{
+			name:     "tag inside a fenced code block is text",
+			input:    "Example:\n```\n#status Done\n```",
+			wantTags: []tag.ParsedTag{},
+			wantText: "Example:\n```\n#status Done\n```",
+		},
+		{
+			name:     "message that opens with a code block",
+			input:    "```bash\n#priority High\n```",
+			wantTags: []tag.ParsedTag{},
+			wantText: "```bash\n#priority High\n```",
+		},
+		{
+			name:  "tag after a closed code block is parsed",
+			input: "```\n#status Done\n```\n#priority High",
+			wantTags: []tag.ParsedTag{
+				{Key: "priority", Value: "High"},
+			},
+			wantText: "```\n#status Done\n```",
+		},
 		// bazovye primery
 		{
 			name:  "single tag",

@@ -154,14 +154,26 @@ func (p *Parser) GetTagDefinition(name string) (Definition, bool) {
 // 2. Line does not start with # → regular text, tags not parsed
 // 3. After regular text, new line with # → parse tags
 // 4. Empty lines are ignored
+// 5. Lines inside a fenced code block (```) are regular text
 func (p *Parser) Parse(content string) ParseResult {
 	lines := strings.Split(content, "\n")
 	result := ParseResult{Tags: []ParsedTag{}}
 
 	inTagMode := true
+	inCode := false
 
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
+
+		fence := strings.HasPrefix(trimmed, "```")
+		if fence {
+			inCode = !inCode
+		}
+		if fence || inCode {
+			result.PlainText += line + "\n"
+			inTagMode = false
+			continue
+		}
 
 		// skip empty lines
 		if trimmed == "" {

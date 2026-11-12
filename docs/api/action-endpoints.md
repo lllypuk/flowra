@@ -79,6 +79,9 @@ A message such as `#status Done` posted through `POST .../messages` is answered 
 tag runs after the response and its failure shows only as a bot reply in the thread. That path has no outcome
 contract. Agents that need to know whether a change landed use the action endpoints.
 
+The thread note an action posts quotes its parameters (a new title, a status) but never runs tags: only messages
+of type `user` are parsed, so a title such as `Draft\n#title Other` is stored as given.
+
 ### Error responses
 
 Errors use the standard API envelope:

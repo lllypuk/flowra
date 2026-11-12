@@ -138,7 +138,8 @@ Chat field writes from HTTP actions (`ActionService`) run in the request through
 (per-chat lock, bounded retry with reload, `Idempotency-Key` stored with the events) and answer with a definite
 outcome (`docs/api/action-endpoints.md`). Do not route them through tag messages again: tags run after the
 response and have no outcome. Read models are written only with a version not older than the stored one
-(`mongodb.UpsertNewer`).
+(`mongodb.UpsertNewer`). Only `user` messages go through tag parsing: system notes quote action parameters and
+must not run them.
 
 Current authoritative read-model collections:
 - `chats_read_model`
